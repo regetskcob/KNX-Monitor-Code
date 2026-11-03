@@ -54,6 +54,19 @@ void main() {
       expect(await l.lost, 'Getrennt');
     });
 
+    test('negative confirmation (NCON) fails the send', () async {
+      final l = link();
+      await l.connect();
+      module.negativeConfirm = true;
+      await expectLater(
+        l.send(requestOff),
+        throwsA(isA<LinkException>().having((e) => e.message, 'message', contains('NCON'))),
+      );
+      module.negativeConfirm = false;
+      await l.send(requestOff);
+      await l.close();
+    });
+
     test('setzt die gewünschte Adresse im Geräteobjekt', () async {
       final l = link(address: 0x11FA);
       await l.connect();

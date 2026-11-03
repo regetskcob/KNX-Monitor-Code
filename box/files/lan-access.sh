@@ -1,5 +1,6 @@
 #!/bin/bash
-# Allow or block access via cable to ports 80 and 443. Decides by
+# Allow or block new TCP connections via cable (web app, pairing, SSH,
+# Prometheus). Decides by
 # interface, not by source address: if the customer network itself uses
 # 10.42.0.0/24, a check in the server would otherwise let it through.
 #
@@ -21,8 +22,10 @@ if [ "$choice" = yes ]; then
   nft delete table inet knx_box_lan 2>/dev/null || true
   echo "KNX-Box: Zugriff über das Kabel frei"
 else
-  # Only HTTP and HTTPS (web app, app, pairing); KNXnet/IP and gateway discovery
-  # use UDP and stay open.
+  # Every new inbound TCP connection over the cable: web app, pairing, SSH and
+  # the Prometheus exporter. Replies to connections the box opens itself
+  # (gateway over TCP, MQTT, InfluxDB) stay allowed; KNXnet/IP over UDP and
+  # gateway discovery are not affected. SSH stays reachable in the box Wi-Fi.
   nft -f - <<'NFT'
 table inet knx_box_lan
 flush table inet knx_box_lan
@@ -31,7 +34,8 @@ table inet knx_box_lan {
 		type filter hook input priority filter; policy accept;
 		iifname "lo" accept
 		iifname "wlan0" accept
-		tcp dport { 80, 443 } reject with tcp reset
+		ct state established,related accept
+		meta l4proto tcp ct state new reject with tcp reset
 	}
 }
 NFT

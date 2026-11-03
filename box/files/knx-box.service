@@ -26,11 +26,13 @@ NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
-# Of the real devices only the Pi's serial ones (ttyAMA*, KNX HAT on
-# GPIO 14/15); otherwise only /dev/null and the like.
+# Of the real devices only serial ones: ttyAMA* (KNX HAT on GPIO 14/15) and
+# USB serial adapters (ttyUSB*, ttyACM*); otherwise only /dev/null and the like.
 PrivateDevices=no
 DevicePolicy=closed
 DeviceAllow=char-ttyAMA rw
+DeviceAllow=char-ttyUSB rw
+DeviceAllow=char-ttyACM rw
 SupplementaryGroups=dialout
 ProtectKernelTunables=yes
 ProtectControlGroups=yes

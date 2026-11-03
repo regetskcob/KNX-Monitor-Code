@@ -32,7 +32,8 @@ git -C "$DIR" pull -q --ff-only 2>/dev/null || true
 snapshot=$(mktemp -d)
 trap 'rm -rf "$snapshot"' EXIT
 # shellcheck disable=SC2086 # empty or one flag
-tool/export_public_source.sh "$snapshot/tree" $build
+# Publishing needs gitleaks; the pattern check alone is not enough.
+KNX_REQUIRE_GITLEAKS=1 tool/export_public_source.sh "$snapshot/tree" $build
 
 # Replace everything except .git, so files removed here also disappear there.
 find "$DIR" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
@@ -42,10 +43,12 @@ head=$(git rev-parse --short HEAD)
 git -C "$DIR" add -A
 if git -C "$DIR" diff --cached --quiet; then
   echo "nothing changed since the last sync"
-  exit 0
+else
+  git -C "$DIR" commit -q -m "Stand $head" \
+    -m "Source of KNX Monitor as of $head, without the private parts (tool/public_source/private.txt)."
+  echo "committed in $DIR: $(git -C "$DIR" log --oneline -1)"
 fi
-git -C "$DIR" commit -q -m "Stand $head" -m "Source of KNX Monitor as of $head, without the private parts (backend, its operations, release workflows)."
-echo "committed in $DIR: $(git -C "$DIR" log --oneline -1)"
+# A commit from an earlier run without --push is pushed now as well.
 if [ "$push" = 1 ]; then
   git -C "$DIR" push -q origin HEAD:main
   echo "pushed to $PUBLIC_CODE"

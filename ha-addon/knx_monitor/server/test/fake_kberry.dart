@@ -30,6 +30,9 @@ class FakeKberry implements SerialLine {
   final requests = <List<int>>[];
   bool confirmRequests = true;
 
+  /// Confirms with the confirm bit set (NCON): nobody acknowledged on the bus.
+  bool negativeConfirm = false;
+
   /// Letzter Datenrahmen an den Host, für [repeatLast].
   List<int> _lastFrame = const [];
 
@@ -127,7 +130,11 @@ class FakeKberry implements SerialLine {
         }
       case 0x11 when commMode == 0x00:
         requests.add(data);
-        if (confirmRequests) _send([...data]..[0] = 0x2E);
+        if (confirmRequests) {
+          final con = [...data]..[0] = 0x2E;
+          if (negativeConfirm) con[2 + con[1]] |= 0x01;
+          _send(con);
+        }
     }
   }
 

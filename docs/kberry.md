@@ -118,11 +118,15 @@ The kBerry always sits on GPIO 14/15. Which UART is connected there depends on t
 | Device | `/dev/ttyAMA0` (`/dev/serial0` points to it) | `/dev/ttyAMA0` (`/dev/serial0` points to `ttyAMA10`) |
 | Pitfall | The mini UART depends on the VPU clock and has no parity, so it is unusable for 8E1. Do not use `miniuart-bt` for the kBerry. | **Do not set `enable_uart=1`**: without a cable on the debug connector the Pi 5 then sends kernel output to GPIO 14/15, i.e. into the module. |
 
-One configuration covers both models, with `/dev/ttyAMA0` as the fixed device. This is what
-`box/setup.sh` appends to `config.txt` (once, guarded by a `# KNX-HAT` marker):
+One configuration covers all models, with `/dev/ttyAMA0` as the fixed device. The Pi 3 routes
+the PL011 to Bluetooth like the Pi 4 and gets the same overlay. This is what `box/setup.sh`
+appends to `config.txt` (once, guarded by a `# KNX-HAT` marker; boxes set up before 1.9.4 get
+the `[pi3]` section added on update):
 
 ```ini
 # /boot/firmware/config.txt
+[pi3]
+dtoverlay=disable-bt
 [pi4]
 dtoverlay=disable-bt
 [pi5]
@@ -144,12 +148,14 @@ None of this harms a Pi without a kBerry: the UART is simply unused.
 
 The service unit [`box/files/knx-box.service`](../box/files/knx-box.service) runs the server
 hardened. `PrivateDevices=yes` would hide the UART, so the unit grants access to the serial
-devices only:
+devices only: the Pi's UART and USB serial adapters.
 
 ```ini
 PrivateDevices=no
 DevicePolicy=closed
 DeviceAllow=char-ttyAMA rw
+DeviceAllow=char-ttyUSB rw
+DeviceAllow=char-ttyACM rw
 SupplementaryGroups=dialout
 ```
 
@@ -553,16 +559,14 @@ The app shows this as a test page (`lib/ui/box_hat_screen.dart`).
   Home Assistant OS.
 - **No baud-rate switching.** The code only detects 19200 or 115200; it never sets item 13.
   Whether 115200 can be set while in cEMI mode is not yet verified.
-- **Pi 3 not configured by `setup.sh`.** The `config.txt` block has only `[pi4]` and `[pi5]`
-  sections. A Pi 3 also routes the PL011 to Bluetooth by default and would need
-  `dtoverlay=disable-bt` as well. The case fits a Pi 3B/3B+, but this path is untested.
+- **Pi 3 untested on a bus.** `setup.sh` configures it like the Pi 4 (`dtoverlay=disable-bt`);
+  the case fits a Pi 3B/3B+.
 - **Pi 5 untested on a bus.** The overlay and `ttyAMA0` mapping follow the Raspberry Pi
   documentation.
-- **`systemd` allows only `ttyAMA*`.** `BusConfig` accepts `/dev/ttyUSB0` and others, but the
-  service unit's `DeviceAllow=char-ttyAMA` blocks them.
 - **Confirmations are matched by destination only.** `L_Data.con` completes the oldest pending
-  send with the same destination address; the positive/negative confirm flag in the control
-  field is not evaluated.
+  send with the same destination address. A negative confirmation (confirm bit in control
+  field 1 set, nobody acknowledged on the bus) fails that send with a `LinkException`
+  (`server/test/ft12_link_test.dart`).
 - **FT1.2 acknowledgements are not correlated.** Any `E5` received while waiting counts as the
   acknowledgement of the frame just sent.
 - **Standard frames only for recording.** `busmonToLData` ignores extended frames in bus

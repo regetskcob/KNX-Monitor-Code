@@ -96,6 +96,7 @@ grep -q '^SystemMaxUse=' "$root/etc/systemd/journald.conf.d/knx-box.conf" || fai
 [ ! -e "$root/etc/knx-box-tls/key.pem" ] || fail "Zertifikat schon vor dem ersten Start"
 grep -q 'enable .*knx-box-firewall.service\|enable knx-box-firewall.service' "$tmp/calls" || fail "Firewall nicht eingeschaltet"
 grep -q '^# KNX-HAT' "$root/boot/firmware/config.txt" || fail "UART nicht eingetragen"
+grep -A1 -x '\[pi3\]' "$root/boot/firmware/config.txt" | grep -qx 'dtoverlay=disable-bt' || fail "UART for the Pi 3 missing"
 grep -q console=serial0 "$root/boot/firmware/cmdline.txt" && fail "serielle Konsole noch an"
 
 # Set-up box with its own data and settings.
@@ -113,9 +114,15 @@ keep() {
 }
 
 # 2. Update that responds: the previous version is ready for rollback.
+# The box was set up before 1.9.4: its UART section lacks the Pi 3.
+printf '[pi3]\narm_boost=1\n[all]\n\n# KNX-HAT (kBerry): UART0 auf GPIO 14/15 frei für das Modul\n[pi4]\ndtoverlay=disable-bt\n[pi5]\ndtoverlay=uart0-pi5\n[all]\n' >"$root/boot/firmware/config.txt"
 bundle v2 2.0 v2
 run v2 --yes || { cat "$tmp/out"; fail "Update"; }
 expect_state 2.0 v2
+# An unrelated [pi3] section earlier in the file must not count as the HAT's.
+[ "$(awk '/^# KNX-HAT/ { getline l; print l; exit }' "$root/boot/firmware/config.txt")" = '[pi3]' ] ||
+  fail "Pi 3 section not added to an old box"
+[ "$(grep -cx '\[pi3\]' "$root/boot/firmware/config.txt")" = 2 ] || fail "Pi 3 section added more than once"
 if command -v openssl >/dev/null; then
   [ -s "$root/etc/knx-box-tls/key.pem" ] || fail "Update ohne Zertifikat"
   key_before=$(cat "$root/etc/knx-box-tls/key.pem")

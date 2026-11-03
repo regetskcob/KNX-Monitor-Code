@@ -63,6 +63,9 @@ if find "$target" -type f \( -iname '*.jks' -o -iname '*.keystore' -o -iname '*.
 fi
 if command -v gitleaks >/dev/null; then
   gitleaks dir --no-banner --config "$target/tool/public_source/gitleaks.toml" "$target" || fail=1
+elif [ "${KNX_REQUIRE_GITLEAKS:-}" = 1 ]; then
+  say "  gitleaks not installed (brew install gitleaks); required for publishing"
+  fail=1
 else
   say "  gitleaks not installed, only the patterns above were checked"
 fi

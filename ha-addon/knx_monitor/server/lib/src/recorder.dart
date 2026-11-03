@@ -296,6 +296,7 @@ class Recorder {
   Future<void> _maintain() async {
     if (!await _dir.exists()) return;
     final today = dayName(DateTime.now());
+    await _recover();
     for (final f in await _dayFiles()) {
       final name = f.uri.pathSegments.last;
       if (name.endsWith('.ndjson') && name != '$today.ndjson') await _gzip(f);
@@ -307,9 +308,20 @@ class Recorder {
     await _roomToWrite();
   }
 
+  /// Packs a finished day in steps that a power cut cannot leave ambiguous:
+  ///
+  /// 1. pack the plain file (and an existing `.gz`) into `.gz.tmp`, flushed to
+  ///    disk;
+  /// 2. rename the plain file to `.done`: from now on `.gz.tmp` is the day;
+  /// 3. rename `.gz.tmp` to `.gz`;
+  /// 4. delete `.done`.
+  ///
+  /// [_recover] finishes or discards an interrupted run from the files that are
+  /// left, without comparing content.
   Future<void> _gzip(File f) async {
     final target = File('${f.path}.gz');
     final tmp = File('${target.path}.tmp');
+    final done = File('${f.path}.done');
     // Already packed (clock briefly showed another day): append, do not replace.
     final Stream<List<int>> lines = await target.exists()
         ? () async* {
@@ -318,8 +330,34 @@ class Recorder {
           }()
         : f.openRead();
     await lines.transform(gzip.encoder).pipe(tmp.openWrite());
+    final raf = await tmp.open(mode: FileMode.append);
+    try {
+      await raf.flush();
+    } finally {
+      await raf.close();
+    }
+    await f.rename(done.path);
     await tmp.rename(target.path);
-    await f.delete();
+    await done.delete();
+  }
+
+  /// Leftovers of an interrupted [_gzip]: with `.done` the `.gz.tmp` is complete
+  /// and becomes the day (or already did); without `.done` it is discarded and
+  /// the plain file is packed again.
+  Future<void> _recover() async {
+    await for (final e in _dir.list()) {
+      if (e is! File) continue;
+      final name = e.uri.pathSegments.last;
+      if (name.endsWith('.ndjson.done')) {
+        final day = name.substring(0, name.length - '.done'.length);
+        final tmp = File('${_dir.path}/$day.gz.tmp');
+        if (await tmp.exists()) await tmp.rename('${_dir.path}/$day.gz');
+        await e.delete();
+      }
+    }
+    await for (final e in _dir.list()) {
+      if (e is File && e.uri.pathSegments.last.endsWith('.ndjson.gz.tmp')) await e.delete();
+    }
   }
 
   Future<List<File>> _dayFiles() async => [

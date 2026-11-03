@@ -16,7 +16,7 @@ KNX IP interface ──eth0── Raspberry Pi ──wlan0── Wi-Fi "KNX-Box-
                              │    ├─ bus connection, recorder → /var/lib/knx-box
                              │    └─ /api/box (status, clock, pairing)
                              ├─ NetworkManager     hotspot (DHCP, DNS), eth0 (DHCP or link-local)
-                             ├─ nftables           no forwarding Wi-Fi → LAN, ports 80/443 Wi-Fi only
+                             ├─ nftables           no forwarding Wi-Fi → LAN, new TCP Wi-Fi only
                              ├─ avahi              knx-box.local
                              └─ chrony             NTP if available, manual time otherwise
 ```
@@ -153,7 +153,7 @@ Verification is described in [release-security.md](release-security.md).
 | --- | --- |
 | Raspberry Pi 4 | Run on hardware, including the kBerry on a real bus. `setup.sh` adds `dtoverlay=disable-bt` under `[pi4]` so the PL011 UART is free for the HAT. |
 | Raspberry Pi 5 | Configured (`dtoverlay=uart0-pi5` under `[pi5]`), not verified on hardware. Has an RTC that needs the optional battery. |
-| Raspberry Pi 3 / 3B+ | Runs the arm64 image in principle and fits the case; not verified. `setup.sh` adds no UART overlay for it, so the kBerry is not set up on a Pi 3. |
+| Raspberry Pi 3 / 3B+ | Runs the arm64 image in principle and fits the case; not verified. `setup.sh` adds `dtoverlay=disable-bt` under `[pi3]` as for the Pi 4. |
 | Anything 32-bit only | Not supported: `setup.sh` refuses to run on anything but `aarch64`. |
 
 A Pi 4 has no RTC. `setup.sh` does not configure an external RTC module such as a
@@ -487,11 +487,15 @@ What is and is not compressed on the box:
 | Images (QR PNGs, PDFs on the boot partition) | PNG/PDF intrinsic only | `qrencode` PNG; the sheet PDF uses the PDF library's stream compression |
 | Data at rest | Not encrypted | Neither the SD card nor the data partition |
 
-Packing (`Recorder._gzip`) streams the plain file through `gzip.encoder` into
-`<day>.ndjson.gz.tmp`, renames it to `<day>.ndjson.gz` and deletes the plain
-file. If a `.gz` for that day already exists (the clock briefly stood on another
-day), the old content is decompressed and the new lines appended, so nothing is
-replaced (`recorder_merge_test.dart`). Readers handle both forms:
+Packing (`Recorder._gzip`) runs in four steps that a power cut cannot leave
+ambiguous: stream the plain file through `gzip.encoder` into `<day>.ndjson.gz.tmp`
+and flush it to disk; rename the plain file to `<day>.ndjson.done`; rename the
+`.gz.tmp` to `<day>.ndjson.gz`; delete the `.done`. On the next start
+`Recorder._recover` finishes an interrupted run from the files that are left: with a
+`.done` the packed file is complete and becomes the day, without one the `.gz.tmp`
+is discarded and the plain file packed again. If a `.gz` for that day already exists
+(the clock briefly stood on another day), the old content is decompressed and the
+new lines appended, so nothing is replaced (all cases in `recorder_merge_test.dart`). Readers handle both forms:
 `Recorder.dayLines` reads the `.gz`, the plain file, or both in order, and
 `/api/files/history/` lists `.ndjson.gz` under the `.ndjson` name and serves it
 decompressed, so the app never sees the difference. Retention and the size limit
@@ -619,7 +623,7 @@ Two nftables tables:
 | Table | Unit / script | Rule |
 | --- | --- | --- |
 | `inet knx_box` | `knx-box-firewall.service`, `firewall.nft` | Forward chain: drop everything from `wlan0` to another interface. Devices in the box Wi-Fi cannot reach the LAN or the internet through the box. Off with `INTERNET_SHARING=yes`; an update keeps that choice. |
-| `inet knx_box_lan` | `knx-box-lan.service`, `lan-access.sh` | Input chain: accept `lo` and `wlan0`, reject TCP 80 and 443 from anywhere else. Deleted when LAN access is on. |
+| `inet knx_box_lan` | `knx-box-lan.service`, `lan-access.sh` | Input chain: accept `lo`, `wlan0` and established connections, reject every new TCP connection from anywhere else. Deleted when LAN access is on. |
 
 LAN access is decided by interface, not by source address, because a customer
 network may itself use `10.42.0.0/24`. The server additionally answers requests from
@@ -629,10 +633,12 @@ switch on `/pair`): the server writes `yes`/`no` to `/var/lib/knx-box/lan-access
 `knx-box-lan.path` re-runs `lan-access.sh`. Without that file the script uses
 `LAN_ACCESS` from `/etc/knx-box/env`, and otherwise blocks.
 
-The LAN switch covers only ports 80 and 443. KNXnet/IP and gateway discovery use
-UDP and are not affected. Other listening services are not filtered by it: SSH
-(only if a key was configured) and the Prometheus exporter (off by default,
-port 9464, token-protected when enabled) are reachable over Ethernet.
+With LAN access off, every new inbound TCP connection over Ethernet is rejected:
+the web app on 80 and 443, SSH (only enabled with a key) and the Prometheus
+exporter (port 9464, off by default). Replies to connections the box opens itself
+(TCP tunnel to the gateway, MQTT, InfluxDB) are allowed. KNXnet/IP and gateway
+discovery use UDP and are not affected. SSH stays reachable in the box Wi-Fi; to
+scrape Prometheus or use SSH over the cable, turn LAN access on.
 
 ### Name
 
@@ -685,8 +691,9 @@ Hardening of `knx-box.service`: only `CAP_NET_BIND_SERVICE` (ambient and boundin
 set), `NoNewPrivileges`, `ProtectSystem=strict` (writable only through
 `StateDirectory`), `ProtectHome`, `PrivateTmp`, `ProtectKernelTunables`,
 `ProtectControlGroups`, address families `AF_INET`, `AF_INET6`, `AF_UNIX`,
-`AF_NETLINK`. Device access is closed except `char-ttyAMA` (the HAT's UART), with
-the supplementary group `dialout`.
+`AF_NETLINK`. Device access is closed except serial devices: `char-ttyAMA` (the HAT's UART)
+and USB serial adapters (`char-ttyUSB`, `char-ttyACM`), with the supplementary
+group `dialout`.
 
 Logs go to the journal:
 
@@ -796,9 +803,5 @@ What only real hardware shows is listed in
   as plain file at the same time (possible only after a clock jump back to an
   already packed day), `/api/files/history/<day>.ndjson` serves only the plain part
   until the next maintenance merges them; `Recorder.dayLines` (statistics) reads both.
-- **Packing is not crash-atomic in every window.** `_gzip` renames the finished
-  `.gz` and then deletes the plain file; a power cut exactly between the two would
-  leave both, and the next maintenance would merge the plain lines into the `.gz` a
-  second time. The `.gz.tmp` is not `fsync`ed before the rename.
 - **No notifications to phones** without internet; the app shows what it sees live
   and what the box recorded.

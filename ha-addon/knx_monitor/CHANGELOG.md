@@ -1,11 +1,25 @@
 # Changelog
 
-## Unreleased
+## 1.9.4
 
+- KNX Monitor is now open source under GPLv3:
+  <https://github.com/regetskcob/KNX-Monitor-Code>. Everything the server sends to the bus
+  passes one file there (`ha-addon/knx_monitor/server/lib/src/read_only.dart`).
 - New option `read_only`, on by default: the server sends nothing to the bus, neither
   from the app nor through its relay, not even read requests. Recording and evaluations
   keep running. Turn it off in the add-on configuration to write or request values.
   Docker and the KNX Box get the same with `READ_ONLY=1` (off by default there).
+- Dark mode: outlines have a little more contrast.
+- Packing a finished history day survives a power cut without losing or duplicating
+  telegrams.
+
+KNX Box, with its next image:
+
+- The setup also prepares the serial port for the kBerry on a Raspberry Pi 3 (not yet
+  tested on hardware), and USB serial adapters are allowed as bus interface.
+- With LAN access off, the box refuses every new connection over the cable (also SSH and
+  the Prometheus export), not only the web app.
+- kBerry: a telegram that nobody on the bus acknowledged is reported as failed.
 
 ## 1.9.3
 

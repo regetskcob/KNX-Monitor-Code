@@ -210,16 +210,25 @@ class Ft12CemiLink implements BusLink {
   }
 
   /// Assigns an `L_Data.con` to the oldest open job with the same destination.
+  /// A negative confirmation (confirm bit in control field 1 set: no
+  /// acknowledgement on the bus after all repetitions) fails the job.
   void _confirm(Uint8List con) {
     final target = _destination(con);
     for (final entry in _confirms) {
       if (_destination(entry.$1) == target) {
         _confirms.remove(entry);
-        if (!entry.$2.isCompleted) entry.$2.complete();
+        if (entry.$2.isCompleted) return;
+        if (_negative(con)) {
+          entry.$2.completeError(const LinkException('Telegramm auf dem Bus nicht quittiert (NCON)'));
+        } else {
+          entry.$2.complete();
+        }
         return;
       }
     }
   }
+
+  static bool _negative(Uint8List con) => con.length > 2 + con[1] && con[2 + con[1]] & 0x01 != 0;
 
   static int _destination(Uint8List c) {
     if (c.length < 2) return -1;

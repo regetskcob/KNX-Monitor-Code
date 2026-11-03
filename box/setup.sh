@@ -160,21 +160,29 @@ fi
 sed -i '/^LABEL=KNXBOXDATA /d' "$root/etc/fstab"
 
 # --- KNX HAT (Weinzierl kBerry on GPIO 14/15, docs/kberry.md) ------------------
-# UART0 (PL011) on GPIO 14/15 as /dev/ttyAMA0: on the Pi 4 instead of Bluetooth
-# (the box does not use it), on the Pi 5 via its own overlay. No enable_uart=1:
+# UART0 (PL011) on GPIO 14/15 as /dev/ttyAMA0: on the Pi 3 and 4 instead of
+# Bluetooth (the box does not use it), on the Pi 5 via its own overlay. No enable_uart=1:
 # the Pi 5 would otherwise send kernel messages into the module. Harmless without
 # a HAT. Takes effect after the next reboot.
 hat_reboot=no
 if [ -f "$boot/config.txt" ] && ! grep -q '^# KNX-HAT' "$boot/config.txt"; then
   cat >>"$boot/config.txt" <<'CONFIG'
 
-# KNX-HAT (kBerry): UART0 auf GPIO 14/15 frei für das Modul
+# KNX-HAT (kBerry): UART0 on GPIO 14/15 for the module
+[pi3]
+dtoverlay=disable-bt
 [pi4]
 dtoverlay=disable-bt
 [pi5]
 dtoverlay=uart0-pi5
 [all]
 CONFIG
+  hat_reboot=yes
+elif [ -f "$boot/config.txt" ] &&
+  [ "$(awk '/^# KNX-HAT/ { getline next_line; print next_line; exit }' "$boot/config.txt")" != '[pi3]' ]; then
+  # Boxes set up before 1.9.4 have no section for the Pi 3.
+  awk '{ print } /^# KNX-HAT/ { print "[pi3]"; print "dtoverlay=disable-bt" }' "$boot/config.txt" >"$boot/config.txt.new"
+  cat "$boot/config.txt.new" >"$boot/config.txt" && rm "$boot/config.txt.new"
   hat_reboot=yes
 fi
 # No Linux console on the serial port (pi-gen sets it).

@@ -203,16 +203,16 @@ lan() {
 printf 'BOX_NAME="x"\nLAN_ACCESS="no"\n' >"$tmp/root/etc/knx-box/env"
 lan
 grep -q 'iifname "wlan0" accept' "$tmp/nft/calls" || fail "WLAN der Box gesperrt"
-grep -q 'tcp dport { 80, 443 } reject' "$tmp/nft/calls" || fail "Kabel nicht gesperrt"
+grep -q 'meta l4proto tcp ct state new reject' "$tmp/nft/calls" || fail "Kabel nicht gesperrt"
 printf 'BOX_NAME="x"\nLAN_ACCESS="yes"\n' >"$tmp/root/etc/knx-box/env"
 lan
 grep -q 'delete table inet knx_box_lan' "$tmp/nft/calls" || fail "LAN_ACCESS=yes nicht freigegeben"
 echo no >"$tmp/root/var/lib/knx-box/lan-access"
 lan
-grep -q 'tcp dport { 80, 443 } reject' "$tmp/nft/calls" || fail "Wahl der App gilt nicht vor LAN_ACCESS"
+grep -q 'meta l4proto tcp ct state new reject' "$tmp/nft/calls" || fail "Wahl der App gilt nicht vor LAN_ACCESS"
 rm "$tmp/root/etc/knx-box/env" "$tmp/root/var/lib/knx-box/lan-access"
 lan
-grep -q 'tcp dport { 80, 443 } reject' "$tmp/nft/calls" || fail "ohne Angaben nicht gesperrt"
+grep -q 'meta l4proto tcp ct state new reject' "$tmp/nft/calls" || fail "ohne Angaben nicht gesperrt"
 
 # 5. SSH key: key only, sudo without password for the maintenance account.
 rm -rf "$tmp/root/etc/knx-box" "$tmp/calls"
