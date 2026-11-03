@@ -13,7 +13,7 @@ dependencies:
   # into the add-on folder so this path also resolves there (Dockerfile).
   knx:
     path: ../../../packages/knx
-  mqtt_client: ^10.13.0
+  mqtt_client: ^10.14.0
   pdf: ^3.13.1
   pointycastle: ^4.0.0
-  qr: ^3.0.2
+  qr: ^3.0.3
