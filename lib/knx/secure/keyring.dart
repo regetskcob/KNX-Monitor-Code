@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:xml/xml.dart';
 
-import 'knx_crypto.dart';
+import 'package:knx/secure.dart';
 
 /// Wrong password or damaged file.
 class KeyringException implements Exception {

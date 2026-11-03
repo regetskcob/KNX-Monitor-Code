@@ -14917,6 +14917,42 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Nur-Lesen ist an: Der Server sendet nichts auf den Bus. Im Add-on unter Konfiguration „Nur lesen“ ausschalten, auf Box und Docker READ_ONLY entfernen.'**
   String get addonReadOnly;
+
+  /// Exporte: dauerhafte Aufzeichnung des Servers als ETS-Gruppenmonitor-Datei
+  ///
+  /// In de, this message translates to:
+  /// **'Verlauf als ETS-Datei (für Home Assistant und SpectrumKNX)'**
+  String get exportsEtsHistory;
+
+  /// Exporte: Unterzeile zum ETS-Verlauf
+  ///
+  /// In de, this message translates to:
+  /// **'Dauerhafte Aufzeichnung, bis 30 Tage'**
+  String get exportsEtsHistoryMeta;
+
+  /// Dialog ETS-Verlauf: Erklärung
+  ///
+  /// In de, this message translates to:
+  /// **'Lädt die Telegramme der dauerhaften Aufzeichnung als Gruppenmonitor-Datei der ETS. SpectrumKNX, die ETS und KNX Monitor öffnen sie direkt.'**
+  String get exportsEtsHistoryHint;
+
+  /// Dialog ETS-Verlauf: Knopf
+  ///
+  /// In de, this message translates to:
+  /// **'Herunterladen'**
+  String get exportsEtsHistoryDownload;
+
+  /// Dialog ETS-Verlauf: abbrechen
+  ///
+  /// In de, this message translates to:
+  /// **'Abbrechen'**
+  String get exportsEtsHistoryCancel;
+
+  /// Fortschritt beim Laden des ETS-Verlaufs von der Box
+  ///
+  /// In de, this message translates to:
+  /// **'Verlauf wird geladen …'**
+  String get exportsEtsHistoryLoading;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

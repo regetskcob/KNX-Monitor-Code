@@ -3,7 +3,6 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import '../l10n/locale_controller.dart';
-import 'cemi.dart';
 import 'group_catalog.dart';
 import 'knx_tunnel.dart';
 import 'telegram.dart';

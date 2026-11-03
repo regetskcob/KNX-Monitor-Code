@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:horizont/horizont.dart';
 
 import '../catalog_store.dart';
-import '../knx/group_catalog.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
 import '../model/alarms.dart';

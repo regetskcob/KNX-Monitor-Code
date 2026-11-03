@@ -60,6 +60,13 @@ class CemiFrame {
   }
 }
 
+/// Whether [cemi] is a complete L_Data.req up to and including the TPCI. Checks the lengths before
+/// anything reads into the frame: the additional info length is in the frame itself.
+bool isLDataRequest(List<int> cemi) {
+  if (cemi.length < 2 || cemi[0] != CemiFrame.req) return false;
+  return cemi.length >= 2 + cemi[1] + 8;
+}
+
 /// Builds an L_Data.req.
 ///
 /// [group]: group instead of individual address. [tpdu]: TPCI/APCI/data. [system]: system priority

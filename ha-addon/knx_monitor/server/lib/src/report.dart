@@ -5,7 +5,9 @@ import 'dart:isolate';
 
 import 'alarms.dart';
 import 'http.dart';
-import 'knxip.dart';
+
+import 'package:knx/knx.dart';
+
 import 'outbound.dart';
 import 'recorder.dart';
 

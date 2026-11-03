@@ -4,7 +4,9 @@ import 'dart:typed_data';
 
 import 'ft12.dart';
 import 'kberry.dart';
-import 'knxip.dart' show formatIndividual;
+
+import 'package:knx/knx.dart' show formatIndividual;
+
 import 'link.dart';
 
 /// Bus connection via the box's KNX HAT (Weinzierl kBerry, FT1.2 with cEMI on

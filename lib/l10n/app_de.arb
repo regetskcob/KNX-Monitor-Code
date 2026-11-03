@@ -12115,5 +12115,29 @@
   "addonReadOnly": "Nur-Lesen ist an: Der Server sendet nichts auf den Bus. Im Add-on unter Konfiguration „Nur lesen“ ausschalten, auf Box und Docker READ_ONLY entfernen.",
   "@addonReadOnly": {
     "description": "Shown in the send sheet and as send error when the add-on or box server runs read-only"
+  },
+  "exportsEtsHistory": "Verlauf als ETS-Datei (für Home Assistant und SpectrumKNX)",
+  "@exportsEtsHistory": {
+    "description": "Exporte: dauerhafte Aufzeichnung des Servers als ETS-Gruppenmonitor-Datei"
+  },
+  "exportsEtsHistoryMeta": "Dauerhafte Aufzeichnung, bis 30 Tage",
+  "@exportsEtsHistoryMeta": {
+    "description": "Exporte: Unterzeile zum ETS-Verlauf"
+  },
+  "exportsEtsHistoryHint": "Lädt die Telegramme der dauerhaften Aufzeichnung als Gruppenmonitor-Datei der ETS. SpectrumKNX, die ETS und KNX Monitor öffnen sie direkt.",
+  "@exportsEtsHistoryHint": {
+    "description": "Dialog ETS-Verlauf: Erklärung"
+  },
+  "exportsEtsHistoryDownload": "Herunterladen",
+  "@exportsEtsHistoryDownload": {
+    "description": "Dialog ETS-Verlauf: Knopf"
+  },
+  "exportsEtsHistoryCancel": "Abbrechen",
+  "@exportsEtsHistoryCancel": {
+    "description": "Dialog ETS-Verlauf: abbrechen"
+  },
+  "exportsEtsHistoryLoading": "Verlauf wird geladen …",
+  "@exportsEtsHistoryLoading": {
+    "description": "Fortschritt beim Laden des ETS-Verlaufs von der Box"
   }
 }

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'knxip.dart';
+import 'package:knx/knx.dart';
 
 /// A discovered KNXnet/IP device: address, port and the DIBs of the response
 /// (device info, services, tunnelling slots), which the app evaluates itself.
@@ -35,7 +35,7 @@ Future<List<Discovered>> discoverGateways({
           if (dg == null) return;
           final service = serviceOf(dg.data);
           final Uint8List dibs;
-          if (service == Service.descriptionResponse && dg.data.length > 6) {
+          if (service == KnxIpService.descriptionResponse && dg.data.length > 6) {
             dibs = Uint8List.sublistView(dg.data, 6);
           } else if (service == 0x0202 && dg.data.length > 14) {
             dibs = Uint8List.sublistView(dg.data, 14); // SEARCH_RESPONSE: HPAI first
@@ -46,12 +46,12 @@ Future<List<Discovered>> discoverGateways({
         }, onError: (Object _) {});
         final hpai = [0x08, 0x01, ...local.rawAddress, socket.port >> 8, socket.port & 0xFF];
         _multicastFrom(socket, local);
-        socket.send(knxFrame(Service.searchRequest, hpai), InternetAddress('224.0.23.12'), 3671);
+        socket.send(knxFrame(KnxIpService.searchRequest, hpai), InternetAddress('224.0.23.12'), 3671);
         final [a, b, c, own] = local.rawAddress;
         if (a == 169 && b == 254) continue; // /16 is too large to scan
         for (var host = 1; host < 255; host++) {
           if (host == own) continue;
-          socket.send(knxFrame(Service.descriptionRequest, hpai), InternetAddress('$a.$b.$c.$host'), 3671);
+          socket.send(knxFrame(KnxIpService.descriptionRequest, hpai), InternetAddress('$a.$b.$c.$host'), 3671);
           if (host % 16 == 0) await Future<void>.delayed(const Duration(milliseconds: 20));
         }
       }

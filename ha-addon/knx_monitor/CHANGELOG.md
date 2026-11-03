@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.9.5
+
+- The history can be downloaded as an ETS group monitor file (Exports › Continuous,
+  today, 7 or 30 days), the format of the ETS, Home Assistant's KNX telegram store and
+  SpectrumKNX. Importing a recording now also reads files from Home Assistant /
+  knx-telegram-store, SpectrumKNX, ETS 6, Gira loggers and Node-RED knx-ultimate.
+- The MQTT device "KNX Monitor" has new key figures for dashboards and automations:
+  bus load in %, open alarms, last alarm (name and time), availability over the last
+  24 hours, history size, free space and a low-space flag. New device triggers fire
+  when the bus connection is lost or back. Existing entities stay as they are.
+- New blueprints: "Bus load high" and "Recording space low".
+- Under the hood: the KNX protocol code of app and add-on (addresses, cEMI, datapoint
+  types, KNX Secure) now lives in one shared package instead of two copies.
+
 ## 1.9.4
 
 - KNX Monitor is now open source under GPLv3:

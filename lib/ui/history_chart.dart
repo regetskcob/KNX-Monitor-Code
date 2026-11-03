@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:horizont/horizont.dart';
 
 import '../knx/dpt_codec.dart';
-import '../knx/group_catalog.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
 import '../theme/app_theme.dart';

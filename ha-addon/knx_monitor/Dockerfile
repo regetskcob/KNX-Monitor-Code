@@ -4,7 +4,12 @@
 FROM dart:3.13.6@sha256:bf07cd831c34d7cef047bcd50803fa38e3af59664a276440893ca9db77014ca0 AS build
 # Time zones: Supervisor sets TZ, the history's day change should be local.
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata && rm -rf /var/lib/apt/lists/*
-WORKDIR /src
+# The server depends on packages/knx by the path ../../../packages/knx. The
+# build context is only this folder, so tool/addon_packages.sh copies the
+# repository's packages/ into ./packages (gitignored) before every build; here
+# both land in the same layout as in the repository.
+WORKDIR /src/ha-addon/knx_monitor/server
+COPY packages/ /src/packages/
 COPY server/pubspec.yaml server/pubspec.lock ./
 RUN dart pub get --enforce-lockfile
 COPY server/ ./

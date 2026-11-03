@@ -116,6 +116,7 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 7
 
+  # Add-on server and the internal package it shares with the app (packages/knx).
   addon-server:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -127,6 +128,13 @@ jobs:
       - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
         with:
           sdk: 3.13.6
+      - name: Package knx
+        working-directory: packages/knx
+        run: |
+          dart pub get --enforce-lockfile
+          dart format --output=none --set-exit-if-changed lib test
+          dart analyze
+          dart test
       - run: dart pub get --enforce-lockfile
       - name: Formatting
         run: dart format --output=none --set-exit-if-changed bin lib test

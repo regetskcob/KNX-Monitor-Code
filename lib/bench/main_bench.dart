@@ -14,7 +14,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../catalog_store.dart';
-import '../knx/dpt_codec.dart';
 import '../knx/group_catalog.dart';
 import '../knx/knx_tunnel.dart';
 import '../knx/telegram.dart';

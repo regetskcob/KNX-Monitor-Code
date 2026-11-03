@@ -4,7 +4,8 @@ import 'dart:typed_data';
 
 import 'ft12.dart';
 import 'ft12_link.dart' show Ft12CemiLink;
-import 'knxip.dart' show hexOf;
+
+import 'package:knx/knx.dart' show hexOf;
 
 /// Test bench for the box's KNX HAT: Weinzierl KNX BAOS 838 kBerry on
 /// GPIO 14/15 (`/dev/ttyAMA0`), FT1.2 with cEMI. This file only measures:

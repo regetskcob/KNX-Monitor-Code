@@ -7,7 +7,9 @@ import 'dart:typed_data';
 import 'dpt_value.dart';
 import 'grafana.dart';
 import 'http.dart';
-import 'knxip.dart';
+
+import 'package:knx/knx.dart';
+
 import 'outbound.dart';
 
 /// Settings of the data export (`export.json` in the installation). Off by

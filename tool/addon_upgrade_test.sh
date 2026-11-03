@@ -24,7 +24,10 @@ fail() { echo "FEHLER: $*" >&2; [ ! -f "$tmp/log" ] || tail -20 "$tmp/log" >&2; 
 
 echo "Baue Server aus $tag und aus dem Arbeitsstand …"
 mkdir -p "$tmp/old"
-git -C "$repo" archive "$tag" ha-addon/knx_monitor/server | tar -x -C "$tmp/old"
+# Newer servers depend on packages/knx by a relative path: take it along if the tag has it.
+paths=(ha-addon/knx_monitor/server)
+if git -C "$repo" cat-file -e "$tag:packages" 2>/dev/null; then paths+=(packages); fi
+git -C "$repo" archive "$tag" "${paths[@]}" | tar -x -C "$tmp/old"
 (cd "$tmp/old/ha-addon/knx_monitor/server" && dart pub get --enforce-lockfile >/dev/null && dart compile exe bin/server.dart -o "$tmp/server-old" >/dev/null)
 (cd "$repo/ha-addon/knx_monitor/server" && dart pub get --enforce-lockfile >/dev/null && dart compile exe bin/server.dart -o "$tmp/server-new" >/dev/null)
 

@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-import 'group_catalog.dart';
 import 'telegram.dart';
 
 /// Guessed datapoint type of a group address without a project.

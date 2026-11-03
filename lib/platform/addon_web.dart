@@ -113,6 +113,27 @@ Future<Uint8List?> addonGetFile(String path, {String base = 'api/files/'}) async
 
 Future<void> addonPutFile(String path, List<int> bytes) async {}
 
+/// The browser downloads [path] itself (straight to disk, with the Ingress or
+/// box session); nothing passes through the app's memory, hence `null`. First
+/// the same request with `check=1` (no body): an expired session or an invalid
+/// range then shows as an error instead of being saved as the file.
+Future<Uint8List?> addonDownload(String path, String fileName) async {
+  final url = _api(path);
+  final probe = await http.get(url.replace(queryParameters: {...url.queryParameters, 'check': '1'}));
+  if (probe.statusCode >= 300) {
+    final text = utf8.decode(probe.bodyBytes, allowMalformed: true).trim();
+    throw Addon.errorOf(probe.bodyBytes) ??
+        AddonException(text.isEmpty || text.length > 200 ? 'Add-on: HTTP ${probe.statusCode}' : text);
+  }
+  final link = web.HTMLAnchorElement()
+    ..href = _api(path).toString()
+    ..download = fileName;
+  web.document.body?.append(link);
+  link.click();
+  link.remove();
+  return null;
+}
+
 /// In the browser, login is the browser's business.
 /// In the browser the app only talks to the server that delivers it.
 Future<bool> addonReachable(BoxLink link) async => true;

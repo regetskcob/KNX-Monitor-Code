@@ -226,16 +226,16 @@ group communication (AN158) itself, using AES from `pointycastle` and an
 X25519 implementation in Dart. The structure follows xknx (MIT); the
 implementation is checked against the examples of the KNX Association and xknx.
 
-| Part | App | Server (add-on, Docker, box) |
-|---|---|---|
-| CCM building blocks (CBC-MAC, CTR), X25519, password derivation | `lib/knx/secure/knx_crypto.dart` | `ha-addon/knx_monitor/server/lib/src/secure/knx_crypto.dart` |
-| IP Secure session | `lib/knx/secure/ip_secure.dart`, `lib/knx/secure_tunnel.dart` | `server/lib/src/secure/ip_secure.dart`, used by `server/lib/src/link.dart` |
-| Data Secure | `lib/knx/secure/data_secure.dart` (receive and send) | `server/lib/src/secure/data_secure.dart` (receive only, for recording) |
-| ETS keyring import | `lib/knx/secure/keyring.dart`, `lib/knx/secure/keyring_store.dart` | reads `secure_keys.json` (`server/lib/src/bus.dart`, `_reloadKeys`) |
-| Tests | `test/knx_crypto_test.dart`, `test/data_secure_test.dart` | `server/test/secure_test.dart` |
+| Part | Where | Used by the app | Used by the server (add-on, Docker, box) |
+|---|---|---|---|
+| CCM building blocks (CBC-MAC, CTR), X25519, password derivation | `packages/knx/lib/src/secure/knx_crypto.dart` | keyring, IP Secure, Data Secure | IP Secure, Data Secure |
+| IP Secure session | `packages/knx/lib/src/secure/ip_secure.dart` | `lib/knx/secure_tunnel.dart` | `server/lib/src/link.dart` |
+| Data Secure | `packages/knx/lib/src/secure/data_secure.dart` | `lib/knx/knx_tunnel.dart` (receive and send) | `server/lib/src/bus.dart` (receive only, for recording) |
+| ETS keyring import | `lib/knx/secure/keyring.dart`, `lib/knx/secure/keyring_store.dart` | yes | reads `secure_keys.json` (`server/lib/src/bus.dart`, `_reloadKeys`, `DataSecure.fromJson`) |
+| Tests | `packages/knx/test/knx_crypto_test.dart`, `packages/knx/test/data_secure_test.dart` | `test/data_secure_test.dart` (keyring, `secure_keys.json`) | `server/test/robust_frames_test.dart` |
 
-The server keeps its own copies of the crypto files because app and server are
-separate Dart packages; the server's `data_secure.dart` says so in its header.
+App and server use one implementation from the internal package `packages/knx`
+(`package:knx/secure.dart`); there are no copies any more.
 
 ### Keyring import
 

@@ -141,7 +141,13 @@ class MqttClientSink implements MqttSink {
 ///
 /// Topics under [base]: `status` (online/offline, "last will"), `state`
 /// (JSON, every [interval] and on changes), `recording/set` (switch),
-/// `event/watcher`, `event/alarm`, `watcher/<id>`, `alarm/<typ>`.
+/// `event/watcher`, `event/alarm`, `watcher/<id>`, `alarm/<typ>`,
+/// `bus/connected` and `bus/disconnected`.
+///
+/// Key figures in the state come from data the server already has: bus load
+/// from the estimated occupancy per telegram ([BusService.busy]), open and last
+/// alarms from [AlarmWatch], history size and free space from the [Recorder],
+/// availability over 24 hours from the heartbeats ([Availability.ratio]).
 class MqttBridge {
   MqttBridge(
     this.currentBus, {
@@ -175,6 +181,10 @@ class MqttBridge {
   static const _device = 'knx_monitor';
   static const alarmTriggers = ['alarm_on', 'alarm_off', 'fault_on', 'fault_off'];
 
+  /// Device triggers on a change of the bus connection; topics
+  /// `bus/connected` and `bus/disconnected`.
+  static const busTriggers = ['bus_connected', 'bus_disconnected'];
+
   MqttSink? _sink;
   Timer? _timer;
   bool _stopped = false;
@@ -184,9 +194,20 @@ class MqttBridge {
   BusService? _countedBus;
   int _lastToday = 0;
   int _lastRepeats = 0;
+  double _lastBusy = 0;
   DateTime? _lastTick;
   double _perMinute = 0;
   double _repeatsPerMinute = 0;
+  double _busLoad = 0;
+
+  // Values that need file access, refreshed in [tick] instead of on every
+  // state message: history size every tick, availability every
+  // [_availabilityEvery] (it reads the month's heartbeat file).
+  int? _historyBytes;
+  double? _availability;
+  DateTime? _availabilityAt;
+  BusService? _availabilityBus;
+  static const _availabilityEvery = Duration(minutes: 15);
 
   bool get connected => _sink != null;
 
@@ -217,6 +238,7 @@ class MqttBridge {
     // device on subscribe; each one is cleared (including those of long-deleted
     // watchers), otherwise Home Assistant keeps building the entities.
     if (!discovery) sink.subscribe('$_discovery/+/$_device/+/config');
+    await _measure();
     await announce();
     _timer = Timer.periodic(interval, (_) => unawaited(tick()));
   }
@@ -244,7 +266,9 @@ class MqttBridge {
         final trigger = '${data['kind'] == 'fault' ? 'fault' : 'alarm'}_${data['active'] == true ? 'on' : 'off'}';
         sink.publish('$base/event/alarm', jsonEncode({'event_type': trigger, ...data}));
         sink.publish('$base/alarm/$trigger', jsonEncode(data));
+        _publishState();
       case HomeAssistant.busEvent:
+        sink.publish('$base/bus/${data['connected'] == true ? 'connected' : 'disconnected'}', jsonEncode(data));
         _publishState();
     }
   }
@@ -266,6 +290,7 @@ class MqttBridge {
   /// triggers (the app can change rules at any time).
   Future<void> tick() async {
     _count();
+    await _measure();
     _publishState();
     await _syncWatcherTriggers();
   }
@@ -275,34 +300,86 @@ class MqttBridge {
     final now = _clock();
     final last = _lastTick;
     // Different installation or new day: start over instead of jumps.
-    if (!identical(bus, _countedBus) || last == null || bus.today < _lastToday || bus.repeats < _lastRepeats) {
+    if (!identical(bus, _countedBus) ||
+        last == null ||
+        bus.today < _lastToday ||
+        bus.repeats < _lastRepeats ||
+        bus.busy < _lastBusy) {
       _countedBus = bus;
       _perMinute = 0;
       _repeatsPerMinute = 0;
+      _busLoad = 0;
     } else {
-      final minutes = now.difference(last).inMilliseconds / 60000;
-      if (minutes > 0) {
-        _perMinute = (bus.today - _lastToday) / minutes;
-        _repeatsPerMinute = (bus.repeats - _lastRepeats) / minutes;
+      final ms = now.difference(last).inMilliseconds;
+      if (ms > 0) {
+        _perMinute = (bus.today - _lastToday) / (ms / 60000);
+        _repeatsPerMinute = (bus.repeats - _lastRepeats) / (ms / 60000);
+        // Occupied seconds per elapsed second, as the app's bus load (9600 bit/s).
+        _busLoad = ((bus.busy - _lastBusy) / (ms / 1000) * 100).clamp(0.0, 100.0);
       }
     }
     _lastToday = bus.today;
     _lastRepeats = bus.repeats;
+    _lastBusy = bus.busy;
     _lastTick = now;
   }
+
+  /// History size and availability over the last 24 hours (file access).
+  Future<void> _measure() async {
+    final bus = currentBus();
+    try {
+      _historyBytes = (await bus.recorder.usage())['bytes'] as int?;
+    } on Object catch (e) {
+      stderr.writeln('MQTT Verlaufsgröße: $e');
+    }
+    final now = _clock();
+    final at = _availabilityAt;
+    if (identical(bus, _availabilityBus) && at != null && now.difference(at) < _availabilityEvery) return;
+    _availabilityBus = bus;
+    _availabilityAt = now;
+    try {
+      _availability = await bus.availability.ratio(now.subtract(const Duration(hours: 24)), now);
+    } on Object catch (e) {
+      _availability = null;
+      stderr.writeln('MQTT Verfügbarkeit: $e');
+    }
+  }
+
+  /// Megabyte as Home Assistant's `data_size` unit `MB` (10^6 bytes).
+  static const _mb = 1000 * 1000;
+
+  static double? _round(double? v) => v == null ? null : double.parse(v.toStringAsFixed(1));
 
   void _publishState() {
     final sink = _sink;
     if (sink == null) return;
     final bus = currentBus();
+    final alarm = bus.alarms.lastTriggered;
+    final free = bus.recorder.lastFree;
+    final history = _historyBytes;
     final state = {
       'connected': bus.state == 'connected',
       'recording': bus.config.enabled,
-      'per_minute': double.parse(_perMinute.toStringAsFixed(1)),
-      'repeats_per_minute': double.parse(_repeatsPerMinute.toStringAsFixed(1)),
+      'per_minute': _round(_perMinute),
+      'repeats_per_minute': _round(_repeatsPerMinute),
       'today': bus.today,
       'last': bus.lastTelegram?.toUtc().toIso8601String(),
       if (bus.installation?['name'] case final String name) 'installation': name,
+      'bus_load': _round(_busLoad),
+      'open_alarms': bus.alarms.openCount,
+      // Name from the project, otherwise the group address.
+      'last_alarm': alarm == null
+          ? null
+          : alarm.change.name.isEmpty
+          ? alarm.change.groupAddress
+          : alarm.change.name,
+      'last_alarm_kind': alarm?.change.kind,
+      'last_alarm_address': alarm?.change.groupAddress,
+      'last_alarm_time': alarm?.time.toUtc().toIso8601String(),
+      'history_mb': history == null ? null : _round(history / _mb),
+      'free_mb': free == null ? null : _round(free / _mb),
+      'low_space': bus.recorder.lowSpace,
+      'availability_24h': _round(_availability == null ? null : _availability! * 100),
     };
     sink.publish('$base/state', jsonEncode(state), retain: true);
     // The same values individually, for systems without Home Assistant
@@ -385,6 +462,66 @@ class MqttBridge {
       'entity_category': 'diagnostic',
       'value_template': '{{ value_json.last }}',
     });
+    entity('sensor', 'bus_load', {
+      'name': t['bus_load'],
+      'icon': 'mdi:gauge',
+      'unit_of_measurement': '%',
+      'state_class': 'measurement',
+      'suggested_display_precision': 1,
+      'value_template': '{{ value_json.bus_load }}',
+    });
+    entity('sensor', 'open_alarms', {
+      'name': t['open_alarms'],
+      'icon': 'mdi:alarm-light',
+      'state_class': 'measurement',
+      'value_template': '{{ value_json.open_alarms }}',
+    });
+    entity('sensor', 'last_alarm', {
+      'name': t['last_alarm'],
+      'icon': 'mdi:alert',
+      'value_template': '{{ value_json.last_alarm }}',
+      'json_attributes_topic': '$base/state',
+      'json_attributes_template':
+          '{{ {"kind": value_json.last_alarm_kind, "address": value_json.last_alarm_address, '
+          '"time": value_json.last_alarm_time} | tojson }}',
+    });
+    entity('sensor', 'last_alarm_time', {
+      'name': t['last_alarm_time'],
+      'device_class': 'timestamp',
+      'value_template': '{{ value_json.last_alarm_time }}',
+    });
+    entity('sensor', 'availability_24h', {
+      'name': t['availability'],
+      'icon': 'mdi:lan-check',
+      'unit_of_measurement': '%',
+      'state_class': 'measurement',
+      'suggested_display_precision': 1,
+      'value_template': '{{ value_json.availability_24h }}',
+    });
+    entity('sensor', 'history_size', {
+      'name': t['history_size'],
+      'device_class': 'data_size',
+      'unit_of_measurement': 'MB',
+      'state_class': 'measurement',
+      'suggested_display_precision': 1,
+      'entity_category': 'diagnostic',
+      'value_template': '{{ value_json.history_mb }}',
+    });
+    entity('sensor', 'free_space', {
+      'name': t['free_space'],
+      'device_class': 'data_size',
+      'unit_of_measurement': 'MB',
+      'state_class': 'measurement',
+      'suggested_display_precision': 0,
+      'entity_category': 'diagnostic',
+      'value_template': '{{ value_json.free_mb }}',
+    });
+    entity('binary_sensor', 'low_space', {
+      'name': t['low_space'],
+      'device_class': 'problem',
+      'entity_category': 'diagnostic',
+      'value_template': "{{ 'ON' if value_json.low_space else 'OFF' }}",
+    });
     // Event entities have their own topic, not the state.
     for (final (key, types) in [
       ('watcher', ['fired']),
@@ -410,6 +547,15 @@ class MqttBridge {
         topic: '$base/alarm/$trigger',
         type: trigger,
         subtype: t['alarm_subtype']!,
+        device: device,
+      );
+    }
+    for (final trigger in busTriggers) {
+      _trigger(
+        trigger,
+        topic: '$base/bus/${trigger.substring(4)}',
+        type: trigger,
+        subtype: t['bus_subtype']!,
         device: device,
       );
     }
@@ -470,6 +616,15 @@ class MqttBridge {
     'watcher_event': 'Wächter',
     'alarm_event': 'Alarm',
     'alarm_subtype': 'beliebige Adresse',
+    'bus_load': 'Buslast',
+    'open_alarms': 'Offene Alarme',
+    'last_alarm': 'Letzter Alarm',
+    'last_alarm_time': 'Letzter Alarm (Zeit)',
+    'availability': 'Verfügbarkeit 24 h',
+    'history_size': 'Verlauf belegt',
+    'free_space': 'Freier Speicher',
+    'low_space': 'Speicher knapp',
+    'bus_subtype': 'KNX-Bus',
   };
 
   static const _en = {
@@ -483,5 +638,14 @@ class MqttBridge {
     'watcher_event': 'Watcher',
     'alarm_event': 'Alarm',
     'alarm_subtype': 'any address',
+    'bus_load': 'Bus load',
+    'open_alarms': 'Open alarms',
+    'last_alarm': 'Last alarm',
+    'last_alarm_time': 'Last alarm time',
+    'availability': 'Availability 24 h',
+    'history_size': 'History size',
+    'free_space': 'Free space',
+    'low_space': 'Low space',
+    'bus_subtype': 'KNX bus',
   };
 }

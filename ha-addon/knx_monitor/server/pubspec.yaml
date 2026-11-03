@@ -9,6 +9,10 @@ environment:
 dev_dependencies:
   test: ^1.25.0
 dependencies:
+  # KNX protocol code shared with the app. The Docker build copies packages/
+  # into the add-on folder so this path also resolves there (Dockerfile).
+  knx:
+    path: ../../../packages/knx
   mqtt_client: ^10.13.0
   pdf: ^3.13.1
   pointycastle: ^4.0.0

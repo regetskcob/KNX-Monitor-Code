@@ -5,13 +5,14 @@ iOS, iPadOS, Android, macOS, Windows, Linux and in the browser; the server keeps
 a permanent bus connection for the Home Assistant add-on, Docker and the KNX
 Box. Neither uses a third-party KNX library: KNXnet/IP, cEMI, KNX IP Secure,
 KNX Data Secure, the ETS project parser and the FT1.2 link to the kBerry HAT are
-implemented here, in plain Dart.
+implemented here, in plain Dart. The protocol code both need lives once, in the
+internal package `packages/knx` (see [The package knx](#the-package-knx)).
 
 ```mermaid
 flowchart LR
   subgraph Devices["App (Flutter)"]
     UI["lib/ui"] --> Model["lib/model"]
-    Model --> KNX["lib/knx<br/>tunnel, routing, IP/Data Secure,<br/>DPT codec, .knxproj parser"]
+    Model --> KNX["lib/knx<br/>tunnel, routing, keyring,<br/>DPT texts, .knxproj parser"]
     Model --> Platform["lib/platform<br/>storage, UDP, add-on client"]
   end
   subgraph Server["Server (Dart, ha-addon/knx_monitor/server)"]
@@ -19,6 +20,8 @@ flowchart LR
     Bus --> Watch["alarms, watchers,<br/>report, exporter"]
     Bus --> Links["links: KNXnet/IP, routing,<br/>IP Secure, HA KNX, kBerry"]
   end
+  KNX --> Pkg["packages/knx<br/>addresses, cEMI, KNXnet/IP frames,<br/>DPT values, IP/Data Secure"]
+  Links --> Pkg
   KNX -- "KNXnet/IP (UDP/TCP)" --> GW["IP interface / router"]
   Platform -- "WebSocket /ws/bus" --> Bus
   Links -- "KNXnet/IP" --> GW
@@ -46,8 +49,8 @@ tunnel to the rest of the app. Details: [addon-recording.md](addon-recording.md)
 
 | Folder | What it holds |
 | --- | --- |
-| `lib/knx/` | Protocol: cEMI (`cemi.dart`), telegrams (`telegram.dart`), tunnels, bus monitor frames, datapoint types (`dpt_codec.dart`, `dpt_guess.dart`), group address catalog (`group_catalog.dart`), ETS project parser (`knxproj_parser.dart`) |
-| `lib/knx/secure/` | KNX Secure: AES-128-CCM building blocks (`knx_crypto.dart`), IP Secure handshake and session (`ip_secure.dart`), Data Secure (`data_secure.dart`), ETS keyring (`keyring.dart`, `keyring_store.dart`) |
+| `lib/knx/` | Connections and texts on top of `packages/knx`: tunnels, routing, bus monitor frames, telegram and datapoint texts (`telegram.dart`, `dpt_codec.dart`, `dpt_guess.dart`), group address catalog (`group_catalog.dart`), ETS project parser (`knxproj_parser.dart`) |
+| `lib/knx/secure/` | ETS keyring (`keyring.dart`, `keyring_store.dart`) and the app's own encryption; the KNX Secure protocol itself is in `packages/knx` |
 | `lib/model/` | State and rules: the live monitor, history, health check, commissioning, alarms, watchers, installations, backups. Mostly plain classes with a `ChangeNotifier` and one `instance` each |
 | `lib/platform/` | Everything that differs per platform: encrypted file storage, UDP, the add-on/box client, keychain, store purchases. Conditional imports pick `*_io.dart` or `*_web.dart` |
 | `lib/export/` | PDF, CSV, ETS and Home Assistant exports, diagnostics package |
@@ -67,8 +70,8 @@ the static web app.
 | File | Role |
 | --- | --- |
 | `bus.dart` | `BusService`: one bus connection per installation, reconnects, shares frames with all views over `/ws/bus`, accepts send requests |
-| `link.dart`, `knxip.dart` | KNXnet/IP tunnelling and routing, `BusLink` interface |
-| `secure/` | KNX IP Secure session and Data Secure for the server |
+| `link.dart` | KNXnet/IP tunnelling and routing, `BusLink` interface (frames, IP Secure and Data Secure from `packages/knx`) |
+| `telegram_json.dart`, `dpt_value.dart` | History lines and numeric values, thin adapters over `packages/knx` |
 | `ha_link.dart` | Uses the telegrams of Home Assistant's KNX integration instead of an own tunnel |
 | `ft12.dart`, `ft12_link.dart`, `kberry.dart` | Serial link to the kBerry HAT, see [kberry.md](kberry.md) |
 | `read_only.dart`, `cemi_policy.dart` | What may be sent: read-only mode, limits for paired devices |
@@ -77,6 +80,38 @@ the static web app.
 | `mqtt_bridge.dart`, `ha.dart`, `lovelace_card.dart` | Home Assistant: MQTT device and entities, events, notifications, dashboard card |
 | `exporter.dart`, `grafana.dart` | Prometheus and InfluxDB export, Grafana dashboard |
 | `box_*.dart`, `crash_watch.dart` | KNX Box: access, TLS, clock, printed sheet, crash records |
+
+## The package knx
+
+`packages/knx` is an internal pure-Dart package (`publish_to: none`) with the
+KNX protocol code that app and server used to keep as two copies. The app
+depends on it by `path: packages/knx`, the server by
+`path: ../../../packages/knx`.
+
+| Library | What it holds |
+| --- | --- |
+| `package:knx/knx.dart` | Group and individual addresses, cEMI L_Data frames, `Telegram` with the history's JSON line format, KNXnet/IP service identifiers and frame headers, datapoint types (`Dpt`, DPT 9, numeric values, units, encoding typed input). No `dart:io`, so it also runs in the web app |
+| `package:knx/secure.dart` | KNX Secure after AN158/AN159: AES-128-CCM building blocks and key derivation, IP Secure session, Data Secure. Needs `pointycastle` |
+
+What stays outside: everything with Flutter, texts and translations (the app
+adds them in `lib/knx/telegram.dart` and `dpt_codec.dart`), storage and app
+models, keyring parsing and storage, tunnels and links (`knx_tunnel.dart`,
+`link.dart`), FT1.2 and kBerry, the `.knxproj` parser, and the private parts
+listed in `tool/public_source/private.txt`.
+
+**Builds.** The add-on image is built from `ha-addon/knx_monitor` alone (CI
+workflow `addon.yml`, and Home Assistant itself after
+`tool/build_ha_addon.sh`). `tool/addon_packages.sh` therefore copies
+`packages/` into `ha-addon/knx_monitor/packages/` (gitignored) before every
+build, and the Dockerfile puts package and server into the same relative
+layout as in the repository. A plain `docker build ha-addon/knx_monitor` needs
+that script first. The box bundle (`box/bundle.sh`) builds in the repository
+and needs nothing extra.
+
+**Checks.** Format, analysis and tests of the package run in `tool/release.sh
+verify` (`verify_extra` in `tool/werkbank.conf`) and in the CI job
+`addon-server`. The package may be published on pub.dev later; that needs its
+own licence decision and a stable API first.
 
 ## Data
 
@@ -90,6 +125,8 @@ add-on and the box store plain files and rely on the host. See
 
 - App: `flutter test` (unit, widget and golden tests in `test/`), integration
   tests in `integration_test/`.
+- Package: `dart test` in `packages/knx/` (addresses, cEMI, DPT, KNX Secure
+  with the AN158/AN159 and xknx examples).
 - Server: `dart test` in `ha-addon/knx_monitor/server/`, with a fake KNXnet/IP
   gateway (`test/fake_gateway.dart`) and a fake kBerry (`test/fake_kberry.dart`).
 - Box: `box/test-firstboot.sh`, `box/test-setup.sh`.

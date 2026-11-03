@@ -33,6 +33,14 @@ class AlarmWatch {
   final _activeKind = <int, String>{};
   final _lastSent = <int, DateTime>{};
 
+  /// Alarm and fault addresses currently in the active state (since the start
+  /// of the add-on; the state is not persisted).
+  int get openCount => _active.values.where((on) => on).length;
+
+  /// The most recent change of an address into the active state, with the
+  /// telegram's time; `null` until one happens after the start.
+  ({AlarmChange change, DateTime time})? lastTriggered;
+
   static final _alarmWords = RegExp(
     r'alarm|sabotage|tamper|einbruch|intrusion|burglar|leck|leak|rauch|smoke|brand|fire|überflut|flood|panik|panic',
   );
@@ -128,19 +136,20 @@ class AlarmWatch {
     final was = _active[address] ?? false;
     _active[address] = active != null;
     if (active != null) _activeKind[address] = active;
+    final time = DateTime.fromMicrosecondsSinceEpoch(t['t']! as int);
     if (was != (active != null)) {
-      onChange?.call(
-        AlarmChange(
-          address: address,
-          groupAddress: formatGroup(address),
-          name: group.name,
-          kind: active ?? _activeKind[address] ?? kind,
-          active: active != null,
-        ),
+      final change = AlarmChange(
+        address: address,
+        groupAddress: formatGroup(address),
+        name: group.name,
+        kind: active ?? _activeKind[address] ?? kind,
+        active: active != null,
       );
+      // Set before the callback so listeners see the new state.
+      if (change.active) lastTriggered = (change: change, time: time);
+      onChange?.call(change);
     }
     if (active == null || was || !enabled) return;
-    final time = DateTime.fromMicrosecondsSinceEpoch(t['t']! as int);
     final last = _lastSent[address];
     if (last != null && time.difference(last) < throttle) return;
     _lastSent[address] = time;

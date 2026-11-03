@@ -18,18 +18,15 @@ enum SecureResult {
   invalid,
 }
 
-/// Copy of the app's `lib/knx/secure/data_secure.dart` (app and server stay
-/// separate); apply changes in both places.
-///
-/// KNX Data Secure for group telegrams (S-A_Data, AN158): decrypts received
-/// telegrams and encrypts own telegrams to secured addresses.
-/// Structure based on xknx (MIT), verified against its examples; license notice in docs/third-party-notices.md.
+/// KNX Data Secure for group telegrams (S-A_Data, AN158): decrypts received telegrams and encrypts our
+/// own telegrams to secured addresses. Structure modelled on xknx (MIT), verified against its examples;
+/// license notice in the package's NOTICE file.
 class DataSecure {
   DataSecure({required this.groupKeys, required Map<int, int> sequenceNumbers, int? sequenceStart})
     : _lastSeq = Map.of(sequenceNumbers),
       _sendSeq = sequenceStart ?? _initialSequence();
 
-  /// From `secure_keys.json`, written by the app on keyring import.
+  /// From `secure_keys.json`, which the app writes for the add-on server on keyring import.
   factory DataSecure.fromJson(Map<String, Object?> j) => DataSecure(
     groupKeys: {
       for (final MapEntry(:key, :value) in ((j['groupKeys'] as Map?) ?? const {}).entries)

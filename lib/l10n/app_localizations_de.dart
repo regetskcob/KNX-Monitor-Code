@@ -8845,4 +8845,23 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get addonReadOnly =>
       'Nur-Lesen ist an: Der Server sendet nichts auf den Bus. Im Add-on unter Konfiguration „Nur lesen“ ausschalten, auf Box und Docker READ_ONLY entfernen.';
+
+  @override
+  String get exportsEtsHistory => 'Verlauf als ETS-Datei (für Home Assistant und SpectrumKNX)';
+
+  @override
+  String get exportsEtsHistoryMeta => 'Dauerhafte Aufzeichnung, bis 30 Tage';
+
+  @override
+  String get exportsEtsHistoryHint =>
+      'Lädt die Telegramme der dauerhaften Aufzeichnung als Gruppenmonitor-Datei der ETS. SpectrumKNX, die ETS und KNX Monitor öffnen sie direkt.';
+
+  @override
+  String get exportsEtsHistoryDownload => 'Herunterladen';
+
+  @override
+  String get exportsEtsHistoryCancel => 'Abbrechen';
+
+  @override
+  String get exportsEtsHistoryLoading => 'Verlauf wird geladen …';
 }

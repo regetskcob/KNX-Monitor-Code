@@ -570,7 +570,27 @@ class Availability {
     DateTime from,
     DateTime to, {
     Duration gap = const Duration(minutes: 3),
-  }) async {
+  }) async => _outages(await _beats(from, to, gap), to, gap);
+
+  /// Share (0–1) of the period in which the bus was connected: 1 minus the
+  /// [outages] (clipped to the period) divided by the known time, which starts
+  /// at the first heartbeat in the period. `null` without heartbeats.
+  Future<double?> ratio(DateTime from, DateTime to, {Duration gap = const Duration(minutes: 3)}) async {
+    final beats = await _beats(from, to, gap);
+    if (beats.isEmpty) return null;
+    final start = beats.first.$1.isAfter(from) ? beats.first.$1 : from;
+    final known = to.difference(start).inMilliseconds;
+    if (known <= 0) return null;
+    var out = 0;
+    for (final o in _outages(beats, to, gap)) {
+      final a = (o['from']! as int).clamp(start.millisecondsSinceEpoch, to.millisecondsSinceEpoch);
+      final b = (o['to']! as int).clamp(start.millisecondsSinceEpoch, to.millisecondsSinceEpoch);
+      out += b - a;
+    }
+    return (1 - out / known).clamp(0.0, 1.0);
+  }
+
+  Future<List<(DateTime, bool)>> _beats(DateTime from, DateTime to, Duration gap) async {
     final beats = <(DateTime, bool)>[];
     for (var m = DateTime(from.year, from.month); !m.isAfter(to); m = DateTime(m.year, m.month + 1)) {
       final f = File('${_dir.path}/availability-${_month(m)}.ndjson');
@@ -587,6 +607,10 @@ class Availability {
       }
     }
     beats.sort((a, b) => a.$1.compareTo(b.$1));
+    return beats;
+  }
+
+  static List<Map<String, Object?>> _outages(List<(DateTime, bool)> beats, DateTime to, Duration gap) {
     final result = <Map<String, Object?>>[];
     void add(DateTime start, DateTime end, String kind) {
       if (result.isNotEmpty && result.last['kind'] == kind && result.last['to'] == start.millisecondsSinceEpoch) {

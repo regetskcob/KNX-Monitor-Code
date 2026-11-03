@@ -9,7 +9,6 @@ import 'package:vector_graphics/vector_graphics_compat.dart';
 
 import '../catalog_store.dart';
 import '../knx/active_tunnel.dart';
-import '../knx/dpt_codec.dart';
 import '../knx/knx_tunnel.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';

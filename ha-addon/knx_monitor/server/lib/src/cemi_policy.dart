@@ -5,12 +5,7 @@
 /// That would allow reprogramming or disabling any device in the installation.
 library;
 
-/// Complete L_Data.req up to and including the TPCI? Checks the lengths before
-/// anything reads into the frame: the additional info length is in the frame itself.
-bool isLDataRequest(List<int> cemi) {
-  if (cemi.length < 2 || cemi[0] != 0x11) return false;
-  return cemi.length >= 2 + cemi[1] + 8;
-}
+import 'package:knx/knx.dart';
 
 /// A_GroupValue_Read, _Response and _Write to a group address, also as
 /// A_SecureService (Data Secure): the receiver checks its content with the

@@ -63,7 +63,10 @@ void main() {
 
     test('ohne Ausweichen: Fehler mit Statuscode', () async {
       final tunnel = KnxIpTunnel(host: '127.0.0.1', port: gw.port, requestedAddress: 0x11F5, fallback: false);
-      expect(tunnel.connect(), throwsA(isA<LinkException>().having((e) => e.status, 'status', Status.connectionInUse)));
+      expect(
+        tunnel.connect(),
+        throwsA(isA<LinkException>().having((e) => e.status, 'status', KnxIpStatus.connectionInUse)),
+      );
     });
 
     test('keine freien Tunnel: verständliche Meldung', () async {

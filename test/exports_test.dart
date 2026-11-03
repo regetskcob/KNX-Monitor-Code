@@ -9,7 +9,10 @@ import 'package:knx_monitor/knx/group_catalog.dart';
 import 'package:knx_monitor/knx/telegram.dart';
 import 'package:knx_monitor/l10n/locale_controller.dart';
 import 'package:knx_monitor/model/export_history.dart';
+import 'package:knx_monitor/model/plan.dart';
 import 'package:knx_monitor/model/telegram_log.dart';
+import 'package:knx_monitor/platform/addon.dart';
+import 'package:knx_monitor/platform/box_link.dart';
 import 'package:knx_monitor/platform/storage.dart';
 import 'package:knx_monitor/platform/storage_io.dart';
 import 'package:knx_monitor/theme/app_theme.dart';
@@ -123,5 +126,82 @@ void main() {
     );
     await tester.pump();
     expect(find.text(s.telegramCount(2)), findsWidgets);
+  });
+
+  group('Verlauf als ETS-Datei (Add-on/Box)', () {
+    late HttpServer server;
+    final requests = <Uri>[];
+
+    setUp(() async {
+      requests.clear();
+      // Real HTTP to the local fake box (the test binding would answer 400 itself).
+      HttpOverrides.global = null;
+      server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((request) async {
+        requests.add(request.uri);
+        final ok = request.uri.queryParameters['from'] != null;
+        request.response.statusCode = ok ? 200 : 400;
+        request.response.write(ok ? '<CommunicationLog/>' : 'from und to (Millisekunden) fehlen.');
+        await request.response.close();
+      });
+      Addon.box = BoxLink(url: Uri.parse('http://127.0.0.1:${server.port}/'));
+    });
+
+    tearDown(() async {
+      Addon.box = null;
+      await server.close(force: true);
+    });
+
+    Future<void> pumpScreen(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      CatalogStore.instance.catalog = GroupCatalog.empty;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          locale: const Locale('de'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: ExportsScreen(log: TelegramLog(), title: 'KNX-Telegramme'),
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('nur mit Server, Zeitraum wie die Langzeit-Statistik', (tester) async {
+      Plan.instance.demo = true;
+      addTearDown(() => Plan.instance.demo = false);
+      Addon.box = null;
+      await pumpScreen(tester);
+      expect(find.text(s.exportsEtsHistory), findsNothing);
+
+      Addon.box = BoxLink(url: Uri.parse('http://127.0.0.1:${server.port}/'));
+      await pumpScreen(tester);
+      expect(find.text(s.exportsEtsHistory), findsOneWidget);
+      await tester.tap(find.text(s.exportsEtsHistory));
+      await tester.pumpAndSettle();
+      expect(find.text(s.exportsEtsHistoryHint), findsOneWidget);
+      for (final d in [1, 7, 30]) {
+        expect(find.widgetWithText(ChoiceChip, s.historyDays(d)), findsOneWidget);
+      }
+      await tester.tap(find.text(s.exportsEtsHistoryCancel));
+      await tester.pumpAndSettle();
+      expect(find.text(s.exportsEtsHistoryHint), findsNothing);
+    });
+
+    test('lädt vom Endpunkt, mit Zeitraum und Anlage', () async {
+      final from = DateTime(2026, 10, 1);
+      final to = DateTime(2026, 10, 8);
+      final bytes = await Addon.etsHistory(from, to, installation: 'werk 2');
+      expect(String.fromCharCodes(bytes!), '<CommunicationLog/>');
+      expect(requests.single.path, '/api/export/ets-xml');
+      expect(requests.single.queryParameters, {
+        'from': '${from.millisecondsSinceEpoch}',
+        'to': '${to.millisecondsSinceEpoch}',
+        'installation': 'werk 2',
+      });
+      expect(Addon.etsHistoryFileName(from, to), 'knx-monitor-2026-10-01-2026-10-07.xml');
+    });
   });
 }

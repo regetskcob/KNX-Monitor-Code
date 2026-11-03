@@ -193,6 +193,24 @@ Future<Uint8List?> addonGetFile(String path, {String base = 'api/files/'}) async
   return r.bodyBytes;
 }
 
+/// Download from the box (e.g. `api/export/ets-xml`) as bytes; the caller saves
+/// them. Generous timeout: the server reads up to a month of history.
+Future<Uint8List?> addonDownload(String path, String fileName) async {
+  final box = _box;
+  final http.Response r;
+  try {
+    r = await _http(box).get(box.url.resolve(path), headers: _headers(box)).timeout(const Duration(minutes: 5));
+  } on Object {
+    throw AddonException(s.boxUnreachable(box.address));
+  }
+  if (_isRefusal(r.statusCode)) throw _refused(r);
+  if (r.statusCode >= 300) {
+    final text = utf8.decode(r.bodyBytes, allowMalformed: true).trim();
+    throw AddonException(text.isEmpty || text.length > 200 ? 'Box: HTTP ${r.statusCode}' : text, status: r.statusCode);
+  }
+  return r.bodyBytes;
+}
+
 /// Stores a file in the box's data folder (replacing it).
 Future<void> addonPutFile(String path, List<int> bytes) async {
   final box = _box;

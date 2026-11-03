@@ -1,0 +1,47 @@
+blueprint:
+  name: KNX Monitor – bus load high
+  description: >-
+    Runs your actions when the bus load measured by the KNX Monitor add-on
+    stays above a limit for a while. The sensor "Bus load" comes from the
+    add-on's MQTT device and is averaged over one minute; a TP line
+    (9600 bit/s) should normally stay well below 30 %. Needs an MQTT broker
+    in Home Assistant (usually the Mosquitto add-on).
+  domain: automation
+  source_url: https://github.com/regetskcob/KNX-Monitor/blob/main/blueprints/automation/knx_monitor_bus_load.yaml
+  input:
+    sensor:
+      name: Bus load sensor
+      description: The "Bus load" sensor of the device KNX Monitor.
+      selector:
+        entity:
+          filter:
+            - integration: mqtt
+              domain: sensor
+    limit:
+      name: Limit
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+    duration:
+      name: For at least
+      default:
+        minutes: 5
+      selector:
+        duration: {}
+    actions:
+      name: Actions
+      selector:
+        action: {}
+
+triggers:
+  - trigger: numeric_state
+    entity_id: !input sensor
+    above: !input limit
+    for: !input duration
+
+actions: !input actions
+
+mode: single

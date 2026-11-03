@@ -3,7 +3,7 @@ description: "KNX group monitor and diagnostic tool (KNXnet/IP)."
 publish_to: 'none'
 
 # <name>+<build>; the build number must grow with every store upload.
-version: 1.9.4+27
+version: 1.9.5+28
 
 environment:
   sdk: ^3.13.5
@@ -25,6 +25,9 @@ dependencies:
   printing: ^5.15.1
   shared_preferences: ^2.5.6
   web: ^1.1.2
+  # KNX protocol code shared with the add-on server (packages/knx).
+  knx:
+    path: packages/knx
   xml: ^7.1.0
   pointycastle: ^4.0.0
   # AES-GCM in reinem Dart: rund zehnmal so schnell wie pointycastle, läuft im Isolate

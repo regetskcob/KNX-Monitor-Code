@@ -135,6 +135,47 @@ day uncompressed, at 20/s about 170 MB; gzip saves roughly a factor of 8–10.
 The history, settings and an imported keyring are part of Home Assistant
 backups (`backup: hot`); the history is not excluded.
 
+### Export as ETS file
+
+`GET /api/export/ets-xml?from=<ms>&to=<ms>[&installation=<id>]`
+(`ets_xml.dart`) returns the history of `[from, to)` as an ETS group monitor
+file (`CommunicationLog`, namespace `http://knx.org/xml/telegrams/01`), with
+`Content-Disposition: attachment` and the name
+`knx-monitor-<first day>-<last day>.xml`.
+
+- Access like `/api/bus/stats`: every role that may read the history (Ingress
+  in the add-on, password or paired device on the box), not only admins.
+  `?installation=` reads another installation; unknown ids get 404.
+- At most 31 days; missing, reversed or longer ranges get 400 with a reason.
+- Streamed day by day in chunks of about 64 KB. Each day is read twice: first
+  only the times (first telegram for `RecordStart`, whether the day is in
+  order), then the telegrams. A day out of order (lines appended by
+  `retime`) is sorted in memory; normally lines go straight through.
+- The output is byte for byte what the app's `buildEtsXml` writes:
+  `Telegram` with `Timestamp` (UTC, ISO 8601), `Service` (`L_Data.ind`, or
+  `L_Data.con` for own telegrams), `FrameFormat="CommonEmi"` and `RawData`
+  (cEMI in uppercase hex, the recorded frame or one rebuilt from the fields
+  like the app's `cemiOf`). The fixture in
+  `server/test/fixtures/ets_xml/` was written by the app; both
+  `server/test/ets_xml_test.dart` and the app's `test/telegram_files_test.dart`
+  compare against it.
+
+Other programs with this format, checked against their source:
+
+| Program | What it writes | Reads ours |
+| --- | --- | --- |
+| knx-telegram-store (Home Assistant's KNX integration), `formats/ets_xml.py` | No `RecordStart`/`RecordStop`, optional `ConnectionName`, six fraction digits, uppercase cEMI | Yes; needs the namespace and `Timestamp`/`RawData` on every `Telegram` |
+| SpectrumKNX (`backend/telegram_export.py`, `telegram_import.py`) | Uses knx-telegram-store with `ConnectionName="Spectrum KNX Export"`, always `L_Data.ind` | Yes; decodes cEMI `0x29`, `0x2E`, `0x11` |
+| ETS 6 | Seven fraction digits, `TransportSecurity` | Yes |
+| Gira loggers | `L_Busmon.ind` (cEMI `0x2B` with TP1 frame), local time marked `Z` plus a `timezone offset` comment | – |
+| Node-RED knx-ultimate | No XML declaration, lowercase hex | – |
+
+The app's import (`parseEtsXml`) accepts all of them: any namespace prefix,
+BOM, timestamps with any number of fraction digits or none, an offset or no
+zone (counted as UTC, like knx-telegram-store), the Gira comment, busmonitor
+frames (checksum checked), `L_Data.req`, and telegrams without `RawData`
+(skipped).
+
 ## Availability
 
 Once a minute the server appends a line to
@@ -176,10 +217,12 @@ With continuous recording these run on the server, not in the browser:
 
 ## Code sharing between app and server
 
-App and server stay separate: the server has its own protocol and Secure code
-under `server/lib/src/`. Copied files are marked as copies of their app
-counterpart (e.g. `secure/data_secure.dart`); changes have to be made in both
-places. The server test above guards the shared history format.
+App and server share the KNX protocol code through the internal package
+`packages/knx` (addresses, cEMI, the history's JSON line `Telegram.toJson`,
+KNXnet/IP frames, DPT values, KNX Secure); see
+[architecture.md](architecture.md#the-package-knx). Connections, recording and
+everything with Flutter stay separate. The server test above still guards the
+shared history format.
 
 ## Risks and how they are handled
 

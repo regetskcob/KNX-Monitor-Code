@@ -9,15 +9,18 @@ import 'ft12_link.dart';
 import 'ha.dart';
 import 'ha_link.dart';
 import 'kberry.dart' show TtyLine;
-import 'knxip.dart';
+
+import 'package:knx/knx.dart';
+
 import 'link.dart';
 import 'box_clock.dart';
 import 'cemi_policy.dart';
 import 'read_only.dart';
 import 'recorder.dart';
 import 'report.dart';
-import 'secure/data_secure.dart';
-import 'secure/ip_secure.dart';
+
+import 'package:knx/secure.dart';
+
 import 'telegram_json.dart';
 import 'fault_hunt.dart';
 import 'watchers.dart';
@@ -328,6 +331,11 @@ class BusService {
 
   /// Repeated telegrams since start (for per-minute counters, MQTT).
   int repeats = 0;
+
+  /// Estimated bus occupancy in seconds since start, per telegram as in the
+  /// report ([busySeconds], 9600 bit/s); the bus load in percent is its
+  /// increase per elapsed time (MQTT).
+  double busy = 0;
 
   /// Time of the last telegram.
   DateTime? lastTelegram;
@@ -681,7 +689,7 @@ class BusService {
           reported = true;
         }
         _setState('disconnected');
-        final busy = e is LinkException && e.status == Status.noMoreConnections;
+        final busy = e is LinkException && e.status == KnxIpStatus.noMoreConnections;
         final seconds = busy ? 15 : const [1, 2, 4, 8, 15, 30, 60][failures.clamp(0, 6)];
         failures++;
         await Future<void>.delayed(Duration(seconds: seconds));
@@ -755,6 +763,7 @@ class BusService {
     _beatCount++;
     lastTelegram = now;
     if (line['rp'] == true) repeats++;
+    busy += busySeconds(line['x'] as String? ?? '', small: line['m'] == true);
     final name = Recorder.dayName(now);
     if (name != _todayName) {
       _todayName = name;

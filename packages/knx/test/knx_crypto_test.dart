@@ -1,9 +1,7 @@
-import 'package:flutter_test/flutter_test.dart';
-
 import 'dart:typed_data';
 
-import 'package:knx_monitor/knx/secure/ip_secure.dart';
-import 'package:knx_monitor/knx/secure/knx_crypto.dart';
+import 'package:knx/secure.dart';
+import 'package:test/test.dart';
 
 /// Beispiele aus KNX AN159 (IP Secure) und RFC 7748 (X25519).
 void main() {

@@ -8,7 +8,9 @@ import '../../platform/addon.dart';
 import '../../model/box_keyring_consent.dart';
 import '../../model/box_share.dart';
 import '../../platform/storage.dart';
-import 'data_secure.dart';
+
+import 'package:knx/secure.dart';
+
 import 'keyring.dart';
 
 /// Loaded ETS keyring (KNX Secure): keys for Data Secure and credentials of the secure tunnels.
@@ -107,7 +109,9 @@ class KeyringStore extends ChangeNotifier {
   void _apply(Map<String, Object?> j) {
     final keyring = Keyring.fromJson(j);
     project = keyring.project;
-    dataSecure = keyring.groupKeys.isEmpty ? null : DataSecure(keyring);
+    dataSecure = keyring.groupKeys.isEmpty
+        ? null
+        : DataSecure(groupKeys: keyring.groupKeys, sequenceNumbers: keyring.sequenceNumbers);
     tunnels = [
       for (final t in (j['tunnels'] as List? ?? const []).cast<Map<String, Object?>>())
         KeyringTunnel(

@@ -58,6 +58,32 @@ backups.
 - **Exports** collects everything in one page: telegrams as PDF, CSV or ETS
   file, reports, a combined ZIP and the last exports.
 
+## History as an ETS file (Home Assistant, SpectrumKNX)
+
+Exports › Continuous › "History as ETS file" downloads the add-on's recording
+for today, the last 7 or the last 30 days as an ETS group monitor file
+(`CommunicationLog` XML). In the browser the file goes straight to your
+downloads folder, so long periods do not pass through the app.
+
+The same format is read and written by the ETS group monitor, by the telegram
+store of Home Assistant's KNX integration (library knx-telegram-store) and by
+SpectrumKNX:
+
+- **SpectrumKNX:** use its telegram import and choose the downloaded `.xml`
+  file. Telegrams already in its database are skipped.
+- **ETS:** open the file in the group monitor.
+- **Other tools** that use knx-telegram-store can read it as well. Home
+  Assistant itself currently offers no file import for its KNX telegram history.
+
+The other way round, Recordings › Import in KNX Monitor opens such files from
+the ETS (also ETS 6), Home Assistant / knx-telegram-store, SpectrumKNX, Gira
+loggers and Node-RED knx-ultimate. Only group telegrams are taken over.
+
+The app fetches it from `GET /api/export/ets-xml?from=<ms>&to=<ms>` (Unix
+time in milliseconds, at most 31 days). It is reachable only the way the app
+is: through Home Assistant Ingress, on the KNX Box with the box password or a
+paired device.
+
 ## Connection types
 
 - **UDP / TCP tunnel** – TCP copes better with lossy links (KNXnet/IP 2.0).
@@ -140,11 +166,72 @@ by itself; no credentials to enter. It brings:
 | Recording | switch to pause and resume continuous recording |
 | Telegrams per minute, Telegrams today | bus activity |
 | Repeats per minute, Last telegram | diagnostics |
+| Bus load | estimated load of the line in % (see below), averaged over the last minute |
+| Open alarms | alarm and fault objects that are currently on |
+| Last alarm, Last alarm time | name (or group address) and time of the most recent alarm or fault that switched on; attributes `kind`, `address`, `time` |
+| Availability 24 h | share of the last 24 hours with a bus connection, in % |
+| History size, Free space | diagnostics: disk space used by the recording and free space on the data disk, in MB |
+| Low space | diagnostics: on when recording paused because the disk is full |
 | Watcher, Alarm | event entities with the same data as the events above |
 
 On the device page under Automations you find **device triggers** for each
-watcher and for alarms and faults switching on or off, so you do not need to
-type event names. If the add-on stops, the device shows as unavailable.
+watcher, for alarms and faults switching on or off, and for the bus
+connection being lost or back, so you do not need to type event names. If the
+add-on stops, the device shows as unavailable.
+
+How the key figures are measured:
+
+- **Bus load**: for every telegram the add-on estimates how long it occupies
+  a TP line at 9600 bit/s, the same estimate as the app's bus monitor and the
+  installation report: (50 + 13 × bytes + 15 + 13) bit times, i.e. idle time,
+  13 bit times per character, and the acknowledgement. The load is the
+  occupied time per elapsed time since the last update. It only counts what
+  the add-on hears: telegrams behind line couplers that the filters keep back
+  are missing.
+- **Open alarms** and **Last alarm** start empty after a restart of the add-on
+  and fill with the next telegrams; the alarm and fault objects come from the
+  ETS project, as for the notifications.
+- **Availability 24 h** comes from the heartbeats the add-on writes once a
+  minute while recording is on. Without recording it stays unknown; time
+  before the first heartbeat does not count. It is updated every 15 minutes.
+- **Free space** is measured while recording, at least once an hour.
+
+All values are also in the JSON on `knx_monitor/state` and, for systems
+without discovery, each on its own topic (`knx_monitor/bus_load`,
+`knx_monitor/open_alarms`, `knx_monitor/last_alarm`, `knx_monitor/history_mb`,
+`knx_monitor/free_mb`, `knx_monitor/low_space`, `knx_monitor/availability_24h`,
+…), sent only when they change. The bus connection triggers use
+`knx_monitor/bus/connected` and `knx_monitor/bus/disconnected`.
+
+Example dashboard (entity IDs depend on the language Home Assistant used when
+the device first appeared; check them on the device page):
+
+```yaml
+type: vertical-stack
+cards:
+  - type: gauge
+    entity: sensor.knx_monitor_bus_load
+    name: Bus load
+    max: 100
+    severity:
+      green: 0
+      yellow: 30
+      red: 60
+  - type: entities
+    entities:
+      - binary_sensor.knx_monitor_bus_connected
+      - sensor.knx_monitor_availability_24h
+      - sensor.knx_monitor_telegrams_per_minute
+      - sensor.knx_monitor_open_alarms
+      - sensor.knx_monitor_last_alarm
+      - sensor.knx_monitor_history_size
+      - binary_sensor.knx_monitor_low_space
+```
+
+Blueprints for the key figures:
+
+- [Bus load high](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fregetskcob%2FKNX-Monitor%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fknx_monitor_bus_load.yaml)
+- [Recording space low](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fregetskcob%2FKNX-Monitor%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fknx_monitor_low_space.yaml)
 
 Without a broker everything else keeps working; the device appears as soon as
 one is set up (the add-on checks every 5 minutes).

@@ -1,13 +1,13 @@
+import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:knx_monitor/knx/secure/data_secure.dart';
+import 'package:knx/secure.dart';
 import 'package:knx_monitor/knx/secure/keyring.dart';
-import 'package:knx_monitor/knx/secure/knx_crypto.dart';
 import 'package:knx_monitor/knx/telegram.dart';
 
-/// Keyring-Dateien und Beispiele aus den Tests von xknx (MIT).
+/// Keyring-Dateien und Beispiele aus den Tests von xknx (MIT). Data Secure selbst testet
+/// packages/knx (test/data_secure_test.dart); hier geht es um den Keyring der App.
 void main() {
   late Keyring secureTest;
   setUpAll(() => secureTest = Keyring.parse(File('test/resources/SecureTest.knxkeys').readAsStringSync(), 'test'));
@@ -35,51 +35,17 @@ void main() {
     expect(secureTest.tunnelFor(address: 0x5001)?.userId, 2);
   });
 
-  test('entschlüsselt eine Gruppenantwort (A+C)', () {
-    final ds = DataSecure(secureTest);
+  test('Schlüssel aus dem Keyring entschlüsseln, auch über secure_keys.json beim Add-on-Server', () {
     final cemi = fromHex('29003ce0400904001103f110002446cfef4ac085e7092ab062b44d');
-    final (result, plain) = ds.receive(cemi);
+    final direct = DataSecure(groupKeys: secureTest.groupKeys, sequenceNumbers: secureTest.sequenceNumbers);
+    final (result, plain) = direct.receive(cemi);
     expect(result, SecureResult.decrypted);
-    final t = Telegram.fromCemi(plain)!;
-    expect(t.type, TelegramType.response);
-    expect(t.source, 0x4009);
-    expect(t.destination, 0x0400);
-    expect(t.data, [116, 41, 41]);
-    // gleiche Sequenznummer noch einmal → verworfen
-    expect(ds.receive(cemi).$1, SecureResult.invalid);
-  });
+    expect(Telegram.fromCemi(plain)!.data, [116, 41, 41]);
 
-  test('unbekannter Schlüssel und verfälschte MAC', () {
-    final ds = DataSecure(secureTest);
-    final noKey = fromHex('29003ce0400904011103f110002446cfef4ac085e7092ab062b44d');
-    expect(ds.receive(noKey).$1, SecureResult.noKey);
-    final tampered = fromHex('29003ce0400904001103f110002446cfef4ac085e7092ab062b44e');
-    expect(ds.receive(tampered).$1, SecureResult.invalid);
-  });
-
-  test('verschlüsselt eigenes Lesen und Schreiben wie xknx', () {
-    var ds = DataSecure(secureTest, sequenceStart: 160170101607);
-    final read = buildGroupRequest(0x0400, TelegramType.read);
-    expect(ds.send(read, source: 0x5001), fromHex('1100bce0500104000e03f11000254ae1cb67cd184afe5744'));
-
-    ds = DataSecure(secureTest, sequenceStart: 160170101607);
-    final write = buildGroupRequest(0x0400, TelegramType.write, data: [255, 0, 5]);
-    final secured = ds.send(write, source: 0x5001);
-    expect(secured, fromHex('11003ce0500104001103f11000254ae1cb67cd98e577b519be47bb'));
-
-    // Und zurück: das eigene Telegramm lässt sich wieder entschlüsseln.
-    final receiver = DataSecure(secureTest);
-    final incoming = Uint8List.fromList(secured)..[0] = 0x29;
-    final (result, plain) = receiver.receive(incoming);
-    expect(result, SecureResult.decrypted);
-    expect(Telegram.fromCemi(plain)!.data, [255, 0, 5]);
-  });
-
-  test('normale Telegramme bleiben unverändert', () {
-    final ds = DataSecure(secureTest);
-    final plain = fromHex('2900bce011050a03010081');
-    expect(ds.receive(plain).$1, SecureResult.plain);
-    final req = buildGroupRequest(0x0A03, TelegramType.write, small: 1);
-    expect(ds.send(req, source: 0x5001), req);
+    // Die App schreibt Keyring.toJson als secure_keys.json, der Server liest es mit DataSecure.fromJson.
+    final json = jsonDecode(jsonEncode(secureTest.toJson())) as Map<String, Object?>;
+    final (serverResult, serverPlain) = DataSecure.fromJson(json).receive(cemi);
+    expect(serverResult, SecureResult.decrypted);
+    expect(serverPlain, plain);
   });
 }

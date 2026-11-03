@@ -7,7 +7,6 @@ import 'package:horizont/horizont.dart';
 
 import '../catalog_store.dart';
 import '../knx/dpt_codec.dart';
-import '../knx/group_catalog.dart';
 import '../model/telegram_log.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';

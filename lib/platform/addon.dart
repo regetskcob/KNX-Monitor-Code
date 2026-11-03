@@ -96,6 +96,22 @@ abstract final class Addon {
   static Future<Map<String, Object?>> testExport() async =>
       (await impl.addonPost('api/export/test', const {}))! as Map<String, Object?>;
 
+  /// The server's history from [from] to [to] (at most 31 days) as an ETS group monitor file
+  /// (`CommunicationLog`, readable by Home Assistant's KNX integration, SpectrumKNX and the ETS).
+  /// In the browser the download goes straight to disk and the result is `null`; natively it
+  /// returns the file for saving.
+  static Future<Uint8List?> etsHistory(DateTime from, DateTime to, {String? installation}) => impl.addonDownload(
+    'api/export/ets-xml?from=${from.millisecondsSinceEpoch}&to=${to.millisecondsSinceEpoch}'
+    '${installation == null ? '' : '&installation=${Uri.encodeQueryComponent(installation)}'}',
+    etsHistoryFileName(from, to),
+  );
+
+  /// File name of [etsHistory], like the server's: `knx-monitor-<first day>-<last day>.xml`.
+  static String etsHistoryFileName(DateTime from, DateTime to) {
+    String day(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    return 'knx-monitor-${day(from)}-${day(to.subtract(const Duration(microseconds: 1)))}.xml';
+  }
+
   /// Grafana template (`prometheus` or `influxdb`).
   static Future<Map<String, Object?>> grafanaTemplate(String kind) => impl.addonGet('api/export/grafana?kind=$kind');
 

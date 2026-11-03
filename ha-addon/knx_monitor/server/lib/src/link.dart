@@ -2,8 +2,9 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'knxip.dart';
-import 'secure/ip_secure.dart';
+import 'package:knx/knx.dart';
+
+import 'package:knx/secure.dart';
 
 /// Error of a bus connection. [status] is the KNXnet/IP status code if the
 /// gateway rejected the connection.
@@ -19,12 +20,12 @@ class LinkException implements Exception {
   String? get problem =>
       _problem ??
       switch (status) {
-        Status.noMoreConnections => 'noFreeTunnel',
-        Status.noMoreUniqueConnections ||
-        Status.connectionInUse ||
-        Status.authorisation ||
-        Status.noTunnellingAddress => 'tunnelAddress',
-        Status.connectionType || Status.connectionOption || Status.tunnellingLayer => 'unsupported',
+        KnxIpStatus.noMoreConnections => 'noFreeTunnel',
+        KnxIpStatus.noMoreUniqueConnections ||
+        KnxIpStatus.connectionInUse ||
+        KnxIpStatus.authorisation ||
+        KnxIpStatus.noTunnellingAddress => 'tunnelAddress',
+        KnxIpStatus.connectionType || KnxIpStatus.connectionOption || KnxIpStatus.tunnellingLayer => 'unsupported',
         _ => null,
       };
   @override
@@ -263,11 +264,11 @@ class KnxIpTunnel implements BusLink {
         });
       }
       var res = await _requestConnection(requestedAddress);
-      if (res[7] != Status.ok && requestedAddress != null && fallback && _addressProblem(res[7])) {
+      if (res[7] != KnxIpStatus.ok && requestedAddress != null && fallback && _addressProblem(res[7])) {
         res = await _requestConnection(null);
       }
       final status = res[7];
-      if (status != Status.ok) throw LinkException(statusText(status), status: status);
+      if (status != KnxIpStatus.ok) throw LinkException(statusText(status), status: status);
       _channel = res[6];
       address = res.length >= 20 ? (res[18] << 8) | res[19] : null;
       _sendSeq = 0;
@@ -282,17 +283,17 @@ class KnxIpTunnel implements BusLink {
 
   /// Reasons for which a tunnel without a fixed address may still succeed.
   static bool _addressProblem(int status) => const {
-    Status.connectionOption,
-    Status.noMoreUniqueConnections,
-    Status.authorisation,
-    Status.noTunnellingAddress,
-    Status.connectionInUse,
+    KnxIpStatus.connectionOption,
+    KnxIpStatus.noMoreUniqueConnections,
+    KnxIpStatus.authorisation,
+    KnxIpStatus.noTunnellingAddress,
+    KnxIpStatus.connectionInUse,
   }.contains(status);
 
   Future<Uint8List> _requestConnection(int? address) async {
     _connectResponse = Completer();
     final hpai = _transport!.hpai;
-    _out(knxFrame(Service.connectRequest, [...hpai, ...hpai, ...tunnelCri(address: address)]));
+    _out(knxFrame(KnxIpService.connectRequest, [...hpai, ...hpai, ...tunnelCri(address: address)]));
     return _connectResponse!.future.timeout(
       responseTimeout,
       onTimeout: () => throw const LinkException('Gateway antwortet nicht', problem: 'noResponse'),
@@ -309,7 +310,7 @@ class KnxIpTunnel implements BusLink {
   Future<void> _sendTunnel(Uint8List cemi) async {
     if (!_connected) throw const LinkException('Nicht verbunden');
     final seq = _sendSeq;
-    final frame = knxFrame(Service.tunnelRequest, [0x04, _channel, seq, 0x00, ...cemi]);
+    final frame = knxFrame(KnxIpService.tunnelRequest, [0x04, _channel, seq, 0x00, ...cemi]);
     if (_transport!.reliable) {
       // TCP: no tunnelling ACK, TCP guarantees delivery.
       _out(frame);
@@ -323,7 +324,7 @@ class KnxIpTunnel implements BusLink {
       try {
         final status = await _ack!.future.timeout(const Duration(seconds: 1));
         _sendSeq = (seq + 1) & 0xFF;
-        if (status != Status.ok) throw LinkException('Gateway lehnt Telegramm ab (0x${status.toRadixString(16)})');
+        if (status != KnxIpStatus.ok) throw LinkException('Gateway lehnt Telegramm ab (0x${status.toRadixString(16)})');
         return;
       } on TimeoutException {
         // retry once
@@ -339,22 +340,22 @@ class KnxIpTunnel implements BusLink {
   void _onPacket(Uint8List p) {
     final service = serviceOf(p);
     switch (service) {
-      case Service.connectResponse:
+      case KnxIpService.connectResponse:
         if (p.length >= 8 && !(_connectResponse?.isCompleted ?? true)) _connectResponse!.complete(p);
-      case Service.tunnelRequest:
+      case KnxIpService.tunnelRequest:
         _onTunnelRequest(p);
-      case Service.tunnelAck:
+      case KnxIpService.tunnelAck:
         if (p.length >= 10 && p[7] == _channel && p[8] == _ackSeq && !(_ack?.isCompleted ?? true)) {
           _ack!.complete(p[9]);
         }
-      case Service.stateResponse:
+      case KnxIpService.stateResponse:
         if (p.length >= 8 && p[6] == _channel) {
           _heartbeatTimeout?.cancel();
-          if (p[7] != Status.ok) _drop('Gateway hat die Verbindung beendet');
+          if (p[7] != KnxIpStatus.ok) _drop('Gateway hat die Verbindung beendet');
         }
-      case Service.disconnectRequest:
+      case KnxIpService.disconnectRequest:
         if (p.length >= 7 && p[6] == _channel) {
-          _out(knxFrame(Service.disconnectResponse, [_channel, 0x00]));
+          _out(knxFrame(KnxIpService.disconnectResponse, [_channel, 0x00]));
           _drop('Gateway hat die Verbindung beendet');
         }
     }
@@ -370,11 +371,11 @@ class KnxIpTunnel implements BusLink {
     if (!_transport!.reliable) {
       if (seq == ((_expectedSeq - 1) & 0xFF)) {
         // Repetition of a frame already processed: only acknowledge.
-        _out(knxFrame(Service.tunnelAck, [0x04, _channel, seq, 0x00]));
+        _out(knxFrame(KnxIpService.tunnelAck, [0x04, _channel, seq, 0x00]));
         return;
       }
       if (seq != _expectedSeq) return; // out of sequence: do not acknowledge, the gateway will repeat
-      _transport!.send(knxFrame(Service.tunnelAck, [0x04, _channel, seq, 0x00]));
+      _transport!.send(knxFrame(KnxIpService.tunnelAck, [0x04, _channel, seq, 0x00]));
       _expectedSeq = (seq + 1) & 0xFF;
     }
     final cemi = Uint8List.fromList(p.sublist(start));
@@ -383,7 +384,7 @@ class KnxIpTunnel implements BusLink {
 
   void _sendHeartbeat([int attempt = 1]) {
     if (!_connected) return;
-    _out(knxFrame(Service.stateRequest, [_channel, 0x00, ..._transport!.hpai]));
+    _out(knxFrame(KnxIpService.stateRequest, [_channel, 0x00, ..._transport!.hpai]));
     _heartbeatTimeout?.cancel();
     _heartbeatTimeout = Timer(const Duration(seconds: 10), () {
       if (attempt >= 3) {
@@ -416,7 +417,7 @@ class KnxIpTunnel implements BusLink {
   @override
   Future<void> close() async {
     if (_connected && _transport != null) {
-      _out(knxFrame(Service.disconnectRequest, [_channel, 0x00, ..._transport!.hpai]));
+      _out(knxFrame(KnxIpService.disconnectRequest, [_channel, 0x00, ..._transport!.hpai]));
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
     _connected = false;
@@ -428,13 +429,13 @@ class KnxIpTunnel implements BusLink {
 
 /// Text for a status code from CONNECT_RESPONSE.
 String statusText(int status) => switch (status) {
-  Status.noMoreConnections => 'Gateway meldet: keine freien Tunnel',
-  Status.noMoreUniqueConnections || Status.connectionInUse => 'Tunneladresse ist belegt',
-  Status.connectionType => 'Gateway unterstützt keine Tunnelverbindung',
-  Status.connectionOption => 'Gateway unterstützt die Verbindungsoption nicht',
-  Status.tunnellingLayer => 'Gateway unterstützt den Link Layer nicht',
-  Status.authorisation => 'Keine Berechtigung für die Tunneladresse',
-  Status.noTunnellingAddress => 'Adresse ist keine Tunneladresse des Gateways',
+  KnxIpStatus.noMoreConnections => 'Gateway meldet: keine freien Tunnel',
+  KnxIpStatus.noMoreUniqueConnections || KnxIpStatus.connectionInUse => 'Tunneladresse ist belegt',
+  KnxIpStatus.connectionType => 'Gateway unterstützt keine Tunnelverbindung',
+  KnxIpStatus.connectionOption => 'Gateway unterstützt die Verbindungsoption nicht',
+  KnxIpStatus.tunnellingLayer => 'Gateway unterstützt den Link Layer nicht',
+  KnxIpStatus.authorisation => 'Keine Berechtigung für die Tunneladresse',
+  KnxIpStatus.noTunnellingAddress => 'Adresse ist keine Tunneladresse des Gateways',
   _ => 'Gateway lehnt die Verbindung ab (0x${status.toRadixString(16)})',
 };
 
@@ -459,10 +460,10 @@ Future<Uint8List?> describeGateway(String host, int port) async {
     socket.listen((e) {
       if (e != RawSocketEvent.read) return;
       final dg = socket!.receive();
-      if (dg == null || dg.address != gateway || serviceOf(dg.data) != Service.descriptionResponse) return;
+      if (dg == null || dg.address != gateway || serviceOf(dg.data) != KnxIpService.descriptionResponse) return;
       if (!result.isCompleted) result.complete(Uint8List.fromList(dg.data.sublist(6)));
     }, onError: (Object _) {});
-    socket.send(knxFrame(Service.descriptionRequest, hpaiUdpNat), gateway, port);
+    socket.send(knxFrame(KnxIpService.descriptionRequest, hpaiUdpNat), gateway, port);
     return await result.future.timeout(const Duration(seconds: 3), onTimeout: () => null);
   } on Object {
     return null;
@@ -515,12 +516,12 @@ class RoutingLink implements BusLink {
         final dg = _socket?.receive();
         if (dg == null) return;
         switch (serviceOf(dg.data)) {
-          case Service.routingIndication:
+          case KnxIpService.routingIndication:
             final cemi = Uint8List.fromList(dg.data.sublist(6));
             // Do not duplicate our own frames (e.g. coming back via a second router).
             if (cemi.length > 5 && cemi[0] == 0x29 && _sourceOf(cemi) == address) return;
             _frames.add(cemi);
-          case Service.routingBusy:
+          case KnxIpService.routingBusy:
             if (dg.data.length >= 10) {
               final wait = (dg.data[8] << 8) | dg.data[9];
               _busyUntil = DateTime.now().add(Duration(milliseconds: wait.clamp(20, 1000)));
@@ -555,7 +556,7 @@ class RoutingLink implements BusLink {
       ..[0] = 0x29
       ..[i + 2] = address >> 8
       ..[i + 3] = address & 0xFF;
-    socket.send(knxFrame(Service.routingIndication, ind), InternetAddress(group), port);
+    socket.send(knxFrame(KnxIpService.routingIndication, ind), InternetAddress(group), port);
     // Routing has no acknowledgement; we generate the confirmation ourselves so
     // that senders see, as with a tunnel, that their telegram went out.
     _frames.add(Uint8List.fromList(ind)..[0] = 0x2E);

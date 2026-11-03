@@ -6,7 +6,6 @@ import 'package:horizont/horizont.dart';
 import '../catalog_store.dart';
 import '../knx/demo_tunnel.dart';
 import '../knx/dpt_guess.dart';
-import '../knx/group_catalog.dart';
 import '../knx/knx_tunnel.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';

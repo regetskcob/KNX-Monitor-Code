@@ -34,6 +34,8 @@ test_live/
 # Home Assistant add-on: built web app (tool/build_ha_addon.sh)
 ha-addon/knx_monitor/web/
 ha-addon/knx_monitor/server/.dart_tool/
+# Copy of packages/ for the Docker build context (tool/addon_packages.sh)
+ha-addon/knx_monitor/packages/
 
 # Personal notes and release preparation (kept local)
 ETS-Hausaufgaben.md

@@ -10,8 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../catalog_store.dart';
 import '../export/telegram_files.dart';
-import '../knx/dpt_codec.dart';
-import '../knx/group_catalog.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
 import '../model/annotation.dart';

@@ -253,18 +253,20 @@ Future<void> _handle(
     final bus = installations.bus;
     if (await serveInstallations(request, installations, admin: admin)) return;
     if (await serveReports(request, bus.report, admin: admin)) return;
-    if (await serveExport(request, bus.exporter, admin: admin)) return;
+    // Read access like the history below, therefore before the export settings (admin).
+    if (path != etsXmlPath && await serveExport(request, bus.exporter, admin: admin)) return;
     if (path == '/api/box/time' && bus.clock != null) return await _boxTime(request, bus.clock!, admin: admin);
     if (path == '/ws') return await _relay(request);
     if (path == '/ws/bus') return await bus.serve(await WebSocketTransformer.upgrade(request), admin: admin);
     if (path == '/api/bus') return await _bus(request, bus, admin: admin);
-    if (path == '/api/bus/availability' || path == '/api/bus/stats') {
+    if (path == '/api/bus/availability' || path == '/api/bus/stats' || path == etsXmlPath) {
       // `?installation=<id>`: history of another installation (read-only).
       final id = request.uri.queryParameters['installation'] ?? installations.installations.activeId;
       if (installations.installations.byId(id) == null) {
         response.statusCode = HttpStatus.notFound;
         return await response.close();
       }
+      if (path == etsXmlPath) return await serveEtsXml(request, installations.recorderOf(id));
       if (path == '/api/bus/availability') return await _availability(request, installations.availabilityOf(id));
       final days = (int.tryParse(request.uri.queryParameters['days'] ?? '') ?? 7).clamp(1, 366);
       return await sendJson(response, await installations.recorderOf(id).stats(days));

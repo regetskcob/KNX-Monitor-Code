@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:horizont/horizont.dart';
 
 import '../knx/dpt_codec.dart';
-import '../knx/group_catalog.dart';
 import '../knx/knx_tunnel.dart';
 import '../knx/telegram.dart';
 import '../model/expert_mode.dart';

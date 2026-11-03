@@ -1,6 +1,7 @@
 #!/bin/sh
 # Builds the web app for the Home Assistant add-on and copies it to
-# ha-addon/knx_monitor/web. Optionally transfers it straight to Home Assistant:
+# ha-addon/knx_monitor/web, the internal packages to ha-addon/knx_monitor/packages
+# (tool/addon_packages.sh). Optionally transfers it straight to Home Assistant:
 #
 #   tool/build_ha_addon.sh                              # build only
 #   tool/build_ha_addon.sh hassio@homeassistant.local   # build and copy to /addons
@@ -17,6 +18,9 @@ mkdir -p "$out"
 # Skip debug symbols and the WebAssembly renderer (only needed for --wasm).
 rsync -a --exclude '*.symbols' --exclude 'skwasm*' build/web/ "$out/"
 du -sh "$out"
+# The server's internal packages (packages/knx): Home Assistant builds the
+# image from this folder alone, see the Dockerfile.
+tool/addon_packages.sh
 
 if [ -n "$1" ]; then
   # One connection for all steps – the password is asked only once.

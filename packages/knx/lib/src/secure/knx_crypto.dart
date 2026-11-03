@@ -9,8 +9,8 @@ import 'package:pointycastle/export.dart';
 /// KNX uses AES-128 in CCM mode, but with its own block formatting: the MAC is computed via CBC
 /// over "block 0 + length of additional data + additional data + payload", encryption uses CTR,
 /// with counter 0 encrypting the MAC. Algorithms according to AN158/AN159 of the KNX Association,
-/// verified against their examples (see tests); structure modelled on xknx (MIT, notice in
-/// docs/third-party-notices.md).
+/// verified against their examples (see tests); structure modelled on xknx (MIT, notice in the
+/// package's NOTICE file).
 
 Uint8List _aesBlock(Uint8List key, Uint8List block) {
   final aes = AESEngine()..init(true, KeyParameter(key));

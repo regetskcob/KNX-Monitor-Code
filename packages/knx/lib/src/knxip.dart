@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 /// KNXnet/IP service type identifiers (Core, Tunnelling, Routing, Secure).
-abstract final class Service {
+abstract final class KnxIpService {
   static const searchRequest = 0x0201;
   static const descriptionRequest = 0x0203;
   static const descriptionResponse = 0x0204;
@@ -25,7 +25,7 @@ abstract final class Service {
 }
 
 /// Status codes from CONNECT_RESPONSE and CONNECTIONSTATE_RESPONSE.
-abstract final class Status {
+abstract final class KnxIpStatus {
   static const ok = 0x00;
   static const connectionId = 0x21;
   static const connectionType = 0x22;
@@ -67,22 +67,3 @@ List<int> tunnelCri({int? address}) => [
   0x00,
   if (address != null) ...[address >> 8, address & 0xFF],
 ];
-
-String formatIndividual(int a) => '${(a >> 12) & 0x0F}.${(a >> 8) & 0x0F}.${a & 0xFF}';
-
-/// "1.1.5" → 0x1105; `null` for invalid input.
-int? parseIndividual(String? s) {
-  final p = (s ?? '').trim().split('.').map((v) => RegExp(r'^\d{1,3}$').hasMatch(v) ? int.parse(v) : null).toList();
-  return switch (p) {
-    [final a?, final l?, final d?] when a <= 15 && l <= 15 && d <= 255 => (a << 12) | (l << 8) | d,
-    _ => null,
-  };
-}
-
-String hexOf(List<int> bytes) => bytes.map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase()).join();
-
-List<int>? parseHex(String s) {
-  final clean = s.replaceAll(RegExp(r'\s'), '');
-  if (clean.isEmpty || clean.length.isOdd || !RegExp(r'^[0-9a-fA-F]+$').hasMatch(clean)) return null;
-  return [for (var i = 0; i < clean.length; i += 2) int.parse(clean.substring(i, i + 2), radix: 16)];
-}

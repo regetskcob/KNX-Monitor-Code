@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../catalog_store.dart';
-import '../knx/group_catalog.dart';
 import '../knx/telegram.dart';
 import '../platform/addon.dart';
 import 'installation.dart';

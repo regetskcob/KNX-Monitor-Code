@@ -4,7 +4,8 @@ import 'package:flutter/foundation.dart';
 
 import '../l10n/locale_controller.dart';
 import 'knx_tunnel.dart';
-import 'secure/ip_secure.dart';
+
+import 'package:knx/secure.dart';
 
 /// Tunnel over KNX IP Secure (TCP, encrypted, AN159).
 ///

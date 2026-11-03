@@ -610,7 +610,7 @@ The layering is deliberately thin so pieces can be taken individually:
 - `Ft12Session` needs only a `SerialLine` (three methods: `write`, `read` with a short timeout,
   `close`). Provide your own implementation for another platform or serial library.
 - `Ft12CemiLink` depends on `Ft12Session`, `link.dart` and `formatIndividual` from
-  `knxip.dart`; it takes the line factory as a parameter (`open`), so it has no hard
+  `package:knx` (`packages/knx`); it takes the line factory as a parameter (`open`), so it has no hard
   dependency on `TtyLine`.
 
 ### Tests

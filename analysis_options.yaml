@@ -13,6 +13,8 @@ analyzer:
     - web/**
     # Eigenes Paket mit eigener Analyse (CI-Job addon-server).
     - ha-addon/**
+    # Internal packages with their own analysis (verify_extra in tool/werkbank.conf).
+    - packages/**
     # Werkzeug für Herstellergrafiken mit eigenem pubspec (älteres xml).
     - tool/device_art/**
 

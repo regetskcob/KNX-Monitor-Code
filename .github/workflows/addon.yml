@@ -79,6 +79,8 @@ jobs:
         with:
           name: web
           path: ha-addon/knx_monitor/web
+      # The server's internal packages (packages/knx) into the build context.
+      - run: tool/addon_packages.sh
       - run: docker build -t knx-monitor-smoke ha-addon/knx_monitor
       - name: Start, configure, restart, check persistence
         run: |
@@ -194,6 +196,7 @@ jobs:
         with:
           name: web
           path: ha-addon/knx_monitor/web
+      - run: tool/addon_packages.sh
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0

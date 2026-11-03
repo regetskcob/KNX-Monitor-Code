@@ -234,6 +234,27 @@ class _ExportsScreenState extends State<ExportsScreen> {
     }
   }
 
+  /// The server's continuous recording as an ETS file: choose the period, then
+  /// download (in the browser straight to disk, natively via the save dialog).
+  Future<void> _exportEtsHistory() async {
+    if (!await unlock(context, Feature.export) || !mounted) return;
+    final days = await showDialog<int>(context: context, builder: (_) => const _EtsHistoryDialog());
+    if (days == null || !mounted) return;
+    final now = DateTime.now();
+    // Whole days like the long-term statistics: today and the days before.
+    final from = DateTime(now.year, now.month, now.day - (days - 1));
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final bytes = Addon.embedded
+          ? await Addon.etsHistory(from, now)
+          : await withProgress(context, s.exportsEtsHistoryLoading, () => Addon.etsHistory(from, now));
+      if (bytes == null || !mounted) return;
+      await saveBytes(context, bytes, Addon.etsHistoryFileName(from, now), mimeType: 'application/xml');
+    } on AddonException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(s.exportFailed(e.message))));
+    }
+  }
+
   Future<void> _reshare(ExportEntry entry, Rect? origin) async {
     final bytes = await ExportHistory.instance.read(entry);
     if (!mounted) return;
@@ -361,15 +382,18 @@ class _ExportsScreenState extends State<ExportsScreen> {
       },
     );
 
-    // As in the menu: only on the add-on and in expert mode.
-    final dataExport = Addon.available && expert;
+    // Only with the add-on or box server, which records continuously; the data
+    // export as in the menu only in expert mode.
+    final permanent = Addon.available;
     final continuous = RowCard(
       children: [
-        CardRow(
-          title: s.dataExportTitle,
-          meta: '${s.dataExportInflux}$metaSeparator${s.dataExportPrometheus}',
-          onTap: () => pushTool<void>(context, (_) => const DataExportScreen()),
-        ),
+        CardRow(title: s.exportsEtsHistory, meta: s.exportsEtsHistoryMeta, chevron: true, onTap: _exportEtsHistory),
+        if (expert)
+          CardRow(
+            title: s.dataExportTitle,
+            meta: '${s.dataExportInflux}$metaSeparator${s.dataExportPrometheus}',
+            onTap: () => pushTool<void>(context, (_) => const DataExportScreen()),
+          ),
       ],
     );
 
@@ -392,7 +416,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
                         telegrams,
                         SectionHead(s.exportsReports),
                         reports,
-                        if (dataExport) ...[SectionHead(s.exportsPermanent), continuous],
+                        if (permanent) ...[SectionHead(s.exportsPermanent), continuous],
                         SectionHead(s.exportsBundle),
                         bundle,
                       ],
@@ -411,7 +435,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
                   telegrams,
                   SectionHead(s.exportsReports),
                   reports,
-                  if (dataExport) ...[SectionHead(s.exportsPermanent), continuous],
+                  if (permanent) ...[SectionHead(s.exportsPermanent), continuous],
                   SectionHead(s.exportsBundle),
                   bundle,
                   recent,
@@ -420,6 +444,55 @@ class _ExportsScreenState extends State<ExportsScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Period of the ETS history download, in whole days like the long-term
+/// statistics; the server delivers at most 31 days.
+class _EtsHistoryDialog extends StatefulWidget {
+  const _EtsHistoryDialog();
+
+  static const choices = [1, 7, 30];
+
+  @override
+  State<_EtsHistoryDialog> createState() => _EtsHistoryDialogState();
+}
+
+class _EtsHistoryDialogState extends State<_EtsHistoryDialog> {
+  int _days = 7;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: Text(s.exportsEtsHistory),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(s.exportsEtsHistoryHint, style: theme.textTheme.bodyMedium),
+          const SizedBox(height: HzSpace.s16),
+          // Chips like the history settings: they wrap on the phone.
+          Wrap(
+            spacing: HzSpace.s8,
+            runSpacing: HzSpace.s8,
+            children: [
+              for (final d in _EtsHistoryDialog.choices)
+                ChoiceChip(
+                  showCheckmark: false,
+                  label: Text(s.historyDays(d)),
+                  selected: _days == d,
+                  onSelected: (_) => setState(() => _days = d),
+                ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.exportsEtsHistoryCancel)),
+        FilledButton(onPressed: () => Navigator.pop(context, _days), child: Text(s.exportsEtsHistoryDownload)),
+      ],
     );
   }
 }

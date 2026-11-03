@@ -201,6 +201,163 @@ void main() {
     expect(sink.json('knx_monitor/state')['per_minute'], 0.0);
   });
 
+  test('Kennzahlen: Entitäten mit Einheit, Klasse und Kategorie', () async {
+    await bridge.start();
+    Map<String, Object?> config(String component, String key) =>
+        sink.json('homeassistant/$component/knx_monitor/$key/config');
+
+    final load = config('sensor', 'bus_load');
+    expect(load['unique_id'], 'knx_monitor_bus_load');
+    expect(load['name'], 'Buslast');
+    expect(load['unit_of_measurement'], '%');
+    expect(load['state_class'], 'measurement');
+    expect(load['availability_topic'], 'knx_monitor/status');
+    expect(load.containsKey('entity_category'), isFalse);
+
+    expect(config('sensor', 'open_alarms')['state_class'], 'measurement');
+    expect(config('sensor', 'last_alarm')['json_attributes_topic'], 'knx_monitor/state');
+    expect(config('sensor', 'last_alarm_time')['device_class'], 'timestamp');
+    expect(config('sensor', 'availability_24h')['unit_of_measurement'], '%');
+    for (final key in ['history_size', 'free_space']) {
+      final c = config('sensor', key);
+      expect((c['device_class'], c['unit_of_measurement'], c['entity_category']), ('data_size', 'MB', 'diagnostic'));
+    }
+    final low = config('binary_sensor', 'low_space');
+    expect((low['device_class'], low['entity_category']), ('problem', 'diagnostic'));
+
+    for (final trigger in MqttBridge.busTriggers) {
+      final c = sink.json('homeassistant/device_automation/knx_monitor/$trigger/config');
+      expect(c['type'], trigger);
+      expect(c['subtype'], 'KNX-Bus');
+    }
+    expect(
+      sink.json('homeassistant/device_automation/knx_monitor/bus_disconnected/config')['topic'],
+      'knx_monitor/bus/disconnected',
+    );
+
+    // Existing unique_ids stay unchanged (backwards compatible discovery).
+    expect(config('sensor', 'telegrams_per_minute')['unique_id'], 'knx_monitor_telegrams_per_minute');
+    expect(config('binary_sensor', 'bus_connected')['unique_id'], 'knx_monitor_bus_connected');
+  });
+
+  test('Buslast in Prozent aus der Belegung', () async {
+    await bridge.start();
+    expect(sink.json('knx_monitor/state')['bus_load'], 0.0);
+    await bridge.tick(); // starting point
+    // 0.6 s occupied within one minute = 1 %.
+    bus.busy += 0.6;
+    now = now.add(const Duration(minutes: 1));
+    await bridge.tick();
+    expect(sink.json('knx_monitor/state')['bus_load'], 1.0);
+    expect(sink.retained['knx_monitor/bus_load'], '1.0');
+    // Never above 100 %.
+    bus.busy += 120;
+    now = now.add(const Duration(minutes: 1));
+    await bridge.tick();
+    expect(sink.json('knx_monitor/state')['bus_load'], 100.0);
+  });
+
+  test('Belegung je Telegramm wie im Bericht', () {
+    // 1-bit value: 9 bytes, plus idle time and acknowledgement.
+    expect(busySeconds('', small: true), closeTo((50 + 13 * 9 + 15 + 13) / 9600, 1e-12));
+  });
+
+  test('offene Alarme und letzter Alarm', () async {
+    await File('${data.path}/catalog.json').writeAsString(
+      jsonEncode({
+        'style': 'threeLevel',
+        'groups': [
+          {
+            'a': 0x0801,
+            'n': 'Rauchmelder Flur',
+            'd': [1, 5],
+          },
+          {
+            'a': 0x0802,
+            'n': '',
+            'd': [21, 1],
+          },
+        ],
+      }),
+    );
+    // The bus forwards alarm changes to the bridge as events, as in server.dart.
+    await bus.shutdown();
+    bus = BusService(
+      data,
+      describe: (_, _) async => null,
+      installation: {'id': 'a', 'name': 'Zuhause'},
+      event: (type, data) async => bridge.onEvent(type, data),
+    );
+    await bus.start();
+    await bridge.start();
+    var state = sink.json('knx_monitor/state');
+    expect(state['open_alarms'], 0);
+    expect(state['last_alarm'], isNull);
+
+    final time = DateTime.utc(2026, 10, 25, 11, 30);
+    Map<String, Object?> line(int address, String x, {bool small = false}) => {
+      't': time.microsecondsSinceEpoch,
+      'd': address,
+      'x': x,
+      'm': small,
+    };
+    await bus.alarms.check(line(0x0801, '01', small: true));
+    await bus.alarms.check(line(0x0802, '02')); // bit 1: fault, without a name
+    await until(() => sink.json('knx_monitor/state')['open_alarms'] == 2);
+    state = sink.json('knx_monitor/state');
+    expect(state['last_alarm'], '1/0/2');
+    expect(state['last_alarm_kind'], 'fault');
+    expect(state['last_alarm_address'], '1/0/2');
+    expect(state['last_alarm_time'], '2026-10-25T11:30:00.000Z');
+
+    await bus.alarms.check(line(0x0802, '00'));
+    await until(() => sink.json('knx_monitor/state')['open_alarms'] == 1);
+    // The last alarm stays until the next one.
+    expect(sink.json('knx_monitor/state')['last_alarm'], '1/0/2');
+  });
+
+  test('Speicher: Verlauf, freier Platz, knapp', () async {
+    await Directory('${data.path}/history').create(recursive: true);
+    await File('${data.path}/history/2026-10-25.ndjson').writeAsBytes(List.filled(1500000, 0x20));
+    bus.recorder
+      ..lastFree = 200 * 1000 * 1000
+      ..lowSpace = true;
+    await bridge.start();
+    final state = sink.json('knx_monitor/state');
+    expect(state['history_mb'], 1.5);
+    expect(state['free_mb'], 200.0);
+    expect(state['low_space'], isTrue);
+    expect(sink.retained['knx_monitor/low_space'], 'true');
+  });
+
+  test('Verfügbarkeit der letzten 24 Stunden', () async {
+    // One heartbeat per minute: 30 minutes connected, then 30 minutes not.
+    final start = now.subtract(const Duration(hours: 1));
+    for (var i = 0; i <= 60; i++) {
+      await bus.availability.beat(
+        connected: i <= 30,
+        telegrams: 1,
+        now: start.add(Duration(minutes: i)),
+      );
+    }
+    await bridge.start();
+    expect(sink.json('knx_monitor/state')['availability_24h'], 50.0);
+  });
+
+  test('ohne Herzschläge: Verfügbarkeit unbekannt', () async {
+    await bridge.start();
+    expect(sink.json('knx_monitor/state')['availability_24h'], isNull);
+    expect(sink.retained['knx_monitor/availability_24h'], '');
+  });
+
+  test('Gerätetrigger Bus verbunden und getrennt', () async {
+    await bridge.start();
+    bridge.onEvent(HomeAssistant.busEvent, {'connected': false, 'state': 'disconnected'});
+    expect(sink.sent('knx_monitor/bus/disconnected').single['state'], 'disconnected');
+    bridge.onEvent(HomeAssistant.busEvent, {'connected': true, 'state': 'connected'});
+    expect(sink.sent('knx_monitor/bus/connected'), hasLength(1));
+  });
+
   test('ohne Broker: später erneut versuchen', () async {
     var asked = 0;
     final waiting = MqttBridge(

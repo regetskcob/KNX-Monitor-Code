@@ -4,29 +4,7 @@ import 'dart:typed_data';
 import '../l10n/locale_controller.dart';
 import 'telegram.dart';
 
-/// Datapoint type, e.g. 9.001. [sub] is `null` if only the main type is known.
-class Dpt {
-  const Dpt(this.main, [this.sub]);
-
-  final int main;
-  final int? sub;
-
-  /// Parses "DPST-9-1", "DPT-1", "9.001" or "9.1".
-  static Dpt? tryParse(String s) {
-    final m = RegExp(r'(\d+)(?:[-.](\d+))?').firstMatch(s.split(',').first);
-    if (m == null) return null;
-    return Dpt(int.parse(m[1]!), m[2] == null ? null : int.parse(m[2]!));
-  }
-
-  @override
-  bool operator ==(Object other) => other is Dpt && other.main == main && other.sub == sub;
-
-  @override
-  int get hashCode => Object.hash(main, sub);
-
-  @override
-  String toString() => sub == null ? '$main.xxx' : '$main.${sub.toString().padLeft(3, '0')}';
-}
+export 'package:knx/knx.dart' show Dpt;
 
 /// A named group address from the ETS export.
 class GroupInfo {

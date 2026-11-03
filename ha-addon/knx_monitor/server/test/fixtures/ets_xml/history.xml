@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommunicationLog xmlns="http://knx.org/xml/telegrams/01">
+  <RecordStart Timestamp="2026-10-14T13:20:01.234Z" Mode="LinkLayer" Host="KNX Monitor" ConnectionName="KNX Monitor" ConnectorType="KnxIpTunneling" MediumType="TP"/>
+  <Telegram Timestamp="2026-10-14T13:20:01.234Z" Service="L_Data.ind" FrameFormat="CommonEmi" RawData="2900BCE0113210000300800C24"/>
+  <Telegram Timestamp="2026-10-14T13:20:02.000Z" Service="L_Data.con" FrameFormat="CommonEmi" RawData="2E00BCE011261000010000"/>
+  <Telegram Timestamp="2026-10-14T13:20:02.500125Z" Service="L_Data.ind" FrameFormat="CommonEmi" RawData="2900BCE011321001010041"/>
+  <Telegram Timestamp="2026-10-14T13:21:00.000Z" Service="L_Data.ind" FrameFormat="CommonEmi" RawData="290090D0113210020400800A0B0C"/>
+  <Telegram Timestamp="2026-10-14T13:21:00.007Z" Service="L_Data.con" FrameFormat="CommonEmi" RawData="2E00BDE011261003010081"/>
+  <RecordStop Timestamp="2026-10-14T13:21:00.007Z"/>
+</CommunicationLog>

@@ -193,6 +193,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.0"
+  knx:
+    dependency: "direct main"
+    description:
+      path: "../../../packages/knx"
+      relative: true
+    source: path
+    version: "0.1.0"
   logging:
     dependency: transitive
     description:

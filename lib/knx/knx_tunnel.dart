@@ -6,9 +6,10 @@ import '../l10n/locale_controller.dart';
 import '../platform/tcp.dart';
 import '../platform/udp.dart';
 import 'busmon.dart';
-import 'cemi.dart';
 import 'gateway_info.dart';
-import 'secure/data_secure.dart';
+
+import 'package:knx/secure.dart';
+
 import 'secure/keyring_store.dart';
 import 'telegram.dart';
 

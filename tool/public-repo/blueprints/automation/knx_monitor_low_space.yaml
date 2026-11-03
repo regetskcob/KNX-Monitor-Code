@@ -1,0 +1,33 @@
+blueprint:
+  name: KNX Monitor – recording space low
+  description: >-
+    Runs your actions when the KNX Monitor add-on runs short of disk space
+    for its continuous recording. The binary sensor "Low space" of the add-on's
+    MQTT device switches on when the add-on has already deleted the oldest
+    days and still has too little room, and has paused recording. Needs an MQTT
+    broker in Home Assistant (usually the Mosquitto add-on).
+  domain: automation
+  source_url: https://github.com/regetskcob/KNX-Monitor/blob/main/blueprints/automation/knx_monitor_low_space.yaml
+  input:
+    sensor:
+      name: Low space sensor
+      description: The "Low space" binary sensor of the device KNX Monitor.
+      selector:
+        entity:
+          filter:
+            - integration: mqtt
+              domain: binary_sensor
+    actions:
+      name: Actions
+      selector:
+        action: {}
+
+triggers:
+  - trigger: state
+    entity_id: !input sensor
+    from: "off"
+    to: "on"
+
+actions: !input actions
+
+mode: single

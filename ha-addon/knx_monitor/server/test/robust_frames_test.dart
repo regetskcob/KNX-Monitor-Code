@@ -5,8 +5,7 @@ import 'dart:typed_data';
 
 import 'package:knx_monitor_server/box.dart';
 import 'package:knx_monitor_server/bus.dart';
-import 'package:knx_monitor_server/src/secure/data_secure.dart';
-import 'package:knx_monitor_server/src/secure/ip_secure.dart';
+import 'package:knx/secure.dart';
 import 'package:test/test.dart';
 
 import 'fake_gateway.dart';

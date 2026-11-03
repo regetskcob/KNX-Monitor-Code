@@ -9,8 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:knx_monitor/catalog_store.dart';
 import 'package:knx_monitor/export/diagnostics_bundle.dart';
 import 'package:knx_monitor/knx/group_catalog.dart';
-import 'package:knx_monitor/knx/secure/data_secure.dart';
-import 'package:knx_monitor/knx/secure/keyring.dart';
+import 'package:knx/secure.dart';
 import 'package:knx_monitor/knx/secure/keyring_store.dart';
 import 'package:knx_monitor/knx/telegram.dart';
 import 'package:knx_monitor/model/annotation.dart';
@@ -186,7 +185,7 @@ void main() {
       );
       final key = Uint8List.fromList(List.generate(16, (i) => 0xA0 + i));
       final keys = KeyringStore.instance;
-      keys.dataSecure = DataSecure(Keyring(project: 'Haus Müller', groupKeys: {secured: key}));
+      keys.dataSecure = DataSecure(groupKeys: {secured: key}, sequenceNumbers: const {});
       keys.project = 'Haus Müller';
       final options = ConnectionOptions.instance
         ..mode = ConnectionMode.secure
@@ -451,7 +450,7 @@ void main() {
     await tester.runAsync(() => CatalogStore.instance.adopt(catalog(), name: 'test.knxproj'));
     final log = TelegramLog()..addAll(telegrams);
     // Keyring mit Schlüssel für die gesicherte Adresse.
-    KeyringStore.instance.dataSecure = DataSecure(Keyring(project: 'P', groupKeys: {secured: Uint8List(16)}));
+    KeyringStore.instance.dataSecure = DataSecure(groupKeys: {secured: Uint8List(16)}, sequenceNumbers: const {});
     addTearDown(() => KeyringStore.instance.dataSecure = null);
 
     await tester.pumpWidget(

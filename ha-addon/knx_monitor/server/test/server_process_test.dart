@@ -69,6 +69,7 @@ void main() {
     expect(body, 'ok');
     expect((await get('api/bus')).$1, HttpStatus.forbidden);
     expect((await get('api/report')).$1, HttpStatus.forbidden);
+    expect((await get('api/export/ets-xml?from=0&to=1000')).$1, HttpStatus.forbidden);
     expect((await get('')).$1, HttpStatus.forbidden);
   }, timeout: const Timeout(Duration(minutes: 2)));
 
@@ -140,6 +141,38 @@ void main() {
       expect((await call('DELETE', 'api/files/history/2026-10-30.ndjson', device)).$1, HttpStatus.forbidden);
       expect((await call('PUT', 'api/files/catalog.json', admin, body: '{"p":1}')).$1, HttpStatus.noContent);
       expect((await call('GET', 'api/files/catalog.json', device)).$2, '{"p":1}');
+    }, timeout: const Timeout(Duration(minutes: 2)));
+
+    test('ETS-Datei: lesen wie der Verlauf, auch ohne Admin-Recht', () async {
+      final (_, installations) = await call('GET', 'api/installations', device);
+      final id = (jsonDecode(installations) as Map)['active'];
+      final now = DateTime.now();
+      final day = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final line = jsonEncode({
+        't': now.microsecondsSinceEpoch,
+        's': 4402,
+        'd': 4096,
+        'y': 2,
+        'x': '01',
+        'm': true,
+        'r': '2900BCE011321000010081',
+      });
+      File('${data.path}/installations/$id/history/$day.ndjson')
+        ..createSync(recursive: true)
+        ..writeAsStringSync('$line\n', mode: FileMode.append);
+      final from = now.subtract(const Duration(hours: 1)).millisecondsSinceEpoch;
+      final to = now.add(const Duration(hours: 1)).millisecondsSinceEpoch;
+      final (status, xml) = await call('GET', 'api/export/ets-xml?from=$from&to=$to', device);
+      expect(status, 200);
+      expect(xml, contains('RawData="2900BCE011321000010081"'));
+      expect((await call('GET', 'api/export/ets-xml?from=$from&to=$to&installation=gibts-nicht', device)).$1, 404);
+      expect((await call('GET', 'api/export/ets-xml?from=$to&to=$from', device)).$1, 400);
+      // The browser asks with check=1 before the download link: same checks, no body.
+      expect(await call('GET', 'api/export/ets-xml?from=$from&to=$to&check=1', device), (204, ''));
+      expect((await call('GET', 'api/export/ets-xml?from=$to&to=$from&check=1', device)).$1, 400);
+      expect((await call('GET', 'api/export/ets-xml?from=$from&to=$to', 'Bearer falsch')).$1, HttpStatus.unauthorized);
+      // The export settings next to it stay admin-only.
+      expect((await call('PUT', 'api/export', device, body: '{}')).$1, HttpStatus.forbidden);
     }, timeout: const Timeout(Duration(minutes: 2)));
 
     test('Roh-Relay nur mit Admin-Recht', () async {

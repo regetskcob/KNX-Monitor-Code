@@ -2508,5 +2508,11 @@
   "planLicenseEnded": "This license no longer applies: the subscription has ended or the purchase was refunded.",
   "planLicenseCheckoutOpened": "The checkout is open in your browser. After buying, your license arrives by email; enter it here under “Enter license”.",
   "planLicenseActive": "{tier} is activated.",
-  "addonReadOnly": "Read only is on: the server sends nothing to the bus. Turn off “Read only” in the add-on configuration, or remove READ_ONLY on the box and in Docker."
+  "addonReadOnly": "Read only is on: the server sends nothing to the bus. Turn off “Read only” in the add-on configuration, or remove READ_ONLY on the box and in Docker.",
+  "exportsEtsHistory": "History as ETS file (for Home Assistant and SpectrumKNX)",
+  "exportsEtsHistoryMeta": "Continuous recording, up to 30 days",
+  "exportsEtsHistoryHint": "Downloads the telegrams of the continuous recording as an ETS group monitor file. SpectrumKNX, the ETS and KNX Monitor open it directly.",
+  "exportsEtsHistoryDownload": "Download",
+  "exportsEtsHistoryCancel": "Cancel",
+  "exportsEtsHistoryLoading": "Loading history …"
 }

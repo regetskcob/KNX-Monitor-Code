@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'knxip.dart';
+import 'package:knx/knx.dart';
+
 import 'link.dart';
 
 /// No tunnel of its own: reads the telegrams that Home Assistant's KNX
