@@ -1,0 +1,30 @@
+configuration:
+  read_only:
+    name: Read only
+    description: >-
+      The server sends nothing to the bus, not even read requests.
+      Recording, evaluations and the health check keep running. Turn off
+      if you want to write or request values from the add-on.
+  alarm_notifications:
+    name: Alarm notifications
+    description: >-
+      Notify when an alarm or fault object triggers. Turn off if you use your
+      own automations with the knx_monitor_alarm event instead.
+  watcher_notifications:
+    name: Watcher notifications
+    description: >-
+      Notify when a watcher fires. Turn off if you use your own automations
+      with the knx_monitor_watcher event instead.
+  notify_service:
+    name: Notification service
+    description: >-
+      Optional: service for alarm notifications, e.g.
+      "notify.mobile_app_iphone".
+      Leave empty for a Home Assistant notification.
+  dashboard_card:
+    name: Dashboard card
+    description: >-
+      Puts the “KNX Monitor chart” card into /config/www/knx-monitor/ and
+      registers it as a dashboard resource. It shows the charts saved in
+      the app. Turn off if you do not need the card or manage resources
+      yourself.

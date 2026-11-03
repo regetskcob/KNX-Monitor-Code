@@ -1,0 +1,271 @@
+# Builds the Home Assistant add-on as prebuilt images (amd64, aarch64) and
+# pushes them to the GitHub Container Registry. Home Assistant then pulls them
+# directly instead of building on the device.
+#
+# Trigger: tag "addon-v<version>" (must match version in config.yaml) or
+# manually (build only, nothing is pushed). The packages must be set to
+# "public" in GitHub so Home Assistant can pull them without credentials.
+#
+# Both architectures always carry the same versions: each image job pushes
+# only its version tag, and "latest" moves for both together once both are
+# built. tool/release.sh pushes the version bump to main only after this
+# workflow succeeded, so Home Assistant never offers a version without images.
+#
+# Hardening: actions pinned to commit SHAs (Dependabot bumps them).
+# Only the two jobs that push have write access to the packages – not the
+# web build and the smoke test with third-party actions. Before the push the job
+# "approve" sits in the environment "addon-release"; it would only wait with required
+# reviewers, which private repos only get with Enterprise (see
+# docs/release-security.md). So currently it runs through. Pushed images
+# are signed by cosign without a key of our own (keyless); how to verify: same place.
+name: Add-on
+
+on:
+  push:
+    tags: ['addon-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      publish: ${{ steps.version.outputs.publish }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: version
+        run: |
+          version=$(grep -E '^version:' ha-addon/knx_monitor/config.yaml | cut -d'"' -f2)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            [ "$GITHUB_REF_NAME" = "addon-v$version" ] || { echo "::error::Tag $GITHUB_REF_NAME does not match config.yaml version $version"; exit 1; }
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  web:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: 3.47.6
+          channel: stable
+          cache: true
+      - run: flutter pub get && flutter gen-l10n
+      - run: flutter build web --release --no-web-resources-cdn
+      - name: Strip debug symbols and WASM renderer
+        run: find build/web -name '*.symbols' -delete && rm -f build/web/canvaskit/skwasm*
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: web
+          path: build/web
+          retention-days: 1
+
+  # Starts the finished image and checks that settings and history end up in
+  # the data directory and survive a restart – packaging errors that
+  # no unit test sees.
+  smoke:
+    needs: web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: web
+          path: ha-addon/knx_monitor/web
+      - run: docker build -t knx-monitor-smoke ha-addon/knx_monitor
+      - name: Start, configure, restart, check persistence
+        run: |
+          set -e
+          mkdir -p "$RUNNER_TEMP/data"
+          run() { docker run -d --name smoke -e ALLOW_ALL=1 -e TZ=Europe/Berlin -p 8765:8765 -v "$RUNNER_TEMP/data:/data" knx-monitor-smoke; }
+          wait_up() { for i in $(seq 1 30); do curl -sf http://localhost:8765/api/bus >/dev/null && return 0; sleep 1; done; docker logs smoke; return 1; }
+          run; wait_up
+          curl -sf -X PUT -H 'Content-Type: application/json' -d '{"retentionDays": 30}' http://localhost:8765/api/bus | grep -q '"retentionDays":30'
+          curl -sf http://localhost:8765/ | grep -q '<base href'
+          docker stop -t 10 smoke && docker rm smoke
+          test -f "$RUNNER_TEMP/data/app/installations/default/server.json"
+          run; wait_up
+          curl -sf http://localhost:8765/api/bus | grep -q '"retentionDays":30'
+          docker stop -t 10 smoke
+      # KNX Box without Home Assistant: nothing without login, with password or
+      # device access from /pair everything except the raw relay; survives the restart.
+      - name: Box mode (BOX=1) access
+        run: |
+          # -x: on failure the log shows which check it was.
+          set -ex
+          trap 'docker logs box 2>&1 | tail -30 || true' ERR
+          mkdir -p "$RUNNER_TEMP/box"
+          # The runner connects via the Docker bridge, so for the box this is "via
+          # cable": blocked as long as LAN_ACCESS does not allow it.
+          run() { docker run -d --name box -e BOX=1 -e BOX_PASSWORD=ci-box-pass -e BOX_NAME=KNX-Box-CI -e LAN_ACCESS=yes -e TZ=Europe/Berlin -p 8766:8765 -v "$RUNNER_TEMP/box:/data" knx-monitor-smoke; }
+          code() { curl -s -o /dev/null -m 5 -w '%{http_code}' "$@"; }
+          # Without permission: 403, even with the correct password.
+          mkdir -p "$RUNNER_TEMP/box-closed"
+          docker run -d --name box-closed -e BOX=1 -e BOX_PASSWORD=ci-box-pass -e TZ=Europe/Berlin -p 8767:8765 -v "$RUNNER_TEMP/box-closed:/data" knx-monitor-smoke
+          for i in $(seq 1 30); do [ "$(code http://localhost:8767/)" = 403 ] && break; sleep 1; done
+          test "$(code http://localhost:8767/)" = 403
+          test "$(code -u x:ci-box-pass http://localhost:8767/api/bus)" = 403
+          grep -qx no "$RUNNER_TEMP/box-closed/app/lan-access"
+          docker stop -t 10 box-closed && docker rm box-closed
+          wait_up() { for i in $(seq 1 30); do [ "$(code http://localhost:8766/)" = 401 ] && return 0; sleep 1; done; docker logs box; return 1; }
+          ws=(-H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==')
+          run; wait_up
+          pw=ci-box-pass
+          test ! -e "$RUNNER_TEMP/box/app/box-password.txt"
+          test "$(code http://localhost:8766/api/bus)" = 401
+          test "$(code "${ws[@]}" http://localhost:8766/ws/bus)" = 401
+          test "$(code -u "x:$pw" http://localhost:8766/api/bus)" = 200
+          test "$(code -u "x:wrong" http://localhost:8766/api/bus)" = 401
+          key=$(curl -sf -u "x:$pw" -d 'name=CI' http://localhost:8766/pair | grep -o 'key=[A-Za-z0-9_-]*' | head -1 | cut -d= -f2)
+          test ${#key} = 43
+          test "$(code -H "Authorization: Bearer $key" http://localhost:8766/api/bus)" = 200
+          test "$(code -H "Authorization: Bearer $key" "${ws[@]}" http://localhost:8766/ws/bus)" = 101
+          test "$(code -H "Authorization: Bearer $key" http://localhost:8766/ws)" = 403
+          # Health endpoint without login, but without data.
+          test "$(curl -sf -m 5 http://localhost:8766/healthz)" = ok
+          # Device from /pair: reading yes, bus connection and keyring no.
+          test "$(code -H "Authorization: Bearer $key" -X PUT -d '{"host":"192.0.2.1"}' http://localhost:8766/api/bus)" = 403
+          test "$(code -H "Authorization: Bearer $key" http://localhost:8766/api/files/secure_keys.json)" = 403
+          # Pairing from the app: with the password an admin access, a /pair device does not manage.
+          admin=$(curl -sf -u "x:$pw" -d '{"name":"CI-App"}' http://localhost:8766/api/box/pair | grep -o '"key":"[A-Za-z0-9_-]*"' | cut -d'"' -f4)
+          test ${#admin} = 43
+          test "$(code -H "Authorization: Bearer $admin" http://localhost:8766/api/box/devices)" = 200
+          test "$(code -H "Authorization: Bearer $key" http://localhost:8766/api/box/devices)" = 403
+          # Clock: status in /api/box, accept the time from the iPhone. On the runner
+          # the container sees the runner's RTC: the clock counts as reliable and is correct,
+          # so "ok" is right. Only with "set" is a time request ready for the host.
+          curl -sf -H "Authorization: Bearer $key" http://localhost:8766/api/box | grep -q '"clock"'
+          res=$(curl -sf -H "Authorization: Bearer $key" -H 'Content-Type: application/json' \
+            -d "{\"epochMs\": $(date +%s)000}" http://localhost:8766/api/box/time)
+          echo "$res" | grep -qE '"result":"(set|ok)"'
+          if echo "$res" | grep -q '"result":"set"'; then test -f "$RUNNER_TEMP/box/app/time-request.json"; fi
+          # /api/files/ hands out the server's own files to nobody.
+          for f in access.json server.json box-password.txt lan-access; do
+            test "$(code -H "Authorization: Bearer $key" http://localhost:8766/api/files/$f)" = 403
+            test "$(code -u "x:$pw" http://localhost:8766/api/files/$f)" = 403
+          done
+          test "$(code -u "x:$pw" -H 'Origin: http://evil.example' -X PUT http://localhost:8766/api/bus)" = 403
+          ! grep -q "$key" "$RUNNER_TEMP/box/app/access.json"
+          docker stop -t 10 box && docker rm box
+          run; wait_up
+          test "$(code -H "Authorization: Bearer $key" http://localhost:8766/api/bus)" = 200
+          docker stop -t 10 box
+
+  # Room for a manual approval before an image goes to customers
+  # (effective only with required reviewers). Tags only; a manual run
+  # only builds and needs none.
+  approve:
+    needs: [version, smoke]
+    if: needs.version.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    environment: addon-release
+    steps:
+      - run: echo "addon-v${{ needs.version.outputs.version }} freigegeben"
+
+  image:
+    needs: [version, web, smoke, approve]
+    # With a tag only after approval; without a tag (build only) "approve" is skipped.
+    if: >-
+      !cancelled() && needs.smoke.result == 'success' &&
+      (needs.approve.result == 'success' ||
+       (needs.version.outputs.publish != 'true' && needs.approve.result == 'skipped'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+          - arch: aarch64
+            platform: linux/arm64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: web
+          path: ha-addon/knx_monitor/web
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        id: build
+        with:
+          context: ha-addon/knx_monitor
+          platforms: ${{ matrix.platform }}
+          push: ${{ needs.version.outputs.publish == 'true' }}
+          # One plain image per architecture – no attestation manifest, which
+          # would show up as a second "unknown/unknown" platform on the package.
+          provenance: false
+          sbom: false
+          build-args: BUILD_VERSION=${{ needs.version.outputs.version }}
+          tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-knx-monitor:${{ needs.version.outputs.version }}
+          labels: |
+            io.hass.name=KNX Monitor
+            io.hass.description=KNX bus monitor and diagnostics in the sidebar
+            io.hass.arch=${{ matrix.arch }}
+            io.hass.type=addon
+            io.hass.version=${{ needs.version.outputs.version }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        if: needs.version.outputs.publish == 'true'
+      - name: Sign image
+        if: needs.version.outputs.publish == 'true'
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-knx-monitor
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "$IMAGE@$DIGEST"
+
+  # Move "latest" only when both architectures are built, so the packages
+  # never point to different versions.
+  latest:
+    needs: [version, image]
+    # Never tag test tags (addon-v1.9.1-test1, docs/resilience-tests.md) as "latest".
+    if: needs.version.outputs.publish == 'true' && !contains(needs.version.outputs.version, '-')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tag latest
+        run: |
+          for arch in amd64 aarch64; do
+            image=ghcr.io/${{ github.repository_owner }}/$arch-knx-monitor
+            docker buildx imagetools create -t "$image:latest" "$image:${{ needs.version.outputs.version }}"
+          done
+      # One name for all architectures, for Docker without Home Assistant
+      # (ioBroker, NAS, Proxmox); Docker picks the matching one itself.
+      - name: Multi-arch image
+        run: |
+          owner=ghcr.io/${{ github.repository_owner }}
+          version=${{ needs.version.outputs.version }}
+          docker buildx imagetools create -t "$owner/knx-monitor:$version" -t "$owner/knx-monitor:latest" \
+            "$owner/amd64-knx-monitor:$version" "$owner/aarch64-knx-monitor:$version"
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Sign multi-arch image
+        run: |
+          image=ghcr.io/${{ github.repository_owner }}/knx-monitor
+          digest=$(docker buildx imagetools inspect "$image:${{ needs.version.outputs.version }}" --format '{{json .Manifest}}' | jq -r .digest)
+          cosign sign --yes "$image@$digest"

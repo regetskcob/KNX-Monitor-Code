@@ -1,0 +1,62 @@
+# Screenshots for the gallery. Files live in static/images/screens/ (made by
+# tool/launch_graphics.py from the demo shots, without a frame) and are also
+# mounted as assets (hugo.toml), so Horizont's device frame can crop them and
+# serve WebP. Missing files are skipped at build time.
+# kind: phone (iPhone frame) | tablet (iPad frame, landscape)
+# group: everyday (under Funktionen) | expert (under Expertenmodus)
+- file: overview-phone.png
+  kind: phone
+  group: everyday
+  alt:
+    de: "Übersicht auf dem iPhone: Werte je Gruppenadresse als Karten mit Mini-Verlauf"
+    en: "Overview on iPhone: values per group address as cards with mini history"
+- file: health-phone.png
+  kind: phone
+  device: android
+  group: everyday
+  alt:
+    de: "Gesundheit auf Android: stumme Adressen, falsche Datentypen und Wiederholungen auf einen Blick"
+    en: "Health check on Android: silent addresses, wrong data types and repeats at a glance"
+- file: live-ipad.png
+  kind: tablet
+  group: everyday
+  alt:
+    de: "Live-Telegramme auf dem iPad mit Absender, Ziel, Name und Wert"
+    en: "Live telegrams on iPad with sender, destination, name and value"
+- file: objects-ipad.png
+  kind: tablet
+  group: everyday
+  alt:
+    de: "Objekte: Gruppenadressen nach Räumen, Befehle und Rückmeldungen zusammen"
+    en: "Objects: group addresses by room, commands and feedbacks together"
+- file: details-ipad.png
+  kind: tablet
+  group: everyday
+  alt:
+    de: "Detailspalte mit Verlauf und Wert schreiben"
+    en: "Detail pane with history and write value"
+- file: send-phone.png
+  kind: phone
+  group: expert
+  alt:
+    de: "Senden wie im ETS-Gruppenmonitor, mit Verzögerung und Wiederholung"
+    en: "Send like the ETS group monitor, with delay and repeat"
+- file: commissioning-phone.png
+  kind: phone
+  device: android
+  group: expert
+  alt:
+    de: "Inbetriebnahme-Checkliste auf Android mit automatisch abgehakten Status-Adressen"
+    en: "Commissioning checklist on Android with automatically checked status addresses"
+- file: map-phone.png
+  kind: phone
+  group: expert
+  alt:
+    de: "Kommunikationskarte: Sender und Empfänger einer Gruppenadresse"
+    en: "Communication map: senders and receivers of a group address"
+- file: topology-ipad.png
+  kind: tablet
+  group: expert
+  alt:
+    de: "Topologie mit Linien, Koppler, Tunneln und linienübergreifenden Adressen"
+    en: "Topology with lines, coupler, tunnels and cross-line addresses"

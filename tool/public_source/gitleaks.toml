@@ -1,0 +1,14 @@
+# gitleaks for the public snapshot (tool/export_public_source.sh): the default
+# rules plus known test data that only looks like a secret.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public test keyrings from xknx, test passwords, preference keys, RFC 6455 sample nonce"
+paths = ['''test/resources/.*\.knxkeys''', '''^build/''']
+regexes = [
+  '''collapsed_sections_v2''',
+  '''Tunnel-Passwort-1''',
+  '''MTIzNDU2Nzg5MDEyMzQ1Ng==''',
+  '''dGhlIHNhbXBsZSBub25jZQ==''',
+]

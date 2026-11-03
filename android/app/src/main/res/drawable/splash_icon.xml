@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: Startbild wie auf iOS (abgerundet, Ecken durchsichtig – passt auf hell und dunkel). Das System
+     vergrößert Splash-Icons ohne Hintergrund um 288/160 – 80 dp ergeben die
+     144 dp von iOS und liegen ganz innerhalb der Maske (am A14 gemessen). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="288dp"
+        android:height="288dp">
+        <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent" />
+        </shape>
+    </item>
+    <item
+        android:width="80dp"
+        android:height="80dp"
+        android:gravity="center"
+        android:drawable="@drawable/splash_logo" />
+</layer-list>

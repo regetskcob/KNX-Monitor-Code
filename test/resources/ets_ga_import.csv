@@ -1,0 +1,5 @@
+"Main","Middle","Sub","Address","Central","Unfiltered","Description","DatapointType","Security"
+"Licht","","","1/-/-","","","","",""
+"","OG","","1/1/-","","","","",""
+"","","OG Bad Decke Schalten","1/1/0","","","","DPST-1-1","Auto"
+"","","OG Bad Decke Status","1/1/1","","","","DPST-1-1","Auto"

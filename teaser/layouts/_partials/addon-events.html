@@ -1,0 +1,30 @@
+{{- /*
+  Try it on the add-on page (section Automations): the glass push button of
+  the other pages next to a Home Assistant view "Events". Pressing a key
+  fires knx_monitor_watcher with its data (addon.js); with "Watcher
+  notifications" on, the notification that would come on top shows too.
+  Context: data/addon/<lang>.yaml, demo. Without script only the button and
+  an example event are shown.
+*/ -}}
+<figure class="tz-demo" data-demo='{{ . | jsonify }}'>
+  <div class="tz-demo-sensor">
+    <span class="tz-sensor-addr">1.1.30 · {{ .sensor }}</span>
+    <div class="tz-sensor tz-sensor--glass tz-sensor--static">
+      <div class="tz-sensor-body">
+        <span class="tz-sensor-display">21,5 °C</span>
+        {{- range .keys }}
+        <button class="tz-key" type="button" data-key="{{ . | jsonify }}"><i class="tz-key-led"></i><b>{{ .label }}</b><small>{{ .name }}</small></button>
+        {{- end }}
+      </div>
+    </div>
+    <label class="tz-demo-toggle"><input type="checkbox" checked> {{ .notify }}</label>
+  </div>
+  <div class="tz-demo-ha" aria-live="polite">
+    <div class="tz-demo-ha-head"><span>{{ .title }}</span><code>knx_monitor_watcher</code></div>
+    <div class="tz-demo-note" hidden></div>
+    <ol class="tz-demo-events">
+      <li class="tz-demo-empty">{{ .empty }}</li>
+    </ol>
+  </div>
+  <figcaption>{{ .caption }}</figcaption>
+</figure>

@@ -1,0 +1,32 @@
+configuration:
+  read_only:
+    name: Nur lesen
+    description: >-
+      Der Server sendet nichts auf den Bus, auch keine Leseanfragen.
+      Aufzeichnung, Auswertung und Gesundheitsprüfung laufen weiter.
+      Ausschalten, wenn du aus dem Add-on Werte schreiben oder abfragen
+      willst.
+  alarm_notifications:
+    name: Mitteilungen bei Alarmen
+    description: >-
+      Benachrichtigung, wenn ein Alarm- oder Störungsobjekt auslöst.
+      Ausschalten, wenn du stattdessen mit dem Ereignis knx_monitor_alarm
+      eigene Automationen nutzt.
+  watcher_notifications:
+    name: Mitteilungen bei Wächtern
+    description: >-
+      Benachrichtigung, wenn ein Wächter anschlägt. Ausschalten, wenn du
+      stattdessen mit dem Ereignis knx_monitor_watcher eigene Automationen
+      nutzt.
+  notify_service:
+    name: Benachrichtigungsdienst
+    description: >-
+      Optional: Dienst für Alarm-Mitteilungen, z. B. „notify.mobile_app_iphone“.
+      Leer lassen für eine Benachrichtigung in Home Assistant.
+  dashboard_card:
+    name: Dashboard-Karte
+    description: >-
+      Legt die Karte „KNX Monitor Diagramm“ nach /config/www/knx-monitor/
+      und meldet sie als Dashboard-Ressource an. Sie zeigt die in der App
+      gespeicherten Diagramme. Ausschalten, wenn du die Karte nicht
+      brauchst oder Ressourcen selbst pflegst.

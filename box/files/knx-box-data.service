@@ -1,0 +1,17 @@
+# Data on USB SSD/NVMe if a partition KNXBOXDATA exists, otherwise on the
+# SD card. Runs before the .path units (paths.target) so that they watch the
+# mounted directory and not the one underneath.
+[Unit]
+Description=KNX Monitor Box: Datenpartition einhängen
+DefaultDependencies=no
+After=local-fs.target systemd-udev-trigger.service
+Before=paths.target knx-box.service shutdown.target
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/knx-box/data-mount.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,15 @@
+lead: "Etwas klappt nicht oder du hast eine Idee? Hier findest du Antworten auf häufige Fragen und den Weg zu uns."
+contact_title: "Kontakt"
+contact_text: "Fehler, Fragen und Wünsche meldest du am besten als Issue auf GitHub:"
+contact_mail: "Für alles, was nicht öffentlich sein soll, schreib uns eine E-Mail:"
+checklist_title: "Damit wir schnell helfen können"
+checklist:
+  - "Gerät und Version (z. B. iPhone, iOS 26, KNX Monitor 1.9 oder Home-Assistant-Add-on)"
+  - "Hersteller und Modell deiner KNX-Schnittstelle bzw. deines IP-Routers"
+  - "Was du gemacht hast, was passiert ist und was du erwartet hättest"
+  - "Wenn möglich ein Screenshot. Issues sind öffentlich: bitte kein ETS-Projekt und keine Passwörter hochladen. Gruppenadressen und Projektdetails schickst du am besten als Diagnosepaket per E-Mail, siehe [Feedback](https://knx-monitor.de/feedback/)."
+faq:
+  - q: "Die App findet meine Schnittstelle nicht automatisch."
+    a: "Die Suche nutzt Multicast im lokalen Netz. Gast-WLANs, VLANs oder Mesh-Systeme blockieren das manchmal. Trag die IP-Adresse der Schnittstelle dann von Hand ein. Auf dem iPhone muss außerdem der Zugriff auf das lokale Netzwerk erlaubt sein (Einstellungen → KNX Monitor)."
+  - q: "Der Import meines ETS-Projekts schlägt fehl."
+    a: "Prüfe, ob das Passwort stimmt und ob die Datei vollständig ist (.knxproj direkt aus der ETS exportiert). Alternativ kannst du die Gruppenadressen als CSV aus der ETS exportieren und importieren."

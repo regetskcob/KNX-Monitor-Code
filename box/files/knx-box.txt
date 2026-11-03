@@ -1,0 +1,32 @@
+# KNX Monitor Box – Einstellungen für den ersten Start
+#
+# Vor dem ersten Start ausfüllen oder leer lassen. Leere Werte erzeugt die Box
+# selbst und trägt sie nach dem ersten Start hier ein (SD-Karte am PC lesen).
+# Danach ändern diese Werte nichts mehr. Beim ersten Anmelden verlangt die Box ein
+# eigenes Passwort; es verschwindet dann von dieser Karte. Vergessen? Eine Datei
+# knx-box-reset.txt mit BOX_PASSWORD=… und/oder WLAN_PASSWORD=… hier ablegen und
+# neu starten.
+#
+# Passwörter: 8–63 Zeichen, ohne Leerzeichen, " ' \ $ und `.
+
+# Name der Box, z. B. Baustelle-Sued (Buchstaben, Ziffern, . _ -)
+NAME=
+# WLAN der Box (leer = wie NAME)
+WLAN_SSID=
+WLAN_PASSWORD=
+# Anmeldung im Browser und zum Koppeln von iPad/iPhone
+BOX_PASSWORD=
+# Ländercode fürs WLAN
+COUNTRY=DE
+# yes = Geräte im Box-WLAN dürfen über das LAN-Kabel ins Netz und Internet
+INTERNET_SHARING=no
+# yes = die Box ist auch über das LAN-Kabel erreichbar (eigene Box im eigenen
+# Netz). no = nur im WLAN der Box, so kommt beim Kunden niemand aus dessen Netz
+# an sie heran. Später umschaltbar in der App unter Box-Einstellungen.
+LAN_ACCESS=no
+# yes = nur lesen: Die Box sendet nichts auf den Bus, auch keine Leseanfragen.
+# Aufzeichnung und Auswertung laufen weiter. no = Schreiben aus der App möglich.
+READ_ONLY=no
+# Öffentlicher SSH-Schlüssel für die Wartung als knxadmin, mit sudo
+# (leer = SSH bleibt aus)
+SSH_PUBKEY=

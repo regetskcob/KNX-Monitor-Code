@@ -1,0 +1,209 @@
+{{ define "main" }}
+{{- /*
+  The landing page as a Feldseite (Horizont, docs/web.md): hero with the
+  product on the iPad, the horizon line, numbered sections with facts; the
+  everyday and the expert screens run under their sections.
+  All texts come from data/home/<lang>.yaml.
+*/ -}}
+{{- $d := index site.Data.home site.Language.Lang -}}
+{{- $de := eq site.Language.Lang "de" -}}
+{{- $n := 1 -}}
+
+{{- /* Hero aside: the app on every platform, standing on the horizon
+       (shots from tool/store_shots.sh, the Mac from the goldens); the
+       coded telegram list on the MacBook only while they are missing. */}}
+{{- $aside := partial "horizont/device.html" (dict "device" "laptop" "width" 440 "inner" (partial "knx-telegrams.html" .)) }}
+{{- $shots := dict }}
+{{- range $key, $file := dict "ipad" "hero-ipad" "iphone" "overview-phone" "mac" "desktop-mac" "android" "android-phone" }}
+  {{- with resources.Get (printf "images/screens/%s.png" $file) }}{{ $shots = merge $shots (dict $key .) }}{{ end }}
+{{- end }}
+{{- if eq (len $shots) 4 }}
+  {{- $aside = partial "knx-devices.html" (dict "shots" $shots "alt" $d.hero.screen_alt) }}
+{{- end }}
+{{- /* Own markup on the module's classes (horizont/feld/hero.html): the
+       actions sit at the top of the right column, the scene stands on the
+       horizon below them, so the left column holds only the words. */}}
+<section class="hz-feld-hero knx-hero">
+  <div>
+    {{ partial "horizont/kennung.html" $d.hero.kennung }}
+    <h1 class="t-display">{{ $d.hero.title }}</h1>
+    <p>{{ $d.hero.lead | markdownify }}</p>
+  </div>
+  <div class="knx-hero-aside">
+    <div class="hz-feld-actions">
+      <a class="hz-button hz-button--primary" href="{{ site.Params.desktopUrl }}">{{ $d.hero.primary }}{{ partial "horizont/symbol.html" "arrow_forward" }}</a>
+      <a class="hz-button hz-button--secondary" href="#home-assistant">{{ $d.hero.secondary }}</a>
+    </div>
+    {{ $aside | safeHTML }}
+  </div>
+</section>
+<hr class="hz-feld-horizon">
+
+{{- /* Highlights: the strongest screens large, in the MacBook, each with
+       its words (test/highlight_shots_test.dart renders them). */}}
+{{- with $d.highlights }}
+{{- $n = add $n 1 }}
+{{ partial "horizont/feld/section.html" (dict "id" "highlights" "kennung" (printf "%02d — %s" $n .label) "title" .title "text" .text) }}
+<div class="knx-extend knx-highlights">
+  {{- range $i, $h := .items }}
+  {{- with resources.Get (printf "images/highlights/%s" $h.file) }}
+  <article class="knx-highlight">
+    <div class="knx-highlight-text">
+      {{ partial "horizont/kennung.html" $h.term }}
+      <h3>{{ $h.title }}</h3>
+      <p>{{ $h.text | markdownify }}</p>
+    </div>
+    {{ partial "horizont/device.html" (dict "device" "laptop" "width" 1100 "image" . "alt" $h.title) }}
+  </article>
+  {{- end }}
+  {{- end }}
+</div>
+{{- end }}
+
+{{- /* Features: the everyday tools, each with its term, and their screens. */}}
+{{- $n = add $n 1 }}
+{{- $facts := slice }}
+{{- range $d.features.items }}{{ $facts = $facts | append (dict "term" .term "value" (printf "**%s.** %s" .title (partial "live.html" (dict "ctx" . "key" "text")))) }}{{ end }}
+{{ partial "section-shots.html" (dict "id" "features" "kennung" (printf "%02d — %s" $n $d.features.label) "title" $d.features.title "text" $d.features.lead "facts" $facts "group" "everyday") }}
+
+{{- with $d.features.more }}
+{{- $n = add $n 1 }}
+{{- $facts = slice }}
+{{- range .points }}{{ $facts = $facts | append (dict "term" .term "value" (partial "live.html" (dict "ctx" . "key" "value"))) }}{{ end }}
+{{ partial "horizont/feld/section.html" (dict "id" "more" "kennung" (printf "%02d — %s" $n .label) "title" .title "facts" $facts) }}
+{{- end }}
+
+{{- /* Expert mode: everything one switch adds, and its screens. */}}
+{{- $n = add $n 1 }}
+{{- $facts = slice }}
+{{- range $d.expert.points }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}
+{{ partial "section-shots.html" (dict "id" "expert" "kennung" (printf "%02d — %s" $n $d.expert.label) "title" $d.expert.title "text" (partial "live.html" (dict "ctx" $d.expert "key" "text")) "facts" $facts "group" "expert") }}
+
+{{- /* Pricing: Free, Plus, Pro side by side (one column each, a row per
+       feature); the add-on, Linux and Windows as facts. Only with
+       site.Params.commerce (the preview) – no prices in public yet. */}}
+{{- with and site.Params.commerce $d.pricing }}
+{{- $n = add $n 1 }}
+{{- $facts = slice }}
+{{- range .others }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}
+{{ partial "horizont/feld/section.html" (dict "id" "pricing" "kennung" (printf "%02d — %s" $n .label) "title" .title "text" .text "facts" $facts) }}
+{{- $plans := .plans }}
+<div class="knx-extend knx-plans-wrap">
+  <table class="knx-plans">
+    <thead>
+      <tr>
+        <td></td>
+        {{- range $plans }}
+        <th scope="col"{{ if eq .name "Pro" }} class="knx-plans-pro"{{ end }}>
+          <span class="knx-plans-name">{{ .name }}</span>
+          <span class="knx-plans-price"><span class="knx-long">{{ .price }}</span><span class="knx-short">{{ .short }}</span></span>
+          <span class="knx-plans-sub">{{ .sub }}</span>
+        </th>
+        {{- end }}
+      </tr>
+    </thead>
+    {{- range .groups }}
+    <tbody>
+      <tr class="knx-plans-group"><th scope="rowgroup" colspan="4">{{ .title }}</th></tr>
+      {{- range .rows }}
+      {{- $row := . }}
+      <tr>
+        <th scope="row">{{ .label }}</th>
+        {{- range $key := slice "free" "plus" "pro" }}
+        {{- $v := index $row $key }}
+        <td{{ if eq $key "pro" }} class="knx-plans-pro"{{ end }}>
+          {{- if eq $v true }}{{ partial "horizont/symbol.html" "check" }}<span class="knx-sr">{{ cond $de "enthalten" "included" }}</span>
+          {{- else if eq $v false }}<span class="knx-plans-no" aria-label="{{ cond $de "nicht enthalten" "not included" }}">–</span>
+          {{- else if eq $v (cond $de "unbegrenzt" "unlimited") }}<span class="hz-mono"><span class="knx-long">{{ $v }}</span><span class="knx-short" aria-hidden="true">∞</span></span>
+          {{- else }}<span class="hz-mono">{{ $v }}</span>{{ end -}}
+        </td>
+        {{- end }}
+      </tr>
+      {{- end }}
+    </tbody>
+    {{- end }}
+  </table>
+</div>
+{{- end }}
+
+{{- /* The ETS project: group addresses become names. */}}
+{{- $n = add $n 1 }}
+{{- $rows := cond $de
+  (slice (slice "1/2/3" "Wohnzimmer Decke Licht – Ein" "Ein") (slice "1/2/4" "Wohnzimmer Decke Licht – Status" "Ein") (slice "3/1/10" "Küche Temperatur Ist" "21,4 °C") (slice "2/0/7" "Bad Rollladen Position" "35 %") (slice "4/0/1" "Zähler Wirkleistung" "1,82 kW"))
+  (slice (slice "1/2/3" "Living room ceiling light – On" "On") (slice "1/2/4" "Living room ceiling light – Status" "On") (slice "3/1/10" "Kitchen temperature actual" "21.4 °C") (slice "2/0/7" "Bathroom blind position" "35 %") (slice "4/0/1" "Meter active power" "1.82 kW")) }}
+{{- $facts = slice }}
+{{- range $rows }}{{ $facts = $facts | append (dict "term" (index . 0) "value" (printf "%s <span class=\"hz-mono knx-value\">%s</span>" (index . 1) (index . 2))) }}{{ end }}
+{{ partial "horizont/feld/section.html" (dict "id" "ets" "kennung" (printf "%02d — %s" $n $d.etsproject.label) "title" $d.etsproject.title "text" $d.etsproject.text "facts" $facts) }}
+
+{{- /* Connection: KNXnet/IP, project, no account. */}}
+{{- $n = add $n 1 }}
+{{- $facts = slice }}
+{{- range $d.facts }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}
+{{ partial "horizont/feld/section.html" (dict "id" "connection" "kennung" (printf "%02d — %s" $n $d.connection.label) "title" $d.connection.title "text" $d.hero.note "facts" $facts) }}
+
+{{- /* Setups: app, Home Assistant, the box. */}}
+{{- $n = add $n 1 }}
+{{- $facts = slice }}
+{{- range $d.setup.items }}
+  {{- $v := printf "**%s.** %s" .title .text }}
+  {{- with .tag }}{{ $v = printf "%s %s" (partial "horizont/badge.html" (dict "status" "info" "label" .)) $v }}{{ end }}
+  {{- with .link }}{{ $v = printf "%s [%s](%s)" $v .label (index site.Params (lower .param)) }}{{ end }}
+  {{- $facts = $facts | append (dict "term" .term "value" $v) }}
+{{- end }}
+{{ partial "horizont/feld/section.html" (dict "id" "setup" "kennung" (printf "%02d — %s" $n $d.setup.label) "title" $d.setup.title "facts" $facts) }}
+
+{{- /* Install the Home Assistant add-on, step by step. */}}
+{{- $n = add $n 1 }}
+{{- $facts = slice }}
+{{- range $d.ha.steps }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}
+{{- $facts = $facts | append (dict "term" $d.ha.copy_hint "value" (printf "<code class=\"knx-code\">%s</code>" site.Params.haRepoUrl)) }}
+{{ partial "horizont/feld/section.html" (dict "id" "home-assistant" "kennung" (printf "%02d — %s" $n (cond $de "Home Assistant" "Home Assistant")) "title" $d.ha.title "text" (index $d.setup.items 1).text "facts" $facts) }}
+
+{{- /* The KNX box: its own section with the Pi drawn below. */}}
+{{- $n = add $n 1 }}
+{{- $facts = slice }}
+{{- range $d.box.points }}{{ if or site.Params.commerce (not .commerce) }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}{{ end }}
+{{- $facts = $facts | append (dict "term" (cond $de "Stand" "Status") "value" (printf "%s [%s](%s)" (partial "horizont/badge.html" (dict "status" "info" "label" $d.box.tag)) $d.box.link site.Params.boxUrl)) }}
+{{- $text := $d.box.text }}
+{{- with site.GetPage "/box" }}{{ $text = printf "%s [%s](%s)" $text $d.box.more .RelPermalink }}{{ end }}
+{{ partial "horizont/feld/section.html" (dict "id" "box" "kennung" (printf "%02d — %s" $n $d.box.label) "title" $d.box.title "text" $text "facts" $facts) }}
+<div class="knx-extend knx-box">{{ partial "knx-pi.html" . }}</div>
+
+{{- /* Privacy. */}}
+{{- $n = add $n 1 }}
+{{- $facts = slice }}
+{{- range $d.privacy.points }}{{ if or site.Params.commerce (not .commerce) }}{{ $facts = $facts | append (dict "term" .term "value" (partial "live.html" (dict "ctx" . "key" "value"))) }}{{ end }}{{ end }}
+{{- $text := partial "live.html" (dict "ctx" $d.privacy "key" "text") }}
+{{- with site.GetPage "/datenschutz" }}{{ $text = printf "%s [%s](%s)" $text $d.privacy.more .RelPermalink }}{{ end }}
+{{ partial "horizont/feld/section.html" (dict "id" "privacy" "kennung" (printf "%02d — %s" $n $d.privacy.label) "title" $d.privacy.title "text" $text "facts" $facts) }}
+
+{{- /* Have your say: planned features as public issues, votes by 👍. */}}
+{{- $n = add $n 1 }}
+{{- $facts = slice }}
+{{- range $d.mitreden.points }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}
+{{- $text = printf "%s [%s](%s/issues)" $d.mitreden.text $d.mitreden.more site.Params.githubUrl }}
+{{ partial "horizont/feld/section.html" (dict "id" "mitreden" "kennung" (printf "%02d — %s" $n $d.mitreden.label) "title" $d.mitreden.title "text" $text "facts" $facts) }}
+
+{{- /* FAQ. */}}
+{{- $n = add $n 1 }}
+{{- $text = "" }}
+{{- with site.GetPage "/support" }}{{ $text = printf "[%s](%s)" (i18n "faq_more") .RelPermalink }}{{ end }}
+{{ partial "horizont/feld/section.html" (dict "id" "faq" "kennung" (printf "%02d — %s" $n $d.faq.label) "title" $d.faq.title "text" $text) }}
+{{- $faq := slice }}
+{{- range $d.faq.items }}{{ if or site.Params.commerce (not .commerce) }}{{ $faq = $faq | append . }}{{ end }}{{ end }}
+<div class="knx-extend">{{ partial "faq.html" $faq }}</div>
+
+{{- /* Where to get it: stores, desktop, add-on. */}}
+{{- $n = add $n 1 }}
+{{- $b := $d.hero.badges }}
+{{- $facts = slice }}
+{{- range slice (dict "key" "appstore" "url" site.Params.appStoreUrl) (dict "key" "play" "url" site.Params.playStoreUrl) (dict "key" "desktop" "url" site.Params.desktopUrl) (dict "key" "ha" "url" "#home-assistant") }}
+  {{- $t := index $b .key }}
+  {{- if eq .url "#" }}
+  {{- $facts = $facts | append (dict "term" $t.term "value" (partial "horizont/badge.html" (dict "status" "neutral" "label" $d.get.soon))) }}
+  {{- else }}
+  {{- $facts = $facts | append (dict "term" $t.term "value" (printf "[%s %s](%s)" $t.small $t.label .url)) }}
+  {{- end }}
+{{- end }}
+{{ partial "horizont/feld/section.html" (dict "id" "get" "kennung" (printf "%02d — %s" $n $d.get.label) "title" $d.cta.title "text" $d.cta.text "facts" $facts) }}
+{{ end }}

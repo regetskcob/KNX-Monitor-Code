@@ -1,0 +1,17 @@
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-top">
+      <a class="brand" href="{{ site.Home.RelPermalink }}">
+        <img src="{{ "icon-192.png" | relURL }}" alt="" width="32" height="32" loading="lazy">
+        <span>{{ site.Title }}</span>
+      </a>
+      <ul class="footer-links">
+        {{- with site.GetPage "/datenschutz" }}<li><a href="{{ .RelPermalink }}">{{ i18n "privacy" }}</a></li>{{ end }}
+        <li><a href="{{ site.Params.legalUrl }}" hreflang="de">{{ i18n "imprint" }}</a></li>
+        {{- with site.GetPage "/support" }}<li><a href="{{ .RelPermalink }}">{{ i18n "support" }}</a></li>{{ end }}
+        <li><a href="{{ site.Params.githubUrl }}" rel="noopener">{{ i18n "github" }}</a></li>
+      </ul>
+    </div>
+    <small>© {{ now.Year }} {{ site.Title }}. {{ i18n "footer_note" }}</small>
+  </div>
+</footer>

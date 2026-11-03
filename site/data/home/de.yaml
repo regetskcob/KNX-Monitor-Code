@@ -1,0 +1,248 @@
+hero:
+  tagline: "KNX-Busmonitor & Diagnose"
+  kennung: "01 — Busmonitor & Diagnose · iPhone · iPad · Android · Mac · Windows · Linux · Home Assistant"
+  title: "Sieh, was auf deinem KNX-Bus passiert."
+  lead: "KNX Monitor zeigt jedes Telegramm, ordnet es mit deinem ETS-Projekt ein und prüft deine Anlage auf stille Sensoren, falsche Datentypen und Busprobleme. Auf iPhone, iPad, Android, am Desktop und in Home Assistant."
+  note: "Verbindet sich per KNXnet/IP mit deiner IP-Schnittstelle oder deinem IP-Router, auch mit KNX Secure. Du brauchst kein Konto, und deine Anlagendaten verlassen dein Netzwerk nur, wenn du sie selbst teilst."
+  primary: "Für Linux laden"
+  secondary: "Als Add-on installieren"
+  screen_alt: "KNX Monitor auf iPad, iPhone, Mac und Android: Übersicht, Live-Telegramme und Werte aus dem Demo-Haus"
+  badges:
+    appstore: { term: "App Store", small: "Laden im", label: "App Store" }
+    play: { term: "Google Play", small: "Jetzt bei", label: "Google Play" }
+    desktop: { term: "Desktop", small: "Download für", label: "Linux" }
+    ha: { term: "Add-on", small: "Installieren als", label: "Home Assistant Add-on" }
+
+highlights:
+  label: "Highlights"
+  title: "Deine Anlage, wie du sie noch nie gesehen hast."
+  text: "Aus Gruppenadressen werden Geräte, Räume und Verläufe: alles, was dein ETS-Projekt weiß, verbunden mit dem, was gerade auf dem Bus passiert."
+  items:
+    - file: topology.png
+      term: "Topologie"
+      title: "Der Schaltschrank, live."
+      text: "Linien, Koppler und jedes Gerät, wie es im Verteiler sitzt: Aktoren mit Kanal-LEDs, Taster, Melder und Wetterstation. Jedes Telegramm läuft als Puls über das Buskabel, links der Gerätebaum wie in der ETS."
+    - file: overview.png
+      term: "Übersicht"
+      title: "Jede Adresse mit ihrem Wert."
+      text: "Karten nach Funktionen und Räumen aus deinem Projekt, mit Mini-Verlauf und Durchschnitt; Alarme und Störungen ganz oben. Werkzeuge stehen in der Seitenleiste daneben."
+    - file: charts.png
+      term: "Diagramme"
+      title: "Vergleichen, was zusammengehört."
+      text: "Temperaturen und Stellwerte auf einer Achse je Einheit, Schaltzustände als eigene Zeilen darunter, mit einem Fadenkreuz über alles. Vorbereitet mit Projektadressen, bevor das erste Telegramm kommt."
+
+facts:
+  - { term: "KNXnet/IP", value: "Tunneling, Routing und KNX Secure" }
+  - { term: ".knxproj", value: "ETS-Projekte inkl. ETS6 mit Passwort" }
+  - { term: "0", value: "Tracker; kein Konto, Projekt und Telegramme bleiben bei dir" }
+
+connection:
+  label: "Verbindung"
+  title: "Direkt an deine IP-Schnittstelle."
+
+header:
+  kennung: "Busmonitor & Diagnose · alle Plattformen"
+  text: "Jedes Telegramm live, dein ETS-Projekt als Klartext, und im Expertenmodus die ganze Werkstatt."
+
+
+features:
+  label: "Funktionen"
+  title: "Alles, was du am Bus brauchst."
+  lead: "Ohne Expertenmodus bleibt die App schlank: die Werte, die Telegramme und eine Prüfung der Anlage."
+  items:
+    - term: "Übersicht"
+      title: "Übersicht & Favoriten"
+      text: "Jede Gruppenadresse als Karte mit aktuellem Wert und Mini-Verlauf, sortiert nach Räumen und Funktionen aus deinem Projekt. Diagramme speicherst du je Anlage, sie stehen als eigener Abschnitt in der Übersicht."
+    - term: "Telegramme"
+      title: "Live-Telegramme"
+      text: "Jedes Telegramm mit Absender, Ziel, Wert und Auffälligkeiten. Suche in der Titelleiste, ein Filterknopf mit Zählern, Werte lesen und schreiben. Schreiben ist ein Eingriff in die Anlage und geschieht auf deine Verantwortung."
+    - term: "Objekte"
+      title: "Räume & Objekte"
+      text: "Befehle und Rückmeldungen automatisch zusammengefasst, Aktoren als Hutschienengeräte mit Kanal-LEDs."
+    - term: "Gesundheit"
+      title: "Gesundheit"
+      text: "Liest Status-Adressen, meldet verstummte Geräte und prüft Zyklen, Werte, Datentypen und Busqualität. Mit PDF-Bericht."
+    - term: "Aufnahmen"
+      title: "Aufnahmen & Verlauf"
+      text: "Aufnehmen mit Name und Notiz; langes Drücken nimmt die letzten 10 Sekunden mit. Vor dem Abspielen Werte ändern, Telegramme entfernen, als Kopie speichern; Wiedergabe mit Zeitleiste je Gruppenadresse, 1–60×. Mit Plus dazu Langzeitverlauf und Statistik mit Aktivitäts-Heatmap."
+      text_live: "Aufnehmen mit Name und Notiz; langes Drücken nimmt die letzten 10 Sekunden mit. Vor dem Abspielen Werte ändern, Telegramme entfernen, als Kopie speichern; Wiedergabe mit Zeitleiste je Gruppenadresse, 1–60×. Dazu Langzeitverlauf und Statistik mit Aktivitäts-Heatmap."
+    - term: "Secure"
+      title: "KNX Secure & Routing"
+      text: "Tunnel über UDP oder TCP, Routing per Multicast, KNX IP Secure und Data Secure mit dem Keyring aus der ETS."
+  more:
+    label: "Außerdem"
+    title: "Und was sonst am Bus hilft."
+    points:
+      - { term: "Kommentare", value: "An Telegrammen, Diagrammen und Aufnahmen, mit bis zu drei Bildschirmfotos" }
+      - { term: "Exporte", value: "Eine Seite für alles: Telegramme als CSV und einfaches PDF in jeder Stufe, ab Plus volles PDF und ETS-Datei, Berichte und ein ZIP mit allem", value_live: "Eine Seite für alles: Telegramme als PDF, CSV und für die ETS, Berichte und ein ZIP mit allem" }
+      - { term: "Fehler", value: "**Problem melden:** Fehler nachstellen, jedes Auftreten antippen, das Diagnosepaket geht an den Elektriker; beim Öffnen zeigt es Befunde und Hinweise. Für den Support auf Wunsch ohne Namen" }
+      - { term: "Einstieg", value: "**Ohne ETS-Projekt anlernen:** Taster drücken, benennen, fertig. Ohne Expertenmodus zeigt die Live-Liste jedes Telegramm als Satz; dazu Verbindungshilfe, Ampel mit Wochenbericht und „KNX lernen“" }
+      - { term: "Sicherung", value: "**Alles in einer Datei** mit eigenem Passwort, in den Apps ab Version 1.9.1" }
+      - { term: "Demo", value: "Demo-Haus zum Ausprobieren ohne Anlage" }
+      - { term: "Sprachen", value: "Deutsch und Englisch" }
+
+expert:
+  label: "Expertenmodus"
+  title: "Ein Schalter, und die ganze Werkstatt ist da."
+  text: "Für Inbetriebnahme, Fehlersuche und Übergabe. Den Expertenmodus schaltest du auf dem Verbindungsbildschirm oder ganz unten im Menü ein; im Home-Assistant-Add-on ist er von Anfang an an. Ohne ihn geht nichts verloren, die Werkzeuge bleiben nur aus dem Weg. Diagramme und Alarm-Mitteilungen gehören zu Plus, Busmonitor, Diagnose, Inbetriebnahme, Topologie und zyklisches Senden zu Pro; im Demo-Haus probierst du alle aus."
+  text_live: "Für Inbetriebnahme, Fehlersuche und Übergabe. Den Expertenmodus schaltest du auf dem Verbindungsbildschirm oder ganz unten im Menü ein; im Home-Assistant-Add-on ist er von Anfang an an. Ohne ihn geht nichts verloren, die Werkzeuge bleiben nur aus dem Weg. Im Demo-Haus probierst du alle Werkzeuge aus."
+  points:
+    - { term: "Busmonitor", value: "**Rohframes** mit ACK/NAK, Wiederholungen und Buslast" }
+    - { term: "Checkliste", value: "**Inbetriebnahme:** Checkliste aller Status-Adressen, Antworten werden abgehakt, PDF-Protokoll mit Unterschriftsfeld" }
+    - { term: "Diagnose", value: "**Status lesen**, Programmiermodus finden, Adressen prüfen, Linien scannen" }
+    - { term: "Topologie", value: "**Karte und Topologie:** wer mit wem spricht, Linien, Koppler und Kopplerverkehr, Tunnel" }
+    - { term: "Abgleich", value: "**Busverkehr gegen ETS-Projekt:** was fehlt, was unbekannt ist, was nie sendet; dazu die Flags der Objekte (Ü, L, K) schon ohne Busverkehr" }
+    - { term: "Diagramme", value: "**Bis zu acht Adressen**, eine Achse je Einheit, gespeichert je Anlage" }
+    - { term: "Trigger", value: "**Trigger-Aufnahme** für sporadische Fehler: startet bei Wert, Störung, Wiederholung oder unbeantworteter Leseanfrage, mit Vorlauf" }
+    - { term: "Senden", value: "**Wie im ETS-Gruppenmonitor:** verzögert und zyklisch, mehr Datentypen (Text, Zeit, Datum, Farbe …), Datentyp je Adresse festlegen" }
+    - { term: "Wiedergabe", value: "**Aufnahme auf den Bus spielen:** Adressen wählen, Werte ändern, Pausen kürzen, dann ausdrücklich bestätigen" }
+    - { term: "Hop-Count", value: "**Eigene Spalte** in der Live-Liste, Hinweis bei ungewöhnlichem Routing-Zähler, Einbauort beim Absender" }
+    - { term: "Verbindung", value: "**Port, Tunneladresse,** Verbindungsoptionen und Keyring direkt beim Verbinden" }
+    - { term: "Alarme", value: "**Alarm-Mitteilungen**, sobald ein Alarm- oder Störungsobjekt auslöst" }
+    - { term: "Abnahme", value: "**Durchklingeln mit Klangquittung** und Abnahmeprotokoll mit Unterschrift auf dem Gerät" }
+    - { term: "Fehlerjagd", value: "**Sporadische Fehler** über Tage fangen, mit der KNX-Box" }
+    - { term: "Fotodoku", value: "**Fotos des Verteilers** und Etiketten mit QR-Code, je Anlage" }
+
+pricing:
+  label: "Preise"
+  title: "Kostenlos starten, bezahlen, wenn es Arbeit spart."
+  text: "Free reicht für den Blick auf die eigene Anlage. Plus ist für alle, die ihr Zuhause genauer verstehen wollen, Pro für Inbetriebnahme und Fehlersuche. Im Demo-Haus probierst du alles aus, auch Pro. Gekauft wird im App Store oder bei Google Play, auf iPhone, iPad und Mac gilt ein Kauf überall."
+  plans:
+    - { name: "Free", short: "0 €", price: "Kostenlos", sub: "Für den Blick auf die eigene Anlage" }
+    - { name: "Plus", short: "24,99 €", price: "24,99 € im Jahr", sub: "oder 79 € einmalig · zum genauer Verstehen" }
+    - { name: "Pro", short: "149 €", price: "149 € im Jahr", sub: "oder 14,99 € im Monat, mit Probezeit · für Inbetriebnahme und Fehlersuche" }
+  groups:
+    - title: "Monitor"
+      rows:
+        - { label: "Live-Telegramme, Übersicht und Objekte", free: true, plus: true, pro: true }
+        - { label: "Werte lesen und schreiben", free: true, plus: true, pro: true }
+        - { label: "ETS-Projekt, KNX IP Secure und Data Secure", free: true, plus: true, pro: true }
+        - { label: "Gesundheitsprüfung mit PDF-Bericht", free: true, plus: true, pro: true }
+        - { label: "Kommentare mit Bildschirmfotos, Problem melden", free: true, plus: true, pro: true }
+        - { label: "Rückblick im Monitor", free: "1 Stunde", plus: "unbegrenzt", pro: "unbegrenzt" }
+        - { label: "Aufnahmen", free: "1", plus: "unbegrenzt", pro: "unbegrenzt" }
+        - { label: "Installationen", free: "1", plus: "3", pro: "unbegrenzt" }
+    - title: "Verstehen"
+      rows:
+        - { label: "Wächter mit Ton und Mitteilung", free: false, plus: true, pro: true }
+        - { label: "Langzeitverlauf", free: false, plus: true, pro: true }
+        - { label: "Diagramme", free: false, plus: true, pro: true }
+        - { label: "Statistik mit Aktivitäts-Heatmap", free: false, plus: true, pro: true }
+        - { label: "Alarm-Mitteilungen", free: false, plus: true, pro: true }
+        - { label: "Telegramme als CSV und einfaches PDF", free: true, plus: true, pro: true }
+        - { label: "Volle Exporte: PDF, ETS-Datei, ZIP", free: false, plus: true, pro: true }
+    - title: "Inbetriebnahme & Fehlersuche"
+      rows:
+        - { label: "Busmonitor mit Quittungen und Buslast", free: false, plus: false, pro: true }
+        - { label: "Topologie und Kommunikationskarte", free: false, plus: false, pro: true }
+        - { label: "Diagnose: Status lesen, Programmiermodus, Linien scannen", free: false, plus: false, pro: true }
+        - { label: "Inbetriebnahme mit PDF-Protokoll", free: false, plus: false, pro: true }
+        - { label: "Projekt-Abgleich", free: false, plus: false, pro: true }
+        - { label: "Trigger-Aufnahme", free: false, plus: false, pro: true }
+        - { label: "Verzögert und zyklisch senden", free: false, plus: false, pro: true }
+        - { label: "Wiedergabe auf den Bus", free: false, plus: false, pro: true }
+        - { label: "KNX-Box koppeln", free: false, plus: false, pro: true }
+  # Neben den drei Stufen: was überall gleich bleibt.
+  others:
+    - { term: "Add-on", value: "**Kostenlos für eine Installation.** Das Home-Assistant-Add-on bleibt frei, mit allen Werkzeugen und Langzeitverlauf." }
+    - { term: "Linux", value: "**Dauerhaft kostenlos für eine Installation.**" }
+    - { term: "Windows", value: "Käufe kommen später." }
+
+etsproject:
+  label: "ETS-Projekt"
+  title: "Dein Projekt macht die Telegramme lesbar."
+  text: "Importiere dein ETS-Projekt (.knxproj, auch passwortgeschützt) oder den CSV-Export der Gruppenadressen. KNX Monitor übernimmt Namen, Datenpunkttypen, Geräte, Räume und Verknüpfungen. Aus 1/2/3 wird „Wohnzimmer Decke Licht – Ein“."
+
+setup:
+  label: "Einsatz"
+  title: "Am Handy, am Desktop oder im Smart Home."
+  items:
+    - term: "App"
+      title: "App"
+      text: "Für iPhone, iPad und Mac aus dem App Store, für Android, dazu Windows und Linux. Verbinden, Projekt laden, loslegen – für die Inbetriebnahme oder den schnellen Blick zwischendurch."
+    - term: "Home Assistant"
+      id: home-assistant
+      title: "Home-Assistant-Add-on"
+      text: "Läuft in der Seitenleiste und zeichnet rund um die Uhr auf, auch ohne offenen Browser. Alle Ansichten teilen sich einen Tunnel, Alarme kommen als Benachrichtigung."
+
+box:
+  label: "KNX-Box"
+  title: "Ein Raspberry Pi, der auf der Baustelle mithört."
+  text: "Die KNX-Box zeichnet tagelang auf, ohne Home Assistant und ohne Internet, und spannt ein eigenes WLAN auf. Eingerichtet wird sie mit der App: QR-Code vom Aufkleber scannen, den Rest erledigt die App."
+  tag: "Vorschau"
+  points:
+    - { term: "Einrichten", value: "Scannen, und die App tritt dem WLAN bei, koppelt sich, stellt die Uhr und findet das Gateway" }
+    - { term: "App", value: "Ohne App bleibt nur der Browser. Bis iPhone, iPad und Android erscheinen, koppelst du die Box mit der [Linux-App](https://github.com/regetskcob/KNX-Monitor/releases/latest)" }
+    - { term: "Anschluss", value: "Per Netzwerkkabel am IP-Gateway oder direkt an der Linie mit dem Aufsteckmodul kBerry, dann ohne Gateway" }
+    - { term: "Uhr", value: "Ohne Internet: vom iPhone oder iPad oder vom KNX-Zeitgeber auf der Linie" }
+    - { term: "Aufnahme", value: "Rund um die Uhr, auch über Tage; Projekt und Verlauf teilen sich App und Box" }
+    - { term: "Pro", value: "Die Box mit der App koppeln gehört zu Pro", commerce: true }
+  more: "Einrichten, Anschluss, Aufnahme: alles zur KNX-Box"
+  link: "Image für den Raspberry Pi"
+
+ha:
+  title: "Add-on installieren"
+  steps:
+    - { term: "Schritt 1", value: "Öffne in Home Assistant **Einstellungen → Add-ons → Add-on Store**." }
+    - { term: "Schritt 2", value: "Wähle oben rechts **⋮ → Repositories** und füge diese Adresse hinzu:" }
+    - { term: "Schritt 3", value: "Installiere **KNX Monitor**, starte es und aktiviere **In Seitenleiste anzeigen**." }
+  copy_hint: "Repository-URL"
+
+privacy:
+  label: "Datenschutz"
+  title: "Deine Daten gehören dir."
+  text: "KNX Monitor arbeitet in deinem Netz und speichert auf deinen Geräten. Wir haben die Systeme deutlich gehärtet, die Kontrolle bleibt bei dir: Du brauchst kein Konto, und die App schickt Projekt, Telegramme und Schlüssel von sich aus an niemanden. In den Store-Versionen fragt sie RevenueCat nach deinem Kaufstand, auch wenn du nichts gekauft hast; das Konto gibt es für Käufe, nicht für deine Anlage."
+  text_live: "KNX Monitor arbeitet in deinem Netz und speichert auf deinen Geräten. Wir haben die Systeme deutlich gehärtet, die Kontrolle bleibt bei dir: Du brauchst kein Konto, und die App schickt Projekt, Telegramme und Schlüssel von sich aus an niemanden."
+  points:
+    - { term: "Lokal", value: "Projekt, Telegramme, Aufnahmen und Schlüssel liegen auf deinem Gerät, deiner Box oder deinem Home Assistant, nicht bei uns. Das Passwort deines ETS-Projekts wird nicht gespeichert" }
+    - { term: "Tracking", value: "Keine Analyse- und Werbebibliotheken, kein Tracking" }
+    - { term: "Verschlüsselt", value: "Ab Version 1.9.1 verschlüsseln die Apps ihre Dateien mit AES-256-GCM, der Schlüssel liegt im Schlüsselbund des Systems. Ohne nutzbaren Schlüsselbund (Linux ohne libsecret) und bei Einstellungen wie dem Gateway bleibt es unverschlüsselt; Add-on und Box verschlüsseln ihre Dateien nicht selbst" }
+    - { term: "App-Sperre", value: "Auf Wunsch mit Face ID, Fingerabdruck, Windows Hello, Gerätecode oder App-Passwort samt Notfallschlüssel als PDF. Das hilft, wenn das Gerät in falsche Hände gerät, nicht gegen Schadsoftware unter deinem Benutzerkonto" }
+    - { term: "Sicherung", value: "In den Apps in jeder Stufe: alles in eine Datei mit eigenem Passwort, das Format ist offen beschrieben. Das Passwort kann niemand zurücksetzen, auch wir nicht", value_live: "In den Apps: alles in eine Datei mit eigenem Passwort, das Format ist offen beschrieben. Das Passwort kann niemand zurücksetzen, auch wir nicht" }
+    - { term: "Ohne Internet", value: "Add-on und Box brauchen kein Internet. Daten gehen nur an Ziele, die du selbst einrichtest" }
+    - { term: "Netzwerk", value: "Die App spricht mit deinem Gateway und deiner KNX-Box. Ausnahmen: Käufe (App Store bzw. Google Play und RevenueCat, mit zufälliger Kennung) und der QR-Scanner unter Android (technische Daten an Google ML Kit)", value_live: "Die App spricht mit deinem Gateway und deiner KNX-Box. Ausnahme: Der QR-Scanner unter Android sendet technische Daten an Google ML Kit, nie das Kamerabild" }
+  more: "Datenschutzerklärung lesen"
+
+mitreden:
+  label: "Mitreden"
+  title: "Was als Nächstes kommt, entscheidest du mit."
+  text: "Geplante Funktionen stehen offen als Issues auf GitHub, mit Ziel, Umfang und offenen Fragen. Bevor etwas gebaut wird, zählt, wer es wirklich nutzen würde. Ein 👍 ist eine Stimme, ein Kommentar zu deiner Anlage hilft oft noch mehr. Deutsch ist ausdrücklich willkommen."
+  points:
+    - { term: "Abstimmen", value: "[Geplante Funktionen ansehen](https://github.com/regetskcob/KNX-Monitor/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement+sort%3Areactions-%2B1-desc) und mit 👍 zeigen, was du brauchst. Die meistgewünschten kommen zuerst." }
+    - { term: "Mitreden", value: "Erzähl im Kommentar, wie du heute arbeitest und welche Geräte du einsetzt. Daraus wird oft der Umfang, manchmal auch ein Test mit deiner Anlage." }
+    - { term: "Vorschlagen", value: "Fehlt etwas oder hakt etwas? [Fehler melden oder Wunsch einreichen](https://github.com/regetskcob/KNX-Monitor/issues/new/choose)." }
+    - { term: "Gerade offen", value: "Zum Beispiel [DALI-Beleuchtung über KNX](https://github.com/regetskcob/KNX-Monitor/issues/6), [ein eigener ioBroker-Adapter](https://github.com/regetskcob/KNX-Monitor/issues/3) oder [eine eigene Home-Assistant-Integration](https://github.com/regetskcob/KNX-Monitor/issues/2)." }
+    - { term: "Bitte nicht", value: "ETS-Projekte oder komplette Aufnahmen öffentlich anhängen: Sie können Adressen, Raumnamen und Passwörter enthalten. Ein kurzer Auszug als Text reicht." }
+  more: "Alle Issues auf GitHub"
+
+faq:
+  label: "FAQ"
+  title: "Häufige Fragen"
+  items:
+    - q: "Kann ich die App ohne KNX-Anlage ausprobieren?"
+      a: "Ja. „Demo ohne Anlage ansehen“ auf dem Startbildschirm öffnet ein Musterhaus mit Projekt und Live-Werten. Dein eigenes Projekt bleibt unberührt."
+    - commerce: true
+      q: "Was kostet KNX Monitor?"
+      a: "Die App ist kostenlos und bleibt für den Alltag nützlich. Plus kostet 24,99 € im Jahr oder 79 € einmalig, Pro 149 € im Jahr oder 14,99 € im Monat, mit Probezeit. Das Home-Assistant-Add-on und die Linux-Version sind dauerhaft frei. Im Demo-Haus kannst du vorher alles ausprobieren, auch Pro. Ein Abo kündigst du jederzeit in deinem App-Store- bzw. Google-Play-Konto."
+    - q: "Welche KNX-Schnittstellen werden unterstützt?"
+      a: "Jede KNXnet/IP-Schnittstelle und jeder IP-Router, etwa ein Gira X1. Getunnelt wird über UDP oder TCP; mit einem IP-Router geht auch Routing, das keinen Tunnel belegt (auf iPhone und iPad noch nicht, dort braucht Multicast eine Freigabe von Apple). USB- und serielle Schnittstellen werden nicht unterstützt."
+    - q: "Warum kann ich keine Verbindung aufbauen, obwohl die Schnittstelle erreichbar ist?"
+      a: "IP-Schnittstellen haben nur wenige Tunnel, oft vier oder weniger. Sind alle von Visualisierung, ETS oder anderen Apps belegt, lehnt die Schnittstelle ab. Gib einen Tunnel frei, richte in der ETS einen zusätzlichen ein oder nutze Routing."
+    - q: "Wird KNX Secure unterstützt?"
+      a: "Ja: KNX IP Secure für den Tunnel und KNX Data Secure für verschlüsselte Gruppenadressen. Importiere dazu den Keyring (.knxkeys) aus der ETS. Die Schlüssel liegen im Schlüsselbund deines Geräts. Klappt etwas mit deiner Schnittstelle nicht, [melde es gern auf GitHub](https://github.com/regetskcob/KNX-Monitor/issues)."
+    - q: "Wie sichere ich meine Daten, und wer kommt daran?"
+      a: "Ab Version 1.9.1 speichert die App auf Wunsch alles von diesem Gerät in eine Datei mit eigenem Passwort (mindestens 12 Zeichen). Sie liegt, wo du sie ablegst, und niemand kann das Passwort zurücksetzen, auch wir nicht. Nicht enthalten sind die App-Sperre und der Verlauf auf einer Box. Einzelheiten stehen in der [Datenschutzerklärung](https://knx-monitor.de/datenschutz/)."
+    - q: "Brauche ich ein ETS-Projekt?"
+      a: "Nein, der Busmonitor funktioniert auch ohne, und du kannst deine Anlage ohne ETS anlernen. Mit Projekt bekommst du Namen, Datentypen, Räume und bessere Prüfungen. Das Passwort eines geschützten Projekts wird nur beim Import verwendet und nicht gespeichert."
+    - q: "Wie bekomme ich die Desktop-Version?"
+      a: "Linux kann dasselbe wie die App auf dem iPad. Den Download findest du im [Release auf GitHub](https://github.com/regetskcob/KNX-Monitor/releases/latest). Windows folgt in den nächsten Wochen, für den Mac kommt KNX Monitor über den App Store."
+    - q: "Was brauche ich für die KNX-Box?"
+      a: "Einen Raspberry Pi 4 oder 5, am besten mit USB-SSD und Echtzeituhr (Pi 5: Akku, Pi 4: RTC-Modul), dazu ein IP-Gateway oder das Aufsteckmodul kBerry und die App: auf iPhone, iPad und Android in den nächsten Wochen, für Linux schon heute. Die Uhr stellt die Box auch nach dem iPhone oder dem KNX-Zeitgeber. Das fertige Image findest du in den [Releases auf GitHub](https://github.com/regetskcob/KNX-Monitor/releases), alles Weitere auf der [Seite zur KNX-Box](https://knx-monitor.de/box/); es ist eine erste Vorschau."
+
+get:
+  label: "Laden"
+  soon: "bald"
+
+cta:
+  title: "Probier es an deiner Anlage aus."
+  text: "Verbinden, Projekt laden, loslegen."

@@ -1,0 +1,44 @@
+{{- /*
+  Every page is a "Feldseite" of Horizont (docs/web.md): the horizon line
+  as the navigation (its marks read from the numbered sections, the mark
+  opens the Flurkarte), the content, the foot with the sender. The partials come from the
+  Horizont module (layouts/_partials/horizont/).
+*/ -}}
+{{- $home := site.Home.RelPermalink -}}
+{{- /* The other language, at the end of the horizon line. */}}
+{{- $target := "" }}
+{{- range .Translations }}{{ $target = . }}{{ end }}
+{{- if not $target }}{{ range site.Home.Translations }}{{ $target = . }}{{ end }}{{ end }}
+{{- $lang := dict -}}
+{{- with $target }}{{ $lang = dict "current" (upper site.Language.Lang) "name" (upper .Language.Lang) "url" .RelPermalink "hreflang" .Language.Lang }}{{ end -}}
+{{- $links := slice (dict "name" (i18n "imprint") "url" site.Params.legalUrl) -}}
+{{- with site.GetPage "/datenschutz" }}{{ $links = $links | append (dict "name" (i18n "privacy") "url" .RelPermalink) }}{{ end -}}
+{{- with site.GetPage "/nutzungsbedingungen" }}{{ $links = $links | append (dict "name" (i18n "terms") "url" .RelPermalink) }}{{ end -}}
+{{- with site.GetPage "/support" }}{{ $links = $links | append (dict "name" (i18n "support") "url" .RelPermalink) }}{{ end -}}
+{{- $links = $links | append (dict "name" (i18n "github") "url" site.Params.githubUrl) -}}
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode }}" data-product="knx">
+<head>
+{{ partial "head.html" . }}
+</head>
+<body class="hz">
+<a class="knx-skip" href="#main">{{ i18n "skip" }}</a>
+{{- /* Flurkarte: home "-" (no Gemarkung on this page), otherwise Horizont puts
+       relURL in front of /knx/ and the result is /knx/knx/. So all links point absolutely
+       to the domain, also from the preview under /knx/preview/. */}}
+{{ partial "horizont/nav/horizon.html" (dict
+    "product" "knx"
+    "place" (cond .IsHome site.Title (printf "%s / %s" site.Title .Title))
+    "marks" "auto"
+    "lang" $lang
+    "karte" (dict "home" "-" "here" "knx" "url" "https://www.regetskcob.de/karte/")) }}
+<div class="hz-feld">
+<main id="main">
+{{ block "main" . }}{{ end }}
+</main>
+{{ partial "horizont/feld/foot.html" (dict "links" $links "sender" (i18n "footer_sender")) }}
+<p class="knx-note t-caption">© {{ now.Year }} {{ site.Title }}. {{ i18n "footer_note" }}</p>
+</div>
+{{ partial "horizont/nav/script.html" . }}
+</body>
+</html>

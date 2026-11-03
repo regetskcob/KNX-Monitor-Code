@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.get_login_creds"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "de.kalkar_it.knxmonitor",
+      "sha256_cert_fingerprints": [
+        "E1:B9:5C:22:5E:13:6A:4B:B1:2E:D1:FC:12:75:60:C9:BC:CF:24:F3:7F:4A:B2:59:BB:C5:03:98:84:6B:6B:FF"
+      ]
+    }
+  }
+]

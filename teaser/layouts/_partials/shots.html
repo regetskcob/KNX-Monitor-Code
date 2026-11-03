@@ -1,0 +1,44 @@
+{{- /*
+  A strip of screenshots, each in its device frame: phones in one row,
+  tablets in the next, each swiped sideways. Takes the group from
+  data/screens.yaml; sits in the middle column of its section
+  (layouts/home.html; as on the landing page).
+
+    partial "shots.html" (dict "group" "expert" "title" "Expertenmodus")
+
+  Each screen opens large in the lightbox (horizont/lightbox.html), uncut,
+  with its words as caption; the screens of one strip page through
+  together under the title.
+
+  The device frame crops to its screen aspect (components.css): iPhone
+  393:852, Android 412:915 (device: android in data/screens.yaml), iPad
+  1180:820; taller shots lose their bottom.
+*/ -}}
+{{- $group := .group -}}
+{{- $title := .title -}}
+{{- $have := slice -}}
+{{- range where site.Data.screens "group" $group }}{{ if resources.Get (printf "images/screens/%s" .file) }}{{ $have = $have | append . }}{{ end }}{{ end -}}
+{{- with $have }}
+<div class="tz-shots" data-lightbox-group data-lightbox-title="{{ $title }}">
+  {{- range $kind := slice "phone" "tablet" }}
+  {{- with where $have "kind" $kind }}
+  <div class="tz-shots-row tz-shots-row--{{ $kind }}">
+    {{- range . }}
+    {{- $img := resources.Get (printf "images/screens/%s" .file) }}
+    {{- $large := $img.Fit "2400x2400 webp q85" }}
+    {{- /* Phones are iPhones unless the entry says device: android. */}}
+    {{- $device := .device | default (cond (eq $kind "phone") "iphone" "ipad") }}
+    {{- $ratio := index (dict "iphone" (div 393.0 852.0) "android" (div 412.0 915.0) "ipad" (div 1180.0 820.0)) $device }}
+    {{- $h := int (math.Round (div (float $img.Width) $ratio)) }}
+    {{- if lt $h $img.Height }}{{ $img = $img.Crop (printf "%dx%d Top" $img.Width $h) }}{{ end }}
+    {{- $alt := index .alt site.Language.Lang }}
+    <figure class="tz-shot">
+      <a href="{{ $large.RelPermalink }}" data-lightbox>{{ partial "horizont/device.html" (dict "device" $device "width" (cond (eq $kind "phone") 220 480) "image" $img "alt" $alt) }}</a>
+      <figcaption class="t-caption">{{ $alt }}</figcaption>
+    </figure>
+    {{- end }}
+  </div>
+  {{- end }}
+  {{- end }}
+</div>
+{{- end }}

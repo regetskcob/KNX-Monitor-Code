@@ -1,0 +1,8 @@
+network-manager
+avahi-daemon
+chrony
+nftables
+qrencode
+picocom
+curl
+openssl

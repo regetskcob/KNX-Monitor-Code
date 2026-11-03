@@ -1,0 +1,11 @@
+{{- /* Floor plan as a still image for posts. */ -}}
+<svg viewBox="0 0 1000 640" width="920" role="img" aria-label="Grundriss mit Geräten" style="background:var(--surface);border:2px solid var(--line)">
+  <rect class="bh-furn" x="80" y="250" width="230" height="90" rx="6"/><rect class="bh-furn" x="360" y="90" width="130" height="170" rx="4"/><rect class="bh-furn" x="780" y="48" width="172" height="62"/>
+  <path class="bh-wall bh-wall--out" d="M530 600H40V40H960V600H590"/>
+  <path class="bh-wall" d="M560 40V420M40 420H200M260 420H470M530 420H560M300 420V600M420 420V500M420 550V600M560 300H590M650 300H960M700 300V440M700 490V600"/>
+  <path class="bh-door" d="M530 420V360A60 60 0 0 0 470 420M200 420V480A60 60 0 0 0 260 420M420 500H370A50 50 0 0 0 420 550M700 440H750A50 50 0 0 1 700 490M590 300V240A60 60 0 0 1 650 300M530 600V540A60 60 0 0 1 590 600"/>
+  {{- range slice (dict "x" 425 "y" 175 "l" "D") (dict "x" 190 "y" 200 "l" "D") (dict "x" 760 "y" 150 "l" "S") (dict "x" 230 "y" 40 "l" "R") (dict "x" 40 "y" 150 "l" "R") (dict "x" 760 "y" 40 "l" "L") (dict "x" 190 "y" 340 "l" "S") }}
+  <circle cx="{{ .x }}" cy="{{ .y }}" r="24" fill="var(--surface)" stroke="var(--line-strong)" stroke-width="2"/><text x="{{ .x }}" y="{{ add .y 9 }}" text-anchor="middle" font-size="26" font-family="var(--font-mono)" fill="var(--text)">{{ .l }}</text>
+  {{- end }}
+  <circle cx="505" cy="420" r="26" fill="var(--warning-tint, #F6EBD9)" stroke="var(--warning)" stroke-width="3"/><text x="505" y="430" text-anchor="middle" font-size="30" font-weight="600" fill="var(--warning)">!</text>
+</svg>

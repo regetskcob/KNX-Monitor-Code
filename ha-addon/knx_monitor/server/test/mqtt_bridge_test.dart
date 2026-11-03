@@ -1,0 +1,317 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:knx_monitor_server/bus.dart';
+import 'package:test/test.dart';
+
+/// Broker zum Mitschreiben: gespeicherte Nachrichten wie beim echten Broker.
+class FakeSink implements MqttSink {
+  final published = <(String, String, bool)>[];
+  final subscribed = <String>[];
+  final retained = <String, String>{};
+  (String, String)? will;
+  final _messages = StreamController<(String, String)>.broadcast();
+
+  @override
+  Future<void> connect({required String willTopic, required String willPayload}) async =>
+      will = (willTopic, willPayload);
+
+  @override
+  void publish(String topic, String payload, {bool retain = false}) {
+    published.add((topic, payload, retain));
+    if (retain) retained[topic] = payload;
+  }
+
+  @override
+  void subscribe(String topic) => subscribed.add(topic);
+
+  @override
+  Stream<(String, String)> get messages => _messages.stream;
+
+  void receive(String topic, String payload) => _messages.add((topic, payload));
+
+  Map<String, Object?> json(String topic) => jsonDecode(retained[topic]!) as Map<String, Object?>;
+
+  List<Map<String, Object?>> sent(String topic) => [
+    for (final p in published)
+      if (p.$1 == topic) jsonDecode(p.$2) as Map<String, Object?>,
+  ];
+
+  @override
+  Future<void> close() => _messages.close();
+}
+
+/// Wartet, bis [condition] gilt (statt fester Pausen, die auf langsamen
+/// CI-Rechnern zu kurz sind); nach [timeout] scheitert der Test.
+Future<void> until(bool Function() condition, {Duration timeout = const Duration(seconds: 5)}) async {
+  final watch = Stopwatch()..start();
+  while (!condition()) {
+    if (watch.elapsed > timeout) fail('Bedingung nach ${timeout.inSeconds} s nicht erfüllt');
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
+}
+
+void main() {
+  late Directory data;
+  late BusService bus;
+  late FakeSink sink;
+  late MqttBridge bridge;
+  var now = DateTime(2026, 10, 25, 12);
+
+  Future<void> rules(List<(String, String)> list) async {
+    final file = File('${data.path}/watch_rules.json');
+    await file.writeAsString(
+      jsonEncode({
+        'rules': [
+          for (final (id, name) in list)
+            {
+              'id': id,
+              'address': 0x0A03,
+              'label': '1/2/3 $name',
+              'name': name,
+              'check': {'any': true},
+            },
+        ],
+      }),
+    );
+    // Neue Änderungszeit, sonst liest der Wächter die Datei nicht neu.
+    await file.setLastModified(DateTime.now().add(Duration(seconds: list.length)));
+  }
+
+  setUp(() async {
+    data = await Directory.systemTemp.createTemp('knx_mqtt');
+    bus = BusService(data, describe: (_, _) async => null, installation: {'id': 'a', 'name': 'Zuhause'});
+    await bus.start();
+    sink = FakeSink();
+    now = DateTime(2026, 10, 25, 12);
+    bridge = MqttBridge(
+      () => bus,
+      version: '1.8.0',
+      sink: (_) => sink,
+      broker: () async => const MqttBroker(host: 'core-mosquitto', port: 1883),
+      clock: () => now,
+      interval: const Duration(hours: 1),
+    );
+  });
+
+  tearDown(() async {
+    await bridge.stop();
+    await bus.shutdown();
+    await data.delete(recursive: true);
+  });
+
+  test('kündigt Gerät, Entitäten und Gerätetrigger an', () async {
+    await rules([('wind', 'Wind'), ('tuer', 'Haustür')]);
+    await bridge.start();
+    expect(sink.will, ('knx_monitor/status', 'offline'));
+    expect(sink.retained['knx_monitor/status'], 'online');
+    expect(sink.subscribed, containsAll(['knx_monitor/recording/set', 'homeassistant/status']));
+
+    final connected = sink.json('homeassistant/binary_sensor/knx_monitor/bus_connected/config');
+    expect(connected['unique_id'], 'knx_monitor_bus_connected');
+    expect(connected['device_class'], 'connectivity');
+    expect((connected['device']! as Map)['sw_version'], '1.8.0');
+    expect(connected['name'], 'Bus verbunden');
+    for (final topic in [
+      'homeassistant/switch/knx_monitor/recording/config',
+      'homeassistant/sensor/knx_monitor/telegrams_per_minute/config',
+      'homeassistant/sensor/knx_monitor/repeats_per_minute/config',
+      'homeassistant/sensor/knx_monitor/telegrams_today/config',
+      'homeassistant/sensor/knx_monitor/last_telegram/config',
+      'homeassistant/event/knx_monitor/watcher/config',
+      'homeassistant/event/knx_monitor/alarm/config',
+      for (final t in MqttBridge.alarmTriggers) 'homeassistant/device_automation/knx_monitor/alarm_$t/config',
+    ]) {
+      expect(sink.retained, contains(topic));
+    }
+    final wind = sink.json('homeassistant/device_automation/knx_monitor/watcher_wind/config');
+    expect(wind['topic'], 'knx_monitor/watcher/wind');
+    expect(wind['subtype'], 'Wind');
+    expect(sink.retained, contains('homeassistant/device_automation/knx_monitor/watcher_tuer/config'));
+
+    final state = sink.json('knx_monitor/state');
+    expect(state['connected'], isFalse);
+    expect(state['recording'], isFalse);
+    expect(state['installation'], 'Zuhause');
+  });
+
+  test('gelöschter Wächter verschwindet, neuer kommt dazu', () async {
+    await rules([('wind', 'Wind'), ('tuer', 'Haustür')]);
+    await bridge.start();
+    await rules([('wind', 'Wind'), ('regen', 'Regen')]);
+    await bridge.tick();
+    expect(sink.retained['homeassistant/device_automation/knx_monitor/watcher_tuer/config'], '');
+    expect(sink.json('homeassistant/device_automation/knx_monitor/watcher_regen/config')['subtype'], 'Regen');
+  });
+
+  test('Ereignisse: Wächter, Alarm, Bus', () async {
+    await bridge.start();
+    bridge.onEvent(HomeAssistant.watcherEvent, {'watcher_id': 'wind', 'name': 'Wind', 'address': '1/2/3'});
+    expect(sink.sent('knx_monitor/event/watcher').single['event_type'], 'fired');
+    expect(sink.sent('knx_monitor/watcher/wind').single['name'], 'Wind');
+
+    bridge.onEvent(HomeAssistant.alarmEvent, {'kind': 'fault', 'active': true, 'address': '1/0/1'});
+    expect(sink.sent('knx_monitor/event/alarm').single['event_type'], 'fault_on');
+    expect(sink.sent('knx_monitor/alarm/fault_on'), hasLength(1));
+
+    final before = sink.sent('knx_monitor/state').length;
+    bridge.onEvent(HomeAssistant.busEvent, {'connected': false});
+    expect(sink.sent('knx_monitor/state').length, before + 1);
+  });
+
+  test('Schalter Aufzeichnung', () async {
+    await bridge.start();
+    sink.receive('knx_monitor/recording/set', 'ON');
+    await until(() => sink.json('knx_monitor/state')['recording'] == true);
+    expect(bus.config.enabled, isTrue);
+    sink.receive('knx_monitor/recording/set', 'OFF');
+    await until(() => sink.json('knx_monitor/state')['recording'] == false);
+    await bridge.settled;
+    expect(bus.config.enabled, isFalse);
+  });
+
+  test('Home Assistant neu gestartet: alles erneut ankündigen', () async {
+    await bridge.start();
+    final before = sink.published.length;
+    sink.receive('homeassistant/status', 'online');
+    await until(
+      () => sink.published
+          .skip(before)
+          .any((p) => p.$1 == 'homeassistant/binary_sensor/knx_monitor/bus_connected/config'),
+    );
+    await bridge.settled;
+  });
+
+  test('Telegramme und Wiederholungen pro Minute', () async {
+    await bridge.start();
+    await bridge.tick(); // Ausgangspunkt
+    bus
+      ..today += 30
+      ..repeats += 3;
+    now = now.add(const Duration(minutes: 2));
+    await bridge.tick();
+    final state = sink.json('knx_monitor/state');
+    expect(state['per_minute'], 15.0);
+    expect(state['repeats_per_minute'], 1.5);
+    // Tageswechsel: kein negativer Wert.
+    bus.today = 0;
+    now = now.add(const Duration(minutes: 1));
+    await bridge.tick();
+    expect(sink.json('knx_monitor/state')['per_minute'], 0.0);
+  });
+
+  test('ohne Broker: später erneut versuchen', () async {
+    var asked = 0;
+    final waiting = MqttBridge(
+      () => bus,
+      version: 'dev',
+      sink: (_) => sink,
+      broker: () async => ++asked < 3 ? null : const MqttBroker(host: 'h', port: 1883),
+      retry: const Duration(milliseconds: 10),
+    );
+    await waiting.start();
+    expect(asked, 3);
+    expect(waiting.connected, isTrue);
+    await waiting.stop();
+  });
+
+  test('einzelne Werte als eigene Topics, nur bei Änderung', () async {
+    await bridge.start();
+    expect(sink.retained['knx_monitor/connected'], 'false');
+    expect(sink.retained['knx_monitor/recording'], 'false');
+    expect(sink.retained['knx_monitor/today'], '0');
+    expect(sink.retained['knx_monitor/installation'], 'Zuhause');
+    final before = sink.published.where((p) => p.$1 == 'knx_monitor/today').length;
+    await bridge.tick();
+    expect(sink.published.where((p) => p.$1 == 'knx_monitor/today').length, before);
+    bus.today = 5;
+    await bridge.tick();
+    expect(sink.retained['knx_monitor/today'], '5');
+  });
+
+  test('ohne Discovery: nur Zustand, Werte und Ereignisse', () async {
+    await rules([('wind', 'Wind')]);
+    final plain = MqttBridge(
+      () => bus,
+      version: 'dev',
+      sink: (_) => sink,
+      broker: () async => const MqttBroker(host: 'h', port: 1883),
+      discovery: false,
+    );
+    await plain.start();
+    expect(sink.retained.keys.where((t) => t.startsWith('homeassistant/')), isEmpty);
+    expect(sink.retained['knx_monitor/status'], 'online');
+    expect(sink.retained['knx_monitor/connected'], 'false');
+    plain.onEvent(HomeAssistant.watcherEvent, {'watcher_id': 'wind', 'name': 'Wind'});
+    expect(sink.sent('knx_monitor/event/watcher'), hasLength(1));
+    await plain.tick();
+    expect(sink.retained.keys.where((t) => t.startsWith('homeassistant/')), isEmpty);
+    await plain.stop();
+  });
+
+  test('Discovery aus: frühere Ankündigungen des Geräts werden geleert', () async {
+    final plain = MqttBridge(
+      () => bus,
+      version: 'dev',
+      sink: (_) => sink,
+      broker: () async => const MqttBroker(host: 'h', port: 1883),
+      discovery: false,
+    );
+    await plain.start();
+    expect(sink.subscribed, contains('homeassistant/+/knx_monitor/+/config'));
+    // Der Broker liefert gespeicherte Ankündigungen beim Abonnieren aus.
+    sink
+      ..receive('homeassistant/switch/knx_monitor/recording/config', '{"name":"x"}')
+      ..receive('homeassistant/device_automation/knx_monitor/watcher_alt/config', '{"type":"t"}')
+      ..receive('homeassistant/switch/anderes_geraet/x/config', '{"name":"y"}');
+    await until(() => sink.retained['homeassistant/device_automation/knx_monitor/watcher_alt/config'] == '');
+    await plain.settled;
+    expect(sink.retained['homeassistant/switch/knx_monitor/recording/config'], '');
+    expect(sink.retained['homeassistant/device_automation/knx_monitor/watcher_alt/config'], '');
+    expect(sink.retained.containsKey('homeassistant/switch/anderes_geraet/x/config'), isFalse);
+    await plain.stop();
+  });
+
+  test('erneute Ankündigung sendet unveränderte Werte nicht noch einmal', () async {
+    await bridge.start();
+    final before = sink.published.where((p) => p.$1 == 'knx_monitor/today').length;
+    final count = sink.published.length;
+    sink.receive('homeassistant/status', 'online');
+    // Die Ankündigung ist durch, sobald die Konfiguration erneut gesendet wurde.
+    await until(
+      () =>
+          sink.published.skip(count).any((p) => p.$1 == 'homeassistant/binary_sensor/knx_monitor/bus_connected/config'),
+    );
+    await bridge.settled;
+    expect(sink.published.where((p) => p.$1 == 'knx_monitor/today').length, before);
+  });
+
+  test('Broker aus Umgebungsvariablen', () {
+    expect(MqttBroker.fromEnvironment({}), isNull);
+    final b = MqttBroker.fromEnvironment({'MQTT_HOST': '192.168.1.5', 'MQTT_USER': 'iobroker', 'MQTT_PASSWORD': 'pw'})!;
+    expect((b.host, b.port, b.username, b.password, b.ssl), ('192.168.1.5', 1883, 'iobroker', 'pw', false));
+    expect(MqttBroker.fromEnvironment({'MQTT_HOST': 'h', 'MQTT_PORT': '8883', 'MQTT_SSL': 'true'})!.ssl, isTrue);
+  });
+
+  test('Broker beim Supervisor erfragen', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    server.listen((r) async {
+      r.response.headers.contentType = ContentType.json;
+      r.response.write(
+        r.uri.path == '/services/mqtt' && r.headers.value(HttpHeaders.authorizationHeader) == 'Bearer t'
+            ? jsonEncode({
+                'result': 'ok',
+                'data': {'host': 'core-mosquitto', 'port': 1883, 'username': 'addons', 'password': 'pw', 'ssl': false},
+              })
+            : '{}',
+      );
+      await r.response.close();
+    });
+    final broker = await brokerFromSupervisor(token: 't', base: Uri.parse('http://127.0.0.1:${server.port}/'));
+    expect(broker?.host, 'core-mosquitto');
+    expect(broker?.username, 'addons');
+    expect(await brokerFromSupervisor(token: 'falsch', base: Uri.parse('http://127.0.0.1:${server.port}/')), isNull);
+    await server.close(force: true);
+  });
+}

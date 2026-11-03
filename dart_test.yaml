@@ -1,0 +1,4 @@
+# Goldens render with the bundled Horizont fonts and differ between macOS and
+# Linux; CI skips them (--exclude-tags golden), run them locally.
+tags:
+  golden:

@@ -1,0 +1,501 @@
+/* Teaser of knx-monitor.de on Horizont: one screen, the words left, the
+   distribution board right on the horizon, the foot below. Only what the
+   components do not say already. */
+
+/* The first screen holds the hero down to the horizon (below the horizon
+   line of the navigation, 62 px); the sections follow on scrolling. */
+.tz-screen { min-height: calc(100svh - 62px); display: flex; flex-direction: column; }
+.tz-stage { margin-block: auto; }
+/* The way down to the sections, at the foot of the first screen. */
+.tz-more { align-self: center; display: inline-flex; align-items: center; gap: var(--s-8); margin: var(--s-24) 0 var(--s-16);
+  font-family: var(--font-mono, monospace); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-muted); text-decoration: none; }
+.tz-more:hover { color: var(--text); }
+.tz-hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: var(--s-32); padding-top: var(--s-32); }
+.tz-hero h1 { font-size: clamp(2rem, min(4.6cqw, 6.4svh), 3.25rem); margin: var(--s-12) 0 var(--s-16); }
+.tz-hero > .tz-words > p:not(.tz-note) { margin-bottom: var(--s-24); }
+.tz-hero .hz-feld-actions { margin-bottom: var(--s-16); }
+
+.tz-brand { display: flex; align-items: center; gap: var(--s-16); margin-bottom: var(--s-24); }
+.tz-brand svg, .tz-brand img { width: 64px; height: 64px; flex: none; }
+.tz-name { font-family: var(--font-display, inherit); font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em; }
+.tz-note { color: var(--text-muted); margin: 0 0 var(--s-48); max-width: 46ch; }
+
+/* Local (belongs into horizont): the walking mark ends its way centred on
+   the line's end, so 8 px to the language switch let it touch the switch. */
+.hz-horizon:has(.hz-horizon-lang) { --end: calc(var(--lang-w, 72px) + var(--s-24)); }
+
+/* The thread: the bus cable runs on below the horizon, between the
+   columns, to the end of the sections. Behind the content, never in the way. */
+.tz-feld { position: relative; }
+/* Nothing drawn may widen the page (devices beside it, the thread's turns). */
+body.tz { overflow-x: clip; }
+.tz-thread { position: absolute; inset: 0 auto auto 0; width: 100%; overflow: visible; pointer-events: none; z-index: 0; }
+/* The horizon light, so it reads as a divider and not as a second cable;
+   where the cable crosses it a short gap on either side (--cut, teaser.js). */
+.tz-feld .hz-feld-horizon {
+  border-top-color: color-mix(in srgb, var(--accent) 30%, var(--bg));
+  --cut: -100px;
+  mask: linear-gradient(to right, #000 calc(var(--cut) - 10px), transparent calc(var(--cut) - 10px) calc(var(--cut) + 10px), #000 calc(var(--cut) + 10px));
+}
+/* One green for the whole bus: the cable in the cabinet, the thread, the Pi's cable. */
+.tz-thread-line { fill: none; stroke: #4F9A3C; stroke-width: 2.6; stroke-linecap: round; }
+.tz-thread-pulse { fill: #fff; stroke: #4F9A3C; stroke-width: 2; opacity: 0; filter: drop-shadow(0 0 3px rgb(79 154 60 / 0.6)); }
+.tz-thread-pulse.is-running { opacity: 1; }
+.tz-thread.is-faint .tz-thread-line { opacity: 0.25; }
+.tz-thread.is-faint .tz-thread-pulse.is-running { opacity: 0.5; }
+.tz-main, .hz-feld-foot { position: relative; z-index: 1; }
+
+/* The kitchen light on its load cable (grey like a NYM sheath). It lights
+   in the warning yellow of the app's lamp when channel 3 switches on. */
+.tz-load-line { fill: none; stroke: var(--text-faint); stroke-width: 1.6; stroke-linejoin: round; }
+.tz-lamp { display: none; }
+.tz-lamp.is-placed { display: inline; }
+.tz-lamp-bulb { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.4; transition: fill var(--motion-base, 200ms) linear; }
+.tz-lamp-filament { fill: none; stroke: var(--text-faint); stroke-width: 1.2; stroke-linejoin: round; }
+.tz-lamp-socket { fill: var(--sunken); stroke: var(--line-strong); stroke-width: 1; }
+.tz-lamp-rays { fill: none; stroke: var(--warning); stroke-width: 1.6; stroke-linecap: round; opacity: 0; transition: opacity var(--motion-base, 200ms) linear; }
+.tz-lamp-label { font-family: var(--font-mono, monospace); font-size: 11px; fill: var(--text-faint); }
+.tz-lamp.is-on .tz-lamp-bulb { fill: var(--warning); stroke: var(--warning); }
+.tz-lamp.is-on .tz-lamp-filament { stroke: var(--surface); }
+.tz-lamp.is-on .tz-lamp-rays { opacity: 1; }
+
+/* Sending devices on the thread, drawn like the app's topology: a glass
+   push button (dark display), a push button with rockers, a presence
+   detector. Keys are real buttons; their LED shows the channel state. */
+.tz-sensors { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.tz-sensor { position: absolute; display: flex; flex-direction: column; gap: var(--s-8); pointer-events: auto; }
+.tz-sensor[hidden] { display: none; }
+.tz-sensor-addr { font-family: var(--font-mono, monospace); font-size: 0.6875rem; color: var(--text-faint); white-space: nowrap; }
+.tz-sensor-body { position: relative; display: grid; gap: 6px; padding: 10px; border: var(--line-hairline) solid var(--line-strong); border-radius: 10px; background: var(--surface); }
+.tz-sensor--glass .tz-sensor-body { grid-template-columns: 1fr 1fr; width: 156px; background: #15181B; border-color: #15181B; }
+.tz-sensor--push .tz-sensor-body { grid-template-columns: 1fr 1fr; width: 132px; }
+.tz-sensor--presence .tz-sensor-body { width: 96px; height: 96px; padding: 0; border-radius: 50%; place-items: center; }
+.tz-sensor-display { grid-column: 1 / -1; padding: 6px 8px; border-radius: 4px; background: #000; color: #E6EAED;
+  font-family: var(--font-mono, monospace); font-size: 0.75rem; text-align: right; }
+.tz-key { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 6px; min-height: 52px; padding: 6px 8px; text-align: left;
+  border: var(--line-hairline) solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
+.tz-key b { font-family: var(--font-mono, monospace); font-size: 0.75rem; font-weight: 600; }
+.tz-key small { grid-column: 1 / -1; font-size: 0.6875rem; line-height: 1.2; color: var(--text-muted); }
+.tz-key:hover { background: var(--sunken); }
+.tz-key:focus-visible { outline: var(--line-selection) solid var(--accent); outline-offset: 2px; }
+.tz-key:active, .tz-key.is-pressed { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
+.tz-sensor--glass .tz-key { background: #1D2125; border-color: #2C3237; color: #E6EAED; }
+.tz-sensor--glass .tz-key small { color: #A9B0B6; }
+.tz-sensor--glass .tz-key:hover { background: #262B30; }
+.tz-key-led { width: 7px; height: 7px; border-radius: 50%; background: var(--line); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.tz-key-led.is-on { background: #2EBD3A; box-shadow: none; }
+.tz-key-led.is-sending { background: var(--accent); box-shadow: none; }
+.tz-presence-lens { width: 44px; height: 44px; border-radius: 50%; background: var(--sunken); border: var(--line-hairline) solid var(--line); }
+.tz-presence-led { position: absolute; right: 22px; bottom: 22px; }
+/* A window beside the blind's push button: the shutter box on top, the
+   blind (slats) down to its position, moving slowly like a real one. */
+.tz-sensor:has(.tz-window):not([hidden]) { display: grid; grid-template-columns: auto auto; column-gap: var(--s-24); align-items: end; }
+.tz-sensor:has(.tz-window) .tz-sensor-addr { grid-column: 1 / -1; }
+.tz-sensor-note { grid-column: 1 / -1; width: 0; min-width: 100%; margin: var(--s-8) 0 0; font-size: 0.8125rem; line-height: 1.4; color: var(--text-muted); }
+.tz-window { display: grid; gap: 6px; width: 96px; }
+.tz-window-box { height: 10px; border-radius: 3px 3px 0 0; background: var(--sunken); border: var(--line-hairline) solid var(--line-strong); border-bottom: 0; }
+.tz-window-glass { position: relative; height: 96px; margin-top: -6px; overflow: hidden; border: 4px solid var(--surface); outline: var(--line-hairline) solid var(--line-strong);
+  background: linear-gradient(to right, transparent calc(50% - 1px), var(--line-strong) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)),
+    color-mix(in srgb, #8EC5E8 35%, var(--surface)); }
+.tz-window-blind { position: absolute; inset: 0 0 auto; height: calc(var(--pos) * 1%);
+  background: repeating-linear-gradient(to bottom, var(--surface) 0 5px, var(--line-strong) 5px 6px); border-bottom: 2px solid var(--text-muted);
+  transition: height 2.4s linear; }
+.tz-window-label { font-family: var(--font-mono, monospace); font-size: 0.6875rem; color: var(--text-faint); white-space: nowrap; }
+.tz-window-label b { font-weight: 400; color: var(--text-muted); }
+@media (prefers-reduced-motion: reduce) { .tz-window-blind { transition: none; } }
+
+/* The add-on in Home Assistant on an iPad, under the words of section 02.
+   On wide pages it reaches into the Kennung column. HA's sidebar is drawn
+   in its own neutral colours (light and dark), the panel that is open in
+   HA's blue, as Home Assistant shows it. */
+.tz-ipad { margin-top: var(--s-32); }
+.tz-ipad .hz-device { width: 100%; box-sizing: border-box; }
+@container (min-width: 761px) {
+  .tz-ipad { margin-left: calc(-180px - var(--s-32)); width: calc(100% + 180px + var(--s-32)); }
+}
+.tz-ha { display: grid; grid-template-columns: 7.5% 1fr; height: 100%; background: #fafafa; }
+.tz-ha > img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: left top; }
+.tz-ha-bar { display: flex; flex-direction: column; align-items: center; gap: 9%; padding: 14% 0 10%; background: #fff; border-right: 1px solid #e0e0e0; }
+.tz-ha-bar svg { width: 46%; aspect-ratio: 1; fill: none; stroke: #44474e; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tz-ha-here { display: grid; place-items: center; width: 74%; aspect-ratio: 1; border-radius: 22%; background: rgb(3 169 244 / 0.16); }
+.tz-ha-here svg { width: 62%; stroke: #03A9F4; }
+/* The glyph in its own 100-unit box: Horizont's stroke and square caps. */
+.tz-ha-here .tz-ha-glyph { stroke-width: 7; stroke-linecap: square; stroke-linejoin: miter; }
+.tz-ha-gap { flex: 1; }
+.tz-ha-user { width: 50%; aspect-ratio: 1; border-radius: 50%; background: #9e9e9e; }
+@media (prefers-color-scheme: dark) {
+  .tz-ha { background: #111; }
+  .tz-ha-bar { background: #1c1c1c; border-color: #2c2c2c; }
+  .tz-ha-bar svg { stroke: #c4c6d0; }
+}
+
+/* Links in the facts (the Linux download) in the accent, not browser blue. */
+.tz-section .hz-facts a { color: var(--accent-text); text-underline-offset: 0.2em; }
+
+/* Prices in the roadmap, under its text: name in mono capitals, the price
+   large, Pro tinted like on the landing page. */
+.tz-prices-beta { margin: var(--s-24) 0 0; padding: var(--s-12); background: var(--accent-tint); border-radius: var(--r-6); }
+.tz-section--plan > div { min-width: 0; }
+.tz-prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr)); gap: var(--s-8); margin: var(--s-24) 0 0; }
+.tz-price { padding: var(--s-12); border-top: var(--line-hairline) solid var(--line-strong); }
+.tz-price--pro { background: var(--accent-tint); border-radius: 0 0 var(--r-6) var(--r-6); }
+.tz-price dt { font: 400 0.75rem/1.4 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.tz-price dd { margin: var(--s-4) 0 0; }
+.tz-price b { display: block; font-size: 1.125rem; font-weight: 600; color: var(--text); }
+.tz-price b small { display: block; font-size: 0.8125rem; font-weight: 400; color: var(--text-muted); }
+.tz-price span { display: block; margin-top: var(--s-4); font-size: 0.8125rem; color: var(--text-muted); }
+.tz-section > div > .tz-prices-note { margin-top: var(--s-12); font-size: 0.8125rem; }
+
+/* Features and expert mode in detail: the screens in their devices under
+   the words, phones in one row, tablets in the next, each swiped sideways
+   (as on the landing page). */
+.tz-section--shots > div { min-width: 0; }
+.tz-shots { container-type: inline-size; display: grid; gap: var(--s-32); margin-top: var(--s-32); }
+.tz-shots-row { display: flex; gap: var(--s-24); align-items: flex-start; overflow-x: auto; scroll-snap-type: x proximity; padding: var(--s-4) var(--s-4) var(--s-8); }
+.tz-shot { flex: 0 0 auto; margin: 0; display: grid; gap: var(--s-12); align-content: start; scroll-snap-align: start; }
+/* On wide pages the strip reaches into the Kennung column like the iPad
+   of section 02, so three phones stand side by side. */
+@container (min-width: 761px) {
+  .tz-section--shots .tz-shots { margin-left: calc(-180px - var(--s-32)); width: calc(100% + 180px + var(--s-32)); }
+}
+/* The device's bezel and radii follow --w; set it, never squeeze the figure. */
+/* Phones: narrow strips swipe, one whole screen at a time (it snaps, so no
+   half-cut phone stays in view); from 520 px three stand side by side.
+   The bezel (2.2 % of --w each side) comes on top of --w: divide by 1.05 or 3.15. */
+.tz-shots-row--phone { scroll-snap-type: x mandatory; }
+.tz-shots-row--phone > .tz-shot { flex-basis: calc(100cqw - 2 * var(--s-4)); justify-items: center; text-align: center; }
+.tz-shots-row--phone .hz-device { --w: min(220px, (100cqw - 2 * var(--s-4) - 4px) / 1.05) !important; }
+@container (min-width: 520px) {
+  /* Right-aligned at the cable; two phones leave the room on the left. */
+  .tz-shots-row--phone { flex-wrap: wrap; justify-content: flex-end; overflow-x: visible; scroll-snap-type: none; row-gap: var(--s-32); }
+  .tz-shots-row--phone > .tz-shot { flex-basis: auto; justify-items: stretch; text-align: start; }
+  .tz-shots-row--phone .hz-device { --w: min(220px, (100cqw - 2 * var(--s-24) - 2 * var(--s-4) - 6px) / 3.15) !important; }
+}
+.tz-shots-row--tablet .hz-device { --w: min(480px, 92cqw) !important; }
+/* Tablets one at a time: each shot spans the strip with the iPad at its
+   right edge (at the cable), swiping snaps to the next whole one. */
+.tz-shots-row--tablet { scroll-snap-type: x mandatory; }
+.tz-shots-row--tablet > .tz-shot { flex-basis: calc(100cqw - 2 * var(--s-4)); justify-content: end; }
+.tz-shot figcaption { color: var(--text-muted); width: 0; min-width: 100%; }
+
+/* The landing page's sections from 05 on: values after the ETS names,
+   the KNX box drawn under its words, the FAQ as a quiet list across both
+   columns (the cable ends above it), links in the accent. */
+.tz-section p a { color: var(--accent-text); text-underline-offset: 0.2em; }
+/* The badge (22 px) centred on the 14 px text beside it, not on its baseline. */
+.tz-section .hz-facts dd .hz-badge, .hz-feld-hero p .hz-badge { margin-right: var(--s-8); vertical-align: -0.125rem; }
+.tz-value { color: var(--text-muted); white-space: nowrap; }
+.tz-value::before { content: "· "; }
+.tz-pi { display: block; width: min(360px, 100%); height: auto; overflow: visible; margin-top: var(--s-32); }
+.tz-pi-board { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.5; }
+.tz-pi-hole { fill: var(--bg); stroke: var(--line-strong); stroke-width: 1.5; }
+.tz-pi-pin { fill: var(--sunken); stroke: var(--text-faint); stroke-width: 1; }
+.tz-pi-part { fill: var(--sunken); stroke: var(--line-strong); stroke-width: 1.5; }
+.tz-pi-port { fill: var(--bg); stroke: var(--text-muted); stroke-width: 1.5; }
+.tz-pi-led { fill: var(--accent); }
+.tz-pi-cable { fill: none; stroke: #4F9A3C; stroke-width: 2.6; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+/* The box page: the LED blinks with every telegram the box records. */
+.tz-pi-led { transition: fill var(--motion-fast, 120ms) linear; }
+.tz-pi-led.is-on { fill: #2EBD3A; }
+
+/* The coupled laptop on the box page: the app's window with the box's log,
+   newest row at the bottom, older ones fade upwards; the visitor's own
+   telegrams (push button) in the accent. */
+.tz-section > div:has(> .tz-boxlog-figure) { min-width: 0; }
+/* The setup on a phone (box page, 03): cropped at the section's edge. */
+.tz-box-setup { margin: var(--s-32) 0 0; display: grid; gap: var(--s-12); justify-items: start; }
+.tz-box-setup figcaption { color: var(--text-muted); max-width: 46ch; }
+.tz-box-setup figcaption .hz-badge { margin-right: var(--s-8); vertical-align: -0.125rem; }
+.tz-boxlog-figure { margin: var(--s-32) 0 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-12); }
+/* As wide as the column allows, at most its --w; the log scales down with it. */
+.tz-boxlog-figure .hz-device { box-sizing: border-box; width: 93%; max-width: var(--w); margin-left: 3.5%; }
+.tz-boxlog-figure .hz-device-screen { min-width: 0; }
+.tz-boxlog-figure figcaption { color: var(--text-muted); max-width: 46ch; }
+/* Phones have no push button on the cable (box.js), so no word about it. */
+@media (max-width: 760px) { .tz-boxlog-taster { display: none; } }
+.tz-boxlog { display: flex; flex-direction: column; height: 100%; background: var(--surface); color: var(--text);
+  font-family: var(--font-mono, monospace); font-size: 9px; line-height: 1.5; overflow: hidden; }
+.tz-boxlog-bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: var(--line-hairline) solid var(--line);
+  font-family: var(--font-sans, sans-serif); font-size: 10px; }
+.tz-boxlog-bar .hz-badge { margin-left: auto; transform: scale(0.8); transform-origin: right center; }
+.tz-boxlog-lights { display: inline-flex; gap: 4px; }
+.tz-boxlog-lights i { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); }
+.tz-boxlog-meta { color: var(--text-muted); }
+.tz-boxlog-count { padding: 6px 10px 2px; color: var(--text-muted); }
+.tz-boxlog-n { color: var(--text); font-variant-numeric: tabular-nums; }
+.tz-boxlog-head, .tz-boxlog-rows li { display: grid; grid-template-columns: 7.6em 3.8em 3.8em minmax(0, 1fr) auto; gap: 8px; padding: 0 10px; white-space: nowrap; }
+.tz-boxlog-head { color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; font-size: 8px; padding-block: 4px; border-bottom: var(--line-hairline) solid var(--line); }
+.tz-boxlog-rows { flex: 1; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 45%); mask-image: linear-gradient(to bottom, transparent, #000 45%); }
+.tz-boxlog-rows li { border-top: var(--line-hairline) solid var(--line); color: var(--text-muted); animation: tz-row var(--motion-base, 200ms) var(--ease-settle, ease-out); }
+.tz-boxlog-rows li > :nth-child(4) { overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.tz-boxlog-rows li > :last-child { text-align: right; color: var(--text); }
+.tz-boxlog-rows li.is-mine > * { color: var(--accent-text); }
+.tz-boxlog-head > :last-child { text-align: right; }
+.tz-section--faq > div { grid-column: 2 / -1; }
+/* Above the FAQ the cable is the border; no hairline under it. */
+.tz-section:has(+ .tz-section--faq) { border-bottom: 0; }
+.tz-faq { margin-top: var(--s-24); max-width: var(--size-text-column, 720px); }
+.tz-faq details { border-top: var(--line-hairline) solid var(--line); }
+.tz-faq details:last-child { border-bottom: var(--line-hairline) solid var(--line); }
+.tz-faq summary { display: flex; justify-content: space-between; align-items: center; gap: var(--s-16); min-height: var(--size-row, 48px); padding: var(--s-8) 0; font-weight: 500; cursor: pointer; list-style: none; }
+.tz-faq summary::-webkit-details-marker { display: none; }
+.tz-faq summary .hz-symbol { color: var(--text-muted); transition: transform var(--motion-fast) var(--ease-standard); }
+.tz-faq details[open] summary .hz-symbol { transform: rotate(180deg); }
+.tz-section .tz-faq details p { display: block; margin: 0 0 var(--s-16); color: var(--text-muted); max-width: 64ch; }
+
+/* Phones: see more, read less. The sections keep their headline, the
+   iPad and the facts as their terms only, set like Horizont's facts: mono
+   capitals in two columns between hairlines, no boxes (no pill chips). */
+@container (max-width: 760px) {
+  .tz-section > div > p { display: none; }
+  .tz-section h2 { font-size: 1.25rem; }
+  .tz-section .hz-facts { display: grid; grid-template-columns: 1fr 1fr; column-gap: var(--s-16); row-gap: 0; }
+  .tz-section .hz-facts dd { display: none; }
+  .tz-section .hz-facts dt { padding: var(--s-8) 0; border-top: var(--line-hairline) solid var(--line); }
+  .tz-ipad { margin-top: var(--s-16); }
+  /* The roadmap is read for its values (when, how much): text and values stay. */
+  .tz-section--plan > div > p, .tz-section--read > div > p { display: block; }
+  .tz-section--plan .hz-facts, .tz-section--read .hz-facts { grid-template-columns: 1fr; }
+  .tz-section--plan .hz-facts dd, .tz-section--read .hz-facts dd { display: block; padding-bottom: var(--s-8); }
+  .tz-section--plan .hz-facts dt, .tz-section--read .hz-facts dt { padding-bottom: var(--s-4); }
+  .tz-section--faq > div { grid-column: auto; }
+  .tz-prices { grid-template-columns: 1fr; gap: var(--s-4); }
+}
+
+/* The board stands on the horizon and never grows taller than the screen
+   leaves for it (400 × 220 is its viewBox). */
+.tz-aside { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: var(--s-24); min-width: 0; align-self: stretch; }
+
+/* The live list over the board: only where the window leaves room for it.
+   Faint on purpose; the newest row at the bottom, older ones fade upwards. */
+.tz-live { display: none; width: 100%; font-family: var(--font-mono, monospace); font-size: 0.75rem; color: var(--text-muted); opacity: 0.7; }
+@media (min-width: 1100px) and (min-height: 820px) {
+  .tz-live { display: block; }
+  .tz-ticker { visibility: hidden; }
+}
+.tz-live-head { display: flex; justify-content: space-between; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.6875rem; color: var(--text-faint); padding-bottom: var(--s-8); border-bottom: var(--line-hairline) solid var(--line); }
+.tz-bars { position: relative; height: 28px; margin: var(--s-8) 0 var(--s-12); border-bottom: var(--line-hairline) dashed var(--line); }
+.tz-bar { position: absolute; bottom: 0; width: 2px; height: 100%; margin-left: -1px; background: var(--accent); opacity: 0.55; }
+.tz-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: flex-end; height: 11.5em;
+  overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 60%); mask-image: linear-gradient(to bottom, transparent, #000 60%); }
+.tz-rows li { display: grid; grid-template-columns: 8em 4.2em 4.2em minmax(0, 1fr) auto; gap: var(--s-12); line-height: 1.9; white-space: nowrap;
+  border-top: var(--line-hairline) solid var(--line); animation: tz-row var(--motion-base, 200ms) var(--ease-settle, ease-out); }
+.tz-rows li > :nth-child(4) { overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.tz-rows li > :last-child { text-align: right; color: var(--text); }
+@keyframes tz-row { from { opacity: 0; transform: translateY(6px); } }
+.knx-board { display: block; width: min(100%, calc((100svh - 200px) * 400 / 220)); height: auto; overflow: visible; }
+
+/* Under the horizon: the telegram that ran last, in mono like the app. */
+.tz-ticker { margin: 0; padding: var(--s-8) var(--s-32) 0; min-height: 1.6em; text-align: left;
+  font-family: var(--font-mono, monospace); font-size: 0.8125rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.tz-ticker-line { transition: opacity var(--motion-base, 200ms) var(--ease-standard, ease); }
+.tz-ticker-line.is-new { opacity: 0.35; }
+
+/* Low windows (laptops): tighter, so the horizon stays on the screen. */
+@media (min-width: 761px) and (max-height: 820px) {
+  .tz-brand { margin-bottom: var(--s-16); }
+  .tz-brand svg, .tz-brand img { width: 48px; height: 48px; }
+  .tz-name { font-size: 1.25rem; }
+  .tz-hero > .tz-words > p:not(.tz-note) { margin-bottom: var(--s-16); }
+  .tz-note { margin-bottom: var(--s-24); }
+}
+
+@container (max-width: 760px) {
+  .tz-hero { grid-template-columns: minmax(0, 1fr); gap: var(--s-16); padding: var(--s-24) var(--s-16) 0; }
+  .tz-brand { margin-bottom: var(--s-16); }
+  .tz-brand svg, .tz-brand img { width: 48px; height: 48px; }
+  .tz-note { margin-bottom: var(--s-24); }
+  .knx-board { width: min(100%, 520px); }
+  .tz-ticker { text-align: left; padding-inline: var(--s-16); }
+}
+
+/* The trademark line under the foot, as on the landing page. */
+.tz-mark { margin: 0; padding: 0 var(--s-32) var(--s-16); color: var(--text-faint); }
+
+/* Cabinet and cable lines from the tokens (light and dark). */
+.knx-board-cabinet { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.2; }
+.knx-board-back { fill: var(--sunken); stroke: var(--line); stroke-width: 0.8; }
+.knx-board-rail { fill: var(--line); stroke: var(--line-strong); stroke-width: 0.5; }
+.knx-board-rail-slot { fill: var(--line-strong); opacity: 0.5; }
+.knx-board-gland { fill: var(--line-strong); }
+.knx-board-cable-label { font-family: var(--font-mono, monospace); font-size: 5.2px; fill: var(--text-faint); text-anchor: end; }
+.knx-board-addr { font-family: var(--font-mono, monospace); font-size: 5.2px; fill: var(--text-muted); text-anchor: middle; }
+
+/* KNX bus cable as in the app (Palette.busSheath, busPlus, busMinus). */
+/* In screen pixels like the thread it runs into, however large the board is drawn. */
+.knx-board-cable { fill: none; stroke: #4F9A3C; stroke-width: 2.6px; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.knx-board-core { fill: none; stroke-width: 1.1; }
+.knx-board-core--plus { stroke: #C8312B; }
+.knx-board-core--minus { stroke: #2A2A28; }
+.knx-board-pulse { fill: #fff; opacity: 0; }
+.knx-board-pulse.is-running { opacity: 1; }
+
+/* The devices keep their own colours in both themes (Palette.device*). */
+.dv-housing { fill: #E2E2DC; stroke: #ABABA4; stroke-width: 0.25; }
+.dv-step { fill: #D7D7D0; stroke: #ABABA4; stroke-width: 0.25; }
+.dv-front { fill: #EFEFEA; stroke: #ABABA4; stroke-width: 0.25; }
+.dv-slot { fill: #2A2B28; }
+.dv-terminal { fill: #43A047; }
+.dv-screw { fill: #B9BDBF; }
+.dv-slit { stroke: #ABABA4; stroke-width: 0.35; }
+.dv-bus-minus { fill: #2A2A28; }
+.dv-bus-plus { fill: #C8312B; }
+.dv-port { fill: #D7D7D0; stroke: #ABABA4; stroke-width: 0.25; }
+.dv-prog { fill: #D7D7D0; stroke: #ABABA4; stroke-width: 0.3; }
+.dv-ink { fill: none; stroke: #2E4A8E; stroke-width: 0.3; }
+.dv-key { font-family: var(--font-sans, sans-serif); font-size: 2.6px; font-weight: 600; fill: #2E4A8E; text-anchor: middle; }
+.dv-type { font-family: var(--font-sans, sans-serif); font-size: 5px; font-weight: 700; fill: #22221F; text-anchor: middle; }
+.dv-led { fill: #BDB8AC; transition: fill var(--motion-fast, 120ms) linear, fill-opacity var(--motion-fast, 120ms) linear; }
+.dv-led.is-on { fill: #2EBD3A; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dv-led, .tz-ticker-line, .tz-lamp-bulb, .tz-lamp-rays { transition: none; }
+  .tz-rows li, .tz-boxlog-rows li { animation: none; }
+  .tz-pi-led { transition: none; }
+}
+
+/* Text pages (Support, Datenschutz, Konto löschen), wie auf der Landingpage. */
+.knx-prose a, .knx-faq a { color: var(--accent-text); text-underline-offset: 0.2em; }
+/* FAQ: hairlines between questions, no cards. */
+.knx-faq { max-width: var(--size-text-column); }
+.knx-faq details { border-top: var(--line-hairline) solid var(--line); }
+.knx-faq details:last-child { border-bottom: var(--line-hairline) solid var(--line); }
+.knx-faq summary {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--s-16);
+  min-height: var(--size-row); padding: var(--s-8) 0;
+  font-weight: 500; cursor: pointer; list-style: none;
+}
+.knx-faq summary::-webkit-details-marker { display: none; }
+.knx-faq summary .hz-symbol { color: var(--text-muted); transition: transform var(--motion-fast) var(--ease-standard); }
+.knx-faq details[open] summary .hz-symbol { transform: rotate(180deg); }
+.knx-faq details p { margin: 0 0 var(--s-16); color: var(--text-muted); max-width: 64ch; }
+
+/* Text pages (Datenschutz, Support): Kennung and title, the horizon, the
+   reading column. */
+.knx-page-head { padding: var(--s-64) var(--s-32) 0; }
+.knx-page-head h1 {
+  margin: var(--s-16) 0 var(--s-24);
+  font-size: clamp(1.75rem, 7cqw, 2.75rem);
+  overflow-wrap: break-word; hyphens: auto;
+}
+.knx-page-head .hz-feld-actions { margin-bottom: var(--s-48); }
+.knx-page-head:not(:has(.hz-feld-actions)) h1 { margin-bottom: var(--s-48); }
+.knx-lead { color: var(--text-muted); max-width: 46ch; margin: 0 0 var(--s-32); }
+.knx-prose { max-width: var(--size-text-column); padding: var(--s-48) var(--s-32) var(--s-64); overflow-wrap: break-word; }
+.knx-prose > :first-child { margin-top: 0; }
+.knx-prose h2 { margin: var(--s-48) 0 var(--s-12); font: 300 1.5rem/1.25 var(--font-serif); }
+.knx-prose h3 { margin: var(--s-32) 0 var(--s-8); font: 600 1.0625rem/1.4 var(--font-sans); }
+.knx-prose p, .knx-prose ul, .knx-prose ol { margin: 0 0 var(--s-16); }
+.knx-prose ul, .knx-prose ol { padding-left: var(--s-24); }
+.knx-prose li + li { margin-top: var(--s-4); }
+.knx-prose strong { font-weight: 600; }
+.knx-prose blockquote {
+  margin: 0 0 var(--s-24); padding: var(--s-4) 0 var(--s-4) var(--s-16);
+  border-left: var(--line-hairline) solid var(--line-strong);
+  color: var(--text);
+}
+.knx-prose blockquote p { margin: 0; }
+.knx-prose .hz-kennung { display: block; margin-bottom: var(--s-24); }
+
+@container (max-width: 720px) {
+  .knx-page-head { padding: var(--s-48) var(--s-16) 0; }
+  .knx-prose { padding: var(--s-32) var(--s-16) var(--s-48); }
+}
+
+/* Add-on page, section Automations: the glass push button next to a Home
+   Assistant event view (addon.js). Below the words, over both columns. */
+.tz-demo { grid-column: 2 / -1; display: grid; grid-template-columns: auto 1fr; gap: var(--s-24); align-items: start; margin: var(--s-8) 0 0; }
+.tz-demo figcaption { grid-column: 1 / -1; font-size: 0.8125rem; color: var(--text-muted); }
+.tz-demo-sensor { display: grid; gap: var(--s-8); justify-items: start; }
+.tz-sensor--static { position: static; }
+.tz-demo-toggle { display: flex; align-items: center; gap: var(--s-8); font-size: 0.8125rem; color: var(--text-muted); cursor: pointer; }
+.tz-demo-toggle input { accent-color: var(--accent); }
+.tz-demo-ha { min-width: 0; border: var(--line-hairline) solid var(--line-strong); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.tz-demo-ha-head { display: flex; justify-content: space-between; gap: var(--s-8); padding: 10px 12px; border-bottom: var(--line-hairline) solid var(--line); font-size: 0.8125rem; }
+.tz-demo-ha-head code { font-size: 0.75rem; color: var(--text-muted); }
+.tz-demo-note { margin: 10px 12px 0; padding: 8px 10px; border-radius: 6px; background: var(--sunken); font-size: 0.8125rem; }
+.tz-demo-note::before { content: "\e7f7\00a0"; font-family: var(--font-symbols); font-weight: 300; }
+.tz-demo-events { list-style: none; margin: 0; padding: 0; }
+.tz-demo-events li { padding: 10px 12px; border-bottom: var(--line-hairline) solid var(--line); }
+.tz-demo-events li:last-child { border-bottom: 0; }
+.tz-demo-time { display: block; margin-bottom: 4px; font-size: 0.75rem; color: var(--text-muted); }
+.tz-demo-events pre { margin: 0; font-family: var(--font-mono, monospace); font-size: 0.6875rem; line-height: 1.45; white-space: pre-wrap; word-break: break-all; color: var(--text); }
+.tz-demo-empty { font-size: 0.8125rem; color: var(--text-muted); }
+@media (max-width: 720px) {
+  .tz-demo { grid-column: 1; grid-template-columns: 1fr; }
+}
+
+/* Feedback page: switch "Include names" over an excerpt of a package,
+   CSS only. */
+.tz-names { margin: var(--s-16) 0 var(--s-24); padding: var(--s-12) var(--s-16); border: var(--line-hairline) solid var(--line-strong); border-radius: 10px; }
+.tz-names label { display: flex; align-items: center; gap: var(--s-8); font-size: 0.875rem; cursor: pointer; }
+.tz-names input { accent-color: var(--accent); }
+.tz-names table { width: 100%; margin-top: var(--s-12); border-collapse: collapse; font-size: 0.8125rem; }
+.tz-names th { text-align: left; font-weight: 600; color: var(--text-muted); }
+.tz-names th, .tz-names td { padding: 4px 8px 4px 0; border-bottom: var(--line-hairline) solid var(--line); }
+.tz-names td:first-child, .tz-names td:last-child { font-family: var(--font-mono, monospace); white-space: nowrap; }
+.tz-names .tz-off { display: none; color: var(--text-faint); }
+.tz-names:has(input:not(:checked)) .tz-on { display: none; }
+.tz-names:has(input:not(:checked)) .tz-off { display: inline; }
+.tz-names p { margin: var(--s-8) 0 0; font-size: 0.75rem; color: var(--text-muted); }
+
+/* Bauherren-Seite: Haus-Szene und kleiner Grundriss (bauherren.js). */
+.bh-scene, .bh-moments, .bh-plan { --bh-night: #27324A; --bh-glow: #EBBE6A; }
+[data-theme="dark"] .bh-scene { --bh-night: #0C1220; }
+.bh-scene { display: block; width: 100%; max-width: 440px; height: auto; }
+.bh-sky { fill: var(--bh-night); transition: fill 700ms cubic-bezier(.2,0,0,1); }
+.bh-sun { fill: var(--bh-glow); transition: cx 700ms cubic-bezier(.2,0,0,1), cy 700ms cubic-bezier(.2,0,0,1), fill 700ms; }
+.bh-sun.is-moon { fill: var(--line); }
+.bh-house { fill: var(--surface); stroke: var(--text); stroke-width: 1.5; }
+.bh-floor { fill: none; stroke: var(--line); }
+.bh-light { fill: var(--bh-glow); opacity: 0; transition: opacity 700ms cubic-bezier(.2,0,0,1); }
+.bh-window { fill: var(--sunken); stroke: var(--line-strong); }
+.bh-blind { fill: var(--text-muted); transform-box: fill-box; transform-origin: top; transition: transform 700ms cubic-bezier(.2,0,0,1); }
+.bh-horizon { stroke: var(--accent); stroke-width: 2; }
+.bh-moments, .bh-plan { grid-column: 2 / -1; margin: var(--s-8) 0 0; min-width: 0; }
+.bh-tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: var(--s-16); }
+.bh-tab { min-height: 44px; padding: 0 var(--s-12); border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-muted); font: inherit; font-weight: 500; cursor: pointer; }
+.bh-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.bh-moment-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-24); align-items: start; }
+.bh-caption { margin: 0 0 var(--s-12); min-height: 3em; color: var(--text-muted); font-size: 0.875rem; }
+.bh-time { color: var(--accent-text); }
+.bh-moment-title { margin: 0 0 var(--s-4); font: 300 1.5rem/1.25 var(--font-serif); }
+.bh-moment-story { margin: 0 0 var(--s-12); color: var(--text-muted); }
+.bh-wishes { list-style: none; margin: 0 0 var(--s-16); padding: 0; }
+.bh-wishes li { display: flex; justify-content: space-between; gap: var(--s-8); padding: var(--s-4) 0; border-bottom: 1px solid var(--line); font-size: 0.875rem; }
+.bh-answers { display: flex; flex-wrap: wrap; gap: var(--s-8); }
+.bh-tally { margin: var(--s-12) 0 0; color: var(--text-muted); }
+.bh-plan { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: var(--s-16); }
+.bh-plan figcaption { grid-column: 1 / -1; font-size: 0.8125rem; color: var(--text-muted); }
+.bh-plan-stage { position: relative; aspect-ratio: 1000 / 640; background: var(--surface); border: 1px solid var(--line); }
+.bh-plan-stage > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bh-furn { fill: var(--sunken); stroke: var(--line); }
+.bh-wall { fill: none; stroke: var(--text); stroke-width: 5; }
+.bh-wall--out { stroke-width: 8; }
+.bh-door { fill: none; stroke: var(--line-strong); }
+.bh-dims line { stroke: var(--info, #2F5E9E); stroke-width: 2; }
+.bh-rooms span { position: absolute; transform: translate(-50%, -50%); font-size: 0.75rem; color: var(--text-muted); pointer-events: none; white-space: nowrap; }
+.bh-device { position: absolute; width: 32px; height: 32px; margin: -16px 0 0 -16px; padding: 0; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--text); cursor: pointer; }
+.bh-device::after { content: ""; position: absolute; inset: -6px; }
+.bh-device .hz-symbol { font-size: 16px; }
+.bh-device.is-warn { border-color: var(--warning); color: var(--warning); }
+.bh-device.is-selected { border: 2px solid var(--accent); }
+.bh-detail strong { display: block; margin-bottom: var(--s-8); }
+.bh-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
+.bh-modes button { flex: 1; min-height: 36px; border: 0; border-bottom: 2px solid transparent; background: var(--sunken); color: var(--text-muted); font: inherit; font-size: 0.8125rem; font-weight: 500; cursor: pointer; }
+.bh-modes button[aria-pressed="true"] { background: var(--accent-tint); color: var(--text); border-bottom-color: var(--accent); }
+.bh-detail p { margin: var(--s-8) 0 0; color: var(--text-muted); }
+.bh-count { margin: var(--s-16) 0 0; }
+.bh-count div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-8); padding: var(--s-4) 0; border-bottom: 1px solid var(--line); }
+.bh-count dt { font-size: 0.8125rem; color: var(--text-muted); }
+.bh-count dd { margin: 0; }
+.bh-hint { margin: var(--s-12) 0 0; font-size: 0.875rem; color: var(--warning); }
+.bh-hint.is-ok { color: var(--positive); }
+.bh-hint .hz-button { margin-top: var(--s-8); }
+@media (prefers-reduced-motion: reduce) { .bh-sky, .bh-sun, .bh-light, .bh-blind { transition: none; } }
+@container (max-width: 720px) {
+  .bh-moments, .bh-plan { grid-column: 1 / -1; }
+  .bh-moment-grid, .bh-plan { grid-template-columns: 1fr; }
+}

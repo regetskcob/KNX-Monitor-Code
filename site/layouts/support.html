@@ -1,0 +1,27 @@
+{{ define "main" }}
+{{- /* Support: contact via GitHub Issues, what to include, the FAQ. */}}
+{{- $d := index site.Data.home site.Language.Lang -}}
+{{- $s := index site.Data.support site.Language.Lang -}}
+<article class="knx-page">
+  <header class="knx-page-head">
+    {{ partial "horizont/kennung.html" (dict "text" (printf "%s · %s" site.Title .Title) "tag" "p") }}
+    <h1 class="t-display">{{ .Title }}</h1>
+    <p class="knx-lead">{{ $s.lead }}</p>
+    <div class="hz-feld-actions">
+      <a class="hz-button hz-button--primary" href="{{ site.Params.githubUrl }}/issues" rel="noopener">GitHub Issues{{ partial "horizont/symbol.html" "open_in_new" }}</a>
+    </div>
+  </header>
+  <hr class="hz-feld-horizon">
+  <div class="knx-prose t-reading">
+    <h2>{{ $s.contact_title }}</h2>
+    <p>{{ $s.contact_text }} <a href="{{ site.Params.githubUrl }}/issues" rel="noopener">GitHub Issues</a></p>
+    <h2>{{ $s.checklist_title }}</h2>
+    <ul>{{ range $s.checklist }}<li>{{ . }}</li>{{ end }}</ul>
+    <h2>{{ $d.faq.title }}</h2>
+    {{- $faq := slice }}
+    {{- range $d.faq.items }}{{ if or site.Params.commerce (not .commerce) }}{{ $faq = $faq | append . }}{{ end }}{{ end }}
+    {{ partial "faq.html" ($faq | append $s.faq) }}
+    {{ .Content }}
+  </div>
+</article>
+{{ end }}

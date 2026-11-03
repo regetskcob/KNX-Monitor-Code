@@ -1,0 +1,37 @@
+{
+  "format": "knx-monitor-chart-template",
+  "version": 1,
+  "name": "Wetterstation",
+  "perRoom": false,
+  "series": [
+    {
+      "role": "outdoorTemperature"
+    },
+    {
+      "role": "wind"
+    },
+    {
+      "role": "outdoorLux"
+    },
+    {
+      "role": "rain"
+    }
+  ],
+  "gallery": {
+    "title": {
+      "de": "Wetterstation",
+      "en": "Weather station"
+    },
+    "description": {
+      "de": "Temperatur, Wind, Helligkeit und Regen der Wetterstation auf einen Blick.",
+      "en": "Temperature, wind, brightness and rain from the weather station at a glance."
+    },
+    "tags": [
+      "wetter",
+      "wind",
+      "regen",
+      "weather",
+      "rain"
+    ]
+  }
+}

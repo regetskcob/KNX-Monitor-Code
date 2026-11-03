@@ -1,0 +1,9 @@
+{{- /* End card of a reel: (dict "at" <seconds> "title" … "text" …) */ -}}
+  <div class="r-scene r-end">
+    <div class="r-top" style="top:420px">
+      <div class="r-kennung in" style="--d:{{ .at }}s">KNX Monitor</div>
+      <h1 class="r-title in" style="--d:{{ add .at 0.15 }}s">{{ .title }}</h1>
+      <p class="r-text in" style="--d:{{ add .at 0.35 }}s">{{ .text }}</p>
+      <div class="r-url pop" style="--d:{{ add .at 0.8 }}s">{{ partial "horizont/app-icon.html" (dict "product" "knx" "size" 88) }} knx-monitor.de</div>
+    </div>
+  </div>

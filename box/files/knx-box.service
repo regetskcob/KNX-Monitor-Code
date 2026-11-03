@@ -1,0 +1,44 @@
+# KNX Monitor Box: server with continuous recording, web app and app pairing.
+[Unit]
+Description=KNX Monitor Box
+Documentation=https://knx-monitor.de/box/
+After=network-online.target knx-box-firstboot.service knx-box-data.service
+Wants=network-online.target knx-box-data.service
+# Do not start without first boot (passwords, Wi-Fi).
+ConditionPathExists=/etc/knx-box/env
+
+[Service]
+User=knx-box
+Group=knx-box
+Environment=BOX=1 PORT=80 WEB_DIR=/opt/knx-box/web DATA_DIR=/var/lib/knx-box TZ=Europe/Berlin
+# Real box: the first password is on the sticker and must be replaced (box_access.dart).
+Environment=BOX_STICKER=1
+# HTTPS with the box's own certificate (tls-cert.sh).
+Environment=TLS_CERT=/etc/knx-box-tls/cert.pem TLS_KEY=/etc/knx-box-tls/key.pem TLS_PORT=443
+# BOX_NAME, on the very first start BOX_PASSWORD (afterwards access.json applies).
+EnvironmentFile=/etc/knx-box/env
+ExecStart=/opt/knx-box/server
+StateDirectory=knx-box
+StateDirectoryMode=0750
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+# Of the real devices only the Pi's serial ones (ttyAMA*, KNX HAT on
+# GPIO 14/15); otherwise only /dev/null and the like.
+PrivateDevices=no
+DevicePolicy=closed
+DeviceAllow=char-ttyAMA rw
+SupplementaryGroups=dialout
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+Restart=always
+RestartSec=3
+# Time to write the history and to disconnect the tunnel (SIGTERM).
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

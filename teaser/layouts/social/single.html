@@ -1,0 +1,281 @@
+{{- /*
+  Instagram drafts (tool/social/render.py → store/social/posts/): one page
+  per image, 1080 × 1350 (4:5). The start tiles (3240 × 1350) and the hero of
+  the landing page for the pinned row (3240 × 1440, 3:4 like the profile
+  grid) are one picture each that render.py cuts into three. Horizont as on
+  the page: paper, one green line as the horizon (the bus cable runs through
+  all tiles), Literata headlines, Monaspace for addresses. Only built with
+  drafts (hugo server -D).
+
+  Front matter: w, h, kind (start | hero | pin | cover | item | box | screen |
+  checklist | list | stickers), kennung, title, text, number, status (with
+  level warning | positive), rows and plain (checklist), list and liststyle
+  (wide | numbered), shot with device and width (images/…), ipad (the add-on
+  in Home Assistant), swipe (true on covers).
+*/ -}}
+{{- $p := .Params -}}
+{{- $d := index site.Data.teaser "de" -}}
+<!doctype html>
+<html lang="de" data-product="knx" data-theme="light">
+{{ partial "head.html" (dict "page" . "title" .Title "description" "Entwurf") }}
+<body class="hz tz">
+<style>
+  html, body { margin: 0; background: var(--bg); }
+  .s { position: relative; width: {{ $p.w }}px; height: {{ $p.h }}px; overflow: hidden; background: var(--bg); color: var(--text); }
+  .s-tile { position: absolute; top: 0; width: 1080px; height: 1350px; padding: 96px 88px; box-sizing: border-box; }
+  .s-kennung { font: 600 22px/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
+  .s-title { margin: 28px 0 0; font: 300 82px/1.06 var(--font-serif); letter-spacing: -0.01em; text-wrap: balance; }
+  .s-text { margin: 28px 0 0; font: 400 32px/1.4 var(--font-sans); color: var(--text-muted); max-width: 860px; text-wrap: pretty; }
+  .s-number { font: 300 220px/0.9 var(--font-serif); color: var(--accent); }
+  /* The bus cable: one green line across the whole picture. */
+  .s-line { position: absolute; left: 0; right: 0; top: 1130px; height: 5px; background: var(--accent); }
+  .s-foot { position: absolute; left: 88px; right: 88px; bottom: 64px; display: flex; justify-content: space-between; align-items: center;
+    font: 500 24px/1 var(--font-mono); color: var(--text-muted); }
+  .s-foot span { display: flex; align-items: center; gap: 14px; }
+  .s-swipe { font: 600 24px/1 var(--font-mono); letter-spacing: 0.1em; color: var(--accent-text); }
+  .s-stand { position: absolute; left: 0; right: 0; bottom: 220px; display: flex; justify-content: center; align-items: flex-end; }
+  .s-status { margin-top: 48px; display: flex; gap: 18px; align-items: flex-start; padding: 26px 30px; border: 2px solid var(--line-strong); border-radius: 14px; background: var(--surface);
+    font: 500 28px/1.35 var(--font-mono); }
+  .s-status i { flex: none; width: 22px; height: 22px; margin-top: 6px; border-radius: 50%; }
+  .s-status--warning i { background: var(--warning); }
+  .s-status--positive i { background: var(--positive); }
+  .s-rows { margin-top: 44px; border-top: 2px solid var(--line); }
+  .s-row { display: grid; grid-template-columns: 44px 170px 1fr auto; gap: 18px; align-items: center; padding: 18px 4px; border-bottom: 2px solid var(--line); font: 400 28px/1.2 var(--font-sans); }
+  .s-row b { font: 500 26px/1 var(--font-mono); color: var(--text-muted); }
+  .s-row em { font: 500 26px/1 var(--font-mono); font-style: normal; color: var(--text-muted); }
+  .s-box { width: 34px; height: 34px; border: 3px solid var(--line-strong); border-radius: 8px; box-sizing: border-box; display: grid; place-items: center; color: var(--on-accent); font: 700 24px/1 var(--font-sans); }
+  .s--plain .s-box { display: none; }
+  .s--plain .s-row { grid-template-columns: 170px 1fr auto; }
+  .s-row.is-done .s-box { background: var(--accent); border-color: var(--accent); }
+  .s-telegrams { margin-top: 56px; font: 400 27px/1 var(--font-mono); }
+  .s-telegrams div { display: grid; grid-template-columns: 150px 120px 1fr auto; gap: 20px; padding: 17px 0; border-bottom: 2px solid var(--line); }
+  .s-telegrams div:first-child { border-top: 2px solid var(--line); }
+  .s-telegrams span:nth-child(3) { font-family: var(--font-sans); }
+  .s-telegrams span:last-child { color: var(--accent-text); }
+  /* Drawings of the page, scaled up for 1080 px. */
+  .s-verteiler { transform: scale(2.3); transform-origin: bottom center; }
+  /* Hero of the landing page as three 3:4 tiles (3240 × 1440). */
+  .s--hero .s-line { top: 1210px; }
+  .s--hero .s-tile { height: 1440px; }
+  .s-brand { display: flex; align-items: center; gap: 26px; font: 600 46px/1 var(--font-sans); }
+  .s--hero .s-kennung { margin-top: 56px; }
+  .s-hero-title { margin: 28px 0 0; font: 300 100px/1.04 var(--font-serif); letter-spacing: -0.01em; }
+  .s-hero-lead { margin: 34px 0 0; font: 400 34px/1.45 var(--font-sans); color: var(--text-muted); max-width: 880px; }
+  .s-live { position: absolute; left: 1250px; width: 820px; top: 470px; font: 400 25px/1 var(--font-mono); color: var(--text-muted); }
+  .s-live-head { display: flex; justify-content: space-between; text-transform: uppercase; letter-spacing: .1em; font-size: 22px; padding-bottom: 18px; border-bottom: 2px solid var(--line); }
+  .s-live-bars { position: relative; height: 70px; margin: 18px 0 20px; border-bottom: 2px dashed var(--line); }
+  .s-live-bars i { position: absolute; bottom: 0; width: 4px; background: var(--accent); opacity: .7; }
+  .s-live-rows div { display: grid; grid-template-columns: 190px 98px 90px 1fr auto; gap: 14px; padding: 13px 0; border-bottom: 2px solid var(--line); white-space: nowrap; }
+  .s-live-rows div > :nth-child(4), .s-live-rows div > :last-child { color: var(--text); }
+  .s-live-rows div:first-child { opacity: .35; }
+  .s-wire { position: absolute; inset: 0; width: 3240px; height: 1440px; pointer-events: none; }
+  .s-wire path { fill: none; stroke: var(--line-strong); stroke-width: 4; }
+  .s-wire .s-lamp-bulb { fill: #E0B341; stroke: #C8961E; stroke-width: 3; }
+  .s-wire .s-lamp-rays { stroke: #C8961E; stroke-width: 4; stroke-linecap: round; }
+  .s-wire .s-lamp-socket { fill: var(--surface); stroke: var(--line-strong); stroke-width: 2; }
+  .s-wire text { font: 400 28px var(--font-mono); fill: var(--text-muted); }
+  /* Second pinned row (3240 × 1440): add-on, health check, actuator with callouts. */
+  .s--pin .s-line { top: 1210px; z-index: 1; }
+  .s--pin .s-tile { height: 1440px; }
+  .s-health { position: absolute; left: 88px; right: 88px; bottom: 270px; padding: 34px 36px 10px; border: 2px solid var(--line-strong); border-radius: 18px; background: var(--surface); }
+  .s-health-run { font: 400 27px/1.3 var(--font-mono); }
+  .s-chips { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0 14px; }
+  .s-chips span { padding: 8px 14px; border-radius: 8px; font: 500 24px/1 var(--font-sans); }
+  .s-finding { display: grid; grid-template-columns: 44px 1fr; gap: 20px; padding: 24px 0; border-top: 2px solid var(--line); }
+  .s-finding i { width: 34px; height: 34px; margin-top: 4px; border: 3px solid; border-radius: 50%; box-sizing: border-box; display: grid; place-items: center; font: 700 20px/1 var(--font-sans); font-style: normal; }
+  .s-finding b { display: block; font: 600 31px/1.25 var(--font-sans); }
+  .s-finding b span { font-family: var(--font-mono); margin-right: 14px; }
+  .s-finding small { display: block; margin-top: 6px; font: 400 26px/1.35 var(--font-sans); color: var(--text-muted); }
+  .is-info { color: var(--info); background: var(--info-tint); }
+  .is-critical { color: var(--critical); background: var(--critical-tint); }
+  .is-warning { color: var(--warning); background: var(--warning-tint); }
+  .is-positive { color: var(--positive); background: var(--positive-tint); }
+  .s-finding i.is-info, .s-finding i.is-critical, .s-finding i.is-warning { background: none; }
+  /* App rendering of the actuator (test/social_shots_test.dart), cut off where the cable meets the line. */
+  .s-links { position: absolute; left: 50px; width: 980px; bottom: 226px; height: 548px; overflow: hidden; }
+  .s-links img { display: block; width: 100%; }
+  /* Detail lists: term above, text below; numbered when "numbered". */
+  .s-list { margin-top: 40px; border-top: 2px solid var(--line); }
+  .s-list > div { display: grid; grid-template-columns: 230px 1fr; gap: 24px; align-items: baseline; padding: 22px 0; border-bottom: 2px solid var(--line); }
+  .s-list b { font: 600 27px/1.3 var(--font-mono); color: var(--accent-text); overflow-wrap: anywhere; }
+  .s-list span { font: 400 33px/1.35 var(--font-sans); }
+  .s-list--wide > div { grid-template-columns: 1fr; gap: 8px; }
+  .s-list--numbered b { font: 300 64px/0.9 var(--font-serif); color: var(--accent); }
+  .s-list--numbered > div { grid-template-columns: 80px 1fr; }
+  .s-stickers { margin-top: 48px; display: grid; gap: 28px; justify-items: center; }
+  .s-sticker { width: 660px; height: 327px; box-sizing: border-box; border: 3px solid var(--text); border-radius: 22px; background: #fff; color: #111;
+    display: grid; grid-template-columns: 230px 1fr; gap: 30px; align-items: center; padding: 30px 34px; }
+  .s-sticker-qr { width: 230px; height: 230px; display: block; }
+  .s-sticker-n { font: 300 120px/0.8 var(--font-serif); color: var(--accent); }
+  .s-sticker-t { margin-top: 16px; font: 600 36px/1.15 var(--font-sans); }
+  .s-sticker-s { margin-top: 12px; font: 500 24px/1.3 var(--font-mono); color: #555; }
+  .s-pi { display: inline-block; transform: scale(2.2); transform-origin: bottom center; }
+  /* Covers: big headline sitting on the line; items: status box on the line. */
+  .s--cover .s-tile { display: flex; flex-direction: column; }
+  .s--cover .s-title { margin-top: auto; font-size: 136px; }
+  .s--cover .s-text { margin-bottom: 330px; font-size: 36px; }
+  .s--item .s-status { position: absolute; left: 88px; right: 88px; bottom: 270px; font-size: 34px; }
+  .s--item .s-number { font-size: 300px; }
+  .s-bh .bh-scene { max-width: none; width: 640px; }
+  .s-bh > svg[viewBox="0 0 1000 640"] { width: 640px; height: auto; }
+  .s-bh .bh-sky { fill: var(--info-tint, #E2EAF5); }
+  .s-bh .bh-light { opacity: .75; }
+  .s-bh .bh-blind { transform: scaleY(.25); }
+</style>
+<div class="s s--{{ $p.kind }}{{ if $p.plain }} s--plain{{ end }}">
+{{- if eq $p.kind "start" }}
+  <div class="s-line"></div>
+  {{- /* Left tile (posted last, top left in the grid): the add-on in HA. */}}
+  <div class="s-tile" style="left:0">
+    <div class="s-kennung">KNX Monitor · 3/3</div>
+    <h1 class="s-title">Heute kostenlos in Home Assistant.</h1>
+    <p class="s-text">Als Add-on in der Seitenleiste, für Linux schon heute. Apps folgen.</p>
+    <div class="s-stand" style="bottom:216px">
+      {{- with resources.Get "images/ipad-overview-de.png" }}
+      {{ partial "horizont/device.html" (dict "device" "ipad" "width" 800 "inner" (partial "ha-frame.html" (dict "src" (.Resize "1600x webp q90").RelPermalink "alt" $d.ipad_alt))) }}
+      {{- end }}
+    </div>
+    {{ partial "social-foot.html" (dict) }}
+  </div>
+  {{- /* Middle tile: telegrams with names from the ETS project. */}}
+  <div class="s-tile" style="left:1080px">
+    <div class="s-kennung">KNX Monitor · 2/3</div>
+    <h1 class="s-title">Mit deinem ETS-Projekt.</h1>
+    <p class="s-text">Namen, Räume und Datentypen statt Hex-Kolonnen.</p>
+    <div class="s-telegrams">
+      {{- range first 6 $d.telegrams }}
+      <div><span>{{ .from }}</span><span>{{ .to }}</span><span>{{ .text }}</span><span>{{ .value }}</span></div>
+      {{- end }}
+    </div>
+    {{ partial "social-foot.html" (dict) }}
+  </div>
+  {{- /* Right tile (posted first): the board, its cable is the line. */}}
+  <div class="s-tile" style="left:2160px">
+    <div class="s-kennung">KNX Monitor · 1/3</div>
+    <h1 class="s-title">Jedes Telegramm im Blick.</h1>
+    <p class="s-text">Busmonitor und Diagnose für KNX.</p>
+    <div class="s-stand" style="bottom:225px"><div class="s-verteiler">{{ partial "verteiler.html" (dict "alt" $d.drawing "cable" "") }}</div></div>
+    {{ partial "social-foot.html" (dict) }}
+  </div>
+{{- else if eq $p.kind "hero" }}
+  <div class="s-line"></div>
+  <svg class="s-wire" viewBox="0 0 3240 1440" aria-hidden="true">
+    <path d="M1170 300 V1010 H2398"/>
+    <g transform="translate(1170 240)">
+      <path class="s-lamp-rays" d="M0 -62 V-78 M44 -44 L56 -56 M-44 -44 L-56 -56 M62 0 H78 M-62 0 H-78 M44 44 L56 56 M-44 44 L-56 56"/>
+      <circle class="s-lamp-bulb" r="32"/>
+      <rect class="s-lamp-socket" x="-15" y="30" width="30" height="22" rx="4"/>
+      <text x="100" y="10">{{ $d.lamp }} · 1/1/3</text>
+    </g>
+  </svg>
+  <div class="s-tile" style="left:0">
+    <div class="s-brand">{{ partial "horizont/app-icon.html" (dict "product" "knx" "size" 110) }} KNX Monitor</div>
+    <div class="s-kennung">{{ $d.kennung }}</div>
+    <h1 class="s-hero-title">{{ $d.title }}</h1>
+    <p class="s-hero-lead">{{ $d.lead }}</p>
+    {{ partial "social-foot.html" (dict) }}
+  </div>
+  <div class="s-live">
+    <div class="s-live-head"><span>{{ $d.live }}</span><span>{{ $d.live_window }}</span></div>
+    <div class="s-live-bars">{{ range $i, $h := slice 10 0 0 22 0 40 0 0 0 55 0 0 30 0 65 0 0 20 0 0 45 0 0 0 70 0 35 0 0 25 }}{{ if $h }}<i style="left:{{ mul $i 27 }}px;height:{{ $h }}px"></i>{{ end }}{{ end }}</div>
+    <div class="s-live-rows">
+      {{- $times := slice "14:35:07.845" "14:35:08.058" "14:35:09.897" "14:35:10.136" "14:35:16.118" "14:35:17.021" }}
+      {{- range $i, $t := first 6 $d.telegrams }}
+      <div><span>{{ index $times $i }}</span><span>{{ .from }}</span><span>{{ .to }}</span><span>{{ .text }}</span><span>{{ .value }}</span></div>
+      {{- end }}
+    </div>
+  </div>
+  <div class="s-tile" style="left:1080px">{{ partial "social-foot.html" (dict) }}</div>
+  <div class="s-tile" style="left:2160px">
+    <div class="s-stand" style="bottom:230px"><div class="s-verteiler" style="transform:scale(2.2)">{{ partial "verteiler.html" (dict "alt" $d.drawing "cable" "") }}</div></div>
+    {{ partial "social-foot.html" (dict) }}
+  </div>
+{{- else if eq $p.kind "pin" }}
+  <div class="s-line"></div>
+  {{- /* Left tile (pinned last): the add-on in HA, as on the start tiles. */}}
+  <div class="s-tile" style="left:0">
+    <div class="s-kennung">KNX Monitor · Home Assistant</div>
+    <h1 class="s-title">Heute kostenlos in Home Assistant.</h1>
+    <p class="s-text">Als Add-on in der Seitenleiste, für Linux schon heute. Apps folgen.</p>
+    <div class="s-stand" style="bottom:226px">
+      {{- with resources.Get "images/ipad-overview-de.png" }}
+      {{ partial "horizont/device.html" (dict "device" "ipad" "width" 860 "inner" (partial "ha-frame.html" (dict "src" (.Resize "1720x webp q90").RelPermalink "alt" $d.ipad_alt))) }}
+      {{- end }}
+    </div>
+    {{ partial "social-foot.html" (dict) }}
+  </div>
+  {{- /* Middle tile: findings of the health check (demo house). */}}
+  <div class="s-tile" style="left:1080px">
+    <div class="s-kennung">KNX Monitor · Diagnose</div>
+    <h1 class="s-title">Findet, was still kaputt ist.</h1>
+    <p class="s-text">Die Gesundheitsprüfung fragt die Anlage ab und sortiert, was auffällt.</p>
+    <div class="s-health">
+      <div class="s-health-run">Letzter Lauf · 31 von 32 antworten</div>
+      <div class="s-chips"><span class="is-info">Lesetest · 1</span><span class="is-positive">Werte · 0</span><span class="is-critical">Datentypen · 1</span><span class="is-warning">Bus · 1</span></div>
+      <div class="s-finding"><i class="is-info">i</i><div><b><span>2/3/3</span>OG SZ Ventil-Zustand</b><small>Antwortet nie auf Leseanfragen. Lese-Flag am Heizungsaktor prüfen.</small></div></div>
+      <div class="s-finding"><i class="is-critical">!</i><div><b><span>2/4/2</span>OG BZ Luftfeuchte</b><small>Der Taster sendet 1 Byte, DPT 9.007 erwartet 2.</small></div></div>
+      <div class="s-finding"><i class="is-warning">!</i><div><b><span>1.1.13</span>Heizungsaktor 6-fach</b><small>Wiederholt 17 % seiner Telegramme. Quittungen und Leitung prüfen.</small></div></div>
+    </div>
+    {{ partial "social-foot.html" (dict) }}
+  </div>
+  {{- /* Right tile (pinned first): the actuator with its channel cards. */}}
+  <div class="s-tile" style="left:2160px">
+    <div class="s-kennung">KNX Monitor · Aktor</div>
+    <h1 class="s-title">Jeder Kanal mit seiner Adresse.</h1>
+    <p class="s-text">Der Schaltaktor wie im Verteiler: Zustand, Gruppenadresse und Rückmeldung je Kanal.</p>
+    {{- with resources.Get "images/social/actuator-links.png" }}
+    <div class="s-links"><img src="{{ .RelPermalink }}" alt=""></div>
+    {{- end }}
+    {{ partial "social-foot.html" (dict) }}
+  </div>
+{{- else }}
+  <div class="s-line"></div>
+  <div class="s-tile" style="left:0">
+    {{ with $p.kennung }}<div class="s-kennung">{{ . }}</div>{{ end }}
+    {{ with $p.number }}<div class="s-number" style="margin-top:28px">{{ . }}</div>{{ end }}
+    <h1 class="s-title">{{ $p.title }}</h1>
+    {{ with $p.text }}<p class="s-text">{{ . }}</p>{{ end }}
+    {{- with $p.status }}
+    <div class="s-status s-status--{{ $p.level | default "warning" }}"><i></i><span>{{ . }}</span></div>
+    {{- end }}
+    {{- with $p.rows }}
+    <div class="s-rows">
+      {{- range . }}
+      <div class="s-row{{ if .done }} is-done{{ end }}"><span class="s-box">{{ if .done }}✓{{ end }}</span><b>{{ .addr }}</b><span>{{ .name }}</span><em>{{ .value }}</em></div>
+      {{- end }}
+    </div>
+    {{- end }}
+    {{- with $p.list }}
+    <div class="s-list{{ with $p.liststyle }} s-list--{{ . }}{{ end }}">
+      {{- range . }}<div><b>{{ .t }}</b><span>{{ .v }}</span></div>{{ end }}
+    </div>
+    {{- end }}
+    {{- if eq $p.kind "stickers" }}
+    <div class="s-stickers">
+      <div class="s-sticker">{{ partial "social-qr.html" . }}<div><div class="s-sticker-n">1</div><div class="s-sticker-t">Oben auf die Box: für die App</div><div class="s-sticker-s">QR-Code scannen, koppeln</div></div></div>
+      <div class="s-sticker">{{ partial "social-qr.html" . }}<div><div class="s-sticker-n">2</div><div class="s-sticker-t">Unter die Box: das WLAN</div><div class="s-sticker-s">Name und Passwort der Box</div></div></div>
+    </div>
+    {{- end }}
+    {{- if $p.ipad }}{{ with resources.Get "images/ipad-overview-de.png" }}
+    <div class="s-stand" style="bottom:216px">{{ partial "horizont/device.html" (dict "device" "ipad" "width" 860 "inner" (partial "ha-frame.html" (dict "src" (.Resize "1720x webp q90").RelPermalink "alt" $d.ipad_alt))) }}</div>
+    {{- end }}{{ end }}
+    {{- if $p.bhscene }}
+    <div class="s-stand s-bh" style="bottom:225px;left:80px;right:80px">{{ partial "bauherren-scene.html" (dict "id" "s-scene" "label" "") }}</div>
+    {{- end }}
+    {{- if $p.bhplan }}
+    <div class="s-stand s-bh" style="bottom:225px;left:80px;right:80px">{{ partial "bauherren-static-plan.html" . }}</div>
+    {{- end }}
+    {{- if eq $p.kind "box" }}
+    <div class="s-stand" style="bottom:225px"><div class="s-pi">{{ partial "knx-pi.html" . }}</div></div>
+    {{- end }}
+    {{- with $p.shot }}{{ with resources.Get . }}
+    <div class="s-stand" style="bottom:225px">
+      {{ partial "horizont/device.html" (dict "device" ($p.device | default "iphone") "width" ($p.width | default 290) "image" . "alt" $p.title) }}
+    </div>
+    {{- end }}{{ end }}
+    {{ partial "social-foot.html" (dict "swipe" $p.swipe) }}
+  </div>
+{{- end }}
+</div>
+</body>
+</html>

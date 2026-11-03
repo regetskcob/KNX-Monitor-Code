@@ -1,0 +1,46 @@
+name: KNX Monitor
+version: "1.9.3"
+slug: knx_monitor
+description: KNX bus monitor, continuous recording, health check and commissioning in the sidebar
+url: https://knx-monitor.de
+# Prebuilt images from GitHub Actions (.github/workflows/addon.yml). For local
+# development tool/build_ha_addon.sh removes this line so HA builds the image itself.
+image: ghcr.io/regetskcob/{arch}-knx-monitor
+arch:
+  - aarch64
+  - amd64
+init: false
+startup: application
+boot: auto
+# Host network: KNXnet/IP via UDP straight into the LAN, gateway discovery.
+host_network: true
+# Alarm notifications as HA notification or push (Supervisor API)
+homeassistant_api: true
+# MQTT device "KNX Monitor" when a broker (e.g. Mosquitto) is present.
+services:
+  - mqtt:want
+# Put the dashboard card into /config/www/knx-monitor/ (option dashboard_card).
+map:
+  - type: homeassistant_config
+    read_only: false
+options:
+  read_only: true
+  alarm_notifications: true
+  watcher_notifications: true
+  notify_service: ""
+  dashboard_card: true
+schema:
+  read_only: bool
+  alarm_notifications: bool
+  watcher_notifications: bool
+  notify_service: str?
+  dashboard_card: bool
+ingress: true
+ingress_port: 8765
+# The user enables the watchdog in the add-on (default off). Then the
+# Supervisor restarts it when the server no longer responds. Only the process:
+# a disconnected bus is no reason for a restart.
+watchdog: http://[HOST]:[PORT:8765]/healthz
+panel_icon: mdi:lan-connect
+panel_title: KNX Monitor
+backup: hot

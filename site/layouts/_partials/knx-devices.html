@@ -1,0 +1,42 @@
+{{- /*
+  KNX Monitor on every screen it runs on, standing on one line: the iPad
+  with the iPhone in front of its left edge, the MacBook, and an Android
+  phone in front of the MacBook's right edge. No shadows; the scene stands
+  on the horizon of whatever holds it. It fills its width and sizes every
+  device in container units, so one markup serves the hero, the header image
+  and the App Store headers. The frames are Horizont's (hz-device); the
+  partial horizont/device.html takes widths in px only, hence the markup here.
+
+    partial "knx-devices.html" (dict "shots" $shots "alt" $alt "set" "all")
+
+  shots  dict ipad, iphone, mac, android: an image Resource each, or a URL
+         string (the drafts render from tool/store_graphics.py's image server)
+  alt    one description of the scene
+  set    all (default) | search: iPhone, iPad and MacBook only
+*/ -}}
+{{- $set := .set | default "all" -}}
+{{- $shots := .shots -}}
+{{- /* Back to front: key, frame, width and left edge in % of the scene,
+       and the width in px the picture is scaled to (2× its largest use). */ -}}
+{{- $devices := slice
+  (dict "key" "mac" "device" "laptop" "w" 52 "x" 40 "px" 1600)
+  (dict "key" "ipad" "device" "ipad" "w" 37 "x" 5 "px" 1200)
+  (dict "key" "iphone" "device" "iphone" "w" 11.5 "x" 0 "px" 400)
+  (dict "key" "android" "device" "android" "w" 11.5 "x" 87.5 "px" 400) -}}
+{{- if eq $set "search" }}
+{{- $devices = slice
+  (dict "key" "mac" "device" "laptop" "w" 40 "x" 60 "px" 1400)
+  (dict "key" "ipad" "device" "ipad" "w" 42 "x" 12 "px" 1300)
+  (dict "key" "iphone" "device" "iphone" "w" 14 "x" 0 "px" 500) -}}
+{{- end }}
+<div class="knx-devices knx-devices--{{ $set }}" role="img" aria-label="{{ .alt }}">
+  {{- range $d := $devices }}
+  {{- with index $shots $d.key }}
+  {{- $src := . }}
+  {{- if reflect.IsImageResource . }}{{ $src = (.Resize (printf "%dx webp" $d.px)).RelPermalink }}{{ end }}
+  <figure class="hz-device hz-device--{{ $d.device }}" style="--w: {{ $d.w }}cqw; left: {{ $d.x }}cqw">
+    <div class="hz-device-screen"><img src="{{ $src }}" alt="" style="display:block;width:100%;height:auto"></div>
+  </figure>
+  {{- end }}
+  {{- end }}
+</div>

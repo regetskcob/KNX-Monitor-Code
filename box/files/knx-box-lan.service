@@ -1,0 +1,14 @@
+# Access via cable according to the choice in the app or LAN_ACCESS (knx-box.txt).
+# No RemainAfterExit: a unit that stayed active is not started again by
+# knx-box-lan.path, so the switch in the app would only work after a reboot.
+[Unit]
+Description=KNX Monitor Box: Zugriff über das Kabel
+After=knx-box-firstboot.service knx-box-data.service
+Before=knx-box.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/knx-box/lan-access.sh
+
+[Install]
+WantedBy=multi-user.target

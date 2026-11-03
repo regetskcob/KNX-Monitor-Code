@@ -1,0 +1,11 @@
+{{- /*
+  A text from the data with its variant for the live site: with
+  site.Params.commerce off (the public page, no business yet) the field
+  "<key>_live" replaces "<key>" where it exists – texts without tiers,
+  prices or purchases.
+
+    partial "live.html" (dict "ctx" . "key" "text")
+*/ -}}
+{{- $v := index .ctx .key -}}
+{{- if not site.Params.commerce }}{{ with index .ctx (printf "%s_live" .key) }}{{ $v = . }}{{ end }}{{ end -}}
+{{- return $v -}}

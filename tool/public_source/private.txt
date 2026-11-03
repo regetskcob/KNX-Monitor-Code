@@ -1,0 +1,96 @@
+# Paths that never go into the public source (tool/export_public_source.sh).
+# One path per line, folders included. Files listed under stubs/ replace the
+# removed code with an empty version of the same interface, so the public app
+# still builds; they are copied over the snapshot with ".stub" removed.
+
+# Account backend and everything that operates it
+supabase
+docs/betrieb-runbook.md
+tool/konto_check.sh
+tool/live_check.sh
+tool/license_issue.ts
+tool/device_revoke_live_test.dart
+tool/mfa_live_test.dart
+tool/team_live_test.dart
+
+# Account in the app (sign-in, session, MFA, passkeys)
+lib/model/account.dart
+lib/ui/account_screen.dart
+lib/platform/account_plan.dart
+lib/platform/auth_outage_client.dart
+lib/platform/session_vault.dart
+integration_test/account_test.dart
+# Test rounds and store shots drive account, team and home planner
+integration_test/session_test.dart
+integration_test/store_shots_test.dart
+test/account_callback_test.dart
+test/account_export_test.dart
+test/account_keep_access_test.dart
+test/account_mfa_test.dart
+test/account_offline_test.dart
+test/account_passkey_test.dart
+test/account_plan_test.dart
+test/account_web_test.dart
+test/session_vault_test.dart
+
+# Sync between the user's devices (iCloud, Google Drive)
+lib/model/cloud_sync.dart
+lib/model/cloud_sync_engine.dart
+lib/platform/cloud_folder.dart
+lib/ui/cloud_sync_screen.dart
+docs/cloud-sync.md
+test/cloud_sync_engine_test.dart
+
+# Betriebslösung (team, encrypted storage, standards, GA assistant, site survey)
+lib/model/betrieb
+lib/ui/betrieb
+lib/knx/secure/team_crypto.dart
+lib/export/pdf_site_survey.dart
+test/team_crypto_test.dart
+test/team_fake_backend.dart
+test/team_off_test.dart
+test/team_screen_test.dart
+test/team_test.dart
+test/ga_allocator_test.dart
+test/ga_assistant_test.dart
+test/ga_outputs_test.dart
+test/send_guard_test.dart
+test/site_notes_test.dart
+test/site_survey_test.dart
+test/standard_check_test.dart
+test/standard_test.dart
+
+# Bauherren-Paket (home planner)
+lib/model/home_plan
+lib/ui/home_plan
+lib/export/home_plan_export.dart
+lib/export/pdf_home_plan.dart
+lib/theme/device_icons.dart
+assets/home_plan
+test/home_plan_screen_test.dart
+test/home_plan_test.dart
+
+# Drafts of legal pages with internal notes (not published on the site)
+site/content/anbieterwechsel.de.md
+site/content/anbieterwechsel.en.md
+site/content/loeschkonzept.de.md
+site/content/loeschkonzept.en.md
+site/content/nutzungsbedingungen.de.md
+site/content/nutzungsbedingungen.en.md
+site/content/sicherheit.de.md
+site/content/sicherheit.en.md
+site/content/unterauftragnehmer.de.md
+site/content/unterauftragnehmer.en.md
+
+# Store and social media tooling (works on the ignored store/ folder)
+tool/social
+tool/store_shots.sh
+tool/store_shots_android.sh
+tool/store_graphics.py
+tool/launch_graphics.py
+
+# Notes for Claude, ignored store material
+CLAUDE.md
+.claude
+store
+

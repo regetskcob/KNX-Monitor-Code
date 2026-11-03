@@ -1,0 +1,405 @@
+hero:
+  kennung: Erste Stufe gebaut · Apps noch im Test
+  title: Was soll dein Haus einmal können?
+  lead: Das Bauherren-Paket beginnt bei deinem Alltag und führt über Raumbuch und Grundriss zu klaren Unterlagen für deinen Elektriker. Die Prüfung am fertigen Bus ist für später geplant.
+  primary: Alltag durchspielen
+  secondary: Grundriss ausprobieren
+  scene_alt: Zeichnung eines Hauses im Schnitt, in dem Licht und Rollläden über den Tag wechseln
+moments:
+  label: Wünschen
+  title: Du entscheidest an Momenten, die Technik folgt.
+  text: Wer KNX plant, soll keine Aktorkanäle kennen müssen. Spiel ein paar Momente durch. Darunter siehst du, was dahintersteckt und was davon schon in den Rohbau gehört.
+  words:
+    'yes': Will ich
+    'no': Brauche ich nicht
+    now: Rohbau
+    later: Programmierung
+    tally: '{n} Wünsche, {now} davon gehören in den Rohbau.'
+    tally_empty: Noch keine Wünsche gewählt.
+  items:
+  - short: Aufwachen
+    title: Aufwachen ohne Schalter
+    story: Die Rollläden öffnen langsam, das Bad ist warm, das Licht bleibt sanft.
+    wishes:
+    - t: Szene Guten Morgen
+      now: false
+    - t: Rollläden mit Motor
+      now: true
+    - t: Dimmbares Licht
+      now: true
+    - t: Heizung je Raum
+      now: true
+    scenes:
+    - time: 06:30
+      caption: Noch dunkel, das Bad wird warm.
+      sky: night
+      sun:
+      - 300
+      - 150
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 1
+      - 1
+      - 1
+      - 1
+    - time: 06:45
+      caption: Die Rollläden öffnen langsam.
+      sky: dawn
+      sun:
+      - 310
+      - 110
+      lights:
+      - 0.35
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 0.4
+      - 1
+      - 1
+      - 1
+    - time: 07:00
+      caption: Unten ist schon Licht.
+      sky: day
+      sun:
+      - 310
+      - 50
+      lights:
+      - 0
+      - 0.2
+      - 0.6
+      - 0.6
+      blinds:
+      - 0
+      - 0.2
+      - 0.2
+      - 0.2
+  - short: Haus verlassen
+    title: Ein Druck beim Gehen
+    story: An der Haustür ein Taster, und du läufst nicht mehr durchs Haus, um das Licht zu prüfen.
+    wishes:
+    - t: Alles-aus-Taster an der Tür
+      now: true
+    - t: Präsenzmelder
+      now: true
+    - t: Schaltbare Steckdosen
+      now: true
+    scenes:
+    - time: 08:10
+      caption: Überall brennt noch Licht.
+      sky: day
+      sun:
+      - 310
+      - 50
+      lights:
+      - 0.7
+      - 0.7
+      - 0.7
+      - 0.7
+      blinds:
+      - 0
+      - 0
+      - 0
+      - 0
+    - time: 08:11
+      caption: Taster an der Tür.
+      sky: day
+      sun:
+      - 310
+      - 50
+      lights:
+      - 0.3
+      - 0.3
+      - 0.3
+      - 0.7
+      blinds:
+      - 0
+      - 0
+      - 0
+      - 0
+    - time: 08:12
+      caption: Alles aus, Heizung senkt ab.
+      sky: day
+      sun:
+      - 310
+      - 50
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 0
+      - 0
+      - 0
+      - 0
+  - short: Nachts
+    title: Nachts barfuß zum Bad
+    story: Ein niedriges Licht zeigt den Weg und geht von selbst wieder aus.
+    wishes:
+    - t: Nachtlicht in Bodennähe
+      now: true
+    - t: Präsenzmelder
+      now: true
+    scenes:
+    - time: 03:12
+      caption: Alle schlafen.
+      sky: night
+      sun:
+      - 300
+      - 40
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 1
+      - 1
+      - 1
+      - 1
+    - time: 03:13
+      caption: Das Nachtlicht geht an.
+      sky: night
+      sun:
+      - 300
+      - 40
+      lights:
+      - 0.1
+      - 0.2
+      - 0
+      - 0
+      blinds:
+      - 1
+      - 1
+      - 1
+      - 1
+    - time: 03:16
+      caption: Nach zwei Minuten wieder aus.
+      sky: night
+      sun:
+      - 300
+      - 40
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 1
+      - 1
+      - 1
+      - 1
+  - short: Sommer
+    title: Sommer ohne Hitze
+    story: Sonne auf der Südseite, niemand zuhause. Die Rollläden fahren, bevor es warm wird.
+    wishes:
+    - t: Automatische Beschattung
+      now: false
+    - t: Wetterstation
+      now: true
+    - t: Rollläden mit Motor
+      now: true
+    scenes:
+    - time: '11:00'
+      caption: Die Sonne kommt auf die Südseite.
+      sky: day
+      sun:
+      - 60
+      - 40
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 0
+      - 0
+      - 0
+      - 0
+    - time: '11:05'
+      caption: Die Wetterstation misst viel Sonne.
+      sky: day
+      sun:
+      - 110
+      - 30
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 0.5
+      - 0
+      - 0.5
+      - 0
+    - time: '11:10'
+      caption: Süden beschattet, Norden offen.
+      sky: day
+      sun:
+      - 160
+      - 24
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 0.8
+      - 0
+      - 0.8
+      - 0
+  - short: Urlaub
+    title: Urlaub ohne Sorgen
+    story: Abends wandert Licht durchs Haus. Offene Fenster siehst du auf einen Blick.
+    wishes:
+    - t: Anwesenheit simulieren
+      now: false
+    - t: Fensterkontakte
+      now: true
+    scenes:
+    - time: '19:00'
+      caption: Niemand zuhause.
+      sky: night
+      sun:
+      - 40
+      - 40
+      lights:
+      - 0
+      - 0
+      - 0.7
+      - 0
+      blinds:
+      - 1
+      - 1
+      - 0.5
+      - 1
+    - time: '21:30'
+      caption: Licht wandert nach oben.
+      sky: night
+      sun:
+      - 40
+      - 40
+      lights:
+      - 0.7
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 0.5
+      - 1
+      - 1
+      - 1
+    - time: '23:00'
+      caption: Das Haus geht schlafen.
+      sky: night
+      sun:
+      - 40
+      - 40
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 1
+      - 1
+      - 1
+      - 1
+plan:
+  label: Grundriss
+  title: Auf dem Plan siehst du, ob es im Alltag passt.
+  text: Grundriss hochladen, Geräte setzen, fertig ist der Blick auf Türen, Möbel und Wege. Leuchten sind schaltbar, dimmbar, in der Lichtfarbe verstellbar oder farbig, Steckdosen haben Dauerstrom, lassen sich schalten oder messen zusätzlich den Strom, am Fenster sitzt ein Rollladen oder ein Raffstore mit Lamellen. Daraus rechnet der Plan den Kanalbedarf aus. **Probier es aus:** Tippe ein Gerät an und ändere seine Art.
+  caption: Beispielhaus. Kanäle mit 30 % Reserve, Abstände aus dem Maßstab.
+  words:
+    decimal: ','
+    rooms:
+      living: Wohnen & Essen
+      kitchen: Küche
+      hall: Diele
+      office: Büro
+    kinds:
+      light: Leuchte
+      socket: Steckdose
+      button: Taster
+      blind: Rollladen
+    modes:
+      dim: Dimmbar
+      switch: Schaltbar
+      perm: Dauerstrom
+      roller: Rollladen
+      slat: Raffstore mit Lamellen
+      tw: Lichtfarbe (Tunable White)
+      rgb: Farbig (RGB)
+      meter: Mit Strommessung
+    height: Höhe über Boden
+    distance: Abstand zur Wand
+    count:
+      switch: Schaltkanäle
+      dim: Dimmkanäle
+      perm: Steckdosen mit Dauerstrom
+      blind: Jalousiekanäle
+      led: LED-Kanäle oder DALI
+      meter: Schaltkanäle mit Messung
+    hint_wrong: Der Taster liegt hinter der geöffneten Tür.
+    hint_fix: Auf die Griffseite setzen
+    hint_ok: Der Taster sitzt jetzt auf der Griffseite.
+electrician:
+  label: Mit dem Elektriker
+  title: Unterlagen, mit denen dein Elektriker weiterarbeiten kann.
+  text: Du gehst den Plan mit deinem Elektriker durch und gibst ihm eine saubere Aufstellung mit. Die Abstimmung läuft dabei über diese Unterlagen, nicht in der App.
+  points:
+  - term: Raumbuch
+    value: Wünsche je Raum, Priorität und welche Art jede Leuchte und Steckdose hat
+  - term: Kanalbedarf
+    value: Schalten, Dimmen, Jalousie und Heizung, jeweils mit Reserve. Aktoren und Verteiler legt dein Fachbetrieb fest
+  - term: Ohne Plus
+    value: Wünschen mit acht Momenten, Raumbuch, eine Ebene mit Grundriss, Kanalbedarf, PDF ohne Maße, CSV und die Hausplan-Datei
+  - term: Mit Plus
+    value: Weitere Ebenen und Außenbereich, Prüfungen, Wetterregeln, Fristen je Bauart, Angebots-Check, PDF mit Maßen und DXF
+  - term: Fristen
+    value: Was vor dem Betonieren, der Rohinstallation und dem Verputzen feststehen sollte, passend zur Bauart
+technical:
+  label: Geplant
+  title: Später soll der Grundriss zum Blick auf deinen Bus werden.
+  text: Das ist noch nicht gebaut. Geräte aus dem Plan sollen ihre Gruppenadressen bekommen, damit du Zustände und Telegramme dort siehst, wo sie im Haus passieren. Geplant ist das auch ohne das Paket, mit jedem eigenen Grundriss.
+  points:
+  - term: Soll-Ist
+    value: 'Geführter Rundgang durchs Raumbuch: auslösen, hinschauen, abhaken, Mängel notieren'
+  - term: Bus
+    value: Telegramme blinken am Gerät, stumme Geräte fallen auf
+  - term: Abstimmen
+    value: Fragen und Änderungsvorschläge gemeinsam mit dem Fachbetrieb direkt am Plan, freigegebene Stände
+  - term: Fokus
+    value: Eine technische Ansicht für Diagnose und Prüfung. Für die tägliche Bedienung bleibt Home Assistant oder deine Visualisierung
+state:
+  label: Stand
+  title: Die erste Stufe ist gebaut, die Apps sind noch im Test.
+  text: In der App heißt sie „Haus planen“. Herunterladen kannst du sie noch nicht, die Apps sind nicht öffentlich. Die Demos auf dieser Seite zeigen die Idee.
+  points:
+  - term: Gebaut
+    value: Planen ohne Bus und ohne ETS, von den Wünschen bis zu den Unterlagen
+  - term: Noch nicht dabei
+    value: Abstimmung mit dem Fachbetrieb, Soll-Ist-Rundgang und die Ansicht am Bus
+  - term: Einstufung
+    value: Funktionskatalog und Fristen entstehen nach bestem Wissen und sind noch nicht fachlich geprüft. Der Katalog startet mit 27 Einträgen. Dein Fachbetrieb hat das letzte Wort
+  - term: Mitreden
+    value: Du baust gerade oder planst KNX? Schreib uns unter [Feedback](/feedback/), was dir bei der Planung am meisten fehlt
+faq:
+  label: Fragen
+  title: Häufige Fragen
+  items:
+  - q: Ersetzt das Paket meinen Elektriker oder Planer?
+    a: Das Paket hilft dir, deine Wünsche zu klären und sauber zu übergeben. Elektroinstallation, Aktoren, Verteiler und Absicherung bleiben Sache deines Fachbetriebs, die Lichtplanung die eines Lichtplaners.
+  - q: Sagt mir die App, was KNX kostet?
+    a: 'Sie zeigt dir, was sich aus dem Plan berechnen lässt: Kanäle, Geräte und Reserve. Damit vergleichst du Angebote auf derselben Grundlage. Die Preise kommen aus dem Angebot deines Betriebs.'
+  - q: Wo liegen mein Grundriss und meine Wünsche?
+    a: Auf deinem Gerät. Weitergeben kannst du sie als Datei, selbst und nur, wenn du willst.
+  - q: Brauche ich dafür eine fertige KNX-Anlage?
+    a: Nein, die Planung läuft ganz ohne Bus und ohne ETS.
+  - q: Wann kommt es?
+    a: Die erste Stufe kommt mit den Apps, und die sind noch im Test. Einen Termin nennen wir deshalb nicht. Neuigkeiten gibt es auf [Instagram](https://www.instagram.com/knxmonitor/).

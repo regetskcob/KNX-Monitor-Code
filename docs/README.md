@@ -1,0 +1,50 @@
+# Documentation
+
+Technical documentation of KNX Monitor. Users of the Home Assistant add-on find
+their guide in [ha-addon/knx_monitor/DOCS.md](../ha-addon/knx_monitor/DOCS.md).
+
+## Overview
+
+- [architecture.md](architecture.md): the app, the server, how they reach the
+  bus and where each part lives in the code.
+
+## Runtime
+
+- [addon-recording.md](addon-recording.md): the add-on server, its permanent
+  bus connection, recording and the WebSocket protocol to the views.
+- [knx-box.md](knx-box.md): the Raspberry Pi image: first boot, storage and
+  compression, time without RTC, networking, services.
+- [kberry.md](kberry.md): KNX TP through the Weinzierl kBerry: Pi setup,
+  FT1.2, cEMI, sending and receiving. Written to be reused in other projects.
+- [desktop-platforms.md](desktop-platforms.md): what differs on macOS, Linux
+  and Windows.
+- [performance.md](performance.md): behaviour under bus load.
+- [resilience-tests.md](resilience-tests.md): tests on real hardware
+  (add-on watchdog, rollback of the box setup, add-on upgrade).
+
+## Data and security
+
+- [security.md](security.md): encryption at rest, backups, app lock, KNX IP
+  Secure and Data Secure, access to add-on and box, read-only mode, outbound
+  connections, reporting vulnerabilities.
+- [backup-format.md](backup-format.md): the `.knxbackup` file format, with a
+  decryption example.
+- [diagnostics-package.md](diagnostics-package.md): what the diagnostics
+  package contains and how it is anonymised.
+
+## KNX and ETS
+
+- [group-addresses.md](group-addresses.md): naming schemes the app recognises.
+- [ets-round-trip.md](ets-round-trip.md): taking changes from KNX Monitor
+  back into the ETS project.
+
+## Project
+
+- [releasing.md](releasing.md): how add-on, box and app releases are built and
+  published.
+- [release-security.md](release-security.md): supply chain, signed images and
+  how to verify them.
+- [third-party-notices.md](third-party-notices.md): code and data from other
+  projects.
+- Contributing: [../CONTRIBUTING.md](../CONTRIBUTING.md). Licence:
+  [../LICENSE](../LICENSE), trademarks: [../TRADEMARKS.md](../TRADEMARKS.md).

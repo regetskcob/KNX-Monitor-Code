@@ -1,0 +1,599 @@
+{{- /*
+  Instagram reels (store/social/), 1080 × 1920, silent: every message is on
+  screen. Pure CSS animations with absolute delays (seconds from the start);
+  tool/social/reel.mjs pauses them and steps through the timeline frame by
+  frame, so the page itself never needs to play in real time.
+
+  Front matter: layout: reel, reel: live | diagnose | inbetrieb | ha | box |
+  karte | schreiben | topologie | anlernen | durchklingeln | bauherren | grundriss, seconds.
+  Safe zone: Instagram covers ~250 px at the top and ~400 px at the bottom,
+  so text stays between 260 and 1500.
+*/ -}}
+{{- $p := .Params -}}
+{{- $d := index site.Data.teaser "de" -}}
+{{- $end := index (dict "live" 13.0 "diagnose" 13.8 "inbetrieb" 13.6 "ha" 13.6 "box" 13.8 "karte" 13.4 "schreiben" 13.6 "topologie" 17.0 "anlernen" 13.6 "durchklingeln" 13.6 "bauherren" 13.6 "grundriss" 13.6) $p.reel -}}
+<!doctype html>
+<html lang="de" data-product="knx" data-theme="light">
+{{ partial "head.html" (dict "page" . "title" .Title "description" "Entwurf") }}
+<body class="hz tz">
+<style>
+  html, body { margin: 0; background: var(--bg); }
+  .r { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: var(--bg); color: var(--text); }
+  .r-line { position: absolute; left: 0; right: 0; top: 1500px; height: 6px; background: var(--accent); }
+  .r-pulse { position: absolute; top: 1492px; left: -160px; width: 160px; height: 22px; border-radius: 11px; background: linear-gradient(90deg, transparent, var(--accent)); filter: blur(2px);
+    animation: pulse 2.2s cubic-bezier(.4,0,.6,1) infinite; }
+  .r-scene { position: absolute; inset: 0; }
+  .r-top { position: absolute; left: 80px; right: 80px; top: 280px; }
+  .r-kennung { font: 600 28px/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
+  .r-title { margin: 30px 0 0; font: 300 96px/1.05 var(--font-serif); letter-spacing: -0.01em; text-wrap: balance; }
+  .r-text { margin: 30px 0 0; font: 400 38px/1.4 var(--font-sans); color: var(--text-muted); text-wrap: pretty; }
+  .r-stand { position: absolute; left: 0; right: 0; bottom: 420px; display: flex; justify-content: center; align-items: flex-end; }
+  .r-foot { position: absolute; left: 80px; right: 80px; top: 1560px; display: flex; align-items: center; gap: 16px; font: 500 30px/1 var(--font-mono); color: var(--text-muted); }
+
+  /* Building blocks: rise in at --d, leave at --o. */
+  .in { animation: rise .7s cubic-bezier(.2,.8,.2,1) var(--d, 0s) both; }
+  .in.out { animation: rise .7s cubic-bezier(.2,.8,.2,1) var(--d, 0s) both, leave .5s ease-in var(--o) forwards; }
+  .pop { animation: pop .45s cubic-bezier(.3,1.5,.5,1) var(--d, 0s) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(60px); } to { opacity: 1; transform: none; } }
+  @keyframes leave { to { opacity: 0; transform: translateY(-40px); } }
+  @keyframes pop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
+  @keyframes pulse { from { left: -160px; } to { left: 1080px; } }
+  @keyframes flash { from { background: color-mix(in srgb, var(--accent) 22%, transparent); } to { background: transparent; } }
+  @keyframes fill { from { background: transparent; border-color: var(--line-strong); } to { background: var(--accent); border-color: var(--accent); } }
+  @keyframes grow { from { width: 0; } }
+  @keyframes show { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes hide { to { opacity: 0; } }
+
+  /* Telegram rows */
+  .r-rows { position: absolute; left: 80px; right: 80px; top: 590px; font: 400 34px/1 var(--font-mono); }
+  .r-rows > div { display: grid; grid-template-columns: 170px 140px 1fr auto; gap: 20px; padding: 18px 12px; border-bottom: 2px solid var(--line); }
+  .r-rows > div > span:nth-child(3) { font-family: var(--font-sans); }
+  .r-rows > div > span:last-child { color: var(--accent-text); }
+  .r-rows > div.in { animation: rise .5s cubic-bezier(.2,.8,.2,1) var(--d) both, flash 1.4s ease-out var(--d) both; }
+  .r-rows > div.in.out { animation: rise .5s cubic-bezier(.2,.8,.2,1) var(--d) both, flash 1.4s ease-out var(--d) both, leave .5s ease-in var(--o) forwards; }
+  .r-verteiler { transform: scale(2.4); transform-origin: bottom center; }
+
+  /* Diagnosis cards */
+  .r-cards { position: absolute; left: 80px; right: 80px; top: 600px; display: grid; gap: 18px; }
+  .r-card { display: grid; grid-template-columns: 70px 1fr; gap: 6px 20px; padding: 24px 28px; border: 2px solid var(--line-strong); border-radius: 18px; background: var(--surface); }
+  .r-card b { grid-row: span 2; font: 300 76px/0.9 var(--font-serif); color: var(--accent); }
+  .r-card strong { font: 500 36px/1.2 var(--font-sans); }
+  .r-card span { display: flex; gap: 14px; align-items: baseline; font: 500 25px/1.35 var(--font-mono); color: var(--text-muted); }
+  .r-card span i { flex: none; width: 18px; height: 18px; border-radius: 50%; background: var(--warning); }
+
+  /* Checklist */
+  .r-check { position: absolute; left: 80px; right: 80px; top: 640px; border-top: 2px solid var(--line); }
+  .r-check > div { display: grid; grid-template-columns: 52px 150px 1fr auto; gap: 20px; align-items: center; padding: 24px 6px; border-bottom: 2px solid var(--line); font: 400 34px/1.2 var(--font-sans); }
+  .r-check b { font: 500 30px/1 var(--font-mono); color: var(--text-muted); }
+  .r-check em { font: 500 32px/1 var(--font-mono); font-style: normal; color: var(--accent-text); }
+  .r-box { position: relative; width: 44px; height: 44px; border: 4px solid var(--line-strong); border-radius: 10px; box-sizing: border-box; }
+  .r-box::after { content: "✓"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--on-accent); font: 700 30px/1 var(--font-sans);
+    animation: pop .4s cubic-bezier(.3,1.5,.5,1) var(--t) both; }
+  .r-box { animation: fill .25s ease var(--t) both; }
+  .r-check em { animation: show .3s ease var(--t) both; }
+  .r-progress { position: absolute; left: 80px; right: 80px; top: 1260px; }
+  .r-bar { height: 16px; border-radius: 8px; background: var(--line); overflow: hidden; }
+  .r-bar i { display: block; height: 100%; width: 100%; background: var(--accent); animation: grow 4.6s linear 2.4s both; }
+  .r-count { position: relative; height: 44px; margin-top: 22px; font: 500 34px/44px var(--font-mono); color: var(--text-muted); }
+  .r-count span { position: absolute; left: 0; animation: show .01s linear var(--a) both, hide .01s linear var(--z) forwards; }
+
+  /* End card */
+  .r-end .r-title { font-size: 120px; }
+  .r-url { margin-top: 56px; display: flex; align-items: center; gap: 24px; font: 500 46px/1 var(--font-mono); color: var(--accent-text); }
+
+  /* Panels, log rows, Home Assistant events */
+  .r-panel { position: absolute; left: 80px; right: 80px; top: 620px; padding: 30px 34px; border: 2px solid var(--line-strong); border-radius: 22px; background: var(--surface); }
+  .r-panel-head { font: 600 24px/1 var(--font-mono); letter-spacing: .06em; color: var(--text-muted); padding-bottom: 22px; border-bottom: 2px solid var(--line); }
+  .r-event { padding: 22px 0; border-bottom: 2px solid var(--line); }
+  .r-event:last-child { border-bottom: 0; padding-bottom: 0; }
+  .r-event code { font: 600 32px/1 var(--font-mono); color: var(--accent-text); }
+  .r-event div { margin-top: 12px; font: 400 32px/1.3 var(--font-sans); }
+  .r-note { position: absolute; left: 110px; right: 110px; top: 1180px; display: grid; grid-template-columns: 64px 1fr; gap: 6px 22px; align-items: center; padding: 26px 30px;
+    border-radius: 28px; background: var(--text); color: var(--bg); box-shadow: 0 20px 50px rgb(0 0 0 / .18); }
+  .r-note i { grid-row: span 2; width: 64px; height: 64px; border-radius: 16px; background: #18bcf2; display: grid; place-items: center; }
+  .r-note i svg { width: 40px; height: 40px; fill: none; stroke: #fff; stroke-width: 2; }
+  .r-note small { font: 600 24px/1 var(--font-sans); opacity: .7; }
+  .r-note b { font: 600 32px/1.25 var(--font-sans); }
+  .r-ipad .tz-ha { font-size: 0; }
+  .r-ipad { transform: scale(1.0); }
+  /* Box: clock and night log */
+  .r-clock { position: absolute; left: 80px; right: 80px; top: 600px; display: flex; align-items: center; gap: 30px; }
+  .r-clock-t { position: relative; width: 400px; height: 120px; font: 500 120px/120px var(--font-mono); }
+  .r-clock-t span { position: absolute; left: 0; animation: show .01s linear var(--a) both, hide .01s linear var(--z) forwards; }
+  .r-rec { display: flex; align-items: center; gap: 14px; font: 600 28px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .r-rec i { width: 22px; height: 22px; border-radius: 50%; background: var(--warning); animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .15; } }
+  .r-log { position: absolute; left: 80px; right: 80px; top: 790px; font: 400 30px/1 var(--font-mono); }
+  .r-log > div { display: grid; grid-template-columns: 110px 130px 1fr auto; gap: 18px; padding: 20px 12px; border-bottom: 2px solid var(--line); }
+  .r-log > div > span:nth-child(3) { font-family: var(--font-sans); }
+  .r-log > div > span:last-child { color: var(--accent-text); }
+  .r-log > div.is-warn { background: color-mix(in srgb, var(--warning) 16%, transparent); border-radius: 10px; }
+  .r-log > div.is-warn > span:last-child { color: var(--text); font-weight: 600; }
+  .r-pi { transform: scale(2.0); transform-origin: bottom center; display: inline-block; }
+  .r-steps { position: absolute; left: 80px; right: 80px; top: 700px; display: grid; gap: 26px; }
+  .r-steps > div { display: grid; grid-template-columns: 90px 1fr; align-items: baseline; padding: 26px 0; border-bottom: 2px solid var(--line); }
+  .r-steps b { font: 300 84px/0.9 var(--font-serif); color: var(--accent); }
+  .r-steps span { font: 400 44px/1.25 var(--font-sans); }
+  /* Communication map */
+  .r-map { position: absolute; left: 0; top: 600px; width: 1080px; height: 820px; }
+  .r-map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .r-map path { fill: none; stroke: var(--accent); stroke-width: 5; stroke-dasharray: 900; stroke-dashoffset: 900; animation: draw .7s ease-out var(--d) both; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .r-node { position: absolute; translate: -50% 0; padding: 16px 26px; border: 2px solid var(--line-strong); border-radius: 16px; background: var(--surface); white-space: nowrap; }
+  .r-node b { display: block; font: 500 26px/1 var(--font-mono); color: var(--text-muted); }
+  .r-node span { display: block; margin-top: 10px; font: 500 32px/1.1 var(--font-sans); }
+  .r-node--ga { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .r-node--ga b { color: var(--on-accent); opacity: .8; }
+  /* Writing */
+  .r-field { margin-top: 26px; font: 600 24px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .r-input { margin-top: 14px; height: 84px; padding: 0 24px; border: 2px solid var(--line-strong); border-radius: 14px; display: flex; align-items: center; font: 500 40px/1 var(--font-mono); }
+  .r-type { display: inline-block; overflow: hidden; white-space: nowrap; width: 17ch; animation: type 1.5s steps(17) 1.5s both; }
+  @keyframes type { from { width: 0; } }
+  .r-caret { width: 3px; height: 46px; margin-left: 4px; background: var(--accent); animation: blink .8s steps(2) infinite; }
+  .r-seg { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; border: 2px solid var(--line-strong); border-radius: 14px; overflow: hidden; font: 500 36px/84px var(--font-sans); text-align: center; }
+  .r-seg span + span { border-left: 2px solid var(--line-strong); animation: on .2s ease 3.4s both; }
+  @keyframes on { to { background: var(--accent); color: var(--on-accent); } }
+  .r-btn { margin-top: 30px; height: 92px; border-radius: 46px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font: 600 38px/1 var(--font-sans);
+    animation: press .35s ease 4.2s both; }
+  @keyframes press { 40% { transform: scale(.93); filter: brightness(.85); } }
+  .r-sent { position: absolute; left: 80px; right: 80px; top: 1250px; font: 400 30px/1 var(--font-mono); }
+  .r-sent > div { display: grid; grid-template-columns: 170px 120px 1fr auto; gap: 18px; padding: 18px 12px; border-bottom: 2px solid var(--line); }
+  .r-sent > div > span:nth-child(3) { font-family: var(--font-sans); }
+  .r-sent > div > span:last-child { color: var(--accent-text); }
+  .r-sent > div.in.out { animation: rise .5s cubic-bezier(.2,.8,.2,1) var(--d) both, flash 1.4s ease-out var(--d) both, leave .5s ease-in var(--o) forwards; }
+
+  /* Topology tree */
+  .r-line-card { position: absolute; left: 80px; right: 80px; top: 600px; padding: 28px 32px; border: 2px solid var(--line-strong); border-radius: 22px; background: var(--surface); }
+  .r-line-card h3 { margin: 0; display: flex; justify-content: space-between; font: 600 26px/1 var(--font-mono); letter-spacing: .1em; color: var(--text-muted); }
+  .r-line-card h3 span { color: var(--accent-text); letter-spacing: 0; }
+  .r-kpis { margin-top: 24px; display: flex; gap: 64px; }
+  .r-kpis div { font: 600 22px/1 var(--font-mono); letter-spacing: .1em; color: var(--text-muted); }
+  .r-kpis b { display: block; margin-top: 12px; font: 500 56px/1 var(--font-mono); letter-spacing: 0; color: var(--text); }
+  .r-devs { position: absolute; left: 80px; right: 80px; top: 860px; display: grid; gap: 8px; }
+  .r-devs > div { display: grid; grid-template-columns: 1fr auto; padding: 14px 20px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .r-devs > div.is-off { background: none; border: 2px solid var(--line); }
+  .r-devs b { font: 500 30px/1.2 var(--font-mono); }
+  .r-devs small { display: block; font: 400 28px/1.3 var(--font-sans); color: var(--text-muted); }
+  .r-devs em { font: 500 28px/1 var(--font-mono); font-style: normal; color: var(--text-muted); align-self: center; }
+  .r-devs > div.is-pick { animation: rise .5s cubic-bezier(.2,.8,.2,1) var(--d) both, pick .4s ease 7.2s both, leave .5s ease-in var(--o) forwards; }
+  @keyframes pick { to { outline: 4px solid var(--accent); outline-offset: 2px; } }
+  .r-tap { position: absolute; width: 90px; height: 90px; margin: -45px 0 0 -45px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 35%, transparent);
+    animation: tap .7s ease-out 7.1s both; opacity: 0; }
+  @keyframes tap { 0% { opacity: 0; transform: scale(.3); } 30% { opacity: 1; } 100% { opacity: 0; transform: scale(1.4); } }
+  .r-dev { position: absolute; left: 80px; right: 80px; top: 560px; }
+  .r-dev-head { font: 600 26px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+  .r-dev-name { margin-top: 16px; font: 500 52px/1.1 var(--font-sans); }
+  .r-dev .r-kpis { margin-top: 22px; }
+  .r-frames { position: absolute; left: 160px; top: 800px; width: 760px; height: 696px; overflow: hidden; }
+  .r-frames img { position: absolute; left: 0; top: -15px; width: 760px; animation: show .001s linear var(--a) both, hide .001s linear var(--z) forwards; }
+  /* Teach-in: caught telegrams, then the question with chips */
+  .r-ask { position: absolute; left: 80px; right: 80px; top: 1010px; }
+  .r-ask h2 { margin: 0; font: 500 44px/1.2 var(--font-sans); }
+  .r-chips { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 14px; }
+  .r-chips span { padding: 16px 26px; border: 2px solid var(--line-strong); border-radius: 12px; background: var(--surface); font: 500 32px/1 var(--font-sans); }
+  .r-chips span.is-on { animation: pop .45s cubic-bezier(.3,1.5,.5,1) var(--d) both, chip .25s ease var(--t) both; }
+  @keyframes chip { to { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); border-color: var(--accent); } }
+  .r-ask .r-btn { width: 300px; animation: press .35s ease 6.6s both; }
+  .r-raw { margin-top: 14px; padding: 26px 28px; border: 2px solid var(--line); border-radius: 14px; font: 500 40px/1.3 var(--font-mono); color: var(--text-muted); }
+  .r-say { margin-top: 14px; padding: 26px 28px; border: 2px solid var(--accent); border-radius: 14px; background: var(--surface); font: 500 44px/1.3 var(--font-sans); }
+  /* Roll-call: rows tick themselves off, each with a visible sound */
+  .r-check > div.is-ping { animation: flash 1.2s ease-out var(--t) forwards; }
+  .r-check > div.is-warn { animation: warn .3s ease var(--t) both; }
+  @keyframes warn { from { background: transparent; } to { background: color-mix(in srgb, var(--warning) 16%, transparent); } }
+  .r-check > div.is-warn em { color: var(--text); }
+  .r-check > div.is-warn .r-box { animation: none; }
+  .r-check > div.is-warn .r-box::after { content: "!"; color: var(--text); }
+  .r-steps.is-tones b { font: 400 64px/0.9 var(--font-sans); }
+</style>
+
+<div class="r">
+  <div class="r-line"></div>
+  {{- range seq 0 1 }}<div class="r-pulse" style="animation-delay:{{ mul . 1.1 }}s"></div>{{ end }}
+{{- if eq $p.reel "live" }}
+  {{- /* 0–8 s: board and telegrams, 8–12.5 s: the app, then the end card. */}}
+  <div class="r-scene">
+    <div class="r-top">
+      <div class="r-kennung in out" style="--d:.2s;--o:7.6s">KNX Monitor · Busmonitor</div>
+      <h1 class="r-title in out" style="--d:.35s;--o:7.6s">Was passiert gerade auf deinem Bus?</h1>
+    </div>
+    <div class="r-rows">
+      {{- range $i, $t := first 6 $d.telegrams }}
+      <div class="in out" style="--d:{{ add 1.8 (mul $i 0.85) }}s;--o:7.7s"><span>{{ .from }}</span><span>{{ .to }}</span><span>{{ .text }}</span><span>{{ .value }}</span></div>
+      {{- end }}
+    </div>
+    <div class="r-stand in out" style="--d:.8s;--o:7.8s"><div class="r-verteiler">{{ partial "verteiler.html" (dict "alt" $d.drawing "cable" "") }}</div></div>
+  </div>
+  <div class="r-scene">
+    <div class="r-top">
+      <h1 class="r-title in out" style="--d:8.2s;--o:12.4s">Mit Namen aus deinem ETS-Projekt.</h1>
+    </div>
+    {{- with resources.Get "images/screens/android-phone.png" }}
+    <div class="r-stand in out" style="--d:8.5s;--o:12.5s;bottom:426px">{{ partial "horizont/device.html" (dict "device" "android" "width" 420 "src" .RelPermalink "alt" "Live") }}</div>
+    {{- end }}
+  </div>
+  {{ partial "reel-end.html" (dict "at" 13.0 "title" "Busmonitor für KNX." "text" "Kostenlos als Home-Assistant-Add-on und für Linux. Apps folgen.") }}
+{{- else if eq $p.reel "diagnose" }}
+  {{- $cards := slice
+    (dict "t" "Verstummte Geräte" "s" "1.1.31 Taster 2-fach · seit 3 Tagen still")
+    (dict "t" "Wiederholungen" "s" "1/4/5 · 14 Wiederholungen in 10 min")
+    (dict "t" "Falsche Datentypen" "s" "3/4/0 · DPT 5.001 erwartet, 2 Byte")
+    (dict "t" "Buslast" "s" "Linie 1.1 · 64 % in der Spitze")
+    (dict "t" "Leseanfragen ohne Antwort" "s" "1/4/3 · Lesen-Flag fehlt?") }}
+  <div class="r-scene">
+    <div class="r-top">
+      <div class="r-kennung in out" style="--d:.2s;--o:8.6s">KNX Monitor · Diagnose</div>
+      <h1 class="r-title in out" style="--d:.35s;--o:8.6s">Dein Bus weiß, was kaputt ist.</h1>
+    </div>
+    <div class="r-cards">
+      {{- range $i, $c := $cards }}
+      <div class="r-card in out" style="--d:{{ add 1.6 (mul $i 1.2) }}s;--o:{{ add 8.6 (mul $i 0.06) }}s"><b>{{ add $i 1 }}</b><strong>{{ .t }}</strong><span><i></i>{{ .s }}</span></div>
+      {{- end }}
+    </div>
+  </div>
+  <div class="r-scene">
+    <div class="r-top">
+      <h1 class="r-title in out" style="--d:9.1s;--o:13.2s">Die Gesundheits&shy;prüfung findet es.</h1>
+    </div>
+    {{- with resources.Get "images/screens/health-phone.png" }}
+    <div class="r-stand in out" style="--d:9.4s;--o:13.3s;bottom:426px">{{ partial "horizont/device.html" (dict "device" "iphone" "width" 400 "src" .RelPermalink "alt" "Gesundheit") }}</div>
+    {{- end }}
+  </div>
+  {{ partial "reel-end.html" (dict "at" 13.8 "title" "Fehler finden, bevor jemand anruft." "text" "KNX Monitor: Busmonitor und Diagnose für KNX.") }}
+{{- else if eq $p.reel "inbetrieb" }}
+  {{- $rows := slice
+    (dict "a" "1/4/3" "n" "Status Licht Küche" "v" "Aus")
+    (dict "a" "1/4/5" "n" "Status Licht Flur" "v" "Ein")
+    (dict "a" "2/4/1" "n" "Position Wohnen" "v" "40 %")
+    (dict "a" "2/4/2" "n" "Position Schlafen" "v" "0 %")
+    (dict "a" "3/4/0" "n" "Status Dimmen Essen" "v" "62 %")
+    (dict "a" "4/0/0" "n" "Außentemperatur" "v" "11,5 °C") }}
+  <div class="r-scene">
+    <div class="r-top">
+      <div class="r-kennung in out" style="--d:.2s;--o:8.4s">KNX Monitor · Inbetriebnahme</div>
+      <h1 class="r-title in out" style="--d:.35s;--o:8.4s">Abhaken statt abschreiben.</h1>
+    </div>
+    <div class="r-check in out" style="--d:1s;--o:8.5s">
+      {{- range $i, $r := $rows }}
+      <div style="--t:{{ add 2.4 (mul $i 0.92) }}s"><span class="r-box"></span><b>{{ .a }}</b><span>{{ .n }}</span><em>{{ .v }}</em></div>
+      {{- end }}
+    </div>
+    <div class="r-progress in out" style="--d:1.3s;--o:8.5s">
+      <div class="r-bar"><i></i></div>
+      <div class="r-count">
+        {{- range $i := seq 0 6 }}
+        <span style="--a:{{ if eq $i 0 }}0{{ else }}{{ add 2.4 (mul (sub $i 1) 0.92) }}{{ end }}s;--z:{{ if eq $i 6 }}99{{ else }}{{ add 2.4 (mul $i 0.92) }}{{ end }}s">{{ $i }} / 6 geantwortet{{ if eq $i 6 }} ✓{{ end }}</span>
+        {{- end }}
+      </div>
+    </div>
+  </div>
+  <div class="r-scene">
+    <div class="r-top">
+      <h1 class="r-title in out" style="--d:8.9s;--o:13s">Das Protokoll für die Übergabe.</h1>
+    </div>
+    {{- with resources.Get "images/screens/commissioning-phone.png" }}
+    <div class="r-stand in out" style="--d:9.2s;--o:13.1s;bottom:426px">{{ partial "horizont/device.html" (dict "device" "iphone" "width" 400 "src" .RelPermalink "alt" "Inbetriebnahme") }}</div>
+    {{- end }}
+  </div>
+  {{ partial "reel-end.html" (dict "at" 13.6 "title" "Inbetriebnahme mit Liste." "text" "Antwortet ein Gerät, ist es abgehakt. Am Ende ein PDF für die Übergabe.") }}
+{{- else if eq $p.reel "ha" }}
+  <div class="r-scene">
+    <div class="r-top">
+      <div class="r-kennung in out" style="--d:.2s;--o:8.2s">KNX Monitor · Home Assistant</div>
+      <h1 class="r-title in out" style="--d:.35s;--o:8.2s">Dein Bus als Trigger für Automationen.</h1>
+    </div>
+    <div class="r-panel in out" style="--d:1s;--o:8.3s">
+      <div class="r-panel-head">Entwicklerwerkzeuge › Ereignisse</div>
+      <div class="r-event in" style="--d:2s"><code>knx_monitor_watcher</code><div>Wächter „Fenster Bad“ · 1/5/2 · offen</div></div>
+      <div class="r-event in" style="--d:3.5s"><code>knx_monitor_alarm</code><div>Rauchmelder Flur · Alarm an</div></div>
+      <div class="r-event in" style="--d:5s"><code>knx_monitor_bus</code><div>Busverbindung steht wieder</div></div>
+    </div>
+    <div class="r-note in out" style="--d:6s;--o:8.3s"><i><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9h-5v-6h-6v6H4z"/></svg></i><small>Home Assistant · jetzt</small><b>Rauchmelder Flur: Alarm</b></div>
+  </div>
+  <div class="r-scene">
+    <div class="r-top">
+      <h1 class="r-title in out" style="--d:8.7s;--o:13s">Als Add-on in der Seitenleiste.</h1>
+    </div>
+    {{- with resources.Get "images/ipad-overview-de.png" }}
+    <div class="r-stand in out" style="--d:9s;--o:13.1s;bottom:426px">{{ partial "horizont/device.html" (dict "device" "ipad" "width" 940 "inner" (partial "ha-frame.html" (dict "src" (.Resize "1880x webp q90").RelPermalink "alt" $d.ipad_alt))) }}</div>
+    {{- end }}
+  </div>
+  {{ partial "reel-end.html" (dict "at" 13.6 "title" "Tief in Home Assistant." "text" "Ereignisse, Blueprints und ein eigenes Gerät mit Entitäten. Das Add-on ist kostenlos.") }}
+{{- else if eq $p.reel "box" }}
+  {{- $hours := slice "22:00" "23:00" "00:00" "01:00" "02:00" "03:00" "04:00" "05:00" "06:00" }}
+  <div class="r-scene">
+    <div class="r-top">
+      <div class="r-kennung in out" style="--d:.2s;--o:8.2s">KNX-Box · Raspberry Pi</div>
+      <h1 class="r-title in out" style="--d:.35s;--o:8.2s">Der Fehler kommt nur nachts?</h1>
+    </div>
+    <div class="r-clock in out" style="--d:1s;--o:8.3s">
+      <div class="r-clock-t">
+        {{- range $i, $h := $hours }}
+        <span style="--a:{{ if eq $i 0 }}0{{ else }}{{ add 1.6 (mul $i 0.62) }}{{ end }}s;--z:{{ if eq $i 8 }}99{{ else }}{{ add 1.6 (mul (add $i 1) 0.62) }}{{ end }}s">{{ $h }}</span>
+        {{- end }}
+      </div>
+      <div class="r-rec"><i></i>Box zeichnet auf</div>
+    </div>
+    <div class="r-log">
+      <div class="in out" style="--d:2.6s;--o:8.3s"><span>23:41</span><span>1/1/3</span><span>Licht Küche</span><span>Aus</span></div>
+      <div class="in out" style="--d:3.9s;--o:8.35s"><span>01:17</span><span>2/4/1</span><span>Position Wohnen</span><span>0 %</span></div>
+      <div class="in out is-warn" style="--d:5.1s;--o:8.4s"><span>03:12</span><span>1/4/5</span><span>Status Licht Flur</span><span>14×</span></div>
+      <div class="in out" style="--d:6.4s;--o:8.45s"><span>05:58</span><span>3/2/0</span><span>Dimmen Essen</span><span>0 %</span></div>
+    </div>
+    <div class="r-stand in out" style="--d:.8s;--o:8.4s;bottom:420px"><div class="r-pi">{{ partial "knx-pi.html" . }}</div></div>
+  </div>
+  <div class="r-scene">
+    <div class="r-top">
+      <h1 class="r-title in out" style="--d:8.7s;--o:13.2s">In drei Schritten am Bus.</h1>
+    </div>
+    <div class="r-steps">
+      <div class="in out" style="--d:9.2s;--o:13.2s"><b>1</b><span>Image auf die SD-Karte</span></div>
+      <div class="in out" style="--d:9.9s;--o:13.25s"><b>2</b><span>Pi ans Netz des IP-Gateways</span></div>
+      <div class="in out" style="--d:10.6s;--o:13.3s"><b>3</b><span>Mit der App koppeln, morgens auswerten</span></div>
+    </div>
+  </div>
+  {{ partial "reel-end.html" (dict "at" 13.8 "title" "Die KNX-Box." "text" "Ein Raspberry Pi, der den Bus tagelang aufzeichnet. Eigenes WLAN, kein Internet nötig. Image und Anleitung kostenlos.") }}
+{{- else if eq $p.reel "karte" }}
+  {{- $recv := slice (dict "a" "1.1.30" "n" "EG WZ Glastaster" "y" 390) (dict "a" "1.1.31" "n" "EG KÜ Glastaster" "y" 510) (dict "a" "1.1.32" "n" "OG BZ Taster" "y" 630) (dict "a" "1.1.33" "n" "OG SZ Taster" "y" 750) }}
+  <div class="r-scene">
+    <div class="r-top">
+      <div class="r-kennung in out" style="--d:.2s;--o:7.8s">KNX Monitor · Kommunikationskarte</div>
+      <h1 class="r-title in out" style="--d:.35s;--o:7.8s">Wer redet hier mit wem?</h1>
+    </div>
+    <div class="r-map in out" style="--d:0s;--o:7.9s">
+      <svg viewBox="0 0 1080 820" aria-hidden="true">
+        <path d="M540 110 V220" style="--d:1.8s"/>
+        {{- range $i, $r := $recv }}
+        <path d="M540 330 V360 H330 V{{ add $r.y 53 }} H420" style="--d:{{ add 3.2 (mul $i 0.55) }}s"/>
+        {{- end }}
+      </svg>
+      <div class="r-node pop" style="--d:1s;left:540px;top:0"><b>1.2.28 · Sender</b><span>Wetterstation</span></div>
+      <div class="r-node r-node--ga pop" style="--d:2.4s;left:540px;top:220px"><b>4/0/0</b><span>Außentemperatur</span></div>
+      {{- range $i, $r := $recv }}
+      <div class="r-node pop" style="--d:{{ add 3.7 (mul $i 0.55) }}s;left:420px;top:{{ $r.y }}px;translate:none"><b>{{ $r.a }}</b><span>{{ $r.n }}</span></div>
+      {{- end }}
+    </div>
+  </div>
+  <div class="r-scene">
+    <div class="r-top">
+      <h1 class="r-title in out" style="--d:8.2s;--o:12.8s">Für jede Adresse und jedes Gerät.</h1>
+    </div>
+    {{- with resources.Get "images/screens/map-phone.png" }}
+    <div class="r-stand in out" style="--d:8.5s;--o:12.9s;bottom:426px">{{ partial "horizont/device.html" (dict "device" "iphone" "width" 400 "src" .RelPermalink "alt" "Kommunikationskarte") }}</div>
+    {{- end }}
+  </div>
+  {{ partial "reel-end.html" (dict "at" 13.4 "title" "Verstehen, wer was steuert." "text" "Sender und Empfänger jeder Gruppenadresse, aus dem ETS-Projekt und vom Bus.") }}
+{{- else if eq $p.reel "schreiben" }}
+  <div class="r-scene">
+    <div class="r-top">
+      <div class="r-kennung in out" style="--d:.2s;--o:8.2s">KNX Monitor · Lesen und Schreiben</div>
+      <h1 class="r-title in out" style="--d:.35s;--o:8.2s">Testen, ohne die ETS zu öffnen.</h1>
+    </div>
+    <div class="r-panel in out" style="--d:.9s;--o:8.3s">
+      <div class="r-field" style="margin-top:0">Gruppenadresse</div>
+      <div class="r-input"><span class="r-type">1/1/3 Licht Küche</span><i class="r-caret"></i></div>
+      <div class="r-field">Wert · DPT 1.001</div>
+      <div class="r-seg"><span>Aus</span><span>Ein</span></div>
+      <div class="r-btn">Schreiben</div>
+    </div>
+    <div class="r-sent">
+      <div class="in out" style="--d:4.6s;--o:8.3s"><span>Du</span><span>1/1/3</span><span>Licht Küche</span><span>Ein</span></div>
+      <div class="in out" style="--d:5.5s;--o:8.35s"><span>1.1.10</span><span>1/4/3</span><span>Status Licht Küche</span><span>Ein</span></div>
+    </div>
+  </div>
+  <div class="r-scene">
+    <div class="r-top">
+      <h1 class="r-title in out" style="--d:8.7s;--o:13s">Mit dem Datentyp aus dem Projekt.</h1>
+    </div>
+    {{- with resources.Get "images/screens/send-phone.png" }}
+    <div class="r-stand in out" style="--d:9s;--o:13.1s;bottom:426px">{{ partial "horizont/device.html" (dict "device" "iphone" "width" 400 "src" .RelPermalink "alt" "Schreiben") }}</div>
+    {{- end }}
+  </div>
+  {{ partial "reel-end.html" (dict "at" 13.6 "title" "Gruppenadressen lesen und schreiben." "text" "Schalten, dimmen, abfragen: direkt aus der App, mit Antwort im Monitor.") }}
+{{- else if eq $p.reel "topologie" }}
+  {{- $devs := slice
+    (dict "a" "1.1.1" "n" "Spannungsversorgung" "h" "nicht gesehen" "off" true)
+    (dict "a" "1.1.10" "n" "Schaltaktor 8-fach" "h" "Hop 6" "pick" true)
+    (dict "a" "1.1.11" "n" "Dimmaktor 4-fach" "h" "Hop 6")
+    (dict "a" "1.1.12" "n" "Jalousieaktor 4-fach" "h" "Hop 6")
+    (dict "a" "1.1.13" "n" "Heizungsaktor 6-fach" "h" "Hop 6")
+    (dict "a" "1.1.20" "n" "IP-Schnittstelle" "h" "Hop 6") }}
+  <div class="r-scene">
+    <div class="r-top">
+      <div class="r-kennung in out" style="--d:.2s;--o:7.8s">KNX Monitor · Topologie</div>
+      <h1 class="r-title in out" style="--d:.35s;--o:7.8s">Deine Anlage, Linie für Linie.</h1>
+    </div>
+    <div class="r-line-card in out" style="--d:1s;--o:7.9s">
+      <h3>LINIE 1.1 <span>Gateway</span></h3>
+      <div class="r-kpis"><div class="pop" style="--d:1.5s">GERÄTE<b>22</b></div><div class="pop" style="--d:1.8s">AKTIV<b>21</b></div><div class="pop" style="--d:2.1s">TELEGRAMME<b>222</b></div></div>
+    </div>
+    <div class="r-devs">
+      {{- range $i, $v := $devs }}
+      <div class="in out{{ if .off }} is-off{{ end }}{{ if .pick }} is-pick{{ end }}" style="--d:{{ add 2.6 (mul $i 0.55) }}s;--o:{{ add 7.9 (mul $i 0.03) }}s"><div><b>{{ .a }}</b><small>{{ .n }}</small></div><em>{{ .h }}</em></div>
+      {{- end }}
+    </div>
+    <div class="r-tap" style="left:760px;top:1010px"></div>
+  </div>
+  <div class="r-scene">
+    <div class="r-top">
+      <h1 class="r-title in out" style="--d:8.1s;--o:13.2s">Ein Tipp, und das Gerät öffnet sich.</h1>
+    </div>
+    <div class="r-dev in out" style="--d:8.3s;--o:13.3s;top:580px">
+      <div class="r-dev-head">1.1.10 · Linie 1.1 · Hop 6</div>
+      <div class="r-dev-name">Schaltaktor 8-fach</div>
+      <div class="r-kpis"><div>GESENDET<b>17</b></div><div>EMPFANGEN<b>9</b></div><div>ADRESSEN<b>16</b></div></div>
+    </div>
+    {{- /* Frames of the app's own ActuatorView (test/social_shots_test.dart), 30 fps. */}}
+    {{- $frames := resources.Match "images/social/actuator/*.png" }}
+    {{- $n := len $frames }}
+    <div class="r-frames in out" style="--d:8.4s;--o:13.3s">
+      {{- range $i, $f := $frames }}
+      <img src="{{ $f.RelPermalink }}" alt="" style="--a:{{ if eq $i 0 }}0{{ else }}{{ add 8.7 (div (float $i) 30) }}{{ end }}s;--z:{{ if eq (add $i 1) $n }}99{{ else }}{{ add 8.7 (div (float (add $i 1)) 30) }}{{ end }}s">
+      {{- end }}
+    </div>
+  </div>
+  <div class="r-scene">
+    <div class="r-top">
+      <h1 class="r-title in out" style="--d:13.6s;--o:16.6s">Und die ganze Linie in der App.</h1>
+    </div>
+    {{- with resources.Get "images/social/topology-phone.png" }}
+    <div class="r-stand in out" style="--d:13.8s;--o:16.7s;bottom:426px">{{ partial "horizont/device.html" (dict "device" "iphone" "width" 400 "image" . "alt" "Topologie") }}</div>
+    {{- end }}
+  </div>
+  {{ partial "reel-end.html" (dict "at" 17.0 "title" "Jedes Gerät im Detail." "text" "Topologie, Kanäle und Telegramme je Gerät, aus dem ETS-Projekt und vom Bus.") }}
+{{- else if eq $p.reel "anlernen" }}
+  <div class="r-scene">
+    <div class="r-top">
+      <div class="r-kennung in out" style="--d:.2s;--o:8.2s">KNX Monitor · Anlernen</div>
+      <h1 class="r-title in out" style="--d:.35s;--o:8.2s">Kein ETS-Projekt? Drück einen Taster.</h1>
+    </div>
+    <div class="r-panel in out" style="--d:1s;--o:8.3s">
+      <div class="r-panel-head">Die App hört mit · gefangen um 08:33:03</div>
+      <div class="r-event in" style="--d:1.8s"><code>1/0/1 · Befehl</code><div>1.1.31 hat 1/0/1 eingeschaltet · DPT 1.001 geraten</div></div>
+      <div class="r-event in" style="--d:2.5s"><code>1/1/1 · Rückmeldung</code><div>Schaltaktor 8-fach meldet 1/1/1: Ein</div></div>
+    </div>
+    <div class="r-ask in out" style="--d:3.4s;--o:8.3s">
+      <h2>Was hast du gerade gedrückt?</h2>
+      <div class="r-chips">
+        <span class="pop" style="--d:3.8s">Wohnzimmer</span><span class="is-on" style="--d:3.9s;--t:5s">Küche</span><span class="pop" style="--d:4s">Flur</span><span class="pop" style="--d:4.1s">Bad</span>
+      </div>
+      <div class="r-chips">
+        <span class="pop" style="--d:4.3s">Licht</span><span class="is-on" style="--d:4.4s;--t:5.8s">Deckenlicht</span><span class="pop" style="--d:4.5s">Spots</span><span class="pop" style="--d:4.6s">Steckdose</span>
+      </div>
+      <div class="r-btn">Anlernen</div>
+    </div>
+  </div>
+  <div class="r-scene">
+    <div class="r-top">
+      <h1 class="r-title in out" style="--d:8.7s;--o:13s">Aus Adressen werden Namen.</h1>
+    </div>
+    <div class="r-panel" style="top:700px;border:0;background:none;padding:0">
+      <div class="r-field in out" style="--d:9.2s;--o:13s;margin-top:0">Vorher</div>
+      <div class="r-raw in out" style="--d:9.3s;--o:13s">1.1.31 → 1/0/1 · 01</div>
+      <div class="r-field in out" style="--d:10.1s;--o:13.05s;margin-top:48px">Nachher</div>
+      <div class="r-say in out" style="--d:10.2s;--o:13.05s">Taster Küche hat Deckenlicht Küche eingeschaltet.</div>
+      <p class="r-text in out" style="--d:11.2s;--o:13.1s">Übersicht, Objekte und Diagramme funktionieren sofort. Ein späteres ETS-Projekt hat Vorrang.</p>
+    </div>
+  </div>
+  {{ partial "reel-end.html" (dict "at" 13.6 "title" "KNX ohne ETS-Projekt." "text" "Anlernen, Klartext und KNX lernen an der eigenen Anlage. Kommt mit dem nächsten Update.") }}
+{{- else if eq $p.reel "durchklingeln" }}
+  {{- $rows := slice
+    (dict "a" "1/4/1" "n" "Status Licht Wohnen" "v" "Ein")
+    (dict "a" "1/4/3" "n" "Status Licht Küche" "v" "Ein")
+    (dict "a" "1/4/5" "n" "Status Licht Flur" "v" "Ein")
+    (dict "a" "2/4/1" "n" "Position Wohnen" "v" "100 %")
+    (dict "a" "1/4/7" "n" "Status Licht Bad" "v" "fremder Absender" "warn" true)
+    (dict "a" "3/4/0" "n" "Status Dimmen Essen" "v" "62 %") }}
+  <div class="r-scene">
+    <div class="r-top">
+      <div class="r-kennung in out" style="--d:.2s;--o:8.4s">KNX Monitor · Durchklingeln</div>
+      <h1 class="r-title in out" style="--d:.35s;--o:8.4s">Durchklingeln, ganz allein.</h1>
+    </div>
+    <div class="r-check in out" style="--d:1s;--o:8.5s">
+      {{- range $i, $r := $rows }}
+      <div class="is-ping{{ if .warn }} is-warn{{ end }}" style="--t:{{ add 2.4 (mul $i 0.92) }}s"><span class="r-box"></span><b>{{ .a }}</b><span>{{ .n }}</span><em>♪ {{ .v }}</em></div>
+      {{- end }}
+    </div>
+    <div class="r-progress in out" style="--d:1.3s;--o:8.5s">
+      <div class="r-bar"><i></i></div>
+      <div class="r-count">
+        {{- range $i := seq 0 6 }}
+        <span style="--a:{{ if eq $i 0 }}0{{ else }}{{ add 2.4 (mul (sub $i 1) 0.92) }}{{ end }}s;--z:{{ if eq $i 6 }}99{{ else }}{{ add 2.4 (mul $i 0.92) }}{{ end }}s">{{ if ge $i 5 }}{{ sub $i 1 }}{{ else }}{{ $i }}{{ end }} / 6 abgehakt{{ if ge $i 5 }} · 1 prüfen{{ end }}</span>
+        {{- end }}
+      </div>
+    </div>
+  </div>
+  <div class="r-scene">
+    <div class="r-top">
+      <h1 class="r-title in out" style="--d:8.9s;--o:13s">Das Handy klingelt mit.</h1>
+    </div>
+    <div class="r-steps is-tones">
+      <div class="in out" style="--d:9.4s;--o:13s"><b>♪</b><span>Ein Ton für jedes Schreiben</span></div>
+      <div class="in out" style="--d:10.1s;--o:13.05s"><b>♪</b><span>Ein anderer für jede Antwort</span></div>
+      <div class="in out" style="--d:10.8s;--o:13.1s"><b>♪</b><span>Und einer, wenn der falsche Taster sendet</span></div>
+    </div>
+    <p class="r-text in out" style="position:absolute;left:80px;right:80px;top:1260px;margin:0;--d:11.6s;--o:13.1s">Taster drücken, hören, weiter. Auf Android auch mit gesperrtem Bildschirm.</p>
+  </div>
+  {{ partial "reel-end.html" (dict "at" 13.6 "title" "Inbetriebnahme mit einer Person." "text" "Durchklingeln mit Klangquittung kommt mit dem nächsten Update.") }}
+{{- else if eq $p.reel "bauherren" }}
+  <style>
+    .r-house { position: absolute; left: 80px; top: 640px; width: 920px; }
+    .r-house .bh-scene { max-width: none; width: 920px; }
+    .r-house .bh-sky { animation: rskyday .9s linear 2.4s both; }
+    @keyframes rskyday { from { fill: var(--bh-night); } to { fill: #E2EAF5; } }
+    .r-house .bh-sun { opacity: 0; animation: show .8s ease 2.4s both; }
+    .r-house .bh-light { opacity: 0; animation: show .8s ease var(--l) both; }
+    .r-house .bh-light:nth-of-type(n) { --l: 1.6s; }
+    .r-house .bh-blind { animation: rup 1.6s ease 1.8s both; }
+    @keyframes rup { from { transform: scaleY(1); } to { transform: scaleY(.1); } }
+    .r-wish { position: absolute; left: 80px; right: 80px; top: 590px; border-top: 2px solid var(--line); font: 400 40px/1.2 var(--font-sans); }
+    .r-wish > div { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 30px 6px; border-bottom: 2px solid var(--line); }
+    .r-wish em { font: 500 28px/1 var(--font-mono); font-style: normal; color: var(--warning); background: var(--warning-tint, #F6EBD9); padding: 8px 14px; border-radius: 4px; }
+    .r-wish em.is-p { color: var(--positive); background: var(--positive-tint, #E3F0E7); }
+  </style>
+  <div class="r-scene">
+    <div class="r-top">
+      <div class="r-kennung in out" style="--d:.2s;--o:5.6s">KNX im Neubau · Ausblick</div>
+      <h1 class="r-title in out" style="--d:.35s;--o:5.6s">Was soll dein Haus einmal können?</h1>
+    </div>
+    <div class="r-house in out" style="--d:.8s;--o:5.6s">{{ partial "bauherren-scene.html" (dict "id" "r-scene" "label" "") }}</div>
+    <p class="r-text in out" style="position:absolute;left:80px;right:80px;top:1240px;margin:0;--d:2.8s;--o:5.6s">Du entscheidest an Momenten: aufwachen ohne Schalter.</p>
+  </div>
+  <div class="r-scene">
+    <div class="r-top">
+      <h1 class="r-title in out" style="--d:6s;--o:13s">Die Technik folgt.</h1>
+    </div>
+    <div class="r-wish">
+      <div class="in out" style="--d:6.6s;--o:13s"><span>Rollläden mit Motor</span><em>Rohbau</em></div>
+      <div class="in out" style="--d:7.3s;--o:13.03s"><span>Dimmbares Licht</span><em>Rohbau</em></div>
+      <div class="in out" style="--d:8s;--o:13.06s"><span>Heizung je Raum</span><em>Rohbau</em></div>
+      <div class="in out" style="--d:8.7s;--o:13.09s"><span>Szene Guten Morgen</span><em class="is-p">Programmierung</em></div>
+    </div>
+    <p class="r-text in out" style="position:absolute;left:80px;right:80px;top:1240px;margin:0;--d:9.8s;--o:13.1s">So siehst du früh, was in die Wand muss und was später geht.</p>
+  </div>
+  {{ partial "reel-end.html" (dict "at" 13.6 "title" "Das Bauherren-Paket." "text" "Vom Wunsch bis zur Prüfung am fertigen Bus. Daran bauen wir gerade.") }}
+{{- else if eq $p.reel "grundriss" }}
+  <style>
+    .r-plan { position: absolute; left: 80px; top: 600px; width: 920px; height: 589px; }
+    .r-plan .r-pin { position: absolute; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 3px solid var(--line-strong); font: 600 28px/1 var(--font-mono); }
+    .r-move { animation: rwarn .3s ease 2.2s both, rmove 1s cubic-bezier(.2,0,0,1) 5s forwards; }
+    @keyframes rwarn { to { border-color: var(--warning); background: var(--warning-tint, #F6EBD9); } }
+    @keyframes rmove { to { left: 500px; border-color: var(--positive); background: var(--positive-tint, #E3F0E7); } }
+    .r-hint { position: absolute; left: 80px; right: 80px; top: 1230px; margin: 0; font: 500 40px/1.3 var(--font-sans); }
+    .r-chan { position: absolute; left: 80px; right: 80px; top: 590px; border-top: 2px solid var(--line); }
+    .r-chan > div { display: flex; justify-content: space-between; align-items: baseline; padding: 30px 6px; border-bottom: 2px solid var(--line); font: 400 40px/1.2 var(--font-sans); }
+    .r-chan b { font: 500 52px/1 var(--font-mono); color: var(--accent-text); }
+  </style>
+  <div class="r-scene">
+    <div class="r-top">
+      <div class="r-kennung in out" style="--d:.2s;--o:8s">KNX im Neubau · Grundriss</div>
+      <h1 class="r-title in out" style="--d:.35s;--o:8s">Taster setzen, bevor die Wand zu ist.</h1>
+    </div>
+    <div class="r-plan in out" style="--d:.8s;--o:8s">
+      {{ partial "bauherren-static-plan-empty.html" . }}
+      <div class="r-pin" style="left:391px;top:110px">{{ partial "horizont/symbol.html" "lightbulb" }}</div>
+      <div class="r-pin" style="left:175px;top:184px">{{ partial "horizont/symbol.html" "lightbulb" }}</div>
+      <div class="r-pin" style="left:212px;top:37px">{{ partial "horizont/symbol.html" "blinds" }}</div>
+      <div class="r-pin" style="left:37px;top:138px">{{ partial "horizont/symbol.html" "blinds" }}</div>
+      <div class="r-pin r-move" style="left:465px;top:386px">{{ partial "horizont/symbol.html" "touch_app" }}</div>
+    </div>
+    <p class="r-hint in out" style="color:var(--warning);--d:2.4s;--o:4.8s">Der Taster liegt hinter der geöffneten Tür.</p>
+    <p class="r-hint in out" style="color:var(--positive);--d:5.4s;--o:8s">Griffseite. Passt.</p>
+  </div>
+  <div class="r-scene">
+    <div class="r-top">
+      <h1 class="r-title in out" style="--d:8.4s;--o:13s">Aus dem Plan wird der Bedarf.</h1>
+    </div>
+    <div class="r-chan">
+      <div class="in out" style="--d:9s;--o:13s"><span>Schaltkanäle</span><b>14</b></div>
+      <div class="in out" style="--d:9.5s;--o:13.03s"><span>Dimmkanäle</span><b>7</b></div>
+      <div class="in out" style="--d:10s;--o:13.06s"><span>Jalousiekanäle</span><b>9</b></div>
+      <div class="in out" style="--d:10.5s;--o:13.09s"><span>Steckdosen mit Dauerstrom</span><b>31</b></div>
+    </div>
+    <p class="r-text in out" style="position:absolute;left:80px;right:80px;top:1240px;margin:0;--d:11.2s;--o:13.1s">Beispielhaus. Mit Höhen und Abständen, als PDF, CSV und DXF.</p>
+  </div>
+  {{ partial "reel-end.html" (dict "at" 13.6 "title" "Der Hausplan." "text" "Grundriss, Raumbuch und Unterlagen für deinen Elektriker. Kommt mit der nächsten Version.") }}
+{{- end }}
+  <div class="r-foot in out" style="--d:0s;--o:{{ sub $end 0.4 }}s">{{ partial "horizont/app-icon.html" (dict "product" "knx" "size" 52) }} knx-monitor.de</div>
+</div>
+</body>
+</html>

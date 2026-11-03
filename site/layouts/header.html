@@ -1,0 +1,41 @@
+{{- /*
+  The header image (og.png, banner.png) as a page: lockup, Kennung and
+  headline on the left, the app on every platform standing on the horizon
+  on the right. 1200×630 CSS pixels; tool/site_header.sh shoots it at 2×.
+  A draft: rendered only by `hugo server -D`, never deployed.
+*/ -}}
+{{- $d := index site.Data.home site.Language.Lang -}}
+{{- $hz := site.Data.horizont -}}
+{{- $css := slice
+  (resources.Get "css/horizont/tokens.css" | resources.ExecuteAsTemplate "css/horizont-tokens.css" $hz)
+  (resources.Get "css/horizont/components.css")
+  (resources.Get "css/site.css")
+  | resources.Concat "css/knx-header.css" }}
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode }}" data-product="knx" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>{{ .Title }}</title>
+<link rel="stylesheet" href="{{ $css.RelPermalink }}">
+</head>
+<body class="hz">
+<div class="knx-header">
+  <div class="knx-header-text">
+    {{ partial "horizont/lockup.html" (dict "product" "knx" "label" site.Title) }}
+    <div>
+      {{ partial "horizont/kennung.html" $d.header.kennung }}
+      <h1 class="t-display">{{ $d.hero.title }}</h1>
+      <p class="t-body">{{ $d.header.text }}</p>
+    </div>
+  </div>
+  <div class="knx-header-devices">
+    {{- $shots := dict }}
+    {{- range $key, $file := dict "ipad" "hero-ipad" "iphone" "overview-phone" "mac" "desktop-mac" "android" "android-phone" }}
+      {{- with resources.Get (printf "images/screens/%s.png" $file) }}{{ $shots = merge $shots (dict $key .) }}{{ end }}
+    {{- end }}
+    {{ partial "knx-devices.html" (dict "shots" $shots "alt" $d.hero.screen_alt) }}
+  </div>
+  <hr class="hz-feld-horizon knx-header-horizon">
+</div>
+</body>
+</html>

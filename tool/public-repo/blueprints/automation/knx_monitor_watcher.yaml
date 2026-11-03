@@ -1,0 +1,41 @@
+blueprint:
+  name: KNX Monitor – watcher fired
+  description: >-
+    Runs your actions when a KNX Monitor watcher fires (event
+    `knx_monitor_watcher`). Watchers are set up in KNX Monitor under
+    Tools › Watchers. The event data holds `name`, `address`, `source`,
+    `value` (for number rules), `raw` and `installation`, for example
+    `{{ trigger.event.data.name }}`.
+
+    Tip: if you notify yourself here, turn off "Watcher notifications" in the
+    add-on configuration, so you do not get two messages.
+  domain: automation
+  source_url: https://github.com/regetskcob/KNX-Monitor/blob/main/blueprints/automation/knx_monitor_watcher.yaml
+  input:
+    watcher:
+      name: Watcher
+      description: Name of the watcher (as shown in KNX Monitor). Leave empty for all watchers.
+      default: ""
+      selector:
+        text: {}
+    actions:
+      name: Actions
+      description: What to do, for example send a notification to your phone.
+      selector:
+        action: {}
+
+variables:
+  watcher: !input watcher
+
+triggers:
+  - trigger: event
+    event_type: knx_monitor_watcher
+
+conditions:
+  - condition: template
+    value_template: "{{ watcher == '' or trigger.event.data.name == watcher }}"
+
+actions: !input actions
+
+mode: queued
+max: 10

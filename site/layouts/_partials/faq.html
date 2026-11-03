@@ -1,0 +1,12 @@
+{{- /*
+  Questions and answers as a quiet list: hairlines between, no cards.
+  Context: a slice of dicts with q and a (Markdown).
+*/ -}}
+<div class="knx-faq t-body">
+  {{- range . }}
+  <details>
+    <summary>{{ .q }}{{ partial "horizont/symbol.html" "expand_more" }}</summary>
+    <p>{{ .a | markdownify }}</p>
+  </details>
+  {{- end }}
+</div>

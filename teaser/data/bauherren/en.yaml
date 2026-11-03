@@ -1,0 +1,405 @@
+hero:
+  kennung: First stage built · apps still in testing
+  title: What should your home be able to do?
+  lead: The home builder package starts with your everyday life and leads through room book and floor plan to clear documents for your electrician. A check on the finished bus is planned for later.
+  primary: Play through your day
+  secondary: Try the floor plan
+  scene_alt: Drawing of a house in section, with lights and blinds changing during the day
+moments:
+  label: Wishes
+  title: You decide on moments, the technology follows.
+  text: Planning KNX shouldn't require knowing actuator channels. Play through a few moments. Below you see what's behind them and what already belongs in the shell.
+  words:
+    'yes': I want this
+    'no': Don't need it
+    now: Shell
+    later: Programming
+    tally: '{n} wishes, {now} of them belong in the shell.'
+    tally_empty: No wishes chosen yet.
+  items:
+  - short: Waking up
+    title: Waking up without a switch
+    story: The blinds open slowly, the bathroom is warm, the light stays soft.
+    wishes:
+    - t: Good morning scene
+      now: false
+    - t: Motorised blinds
+      now: true
+    - t: Dimmable light
+      now: true
+    - t: Heating per room
+      now: true
+    scenes:
+    - time: 06:30
+      caption: Still dark, the bathroom warms up.
+      sky: night
+      sun:
+      - 300
+      - 150
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 1
+      - 1
+      - 1
+      - 1
+    - time: 06:45
+      caption: The blinds open slowly.
+      sky: dawn
+      sun:
+      - 310
+      - 110
+      lights:
+      - 0.35
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 0.4
+      - 1
+      - 1
+      - 1
+    - time: 07:00
+      caption: Downstairs the light is already on.
+      sky: day
+      sun:
+      - 310
+      - 50
+      lights:
+      - 0
+      - 0.2
+      - 0.6
+      - 0.6
+      blinds:
+      - 0
+      - 0.2
+      - 0.2
+      - 0.2
+  - short: Leaving
+    title: One press on the way out
+    story: One button at the front door, and you no longer walk through the house checking lights.
+    wishes:
+    - t: All-off button at the door
+      now: true
+    - t: Presence detectors
+      now: true
+    - t: Switchable sockets
+      now: true
+    scenes:
+    - time: 08:10
+      caption: Lights are still on everywhere.
+      sky: day
+      sun:
+      - 310
+      - 50
+      lights:
+      - 0.7
+      - 0.7
+      - 0.7
+      - 0.7
+      blinds:
+      - 0
+      - 0
+      - 0
+      - 0
+    - time: 08:11
+      caption: Button at the door.
+      sky: day
+      sun:
+      - 310
+      - 50
+      lights:
+      - 0.3
+      - 0.3
+      - 0.3
+      - 0.7
+      blinds:
+      - 0
+      - 0
+      - 0
+      - 0
+    - time: 08:12
+      caption: All off, heating turns down.
+      sky: day
+      sun:
+      - 310
+      - 50
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 0
+      - 0
+      - 0
+      - 0
+  - short: At night
+    title: Barefoot to the bathroom
+    story: A low light shows the way and goes off by itself.
+    wishes:
+    - t: Night light near the floor
+      now: true
+    - t: Presence detectors
+      now: true
+    scenes:
+    - time: 03:12
+      caption: Everyone is asleep.
+      sky: night
+      sun:
+      - 300
+      - 40
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 1
+      - 1
+      - 1
+      - 1
+    - time: 03:13
+      caption: The night light comes on.
+      sky: night
+      sun:
+      - 300
+      - 40
+      lights:
+      - 0.1
+      - 0.2
+      - 0
+      - 0
+      blinds:
+      - 1
+      - 1
+      - 1
+      - 1
+    - time: 03:16
+      caption: Off again after two minutes.
+      sky: night
+      sun:
+      - 300
+      - 40
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 1
+      - 1
+      - 1
+      - 1
+  - short: Summer
+    title: Summer without the heat
+    story: Sun on the south side, nobody home. The blinds move before it gets warm.
+    wishes:
+    - t: Automatic shading
+      now: false
+    - t: Weather station
+      now: true
+    - t: Motorised blinds
+      now: true
+    scenes:
+    - time: '11:00'
+      caption: The sun reaches the south side.
+      sky: day
+      sun:
+      - 60
+      - 40
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 0
+      - 0
+      - 0
+      - 0
+    - time: '11:05'
+      caption: The weather station measures strong sun.
+      sky: day
+      sun:
+      - 110
+      - 30
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 0.5
+      - 0
+      - 0.5
+      - 0
+    - time: '11:10'
+      caption: South shaded, north open.
+      sky: day
+      sun:
+      - 160
+      - 24
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 0.8
+      - 0
+      - 0.8
+      - 0
+  - short: Holiday
+    title: Holiday without worries
+    story: In the evening light moves through the house. You see open windows at a glance.
+    wishes:
+    - t: Presence simulation
+      now: false
+    - t: Window contacts
+      now: true
+    scenes:
+    - time: '19:00'
+      caption: Nobody home.
+      sky: night
+      sun:
+      - 40
+      - 40
+      lights:
+      - 0
+      - 0
+      - 0.7
+      - 0
+      blinds:
+      - 1
+      - 1
+      - 0.5
+      - 1
+    - time: '21:30'
+      caption: Light moves upstairs.
+      sky: night
+      sun:
+      - 40
+      - 40
+      lights:
+      - 0.7
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 0.5
+      - 1
+      - 1
+      - 1
+    - time: '23:00'
+      caption: The house goes to sleep.
+      sky: night
+      sun:
+      - 40
+      - 40
+      lights:
+      - 0
+      - 0
+      - 0
+      - 0
+      blinds:
+      - 1
+      - 1
+      - 1
+      - 1
+plan:
+  label: Floor plan
+  title: On the plan you see whether it works in everyday life.
+  text: Upload a floor plan, place devices, and you see how they sit against doors, furniture and paths. Lights are switchable, dimmable, tunable or coloured, sockets have permanent power, can be switched or also measure current, windows get a roller shutter or a venetian blind with slats. The plan works out the channels from that. **Try it:** Tap a device and change its type.
+  caption: Example house. Channels with 30 % reserve, distances from the scale.
+  words:
+    decimal: .
+    rooms:
+      living: Living & dining
+      kitchen: Kitchen
+      hall: Hall
+      office: Office
+    kinds:
+      light: Light
+      socket: Socket
+      button: Push button
+      blind: Blind
+    modes:
+      dim: Dimmable
+      switch: Switchable
+      perm: Permanent power
+      roller: Roller shutter
+      slat: Venetian blind with slats
+      tw: Colour temperature (tunable white)
+      rgb: Colour (RGB)
+      meter: With current metering
+    height: Height above floor
+    distance: Distance to wall
+    count:
+      switch: Switching channels
+      dim: Dimming channels
+      perm: Sockets with permanent power
+      blind: Blind channels
+      led: LED channels or DALI
+      meter: Switching channels with metering
+    hint_wrong: The push button sits behind the open door.
+    hint_fix: Move to the handle side
+    hint_ok: The push button now sits on the handle side.
+electrician:
+  label: With your electrician
+  title: Documents your electrician can work with.
+  text: You go through the plan with your electrician and hand over a clean list. Coordination runs through these documents, not in the app.
+  points:
+  - term: Room book
+    value: Wishes per room, priority and the type of every light and socket
+  - term: Channels
+    value: Switching, dimming, blinds and heating, each with reserve. Your contractor decides on actuators and the distribution board
+  - term: Without Plus
+    value: Wishes with eight moments, room book, one level with floor plan, channel count, PDF without dimensions, CSV and the home plan file
+  - term: With Plus
+    value: More levels and outdoor area, checks, weather rules, deadlines by type of construction, quote check, PDF with dimensions and DXF
+  - term: Deadlines
+    value: What should be settled before pouring concrete, rough-in and plastering, matched to your type of construction
+technical:
+  label: Planned
+  title: Later the floor plan should become a view of your bus.
+  text: This isn't built yet. Devices from the plan are meant to get their group addresses, so you see states and telegrams where they happen in the house. This is planned without the package too, with any floor plan of your own.
+  points:
+  - term: Plan vs. actual
+    value: 'A guided walk through the room book: trigger, look, tick off, note defects'
+  - term: Bus
+    value: Telegrams flash at the device, silent devices stand out
+  - term: Coordinate
+    value: Questions and proposed changes together with your contractor right on the plan, approved versions
+  - term: Focus
+    value: A technical view for diagnosis and checks. Daily control stays with Home Assistant or your visualisation
+state:
+  label: Status
+  title: The first stage is built, the apps are still in testing.
+  text: In the app it's called "Plan a home". You can't download it yet, the apps aren't public. The demos on this page show the idea.
+  points:
+  - term: Built
+    value: Planning without a bus and without ETS, from wishes to documents
+  - term: Not included yet
+    value: Coordination with your contractor, the plan vs. actual walk and the view on the bus
+  - term: Classification
+    value: Function catalogue and deadlines are put together to the best of our knowledge and haven't had a professional review yet. The catalogue starts with 27 entries. Your contractor has the last word
+  - term: Have your say
+    value: Building or planning KNX right now? Tell us under [Feedback](/en/feedback/) what you miss most
+faq:
+  label: Questions
+  title: Frequently asked questions
+  items:
+  - q: Does the package replace my electrician or planner?
+    a: It helps you clarify your wishes and hand them over cleanly. Electrical installation, actuators, distribution board and protection stay with your contractor, lighting design with a lighting designer.
+  - q: Does the app tell me what KNX costs?
+    a: 'It shows what can be calculated from the plan: channels, devices and reserve. That lets you compare quotes on the same basis. Prices come from your contractor''s quote.'
+  - q: Where do my floor plan and wishes live?
+    a: On your device. You can pass them on as a file, yourself and only if you want to.
+  - q: Do I need a finished KNX installation?
+    a: No, planning works without a bus and without ETS.
+  - q: When will it be available?
+    a: The first stage comes with the apps, which are still in testing. So we aren't naming a date. News on [Instagram](https://www.instagram.com/knxmonitor/).

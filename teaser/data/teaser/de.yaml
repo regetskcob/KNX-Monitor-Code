@@ -1,0 +1,139 @@
+tagline: "KNX-Busmonitor & Diagnose"
+# Je nach offenen Betas (hugo.toml betaIos/betaAndroid): none, ios, android, both.
+description:
+  none: "KNX-Busmonitor und Diagnose für Home Assistant und Linux, bald auch für iPhone, iPad, Android, Mac und Windows. Liest ETS-Projekte, Daten bleiben lokal."
+  ios: "KNX-Busmonitor und Diagnose für Home Assistant und Linux, als Beta für iPhone und iPad, bald auch für Android, Mac und Windows. Liest ETS-Projekte, Daten bleiben lokal."
+  android: "KNX-Busmonitor und Diagnose für Home Assistant und Linux, als Beta für Android, bald auch für iPhone, iPad, Mac und Windows. Liest ETS-Projekte, Daten bleiben lokal."
+  both: "KNX-Busmonitor und Diagnose für Home Assistant und Linux, als Beta für iPhone, iPad und Android, bald auch für Mac und Windows. Liest ETS-Projekte, Daten bleiben lokal."
+kennung: "Busmonitor & Diagnose für KNX"
+title: "Jedes Telegramm im Blick, zu Hause und auf der Baustelle."
+lead: "Eingeordnet mit deinem ETS-Projekt: Geräte, Räume und Werte statt Hex-Kolonnen. Dazu die Prüfung der Anlage auf stille Sensoren, falsche Datentypen und Busprobleme."
+primary: "Als Home-Assistant-Add-on"
+source: "Open Source · GPLv3"
+beta:
+  none: ""
+  ios: "Beta testen: iPhone und iPad"
+  android: "Beta testen: Android"
+  both: "Beta testen: iPhone, iPad, Android"
+soon:
+  none: "Bald auch für iPhone, iPad, Android, Mac und Windows, für Linux schon heute."
+  ios: "Für iPhone und iPad als Beta, bald auch für Android, Mac und Windows, für Linux schon heute."
+  android: "Für Android als Beta, bald auch für iPhone, iPad, Mac und Windows, für Linux schon heute."
+  both: "Für iPhone, iPad und Android als Beta, bald auch für Mac und Windows, für Linux schon heute."
+local: "Deine Anlagendaten verlassen dein Netzwerk nur, wenn du sie selbst teilst."
+drawing: "Kleinverteiler mit Spannungsversorgung, IP-Schnittstelle, Schalt-, Jalousie- und Dimmaktor. Telegramme laufen als Lichtpunkte über das grüne Buskabel, die Kanal-LEDs schalten mit."
+telegrams:
+  - { from: "1.1.30", to: "1/1/3", text: "Licht Küche", value: "Ein", device: 2, channel: 2, on: true }
+  - { from: "1.1.10", to: "1/4/3", text: "Status Licht Küche", value: "Ein", device: 2, out: true }
+  - { from: "1.1.31", to: "2/1/1", text: "Rollladen Wohnen", value: "Ab", device: 3, channel: 0, on: true }
+  - { from: "1.1.12", to: "2/4/1", text: "Position Wohnen", value: "40 %", device: 3, out: true }
+  - { from: "1.1.35", to: "3/2/0", text: "Dimmen Essen", value: "62 %", device: 4, channel: 0, on: true }
+  - { from: "1.1.11", to: "3/4/0", text: "Status Dimmen Essen", value: "62 %", device: 4, out: true }
+  - { from: "1.1.30", to: "1/1/5", text: "Licht Flur", value: "Ein", device: 2, channel: 4, on: true }
+  - { from: "1.1.10", to: "1/4/5", text: "Status Licht Flur", value: "Ein", device: 2, out: true }
+  - { from: "1.1.30", to: "1/1/3", text: "Licht Küche", value: "Aus", device: 2, channel: 2, on: false }
+  - { from: "1.1.10", to: "1/4/3", text: "Status Licht Küche", value: "Aus", device: 2, out: true }
+  - { from: "1.1.31", to: "2/1/1", text: "Rollladen Wohnen", value: "Stopp", device: 3, channel: 0, on: false }
+  - { from: "1.1.12", to: "2/4/1", text: "Position Wohnen", value: "55 %", device: 3, out: true }
+  - { from: "1.1.35", to: "3/2/0", text: "Dimmen Essen", value: "0 %", device: 4, channel: 0, on: false }
+  - { from: "1.1.11", to: "3/4/0", text: "Status Dimmen Essen", value: "0 %", device: 4, out: true }
+  - { from: "1.1.30", to: "1/1/5", text: "Licht Flur", value: "Aus", device: 2, channel: 4, on: false }
+  - { from: "1.1.10", to: "1/4/5", text: "Status Licht Flur", value: "Aus", device: 2, out: true }
+cable: "zu den Tastern 1.1.30 – 1.1.35"
+live: "Live · Demo-Haus"
+live_window: "Letzte 60 s"
+more: "Was das Add-on heute kann"
+ipad_alt: "KNX Monitor als Add-on in Home Assistant auf dem iPad: links das Menü mit Gesundheit, Inbetriebnahme, Busmonitor, Topologie und mehr, in der Mitte die Übersicht mit Werten je Gruppenadresse, rechts die Details einer Adresse mit Verlauf und Telegramm"
+addon:
+  kennung: "02 — Heute im Add-on"
+  title: "Busmonitor und Diagnose, schon heute in Home Assistant."
+  text: "Kostenlos, in der Seitenleiste, auf jedem Gerät mit Home Assistant, unterwegs auch über die Home-Assistant-App. Das Add-on bleibt verbunden und zeichnet auf, auch wenn kein Browser offen ist. Der Quellcode ist offen ([GPLv3 auf GitHub](https://github.com/regetskcob/KNX-Monitor-Code)), du kannst nachsehen, was es auf deinem Bus tut. [Alles zum Add-on](/addon/)"
+  facts:
+    - { term: "Telegramme", value: "Live mit Absender, Ziel und Wert; Suche, Filter, Werte lesen und schreiben. Schreiben ist ein Eingriff in die Anlage und geschieht auf deine Verantwortung" }
+    - { term: "ETS-Projekt", value: "`.knxproj` bis ETS6, auch mit Passwort: Namen, Datentypen, Geräte und Räume" }
+    - { term: "Übersicht", value: "Jede Gruppenadresse mit Wert und Mini-Verlauf, nach Räumen und Funktionen" }
+    - { term: "Objekte", value: "Aktoren als Hutschienengeräte mit Kanal-LEDs, wie oben" }
+    - { term: "Gesundheit", value: "Verstummte Geräte, Zyklen, Datentypen und Busqualität, mit PDF-Bericht" }
+    - { term: "Verlauf", value: "Daueraufzeichnung Tag für Tag, Aufnahmen mit Zeitleiste je Gruppenadresse" }
+    - { term: "Kommentare", value: "An Telegrammen, Diagrammen und Aufnahmen, mit Bildschirmfotos; „Problem melden“ hält fest, wann der Fehler auftrat" }
+    - { term: "Exporte", value: "Eine Seite für PDF, CSV, ETS-Datei, Berichte und ein ZIP mit allem" }
+    - { term: "Experten", value: "Busmonitor mit Rohframes, Topologie, Abgleich mit dem ETS-Projekt, Inbetriebnahme-Checkliste" }
+    - { term: "Verbindung", value: "Tunneling, Routing und KNX IP Secure" }
+apps:
+  kennung: "03 — Bald als App"
+  title: "Bald auch ohne Home Assistant, direkt am Gateway."
+  text: "Für die Baustelle, den Schaltschrank und das Büro neben der ETS: dieselben Werkzeuge als App auf dem Gerät, das du gerade in der Hand hast."
+  facts:
+    - { term: "Mobil", value: "iPhone, iPad und Android" }
+    - { term: "Desktop", value: "Mac und Windows, Linux schon heute" }
+    - { term: "Verbindung", value: "Direkt an deiner IP-Schnittstelle oder deinem IP-Router" }
+    - { term: "Vor Ort", value: "ETS-Projekt und Aufnahmen liegen auf dem Gerät, auch ohne Internet" }
+roadmap:
+  kennung: "04 — Fahrplan"
+  title: "Erst zu Hause in Home Assistant, dann auch unterwegs auf der Baustelle."
+  text:
+    none: "Das Add-on ist fertig und bleibt kostenlos, für Linux gibt es die App schon heute. Die übrigen Apps sind gebaut und folgen in den nächsten Wochen."
+    ios: "Das Add-on ist fertig und bleibt kostenlos, für Linux gibt es die App schon heute, für iPhone und iPad als Beta. Die übrigen Apps sind gebaut und folgen in den nächsten Wochen."
+    android: "Das Add-on ist fertig und bleibt kostenlos, für Linux gibt es die App schon heute, für Android als Beta. Die übrigen Apps sind gebaut und folgen in den nächsten Wochen."
+    both: "Das Add-on ist fertig und bleibt kostenlos, für Linux gibt es die App schon heute, für iPhone, iPad und Android als Beta. Die übrigen Apps sind gebaut und folgen in den nächsten Wochen."
+  # Öffentlich als Vorschau, links unter dem Text.
+  prices_preview: "**In der Beta ist noch alles frei:** Du nutzt alle Funktionen kostenlos, auch die von Plus und Pro. Als Dankeschön bekommst du beim ersten Start der Store-Version 90 Tage Pro auf dem Gerät, auf dem du die Beta genutzt hast."
+  prices:
+    - { name: "Free", price: "Kostenlos", sub: "Für den Blick auf die eigene Anlage" }
+    - { name: "Plus", price: "24,99 €", per: "im Jahr", sub: "oder 79 € einmalig · Langzeitverlauf, Diagramme, Wächter, Export" }
+    - { name: "Pro", price: "149 €", per: "im Jahr", sub: "oder 14,99 € im Monat · Busmonitor, Topologie, Diagnose, Inbetriebnahme" }
+  prices_note: "Preisempfehlung als unverbindliche Vorschau, kaufen kann man noch nichts. Es gelten die Endpreise im App Store und bei Google Play; auf iPhone, iPad und Mac gilt ein Kauf überall."
+  # commerce: false nur ohne Preise (params.commerce).
+  facts:
+    - { term: "Offen", value: "**Quellcode unter GPLv3** [auf GitHub](https://github.com/regetskcob/KNX-Monitor-Code): alles für Einsteiger und Fortgeschrittene in App, Add-on und KNX-Box, nachprüfbar und frei veränderbar" }
+    - { term: "Jetzt", value: "**Home-Assistant-Add-on** und **Linux** ([Download](https://github.com/regetskcob/KNX-Monitor/releases/latest)), beide kostenlos für eine Installation, auch künftig" }
+    - { term: "Beta", value: "**iPhone und iPad** über [TestFlight](https://testflight.apple.com/join/fsM3ufJK), offen für alle, mit allen Werkzeugen", when: [ios, both] }
+    - { term: "Beta", value: "**Android** über Google Play: erst der [Google-Gruppe beitreten](https://groups.google.com/g/knx-monitor-beta), dann [am Test teilnehmen](https://play.google.com/apps/testing/de.kalkar_it.knxmonitor). Offen für alle, mit allen Werkzeugen", when: [android, both] }
+    - { term: "Bald", value: "**iPhone, iPad, Android, Mac und Windows** im App Store, bei Google Play und als Download für Windows", when: [none] }
+    - { term: "Bald", value: "**Android, Mac und Windows** bei Google Play, im App Store und als Download für Windows", when: [ios] }
+    - { term: "Bald", value: "**iPhone, iPad, Mac und Windows** im App Store und als Download für Windows", when: [android] }
+    - { term: "Bald", value: "**Mac und Windows** im App Store und als Download für Windows", when: [both] }
+    - { term: "Ausblick", value: "**Bauherren-Paket**: vom Alltagswunsch über Raumbuch und Grundriss bis zu den Unterlagen für den Elektriker. [Mehr dazu](/bauherren/)" }
+    - { term: "In Zukunft", value: "**KNX-Box**: ein Raspberry Pi als Telegramm-Schreiber vor Ort, zeichnet auf der Baustelle tagelang auf, ohne Home Assistant und ohne Internet. Bis die übrigen Apps erscheinen, richtest du sie mit der Linux-App ein" }
+    - { term: "Apps", value: "Kostenlos nutzbar, mehr Werkzeuge mit Plus und Pro. In der Beta ist alles frei.", commerce: false }
+# Ab Abschnitt 05 die Landingpage: Funktionen, Expertenmodus, ETS-Projekt,
+# Verbindung, KNX-Box, Datenschutz und FAQ aus site/data/home und
+# site/data/screens.yaml; hier nur der Name der Funktionen.
+features_label: "Funktionen im Detail"
+# Kapitel auf dem Horizont (Navigation oben): Anker und Name, in der Reihenfolge der Seite.
+marks:
+  - { id: "add-on", label: "Add-on" }
+  - { id: "apps", label: "Apps" }
+  - { id: "roadmap", label: "Fahrplan" }
+  - { id: "features", label: "Funktionen" }
+  - { id: "expert", label: "Experten" }
+  - { id: "ets", label: "ETS-Projekt" }
+  - { id: "connection", label: "Verbindung" }
+  - { id: "box", label: "KNX-Box" }
+  - { id: "privacy", label: "Datenschutz" }
+  - { id: "mitreden", label: "Mitreden" }
+  - { id: "faq", label: "FAQ" }
+switch_on: "Ein"
+switch_off: "Aus"
+lamp: "Licht Küche"
+sensors:
+  - addr: "1.1.30"
+    name: "Glastaster"
+    kind: "glass"
+    slot: "right"
+    display: "21,5 °C"
+    keys:
+      - { label: "T1", hint: "Licht Küche", to: "1/1/3", text: "Licht Küche", status: "1/4/3", status_text: "Status Licht Küche", device: 2, channel: 2 }
+      - { label: "T2", hint: "Licht Flur", to: "1/1/5", text: "Licht Flur", status: "1/4/5", status_text: "Status Licht Flur", device: 2, channel: 4 }
+  - addr: "1.1.31"
+    name: "Taster 2-fach"
+    kind: "push"
+    # In the gap under the expert list (section 06), else above the thread.
+    slot: "gap top"
+    section: "expert"
+    note: "Drück ihn ruhig: Genauso drückst du in der Topologie der App die Taster deiner Anlage und siehst, welcher Aktor schaltet. So prüfst du ihre Zuordnungen."
+    # Its blind beside it, moved by the status "Position Wohnen" (2/4/1).
+    window: { status: "2/4/1", pos: 40, label: "Wohnen" }
+    keys:
+      - { label: "▲", hint: "Rollladen auf", to: "2/1/1", text: "Rollladen Wohnen", value: "Auf", status: "2/4/1", status_text: "Position Wohnen", status_value: "0 %", device: 3, channel: 0 }
+      - { label: "▼", hint: "Rollladen ab", to: "2/1/1", text: "Rollladen Wohnen", value: "Ab", status: "2/4/1", status_text: "Position Wohnen", status_value: "100 %", device: 3, channel: 0 }

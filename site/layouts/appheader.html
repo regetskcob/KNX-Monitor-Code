@@ -1,0 +1,44 @@
+{{- /*
+  App Store header art ("Kopfzeile" and the header in search results): no
+  text, the store lays name and icon over it. The scene of every platform
+  stands centred on the horizon, the ground below, as on the landing page.
+  The canvas comes from the URL (?w=…&h=…&set=all|search, CSS pixels;
+  tool/store_graphics.py shoots at 2×). A draft: only `hugo server -D`.
+*/ -}}
+{{- $hz := site.Data.horizont -}}
+{{- $d := index site.Data.home site.Language.Lang -}}
+{{- $css := slice
+  (resources.Get "css/horizont/tokens.css" | resources.ExecuteAsTemplate "css/horizont-tokens.css" $hz)
+  (resources.Get "css/horizont/components.css")
+  (resources.Get "css/site.css")
+  | resources.Concat "css/knx-appheader.css" }}
+{{- $raw := .Params.raw -}}
+{{- $lang := site.Language.Lang -}}
+{{- $shots := dict
+  "ipad" (printf "%s/ipad/%s-land/01_overview.png" $raw $lang)
+  "iphone" (printf "%s/iphone/%s/01_overview.png" $raw $lang)
+  "mac" (printf "%s/mac/desktop.png" $raw)
+  "android" (printf "%s/android-phone/%s/04_live.png" $raw $lang) -}}
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode }}" data-product="knx" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>{{ .Title }}</title>
+<link rel="stylesheet" href="{{ $css.RelPermalink }}">
+</head>
+<body class="hz">
+<div class="knx-appheader" id="canvas">
+  <div class="knx-appheader-scene" data-set="all">{{ partial "knx-devices.html" (dict "shots" $shots "alt" $d.hero.screen_alt) }}</div>
+  <div class="knx-appheader-scene" data-set="search">{{ partial "knx-devices.html" (dict "shots" $shots "alt" $d.hero.screen_alt "set" "search") }}</div>
+  <hr class="hz-feld-horizon knx-appheader-horizon">
+</div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const canvas = document.getElementById('canvas');
+  canvas.style.width = q.get('w') + 'px';
+  canvas.style.height = q.get('h') + 'px';
+  const set = q.get('set') || 'all';
+  for (const s of document.querySelectorAll('.knx-appheader-scene')) s.hidden = s.dataset.set !== set;
+</script>
+</body>
+</html>

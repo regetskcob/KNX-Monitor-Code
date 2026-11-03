@@ -1,0 +1,167 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:knx_monitor_server/bus.dart';
+import 'package:test/test.dart';
+
+void main() {
+  group('HomeAssistant', () {
+    late HttpServer server;
+    final requests = <(String, String, String?, Object?)>[];
+    var components = <String>['knx', 'mqtt'];
+
+    setUp(() async {
+      requests.clear();
+      server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((r) async {
+        final body = await utf8.decodeStream(r);
+        requests.add((
+          r.method,
+          r.uri.path,
+          r.headers.value(HttpHeaders.authorizationHeader),
+          body.isEmpty ? null : jsonDecode(body),
+        ));
+        if (r.uri.path == '/core/api/config') {
+          r.response.headers.contentType = ContentType.json;
+          r.response.write(jsonEncode({'components': components}));
+        }
+        await r.response.close();
+      });
+    });
+    tearDown(() => server.close(force: true));
+
+    HomeAssistant ha() => HomeAssistant(token: 'geheim', base: Uri.parse('http://127.0.0.1:${server.port}/core/'));
+
+    test('Ereignis über die Supervisor-API', () async {
+      await ha().fire(HomeAssistant.busEvent, {'connected': false, 'state': 'disconnected'});
+      expect(requests.single.$1, 'POST');
+      expect(requests.single.$2, '/core/api/events/knx_monitor_bus');
+      expect(requests.single.$3, 'Bearer geheim');
+      expect(requests.single.$4, {'connected': false, 'state': 'disconnected'});
+    });
+
+    test('KNX-Integration erkennen', () async {
+      final h = ha();
+      expect(await h.refreshKnx(), isTrue);
+      components = ['mqtt'];
+      expect(await h.refreshKnx(), isFalse);
+      expect(h.knx, isFalse);
+    });
+
+    test('ohne Supervisor: nichts senden, nichts wissen', () async {
+      final h = HomeAssistant(token: null, base: Uri.parse('http://127.0.0.1:${server.port}/core/'));
+      expect(h.available, isFalse);
+      await h.fire(HomeAssistant.alarmEvent, {});
+      expect(await h.refreshKnx(), isNull);
+      expect(requests, isEmpty);
+    });
+
+    test('nicht erreichbar: kein Fehler nach außen', () async {
+      final h = HomeAssistant(token: 'x', base: Uri.parse('http://127.0.0.1:1/core/'));
+      await h.fire(HomeAssistant.watcherEvent, {});
+      expect(await h.refreshKnx(), isNull);
+    });
+  });
+
+  group('Treffer und Wechsel für Ereignisse', () {
+    late Directory data;
+    final notes = <String>[];
+
+    setUp(() async {
+      data = await Directory.systemTemp.createTemp('knx_ha');
+      notes.clear();
+    });
+    tearDown(() => data.delete(recursive: true));
+
+    Map<String, Object?> line(int ga, String hex, {bool small = false, int seconds = 0}) => {
+      't': DateTime(2026, 10, 25, 12, 0, seconds).microsecondsSinceEpoch,
+      's': 0x1105,
+      'd': ga,
+      'y': 2,
+      'x': hex,
+      if (small) 'm': true,
+    };
+
+    test('Wächter: jeder Treffer nach der Sperrzeit, auch ohne Mitteilung', () async {
+      await File('${data.path}/watch_rules.json').writeAsString(
+        jsonEncode({
+          'rules': [
+            {
+              'id': 'wind',
+              'address': 0x4101,
+              'label': '8/1/1 Wind > 10',
+              'name': 'Windgeschwindigkeit',
+              'check': {
+                'num': [9, 5],
+                'op': 'greater',
+                'n': 10,
+              },
+            },
+          ],
+        }),
+      );
+      final set = WatchRuleSet(data, notify: ({required id, required title, required message}) async => notes.add(id));
+      final hits = <WatchHit>[];
+      // 0x0C B0 = 24,0 (DPT 9); innerhalb einer Minute nur eine Mitteilung.
+      await set.check(line(0x4101, '0CB0'), onHit: hits.add);
+      await set.check(line(0x4101, '0CB0', seconds: 10), onHit: hits.add);
+      expect(hits, hasLength(2));
+      expect(notes, hasLength(1));
+      expect(hits.first.id, 'wind');
+      expect(hits.first.name, 'Windgeschwindigkeit');
+      expect(hits.first.value, closeTo(24.0, 0.01));
+    });
+
+    test('DPT 21.001: Alarm endet als Alarm, nicht als Störung', () async {
+      await File('${data.path}/catalog.json').writeAsString(
+        jsonEncode({
+          'groups': [
+            {
+              'a': 0x0802,
+              'n': 'Zentrale Status',
+              'd': [21, 1],
+            },
+          ],
+        }),
+      );
+      final changes = <AlarmChange>[];
+      final alarms = AlarmWatch(
+        data,
+        notify: ({required id, required title, required message}) async {},
+        onChange: changes.add,
+      );
+      await alarms.check(line(0x0802, '08')); // Bit 3: Alarm
+      await alarms.check(line(0x0802, '00', seconds: 1));
+      expect(changes.map((c) => (c.kind, c.active)), [('alarm', true), ('alarm', false)]);
+    });
+
+    test('Alarm: an und aus, auch bei abgeschalteten Mitteilungen', () async {
+      await File('${data.path}/catalog.json').writeAsString(
+        jsonEncode({
+          'style': 'threeLevel',
+          'groups': [
+            {
+              'a': 0x0801,
+              'n': 'Rauchmelder Flur',
+              'd': [1, 5],
+            },
+          ],
+        }),
+      );
+      final changes = <AlarmChange>[];
+      final alarms = AlarmWatch(
+        data,
+        notify: ({required id, required title, required message}) async => notes.add(id),
+        onChange: changes.add,
+      )..enabled = false;
+      await alarms.check(line(0x0801, '01', small: true));
+      await alarms.check(line(0x0801, '01', small: true, seconds: 1));
+      await alarms.check(line(0x0801, '00', small: true, seconds: 2));
+      expect(notes, isEmpty);
+      expect(changes.map((c) => c.active), [true, false]);
+      expect(changes.first.groupAddress, '1/0/1');
+      expect(changes.first.name, 'Rauchmelder Flur');
+      expect(changes.first.kind, 'alarm');
+    });
+  });
+}

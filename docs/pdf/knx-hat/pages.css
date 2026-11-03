@@ -1,0 +1,24 @@
+/* Bausteine wie in den Hersteller-PDFs. */
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8mm; }
+.facts div { padding: 2.2mm 0; border-top: 0.6pt solid var(--line); font-size: 9pt; }
+.facts b { display: block; font: 600 7.5pt "Monaspace", monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: .6mm; }
+.benefit { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
+.benefit ul.clean li { font-size: 9pt; padding: 1.6mm 0; }
+.benefit ul.clean b { display: block; font-weight: 600; font-size: 10pt; }
+.way .n { font: 600 8pt "Monaspace", monospace; color: var(--accent-text); letter-spacing: .06em; margin-bottom: 2mm; }
+/* App-Aufnahmen: Hintergrund wie die Seite, leerer Rand unten abgeschnitten. */
+figure img.shot { border: none; border-radius: 0; aspect-ratio: 2000 / 1160; object-fit: cover; object-position: top; }
+figure img.shot.wide { aspect-ratio: 2640 / 1180; }
+img.crop-wide { display: block; width: 100%; aspect-ratio: 2640 / 1180; object-fit: cover; object-position: top; border: none; }
+figure img.app { border: none; border-radius: 0; width: 100%; aspect-ratio: 1.2; object-fit: contain; object-view-box: inset(20px 300px 520px 300px); }
+figure img.app.glass { object-view-box: inset(20px 250px 440px 250px); }
+figure img.app.flush { object-view-box: inset(50px 20px 790px 440px); aspect-ratio: 2.2; margin-bottom: 9mm; }
+.optics { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm 8mm; }
+.optics figure:first-child { grid-column: 1 / -1; }
+.later { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; }
+.vs { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; align-items: end; }
+.vs figure img { border: none; border-radius: 0; }
+.contact { margin-top: 8mm; }
+/* Seiten mit langem Codebeispiel. */
+.tight pre { font-size: 7.4pt; padding: 4mm 5mm; margin-bottom: 4mm !important; }
+.tight td, .tight th { padding-top: 1.3mm; padding-bottom: 1.3mm; }

@@ -1,0 +1,18 @@
+# Cable to the gateway or switch: DHCP, otherwise link-local (169.254.x.x), so
+# that a directly connected gateway with AutoIP is reachable.
+[connection]
+id=knx-box-lan
+type=ethernet
+interface-name=eth0
+autoconnect=true
+autoconnect-priority=10
+
+[ipv4]
+method=auto
+may-fail=true
+dhcp-timeout=20
+link-local=fallback
+
+[ipv6]
+method=auto
+may-fail=true

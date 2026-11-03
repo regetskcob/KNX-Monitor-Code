@@ -1,0 +1,246 @@
+{{- /*
+  The teaser of knx-monitor.de: one Feldseite that fits the screen. Left the
+  app icon, the headline and the one way in that exists today (the add-on;
+  the apps follow); right the small distribution board standing on the
+  horizon, telegrams running along its bus cable. Below the first screen four
+  numbered sections: what the add-on does today, what the apps will bring,
+  the roadmap, then the features and the expert mode in detail.
+  Texts from data/teaser/<lang>.yaml.
+*/ -}}
+{{- $d := index site.Data.teaser site.Language.Lang -}}
+{{- /* Open betas: picks the texts keyed none/ios/android/both and the facts
+       with a matching "when". */}}
+{{- $beta := partial "beta.html" . -}}
+{{- $title := printf "%s – %s" site.Title $d.tagline -}}
+{{- $target := "" }}{{ range .Translations }}{{ $target = . }}{{ end -}}
+{{- $lang := dict -}}
+{{- with $target }}{{ $lang = dict "current" (upper site.Language.Lang) "name" (upper .Language.Lang) "url" .RelPermalink "hreflang" .Language.Lang }}{{ end -}}
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode }}" data-product="knx">
+{{ partial "head.html" (dict "page" . "title" $title "description" (index $d.description $beta)) }}
+<body class="hz tz">
+{{- /* The sections as marks on the horizon, numbered like their Kennung. */}}
+{{- $marks := slice }}
+{{- range $i, $m := $d.marks }}{{ $marks = $marks | append (dict "id" $m.id "label" $m.label "short" (printf "%02d" (add $i 2)) "title" (printf "%02d — %s" (add $i 2) $m.label)) }}{{ end }}
+{{ partial "horizont/nav/horizon.html" (dict
+    "product" "knx"
+    "place" site.Title
+    "marks" $marks
+    "lang" $lang
+    "karte" (dict "home" "knx" "here" "knx" "map" "knx" "projects" false "field" "start" "url" ("karte/" | relLangURL))) }}
+<div class="hz-feld tz-feld">
+{{- /* The bus cable on through the page (teaser.js draws its path). */}}
+<svg class="tz-thread" aria-hidden="true" focusable="false">
+  <path class="tz-thread-line"/>
+  <path class="tz-load-line"/>
+  {{- /* The kitchen light on the load cable of switch actuator channel 3. */}}
+  <g class="tz-lamp">
+    <path class="tz-lamp-rays" d="M0 -30 V-38 M21 -21 L27 -27 M-21 -21 L-27 -27 M30 0 H38 M-30 0 H-38 M21 21 L27 27 M-21 21 L-27 27"/>
+    <circle class="tz-lamp-bulb" r="15"/>
+    <path class="tz-lamp-filament" d="M-5 4 L-2 -4 L2 4 L5 -4"/>
+    <rect class="tz-lamp-socket" x="-7" y="14" width="14" height="10" rx="2"/>
+    <text class="tz-lamp-label" x="46" y="4">{{ $d.lamp }} · 1/1/3</text>
+  </g>
+  <circle class="tz-thread-pulse" r="4" cx="-10" cy="-10"/>
+</svg>
+{{- /* Sending devices along the thread (large windows; teaser.js places
+       them where there is room). Their keys switch the board for real. */}}
+<div class="tz-sensors">
+  {{- range $s := $d.sensors }}
+  <div class="tz-sensor tz-sensor--{{ $s.kind }}" data-addr="{{ $s.addr }}" data-slot="{{ $s.slot }}"{{ with $s.section }} data-section="{{ . }}"{{ end }} hidden>
+    <span class="tz-sensor-addr">{{ $s.addr }} · {{ $s.name }}</span>
+    <div class="tz-sensor-body">
+      {{- with $s.display }}<span class="tz-sensor-display">{{ . }}</span>{{ end }}
+      {{- range $s.keys }}
+      <button class="tz-key" type="button" aria-label="{{ .hint }}" title="{{ .hint }}" data-key="{{ . | jsonify }}"><i class="tz-key-led"></i><b>{{ .label }}</b><small>{{ .hint }}</small></button>
+      {{- end }}
+      {{- if eq $s.kind "presence" }}<span class="tz-presence-lens"></span><i class="tz-key-led tz-presence-led"></i>{{ end }}
+    </div>
+    {{- with $s.window }}
+    <div class="tz-window" data-status="{{ .status }}" style="--pos: {{ .pos }}" aria-hidden="true">
+      <span class="tz-window-box"></span>
+      <span class="tz-window-glass"><span class="tz-window-blind"></span></span>
+      <span class="tz-window-label">{{ .label }} · <b>{{ .pos }} %</b></span>
+    </div>
+    {{- end }}
+    {{- with $s.note }}<p class="tz-sensor-note">{{ . }}</p>{{ end }}
+  </div>
+  {{- end }}
+</div>
+<main id="main" class="tz-main">
+  <div class="tz-screen">
+  <div class="tz-stage">
+  <section class="hz-feld-hero tz-hero">
+    <div class="tz-words">
+      <div class="tz-brand">
+        {{ partial "horizont/app-icon.html" (dict "product" "knx" "size" 64) }}
+        <span class="tz-name">{{ site.Title }}</span>
+      </div>
+      {{ partial "horizont/kennung.html" $d.kennung }}
+      <h1 class="t-display">{{ $d.title }}</h1>
+      <p>{{ $d.lead }}</p>
+      <div class="hz-feld-actions">
+        <a class="hz-button hz-button--primary" href="{{ site.Params.haUrl }}">{{ $d.primary }}{{ partial "horizont/symbol.html" "arrow_forward" }}</a>
+        <a class="hz-button hz-button--secondary" href="{{ site.Params.codeUrl }}">{{ partial "horizont/symbol.html" "data_object" }}{{ $d.source }}</a>
+        {{- /* To the beta links in the roadmap (TestFlight, Google Play). */}}
+        {{- with index $d.beta $beta }}
+        <a class="hz-button hz-button--secondary" href="#roadmap">{{ . }}{{ partial "horizont/symbol.html" "expand_more" }}</a>
+        {{- end }}
+      </div>
+      <p class="tz-note t-caption">{{ index $d.soon $beta }} {{ $d.local }}</p>
+    </div>
+    <div class="tz-aside">
+      {{- /* Large windows: the simulated telegrams as the monitor lists them,
+             faint, above the board (teaser.js fills it). */}}
+      <div class="tz-live" aria-hidden="true">
+        <div class="tz-live-head"><span>{{ $d.live }}</span><span>{{ $d.live_window }}</span></div>
+        <div class="tz-bars"></div>
+        <ol class="tz-rows"></ol>
+      </div>
+      {{ partial "verteiler.html" (dict "alt" $d.drawing "cable" $d.cable) }}
+    </div>
+  </section>
+  <hr class="hz-feld-horizon">
+  <p class="tz-ticker" aria-hidden="true"><span class="tz-ticker-line"></span></p>
+  </div>
+  <a class="tz-more" href="#add-on">{{ $d.more }}{{ partial "horizont/symbol.html" "expand_more" }}</a>
+  </div>
+  {{- /* Below the first screen: what the add-on does today (with the app
+         in Home Assistant on an iPad), what the apps will bring, and when and
+         at what price (the roadmap). Markup of horizont/feld/section.html,
+         plus the iPad. The prices are public as a preview, nothing can be
+         bought yet; facts marked commerce: true only with
+         site.Params.commerce, commerce: false only without. */}}
+  {{- range $i, $sec := slice $d.addon $d.apps $d.roadmap }}
+  {{- $id := index (slice "add-on" "apps" "roadmap") $i }}
+  {{- $facts := slice }}
+  {{- range $sec.facts }}{{ if and (or (not (isset . "commerce")) (eq .commerce (site.Params.commerce | default false))) (or (not (isset . "when")) (in .when $beta)) }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}{{ end }}
+  <section class="hz-feld-section tz-section{{ if eq $id "roadmap" }} tz-section--plan{{ end }}" id="{{ $id }}">
+    {{ partial "horizont/kennung.html" $sec.kennung }}
+    <div>
+      <h2>{{ $sec.title }}</h2>
+      {{- $text := $sec.text }}{{ if reflect.IsMap $text }}{{ $text = index $text $beta }}{{ end }}
+      <p>{{ $text | markdownify }}</p>
+      {{- /* The prices left of the line, where they don't drown in the facts. */}}
+      {{- with $sec.prices }}
+      {{- with $sec.prices_preview }}<p class="tz-prices-beta">{{ . | markdownify }}</p>{{ end }}
+      <dl class="tz-prices">
+        {{- range . }}
+        <div class="tz-price{{ if eq .name "Pro" }} tz-price--pro{{ end }}"><dt>{{ .name }}</dt><dd><b>{{ .price }}{{ with .per }} <small>{{ . }}</small>{{ end }}</b><span>{{ .sub }}</span></dd></div>
+        {{- end }}
+      </dl>
+      <p class="tz-prices-note">{{ $sec.prices_note }}</p>
+      {{- end }}
+      {{- /* The whole overview of the app: sidebar, cards and the detail
+             pane with its history (store/raw/ipad/<lang>-land/02_details.png),
+             sharp at twice its width. */}}
+      {{- if eq $i 0 }}{{ with resources.Get (printf "images/ipad-overview-%s.png" site.Language.Lang) }}
+      {{- $shot := .Resize "1600x webp q90" }}
+      {{- /* Large in the lightbox, with its words as caption. */}}
+      {{- $large := .Fit "2752x2752 webp q85" }}
+      {{- /* Its own group (the script looks for the pictures inside it), so
+             it opens alone without paging through the screens below. */}}
+      <div class="tz-ipad" data-lightbox-group>
+        <a href="{{ $large.RelPermalink }}" data-lightbox data-caption="{{ $d.ipad_alt }}">
+          {{ partial "horizont/device.html" (dict "device" "ipad" "width" 560 "inner" (partial "ha-frame.html" (dict "src" $shot.RelPermalink "alt" $d.ipad_alt))) }}
+        </a>
+      </div>
+      {{- end }}{{ end }}
+    </div>
+    {{ partial "horizont/facts.html" (dict "items" $facts) }}
+  </section>
+  {{- end }}
+  {{- /* From 05 the landing page, read from its data (site/data/home,
+         site/data/screens.yaml): features and expert mode with their
+         screens, ETS project, connection, the KNX box drawn, privacy and the
+         FAQ. Sections read on phones (tz-section--read) keep their words;
+         the FAQ spans both columns, the cable ends above it. */}}
+  {{- $h := index site.Data.home site.Language.Lang }}
+  {{- $de := eq site.Language.Lang "de" }}
+  {{- $n := 4 }}
+  {{- $facts := slice }}
+  {{- range $h.features.items }}{{ $facts = $facts | append (dict "term" .term "value" (printf "**%s.** %s" .title (partial "live.html" (dict "ctx" . "key" "text")))) }}{{ end }}
+  {{- range $h.features.more.points }}{{ $facts = $facts | append (dict "term" .term "value" (partial "live.html" (dict "ctx" . "key" "value"))) }}{{ end }}
+  {{- $expert := slice }}
+  {{- range $h.expert.points }}{{ $expert = $expert | append (dict "term" .term "value" .value) }}{{ end }}
+  {{- range slice
+      (dict "id" "features" "label" $d.features_label "title" $h.features.title "text" $h.features.lead "facts" $facts "group" "everyday")
+      (dict "id" "expert" "label" $h.expert.label "title" $h.expert.title "text" (partial "live.html" (dict "ctx" $h.expert "key" "text")) "facts" $expert "group" "expert") }}
+  {{- $n = add $n 1 }}
+  <section class="hz-feld-section tz-section tz-section--shots" id="{{ .id }}">
+    {{ partial "horizont/kennung.html" (printf "%02d — %s" $n .label) }}
+    <div>
+      <h2>{{ .title }}</h2>
+      <p>{{ .text | markdownify }}</p>
+      {{ partial "shots.html" (dict "group" .group "title" .label) }}
+    </div>
+    {{ partial "horizont/facts.html" (dict "items" .facts) }}
+  </section>
+  {{- end }}
+
+  {{- /* The ETS project: group addresses become names. */}}
+  {{- $rows := cond $de
+    (slice (slice "1/2/3" "Wohnzimmer Decke Licht – Ein" "Ein") (slice "1/2/4" "Wohnzimmer Decke Licht – Status" "Ein") (slice "3/1/10" "Küche Temperatur Ist" "21,4 °C") (slice "2/0/7" "Bad Rollladen Position" "35 %") (slice "4/0/1" "Zähler Wirkleistung" "1,82 kW"))
+    (slice (slice "1/2/3" "Living room ceiling light – On" "On") (slice "1/2/4" "Living room ceiling light – Status" "On") (slice "3/1/10" "Kitchen temperature actual" "21.4 °C") (slice "2/0/7" "Bathroom blind position" "35 %") (slice "4/0/1" "Meter active power" "1.82 kW")) }}
+  {{- $ets := slice }}
+  {{- range $rows }}{{ $ets = $ets | append (dict "term" (index . 0) "value" (printf "%s <span class=\"hz-mono tz-value\">%s</span>" (index . 1) (index . 2))) }}{{ end }}
+  {{- $conn := slice }}
+  {{- range $h.facts }}{{ $conn = $conn | append (dict "term" .term "value" .value) }}{{ end }}
+  {{- $box := slice }}
+  {{- range $h.box.points }}{{ if or site.Params.commerce (not .commerce) }}{{ $box = $box | append (dict "term" .term "value" .value) }}{{ end }}{{ end }}
+  {{- $box = $box | append (dict "term" (cond $de "Stand" "Status") "value" (printf "%s [%s](%s)" (partial "horizont/badge.html" (dict "status" "info" "label" $h.box.tag)) $h.box.link site.Params.boxUrl)) }}
+  {{- $privacy := slice }}
+  {{- range $h.privacy.points }}{{ if or site.Params.commerce (not .commerce) }}{{ $privacy = $privacy | append (dict "term" .term "value" (partial "live.html" (dict "ctx" . "key" "value"))) }}{{ end }}{{ end }}
+  {{- $mitreden := slice }}
+  {{- range $h.mitreden.points }}{{ $mitreden = $mitreden | append (dict "term" .term "value" .value) }}{{ end }}
+  {{- range slice
+      (dict "id" "ets" "label" $h.etsproject.label "title" $h.etsproject.title "text" $h.etsproject.text "facts" $ets)
+      (dict "id" "connection" "label" $h.connection.label "title" $h.connection.title "text" $h.hero.note "facts" $conn)
+      (dict "id" "box" "label" $h.box.label "title" $h.box.title "text" (printf "%s [%s](%s)" $h.box.text $h.box.more ("box/" | relLangURL)) "facts" $box "pi" true)
+      (dict "id" "privacy" "label" $h.privacy.label "title" $h.privacy.title "text" (printf "%s [%s](%s)" (partial "live.html" (dict "ctx" $h.privacy "key" "text")) $h.privacy.more site.Params.privacyUrl) "facts" $privacy)
+      (dict "id" "mitreden" "label" $h.mitreden.label "title" $h.mitreden.title "text" (printf "%s [%s](%s/issues)" $h.mitreden.text $h.mitreden.more site.Params.githubUrl) "facts" $mitreden) }}
+  {{- $n = add $n 1 }}
+  <section class="hz-feld-section tz-section tz-section--read" id="{{ .id }}">
+    {{ partial "horizont/kennung.html" (printf "%02d — %s" $n .label) }}
+    <div>
+      <h2>{{ .title }}</h2>
+      <p>{{ .text | markdownify }}</p>
+      {{- if .pi }}{{ partial "knx-pi.html" . }}{{ end }}
+    </div>
+    {{ partial "horizont/facts.html" (dict "items" .facts) }}
+  </section>
+  {{- end }}
+
+  {{- /* FAQ. */}}
+  {{- $n = add $n 1 }}
+  {{- $faq := slice }}
+  {{- range $h.faq.items }}{{ if or site.Params.commerce (not .commerce) }}{{ $faq = $faq | append . }}{{ end }}{{ end }}
+  <section class="hz-feld-section tz-section tz-section--read tz-section--faq" id="faq">
+    {{ partial "horizont/kennung.html" (printf "%02d — %s" $n $h.faq.label) }}
+    <div>
+      <h2>{{ $h.faq.title }}</h2>
+      <p><a href="{{ site.Params.supportUrl }}">{{ i18n "faq_more" }}</a></p>
+      <div class="tz-faq">
+        {{- range $faq }}
+        <details>
+          <summary>{{ .q }}{{ partial "horizont/symbol.html" "expand_more" }}</summary>
+          <p>{{ .a | markdownify }}</p>
+        </details>
+        {{- end }}
+      </div>
+    </div>
+  </section>
+</main>
+{{- $links := slice (dict "name" (i18n "imprint") "url" site.Params.legalUrl) (dict "name" (i18n "privacy") "url" site.Params.privacyUrl) (dict "name" (i18n "feedback") "url" ("feedback/" | relLangURL)) (dict "name" (i18n "changelog") "url" ("changelog/" | relLangURL)) (dict "name" (i18n "github") "url" site.Params.githubUrl) (dict "name" (i18n "instagram") "url" site.Params.instagramUrl) }}
+{{- with site.GetPage "/nutzungsbedingungen" }}{{ $links = $links | append (dict "name" (i18n "terms") "url" .RelPermalink) }}{{ end }}
+{{ partial "horizont/feld/foot.html" (dict "links" $links "sender" (i18n "footer_sender")) }}
+<p class="tz-mark t-caption">{{ i18n "footer_note" }}</p>
+</div>
+<script id="tz-telegrams" type="application/json">{{ $d.telegrams | jsonify | safeJS }}</script>
+<script id="tz-words" type="application/json">{{ dict "on" $d.switch_on "off" $d.switch_off | jsonify | safeJS }}</script>
+{{- $js := resources.Get "js/teaser.js" | minify | fingerprint }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
+{{ partial "horizont/lightbox.html" (dict "lang" site.Language.Lang) }}
+{{ partial "horizont/nav/script.html" . }}
+</body>
+</html>

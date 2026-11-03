@@ -1,0 +1,34 @@
+{
+  "format": "knx-monitor-chart-template",
+  "version": 1,
+  "name": "Innen und außen",
+  "perRoom": false,
+  "series": [
+    {
+      "role": "outdoorTemperature"
+    },
+    {
+      "role": "temperature"
+    },
+    {
+      "role": "setpoint"
+    }
+  ],
+  "gallery": {
+    "title": {
+      "de": "Innen und außen",
+      "en": "Indoors and outdoors"
+    },
+    "description": {
+      "de": "Außentemperatur gegen Raumtemperatur und Sollwert: Wie reagiert das Haus aufs Wetter?",
+      "en": "Outdoor temperature against room temperature and setpoint: how does the house react to the weather?"
+    },
+    "tags": [
+      "heizung",
+      "wetter",
+      "temperatur",
+      "heating",
+      "weather"
+    ]
+  }
+}

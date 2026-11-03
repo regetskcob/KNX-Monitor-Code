@@ -1,0 +1,10 @@
+name: device_art
+description: Prüft und kompiliert Herstellergrafiken (SVG + Manifest) zu assets/device_art.
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+
+# Separate package, because vector_graphics_compiler needs an older xml than the app.
+dependencies:
+  vector_graphics_compiler: ^1.1.19

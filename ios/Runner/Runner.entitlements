@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyLists-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- WLAN der KNX-Box aus der App beitreten (NEHotspotConfiguration). -->
+	<key>com.apple.developer.networking.HotspotConfiguration</key>
+	<true/>
+	<!-- Konto: Passkeys für knx-monitor.de (teaser/static/.well-known/). -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>webcredentials:knx-monitor.de</string>
+	</array>
+	<!-- Konto: Sign in with Apple (regetskcob/KNX-Monitor-Source#28). -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+	<!-- Abgleich: privater iCloud-Container, siehe ios/Runner/KnxCloud.swift. -->
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.de.regetskcob.knx-monitor</string>
+	</array>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudDocuments</string>
+	</array>
+	<key>com.apple.developer.ubiquity-container-identifiers</key>
+	<array>
+		<string>iCloud.de.regetskcob.knx-monitor</string>
+	</array>
+</dict>
+</plist>

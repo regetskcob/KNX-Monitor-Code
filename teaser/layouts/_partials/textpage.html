@@ -1,0 +1,31 @@
+{{- /*
+  The frame of a text page (Support, Datenschutz, Konto löschen) like the
+  KNX box page: head, the horizon navigation, the page and the foot.
+
+    partial "textpage.html" (dict "page" . "body" $html)
+*/ -}}
+{{- $p := .page -}}
+{{- $target := "" }}{{ range $p.Translations }}{{ $target = . }}{{ end -}}
+{{- $lang := dict -}}
+{{- with $target }}{{ $lang = dict "current" (upper site.Language.Lang) "name" (upper .Language.Lang) "url" .RelPermalink "hreflang" .Language.Lang }}{{ end -}}
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode }}" data-product="knx">
+{{ partial "head.html" (dict "page" $p "title" (printf "%s · %s" $p.Title site.Title) "description" $p.Description) }}
+<body class="hz tz">
+{{ partial "horizont/nav/horizon.html" (dict
+    "product" "knx"
+    "place" (printf "%s / %s" site.Title $p.Title)
+    "lang" $lang
+    "karte" (dict "home" "knx" "here" "knx" "map" "knx" "projects" false "field" $p.File.ContentBaseName "url" ("karte/" | relLangURL))) }}
+<div class="hz-feld tz-feld">
+<main id="main" class="tz-main">
+{{ .body }}
+</main>
+{{- $links := slice (dict "name" site.Title "url" ("" | relLangURL)) (dict "name" (i18n "imprint") "url" site.Params.legalUrl) (dict "name" (i18n "privacy") "url" site.Params.privacyUrl) (dict "name" (i18n "feedback") "url" ("feedback/" | relLangURL)) (dict "name" (i18n "changelog") "url" ("changelog/" | relLangURL)) (dict "name" (i18n "github") "url" site.Params.githubUrl) (dict "name" (i18n "instagram") "url" site.Params.instagramUrl) }}
+{{- with site.GetPage "/nutzungsbedingungen" }}{{ $links = $links | append (dict "name" (i18n "terms") "url" .RelPermalink) }}{{ end }}
+{{ partial "horizont/feld/foot.html" (dict "links" $links "sender" (i18n "footer_sender")) }}
+<p class="tz-mark t-caption">{{ i18n "footer_note" }}</p>
+</div>
+{{ partial "horizont/nav/script.html" $p }}
+</body>
+</html>

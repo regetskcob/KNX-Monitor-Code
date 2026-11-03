@@ -1,0 +1,76 @@
+{{- /*
+  The Home Assistant add-on as its own Feldseite, next to the box page: hero
+  with the add-on on an iPad, then install, connection (own tunnel or the KNX
+  integration), automations (events and blueprints), the MQTT device,
+  continuous recording, options and questions as numbered sections, their
+  Kennungen as marks on the horizon. Texts from data/addon/<lang>.yaml.
+*/ -}}
+{{- $a := index site.Data.addon site.Language.Lang -}}
+{{- $d := index site.Data.teaser site.Language.Lang -}}
+{{- $target := "" }}{{ range .Translations }}{{ $target = . }}{{ end -}}
+{{- $lang := dict -}}
+{{- with $target }}{{ $lang = dict "current" (upper site.Language.Lang) "name" (upper .Language.Lang) "url" .RelPermalink "hreflang" .Language.Lang }}{{ end -}}
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode }}" data-product="knx">
+{{ partial "head.html" (dict "page" . "title" (printf "%s · %s" .Title site.Title) "description" .Description "image" (printf "images/og-%s.png" site.Language.Lang)) }}
+<body class="hz tz">
+{{ partial "horizont/nav/horizon.html" (dict
+    "product" "knx"
+    "place" (printf "%s / %s" site.Title .Title)
+    "marks" "auto"
+    "lang" $lang
+    "karte" (dict "home" "knx" "here" "knx" "map" "knx" "projects" false "field" "addon" "url" ("karte/" | relLangURL))) }}
+<div class="hz-feld tz-feld">
+<main id="main" class="tz-main">
+{{- $n := 1 }}
+{{- $aside := "" }}
+{{- with resources.Get (printf "images/ipad-overview-%s.png" site.Language.Lang) }}
+{{- $shot := .Resize "1200x webp q90" }}
+{{- $aside = partial "horizont/device.html" (dict "device" "ipad" "width" 440 "inner" (partial "ha-frame.html" (dict "src" $shot.RelPermalink "alt" $d.ipad_alt))) }}
+{{- end }}
+{{ partial "horizont/feld/hero.html" (dict
+    "kennung" (printf "01 — %s" $a.hero.kennung)
+    "title" $a.hero.title
+    "text" $a.hero.lead
+    "primary" (dict "label" $a.hero.primary "url" site.Params.haUrl)
+    "secondary" (dict "label" $a.hero.secondary "url" "#automations")
+    "aside" $aside
+    "asideCenter" true) }}
+{{- range $key := slice "install" "connection" "automations" "device" "recording" "options" }}
+{{- $s := index $a $key }}
+{{- $n = add $n 1 }}
+{{- $facts := slice }}
+{{- range $s.points }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}
+<section class="hz-feld-section tz-section tz-section--read" id="{{ $key }}">
+  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n $s.label) }}
+  <div><h2>{{ $s.title }}</h2>{{ with $s.text }}<p>{{ . | markdownify }}</p>{{ end }}</div>
+  {{ partial "horizont/facts.html" (dict "items" $facts) }}
+  {{- if eq $key "automations" }}{{ partial "addon-events.html" $a.demo }}{{ end }}
+</section>
+{{- end }}
+{{- $n = add $n 1 }}
+<section class="hz-feld-section tz-section tz-section--read tz-section--faq" id="faq">
+  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n $a.faq.label) }}
+  <div>
+    <h2>{{ $a.faq.title }}</h2>
+    <div class="tz-faq">
+      {{- range $a.faq.items }}
+      <details>
+        <summary>{{ .q }}{{ partial "horizont/symbol.html" "expand_more" }}</summary>
+        <p>{{ .a | markdownify }}</p>
+      </details>
+      {{- end }}
+    </div>
+  </div>
+</section>
+</main>
+{{- $links := slice (dict "name" site.Title "url" ("" | relLangURL)) (dict "name" (i18n "feedback") "url" ("feedback/" | relLangURL)) (dict "name" (i18n "changelog") "url" ("changelog/" | relLangURL)) (dict "name" (i18n "imprint") "url" site.Params.legalUrl) (dict "name" (i18n "privacy") "url" site.Params.privacyUrl) (dict "name" (i18n "github") "url" site.Params.githubUrl) (dict "name" (i18n "instagram") "url" site.Params.instagramUrl) }}
+{{- with site.GetPage "/nutzungsbedingungen" }}{{ $links = $links | append (dict "name" (i18n "terms") "url" .RelPermalink) }}{{ end }}
+{{ partial "horizont/feld/foot.html" (dict "links" $links "sender" (i18n "footer_sender")) }}
+<p class="tz-mark t-caption">{{ i18n "footer_note" }}</p>
+</div>
+{{- $js := resources.Get "js/addon.js" | minify | fingerprint }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
+{{ partial "horizont/nav/script.html" . }}
+</body>
+</html>

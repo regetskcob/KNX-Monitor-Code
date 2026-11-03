@@ -1,0 +1,10 @@
+# Loaded by knx-box-firewall.service. NM creates its own tables with "accept"
+# for the hotspot; a "drop" here still applies.
+table inet knx_box
+flush table inet knx_box
+table inet knx_box {
+	chain forward {
+		type filter hook forward priority filter; policy accept;
+		iifname "wlan0" oifname != "wlan0" drop
+	}
+}

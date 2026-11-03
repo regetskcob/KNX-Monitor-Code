@@ -1,0 +1,31 @@
+{
+  "format": "knx-monitor-chart-template",
+  "version": 1,
+  "name": "Busgesundheit",
+  "perRoom": false,
+  "series": [
+    {
+      "metric": -1
+    },
+    {
+      "metric": -2
+    }
+  ],
+  "gallery": {
+    "title": {
+      "de": "Busgesundheit",
+      "en": "Bus health"
+    },
+    "description": {
+      "de": "Telegramme und Wiederholungen je Minute: Wird der Bus eng?",
+      "en": "Telegrams and repeats per minute: is the bus getting busy?"
+    },
+    "tags": [
+      "bus",
+      "last",
+      "wiederholungen",
+      "load",
+      "repeats"
+    ]
+  }
+}

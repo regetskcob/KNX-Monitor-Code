@@ -1,0 +1,53 @@
+{{- $d := index site.Data.home site.Language.Lang -}}
+{{- $hz := site.Data.horizont -}}
+{{- $desc := .Description | default (partial "live.html" (dict "ctx" site.Params "key" "description")) -}}
+{{- $title := cond .IsHome (printf "%s – %s" site.Title $d.hero.tagline) (printf "%s · %s" .Title site.Title) -}}
+{{- $og := site.Params.ogImage | absURL -}}
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ $title }}</title>
+<meta name="description" content="{{ $desc }}">
+<link rel="canonical" href="{{ .Permalink }}">
+{{- /* Preview under /knx/preview/ (tool/deploy_site.sh --preview): do not index. */}}
+{{ if site.Params.noindex }}<meta name="robots" content="noindex, nofollow">{{ end }}
+{{- range .AllTranslations }}
+<link rel="alternate" hreflang="{{ .Language.LanguageCode }}" href="{{ .Permalink }}">
+{{- end }}
+{{- range where .AllTranslations "Language.Lang" "de" }}
+<link rel="alternate" hreflang="x-default" href="{{ .Permalink }}">
+{{- end }}
+{{- /* Browser chrome: the accent by day, the page ground by night (tokens). */}}
+{{ partial "horizont/theme-color.html" (dict "product" "knx") }}
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{ site.Title }}">
+<meta property="og:title" content="{{ $title }}">
+<meta property="og:description" content="{{ $desc }}">
+<meta property="og:url" content="{{ .Permalink }}">
+<meta property="og:image" content="{{ $og }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="{{ replace site.Language.LanguageCode "-" "_" }}">
+{{- range .Translations }}
+<meta property="og:locale:alternate" content="{{ replace .Language.LanguageCode "-" "_" }}">
+{{- end }}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ $title }}">
+<meta name="twitter:description" content="{{ $desc }}">
+<meta name="twitter:image" content="{{ $og }}">
+{{- /* Icons: the exported set of Horizont (icons/export/knx/web), copied. */}}
+<link rel="icon" href="{{ "favicon.ico" | relURL }}" sizes="32x32">
+<link rel="icon" href="{{ "favicon.svg" | relURL }}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{{ "apple-touch-icon.png" | relURL }}">
+<link rel="manifest" href="{{ "site.webmanifest" | relURL }}">
+{{- /* Tokens, components, own rules (docs/web.md). The CSS lives in css/, one
+       level below fonts/, so components.css finds ../fonts/. */}}
+{{- $css := slice
+  (resources.Get "css/horizont/tokens.css" | resources.ExecuteAsTemplate "css/horizont-tokens.css" $hz)
+  (resources.Get "css/horizont/components.css")
+  (resources.Get "css/site.css")
+  | resources.Concat "css/knx.css" | minify | fingerprint }}
+<link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
+{{- if .IsHome }}
+<script type="application/ld+json">{{ dict "@context" "https://schema.org" "@type" "SoftwareApplication" "name" site.Title "operatingSystem" "iOS, iPadOS, Android, macOS, Windows, Linux, Home Assistant" "applicationCategory" "UtilitiesApplication" "description" $desc "url" .Permalink | jsonify | safeJS }}</script>
+{{- end }}

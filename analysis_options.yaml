@@ -1,0 +1,20 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - third_party/**
+    - android/**
+    - ios/**
+    - windows/**
+    - macos/**
+    - linux/**
+    - test_live/**
+    - web/**
+    # Eigenes Paket mit eigener Analyse (CI-Job addon-server).
+    - ha-addon/**
+    # Werkzeug für Herstellergrafiken mit eigenem pubspec (älteres xml).
+    - tool/device_art/**
+
+formatter:
+  page_width: 120

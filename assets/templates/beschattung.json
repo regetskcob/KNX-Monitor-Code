@@ -1,0 +1,39 @@
+{
+  "format": "knx-monitor-chart-template",
+  "version": 1,
+  "name": "Beschattung und Wetter",
+  "perRoom": false,
+  "series": [
+    {
+      "role": "shade"
+    },
+    {
+      "role": "wind"
+    },
+    {
+      "role": "rain"
+    },
+    {
+      "role": "outdoorLux"
+    }
+  ],
+  "gallery": {
+    "title": {
+      "de": "Beschattung und Wetter",
+      "en": "Shading and weather"
+    },
+    "description": {
+      "de": "Behangposition mit Wind, Regen und Helligkeit: Fahren die Behänge zur richtigen Zeit?",
+      "en": "Blind position with wind, rain and brightness: do the blinds move at the right time?"
+    },
+    "tags": [
+      "rollladen",
+      "jalousie",
+      "beschattung",
+      "wind",
+      "blinds",
+      "shutter",
+      "shading"
+    ]
+  }
+}

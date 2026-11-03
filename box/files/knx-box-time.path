@@ -1,0 +1,12 @@
+# Take the time from the iPad: the server stores the request as a file (it may
+# not set the system time itself).
+[Unit]
+Description=KNX Monitor Box: Zeitwunsch des Servers beobachten
+After=knx-box-data.service
+
+[Path]
+PathChanged=/var/lib/knx-box/time-request.json
+Unit=knx-box-time.service
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,38 @@
+{
+  "format": "knx-monitor-chart-template",
+  "version": 1,
+  "name": "Raumklima",
+  "perRoom": true,
+  "series": [
+    {
+      "role": "temperature"
+    },
+    {
+      "role": "setpoint"
+    },
+    {
+      "role": "valve"
+    },
+    {
+      "role": "heating"
+    }
+  ],
+  "gallery": {
+    "title": {
+      "de": "Raumklima",
+      "en": "Room climate"
+    },
+    "description": {
+      "de": "Ist-Temperatur, Sollwert, Stellgröße und Heizen je Raum: Regelt der Raum sauber?",
+      "en": "Actual temperature, setpoint, valve and heating per room: is the room controlled cleanly?"
+    },
+    "tags": [
+      "heizung",
+      "klima",
+      "temperatur",
+      "heating",
+      "climate",
+      "temperature"
+    ]
+  }
+}

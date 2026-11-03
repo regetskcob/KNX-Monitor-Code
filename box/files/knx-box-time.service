@@ -1,0 +1,6 @@
+[Unit]
+Description=KNX Monitor Box: Uhrzeit stellen
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/knx-box/settime.sh /var/lib/knx-box/time-request.json

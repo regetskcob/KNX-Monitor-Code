@@ -1,0 +1,3 @@
+{{- /* Which public betas are open (site.Params.betaIos/betaAndroid), as the
+       key of the texts in data/teaser/<lang>.yaml: none, ios, android, both. */ -}}
+{{- return cond site.Params.betaIos (cond site.Params.betaAndroid "both" "ios") (cond site.Params.betaAndroid "android" "none") -}}

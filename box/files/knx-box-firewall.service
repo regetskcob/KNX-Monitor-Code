@@ -1,0 +1,17 @@
+# Devices in the box Wi-Fi cannot reach the LAN on the cable (customer LAN). Can be
+# disabled with INTERNET_SHARING=yes in knx-box.txt before the first boot.
+[Unit]
+Description=KNX Monitor Box: kein Routing vom WLAN ins LAN
+Before=NetworkManager.service network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/nft -f /usr/local/lib/knx-box/firewall.nft
+# Remove the rules on stop as well, otherwise the sharing only takes effect
+# after a reboot.
+ExecStop=-/usr/sbin/nft delete table inet knx_box
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

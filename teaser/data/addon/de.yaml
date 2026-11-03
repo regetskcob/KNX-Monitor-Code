@@ -1,0 +1,102 @@
+hero:
+  kennung: "Home-Assistant-Add-on · kostenlos"
+  title: "KNX Monitor als Teil von Home Assistant."
+  lead: "Der Busmonitor in der Seitenleiste, auf jedem Gerät mit Home Assistant. Er nutzt auf Wunsch die Verbindung deiner KNX-Integration statt eines eigenen Tunnels, liefert Trigger für Automationen und erscheint mit MQTT als eigenes Gerät mit Entitäten. Kostenlos, mit allen Werkzeugen, für eine Installation."
+  primary: "Add-on installieren"
+  secondary: "Automationen"
+
+install:
+  label: "Installieren"
+  title: "In zwei Minuten in der Seitenleiste."
+  points:
+    - { term: "Repository", value: "**„Add-on installieren“ oben antippen** oder in Home Assistant unter Einstellungen › Add-ons › Add-on-Store › ⋮ › Repositories die Adresse `https://github.com/regetskcob/KNX-Monitor` hinzufügen." }
+    - { term: "Starten", value: "**KNX Monitor installieren, starten und „In der Seitenleiste anzeigen“ einschalten.** Das Add-on läuft für amd64 und aarch64, also auch auf Home Assistant Green, Yellow und dem Raspberry Pi." }
+    - { term: "Verbinden", value: "**Gateway wählen oder die KNX-Integration mitnutzen** (siehe Verbindung). Das Add-on bleibt danach verbunden, auch ohne offenen Browser." }
+    - { term: "Projekt", value: "**ETS-Projekt importieren** (`.knxproj` bis ETS6, auch mit Passwort) für Namen, Datentypen, Geräte und Räume. Das Passwort wird nicht gespeichert." }
+
+connection:
+  label: "Verbindung"
+  title: "Eigener Tunnel oder gar keiner."
+  text: "Ist die KNX-Integration eingerichtet, schlägt das Add-on vor, ihre Verbindung mitzunutzen. Das spart einen Tunnelplatz am Gateway."
+  points:
+    - { term: "Home Assistant", value: "**Kein eigener Tunnel:** Das Add-on liest, was die KNX-Integration empfängt, und sendet über `knx.send` und `knx.read`. KNX Secure entschlüsselt die Integration." }
+    - { term: "Tunnel", value: "**UDP oder TCP** mit fester Tunneladresse auf Wunsch. Nötig für Programmiermodus, Adresse prüfen und den Busmonitor mit Quittungen." }
+    - { term: "Routing", value: "**Multicast über einen IP-Router**, belegt keinen Tunnelplatz." }
+    - { term: "IP Secure", value: "**Gesicherter Tunnel** mit Benutzer und Passwort oder dem Keyring aus der ETS." }
+
+automations:
+  label: "Automationen"
+  title: "Wächter, Alarme und Bus als Trigger."
+  text: "Das Add-on feuert Ereignisse in Home Assistant, auch ohne offenen Browser. Im Automations-Editor nimmst du sie als Trigger „Ereignis“, mit MQTT auch als Gerätetrigger."
+  points:
+    - { term: "Wächter", value: "**Ein Wächter schlägt an** (`knx_monitor_watcher`). Mit Name, Gruppenadresse, Absender und Wert. Wächter legst du in KNX Monitor unter Werkzeuge › Wächter an." }
+    - { term: "Alarm", value: "**Ein Alarm- oder Störungsobjekt geht an oder aus** (`knx_monitor_alarm`), etwa ein Rauchmelder oder eine Gerätestörung. KNX Monitor erkennt sie aus dem ETS-Projekt." }
+    - { term: "Bus", value: "**Die Busverbindung geht verloren oder steht wieder** (`knx_monitor_bus`). Gemeldet werden nur echte Wechsel, nicht jeder Verbindungsversuch." }
+    - { term: "Blueprints", value: "Mit einem Klick importieren: [Wächter](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fregetskcob%2FKNX-Monitor%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fknx_monitor_watcher.yaml), [Alarm oder Störung](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fregetskcob%2FKNX-Monitor%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fknx_monitor_alarm.yaml), [Busverbindung](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fregetskcob%2FKNX-Monitor%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fknx_monitor_bus.yaml)." }
+    - { term: "Mitteilungen", value: "Ohne eigene Automation meldet das Add-on Alarme und Wächter als Home-Assistant-Benachrichtigung. Wer selbst meldet, schaltet das in der Konfiguration ab und bekommt nichts doppelt." }
+
+device:
+  label: "Gerät"
+  title: "KNX Monitor als Gerät mit Entitäten."
+  text: "Ist ein MQTT-Broker eingerichtet (meist das Mosquitto-Add-on), meldet sich das Add-on von selbst als Gerät an. Zugangsdaten musst du nicht eintragen."
+  points:
+    - { term: "Bus verbunden", value: "Verbindungsstatus, gut für Automationen mit „seit 5 Minuten“ oder fürs Dashboard." }
+    - { term: "Aufzeichnung", value: "Schalter zum Pausieren und Fortsetzen der Daueraufzeichnung, etwa wenn die ETS den einzigen Tunnelplatz braucht." }
+    - { term: "Busaktivität", value: "Telegramme pro Minute und heute, Wiederholungen pro Minute, letztes Telegramm, mit Verlauf und Statistik in Home Assistant." }
+    - { term: "Gerätetrigger", value: "Je Wächter einer, dazu Alarm und Störung an und aus. Sie stehen in der normalen Auswahl, ohne Ereignisnamen zu tippen." }
+    - { term: "Erreichbar", value: "Stoppt das Add-on, zeigt Home Assistant das Gerät als nicht verfügbar." }
+
+recording:
+  label: "Dauerbetrieb"
+  title: "Zeichnet auf, auch wenn niemand hinsieht."
+  points:
+    - { term: "Verlauf", value: "Jedes Telegramm landet in einer Tagesdatei, fertige Tage werden gepackt. Aufbewahrung und Größe stellst du in der App ein." }
+    - { term: "Lücken", value: "Einmal pro Minute notiert das Add-on, ob der Bus verbunden war. Die Tagesliste erklärt Lücken, etwa „Bus 3 min getrennt“." }
+    - { term: "Backups", value: "Verlauf, Einstellungen und ein importierter Keyring gehören zu den Backups von Home Assistant." }
+    - { term: "Zugriff", value: "Nur über Home Assistant (Ingress). Anfragen von anderswo im Netz lehnt das Add-on ab." }
+
+options:
+  label: "Optionen"
+  title: "Was sich in der Konfiguration einstellen lässt."
+  text: "Unter Einstellungen › Add-ons › KNX Monitor › Konfiguration."
+  points:
+    - { term: "Alarme", value: "`alarm_notifications`: Benachrichtigung bei Alarmen und Störungen, Standard an." }
+    - { term: "Wächter", value: "`watcher_notifications`: Benachrichtigung bei Wächtern, Standard an." }
+    - { term: "Push", value: "`notify_service`: zusätzlich als Push über einen Benachrichtigungsdienst, z. B. `notify.mobile_app_iphone`." }
+
+faq:
+  label: "Fragen"
+  title: "Häufige Fragen zum Add-on"
+  items:
+    - q: "Kostet das Add-on etwas?"
+      a: "Nein. Das Add-on bleibt kostenlos, mit allen Werkzeugen und Langzeitverlauf, für eine Installation."
+    - q: "Ist das Add-on Open Source?"
+      a: "Ja. Der Quellcode von App, Add-on und KNX-Box steht unter der GPLv3 [auf GitHub](https://github.com/regetskcob/KNX-Monitor-Code). Alles, was der Server auf den Bus schickt, läuft dort durch eine Datei. Nicht dabei sind die kommerziellen Teile: Konto, Lösung für Elektrobetriebe und Bauherren-Paket. Name und Logo sind ausgenommen, ein Fork braucht einen eigenen Namen."
+    - q: "Belegt das Add-on einen Tunnel am Gateway?"
+      a: "Mit eigenem Tunnel ja, genau einen, den sich alle offenen Ansichten teilen. Mit der Verbindungsart „Home Assistant“ keinen: Dann nutzt es die Verbindung der KNX-Integration. Für den Busmonitor mit Quittungen gibt es den Tunnel kurz frei und holt ihn danach zurück."
+    - q: "Brauche ich MQTT?"
+      a: "Nein. Ereignisse, Blueprints und Benachrichtigungen gehen ohne. MQTT bringt zusätzlich das Gerät mit Entitäten und Gerätetriggern."
+    - q: "Wo liegen meine Daten?"
+      a: "Im Datenordner des Add-ons auf deinem Home Assistant, unverschlüsselt und Teil der Home-Assistant-Backups; schütze sie mit einem Sicherungsschlüssel. Von sich aus schickt das Add-on nichts ins Internet und nichts an uns. Daten gehen nur an Ziele, die du selbst einrichtest, etwa ntfy, einen Webhook oder InfluxDB. Mehr in der [Datenschutzerklärung](/datenschutz/)."
+    - q: "Ich nutze ioBroker oder ein NAS statt Home Assistant."
+      a: "Derselbe Server läuft auch als Docker-Container, mit Passwort statt Home-Assistant-Anmeldung und auf Wunsch mit MQTT, etwa für den MQTT-Adapter von ioBroker. Anleitung und `compose.yaml` [auf GitHub](https://github.com/regetskcob/KNX-Monitor/tree/main/docker). Einen eigenen ioBroker-Adapter gibt es, wenn genug Nutzer ihn wollen: [mit 👍 abstimmen](https://github.com/regetskcob/KNX-Monitor/issues/3)."
+    - q: "Gibt es eine eigene Integration?"
+      a: "Geplant, wenn genug Nutzer sie wollen: Erkennung beim Start, Dienste für Skripte, Diagnose und Reparaturhinweise. Stimm im [Issue auf GitHub](https://github.com/regetskcob/KNX-Monitor/issues/2) mit 👍 ab."
+    - q: "Etwas klappt nicht. Wie melde ich das?"
+      a: "Am besten mit einem Diagnosepaket, siehe [Feedback](/feedback/). Dann brauchst du dein ETS-Projekt nirgends hochzuladen."
+
+# Zum Ausprobieren im Abschnitt Automationen (addon-events.html, addon.js).
+demo:
+  sensor: "Glastaster Flur"
+  notify: "Mitteilungen bei Wächtern"
+  title: "Entwicklerwerkzeuge › Ereignisse"
+  empty: "Taste drücken: Der Wächter schlägt an, das Ereignis erscheint hier."
+  fired: "Ereignis empfangen"
+  watcher: "Wächter"
+  "on": "Ein"
+  "off": "Aus"
+  installation: "Zuhause"
+  caption: "Zum Ausprobieren: Für beide Tasten gibt es einen Wächter. Mit Mitteilungen kommt zusätzlich eine Benachrichtigung; wer selbst per Automation meldet, schaltet sie ab."
+  keys:
+    - { label: "T1", name: "Licht Küche", address: "1/1/3", id: "licht_kueche" }
+    - { label: "T2", name: "Licht Flur", address: "1/1/5", id: "licht_flur" }

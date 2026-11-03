@@ -1,0 +1,35 @@
+{
+  "format": "knx-monitor-chart-template",
+  "version": 1,
+  "name": "Licht und Präsenz",
+  "perRoom": true,
+  "series": [
+    {
+      "role": "presence"
+    },
+    {
+      "role": "lux"
+    },
+    {
+      "role": "lightFeedback"
+    }
+  ],
+  "gallery": {
+    "title": {
+      "de": "Licht und Präsenz",
+      "en": "Light and presence"
+    },
+    "description": {
+      "de": "Präsenz, Helligkeit und Licht-Rückmeldung je Raum: Schaltet das Licht, wie es soll?",
+      "en": "Presence, brightness and light feedback per room: does the light switch as it should?"
+    },
+    "tags": [
+      "licht",
+      "präsenz",
+      "helligkeit",
+      "light",
+      "presence",
+      "brightness"
+    ]
+  }
+}

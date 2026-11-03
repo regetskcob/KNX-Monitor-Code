@@ -1,0 +1,59 @@
+blueprint:
+  name: KNX Monitor – alarm or fault
+  description: >-
+    Runs your actions when a KNX alarm or fault object switches on (event
+    `knx_monitor_alarm`), for example a smoke detector, leak sensor or a
+    device fault. KNX Monitor detects these from the ETS project. The event
+    data holds `address`, `name`, `kind` (`alarm` or `fault`), `active` and
+    `installation`.
+
+    Tip: if you notify yourself here, turn off "Alarm notifications" in the
+    add-on configuration, so you do not get two messages.
+  domain: automation
+  source_url: https://github.com/regetskcob/KNX-Monitor/blob/main/blueprints/automation/knx_monitor_alarm.yaml
+  input:
+    kind:
+      name: Kind
+      default: any
+      selector:
+        select:
+          options:
+            - label: Alarms and faults
+              value: any
+            - label: Only alarms
+              value: alarm
+            - label: Only faults
+              value: fault
+    when:
+      name: When
+      default: "on"
+      selector:
+        select:
+          options:
+            - label: When it switches on
+              value: "on"
+            - label: When it switches off again
+              value: "off"
+    actions:
+      name: Actions
+      selector:
+        action: {}
+
+variables:
+  kind: !input kind
+  when: !input when
+
+triggers:
+  - trigger: event
+    event_type: knx_monitor_alarm
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ (kind == 'any' or trigger.event.data.kind == kind)
+         and trigger.event.data.active == (when == 'on') }}
+
+actions: !input actions
+
+mode: queued
+max: 10

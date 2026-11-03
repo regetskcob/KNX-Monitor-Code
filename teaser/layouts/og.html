@@ -1,0 +1,93 @@
+{{- /*
+  The preview image for links (og:image: LinkedIn, Facebook, forums) as a
+  page, like the hero: app icon and name, Kennung, headline and lead on the
+  left, on the right the small distribution board (home) or the KNX box
+  (variant "box") standing on the horizon. 1200×630 CSS pixels, always
+  light; tool/teaser_og.sh shoots it at 2× into static/images/.
+  Drafts (content/og*.md): rendered only by `hugo server -D`, never deployed.
+*/ -}}
+{{- $d := index site.Data.teaser site.Language.Lang -}}
+{{- $b := index site.Data.box site.Language.Lang -}}
+{{- $box := eq .Params.variant "box" -}}
+{{- $hz := site.Data.horizont -}}
+{{- $css := slice
+  (resources.Get "css/horizont/tokens.css" | resources.ExecuteAsTemplate "css/horizont-tokens.css" $hz)
+  (resources.Get "css/horizont/components.css")
+  (resources.Get "css/teaser.css")
+  | resources.Concat "css/teaser-og.css" }}
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode }}" data-product="knx" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>{{ .Title }}</title>
+<link rel="stylesheet" href="{{ $css.RelPermalink }}">
+<style>
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: var(--bg); }
+  .og { position: relative; width: 1200px; height: 630px; box-sizing: border-box; padding: 56px 64px 0; display: grid; grid-template-columns: 520px 1fr; gap: 40px; }
+  .og-words { display: flex; flex-direction: column; }
+  .og .tz-brand { margin-bottom: 36px; }
+  .og h1 { font-size: 46px; line-height: 1.1; margin: 14px 0 18px; text-wrap: balance; }
+  .og p { margin: 0; font-size: 19px; line-height: 1.5; color: var(--text-muted); }
+  .og-aside { position: relative; display: flex; align-items: flex-end; justify-content: center; height: 520px; padding-bottom: 44px; box-sizing: border-box; }
+  .og-aside .knx-board { width: 560px; max-width: none; }
+  .og-aside .tz-pi { width: 420px; }
+  .og-horizon { position: absolute; left: 0; right: 0; top: 520px; margin: 0; }
+  /* The bus leaves the drawing down through the horizon (og.js below). */
+  .og-cable { position: absolute; width: 2.6px; margin-left: -1.3px; background: #4F9A3C; border-radius: 2px; }
+  .og-pulse { position: absolute; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px #4F9A3C; }
+</style>
+</head>
+<body class="hz tz">
+<div class="og tz-feld">
+  <div class="og-words">
+    <div class="tz-brand">
+      {{ partial "horizont/app-icon.html" (dict "product" "knx" "size" 64) }}
+      <span class="tz-name">{{ site.Title }}</span>
+    </div>
+    {{ partial "horizont/kennung.html" (cond $box $b.hero.kennung $d.kennung) }}
+    <h1 class="t-display">{{ cond $box $b.hero.title $d.title }}</h1>
+    <p>{{ cond $box $b.hero.lead $d.lead }}</p>
+  </div>
+  <div class="og-aside">
+    {{- if $box }}{{ partial "knx-pi.html" . }}{{ else }}{{ partial "verteiler.html" (dict "alt" $d.drawing "cable" "") }}{{ end }}
+  </div>
+  <hr class="hz-feld-horizon og-horizon">
+</div>
+<script>
+// Like the teaser: the cable runs on from the end of the drawing's bus down
+// through the horizon, which leaves a gap there; a few telegrams as light
+// points on the bus.
+(() => {
+  const og = document.querySelector('.og');
+  const box = og.getBoundingClientRect();
+  const path = document.querySelector('.knx-board-cable, .tz-pi-cable');
+  if (!path) return;
+  const len = path.getTotalLength();
+  const at = (f) => {
+    const p = path.getPointAtLength(len * f).matrixTransform(path.getScreenCTM());
+    return { x: p.x - box.left, y: p.y - box.top };
+  };
+  const end = at(1);
+  const cable = document.createElement('div');
+  cable.className = 'og-cable';
+  cable.style.left = end.x + 'px';
+  cable.style.top = end.y - 1 + 'px';
+  cable.style.height = 630 - end.y + 'px';
+  og.append(cable);
+  document.querySelector('.og-horizon').style.setProperty('--cut', end.x + 'px');
+  const pulse = (x, y) => {
+    const d = document.createElement('div');
+    d.className = 'og-pulse';
+    d.style.left = x + 'px';
+    d.style.top = y + 'px';
+    og.append(d);
+  };
+  for (const f of path.classList.contains('tz-pi-cable') ? [0.45] : [0.22, 0.58]) {
+    const p = at(f);
+    pulse(p.x, p.y);
+  }
+  pulse(end.x, end.y + (580 - end.y) * 0.75);
+})();
+</script>
+</body>
+</html>

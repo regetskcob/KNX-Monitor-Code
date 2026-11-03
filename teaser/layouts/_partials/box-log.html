@@ -1,0 +1,17 @@
+{{- /*
+  The KNX box's log on the coupled laptop: the window of the app with the
+  box, its state and today's count, then the telegrams it records, newest
+  at the bottom (box.js fills the rows). Decorative: the caption and the
+  section say it in words. Context: data/box/<lang>.yaml, log.
+*/ -}}
+<div class="tz-boxlog" role="img" aria-label="{{ .drawing }}">
+  <div class="tz-boxlog-bar">
+    <span class="tz-boxlog-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+    <b>{{ .box }}</b>
+    <span class="tz-boxlog-meta">{{ .wlan }}</span>
+    {{ partial "horizont/badge.html" (dict "status" "positive" "label" .state) }}
+  </div>
+  <div class="tz-boxlog-count" aria-hidden="true"><span class="tz-boxlog-n">12 408</span> {{ .telegrams }} {{ .today }}</div>
+  <div class="tz-boxlog-head" aria-hidden="true">{{ range .head }}<span>{{ . }}</span>{{ end }}</div>
+  <ol class="tz-boxlog-rows" aria-hidden="true"></ol>
+</div>

@@ -1,0 +1,115 @@
+{{- /*
+  Preview of the home builder package as its own Feldseite. Two small demos in
+  bauherren.js: everyday moments with a house scene and a floor plan in which type and
+  position of the devices change the channel count and the hints. Texts from data/bauherren/<lang>.yaml.
+*/ -}}
+{{- $a := index site.Data.bauherren site.Language.Lang -}}
+{{- $target := "" }}{{ range .Translations }}{{ $target = . }}{{ end -}}
+{{- $lang := dict -}}
+{{- with $target }}{{ $lang = dict "current" (upper site.Language.Lang) "name" (upper .Language.Lang) "url" .RelPermalink "hreflang" .Language.Lang }}{{ end -}}
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode }}" data-product="knx">
+{{ partial "head.html" (dict "page" . "title" (printf "%s · %s" .Title site.Title) "description" .Description "image" (printf "images/og-%s.png" site.Language.Lang)) }}
+<body class="hz tz">
+{{ partial "horizont/nav/horizon.html" (dict
+    "product" "knx"
+    "place" (printf "%s / %s" site.Title .Title)
+    "marks" "auto"
+    "lang" $lang
+    "karte" (dict "home" "knx" "here" "knx" "map" "knx" "projects" false "field" "bauherren" "url" ("karte/" | relLangURL))) }}
+<div class="hz-feld tz-feld">
+<main id="main" class="tz-main">
+{{- $aside := partial "bauherren-scene.html" (dict "id" "bh-hero" "label" $a.hero.scene_alt) }}
+{{ partial "horizont/feld/hero.html" (dict
+    "kennung" (printf "01 — %s" $a.hero.kennung)
+    "title" $a.hero.title
+    "text" $a.hero.lead
+    "primary" (dict "label" $a.hero.primary "url" "#momente")
+    "secondary" (dict "label" $a.hero.secondary "url" "#grundriss")
+    "aside" $aside
+    "asideCenter" true) }}
+
+<section class="hz-feld-section tz-section tz-section--read" id="momente">
+  {{ partial "horizont/kennung.html" (printf "02 — %s" $a.moments.label) }}
+  <div><h2>{{ $a.moments.title }}</h2><p>{{ $a.moments.text | markdownify }}</p></div>
+  <figure class="bh-moments" data-moments="{{ $a.moments.items | jsonify }}" data-words="{{ $a.moments.words | jsonify }}">
+    <div class="bh-tabs" role="tablist" aria-label="{{ $a.moments.label }}"></div>
+    <div class="bh-moment-grid">
+      {{ partial "bauherren-scene.html" (dict "id" "bh-moment" "label" $a.moments.label) }}
+      <div>
+        <p class="bh-caption" aria-live="polite"><span class="t-data bh-time"></span> <span class="bh-caption-text"></span></p>
+        <h3 class="bh-moment-title"></h3>
+        <p class="bh-moment-story"></p>
+        <ul class="bh-wishes"></ul>
+        <div class="bh-answers">
+          <button type="button" class="hz-button hz-button--secondary" data-answer="no">{{ $a.moments.words.no }}</button>
+          <button type="button" class="hz-button hz-button--primary" data-answer="yes">{{ $a.moments.words.yes }}</button>
+        </div>
+        <p class="bh-tally t-caption" aria-live="polite"></p>
+      </div>
+    </div>
+  </figure>
+</section>
+
+<section class="hz-feld-section tz-section tz-section--read" id="grundriss">
+  {{ partial "horizont/kennung.html" (printf "03 — %s" $a.plan.label) }}
+  <div><h2>{{ $a.plan.title }}</h2><p>{{ $a.plan.text | markdownify }}</p></div>
+  <figure class="bh-plan" data-words="{{ $a.plan.words | jsonify }}">
+    <div class="bh-plan-stage">
+      <svg viewBox="0 0 1000 640" aria-hidden="true">
+        <rect class="bh-furn" x="80" y="250" width="230" height="90" rx="6"/><rect class="bh-furn" x="360" y="90" width="130" height="170" rx="4"/><rect class="bh-furn" x="780" y="48" width="172" height="62"/>
+        <path class="bh-wall bh-wall--out" d="M530 600H40V40H960V600H590"/>
+        <path class="bh-wall" d="M560 40V420M40 420H200M260 420H470M530 420H560M300 420V600M420 420V500M420 550V600M560 300H590M650 300H960M700 300V440M700 490V600"/>
+        <path class="bh-door" d="M530 420V360A60 60 0 0 0 470 420M200 420V480A60 60 0 0 0 260 420M420 500H370A50 50 0 0 0 420 550M700 440H750A50 50 0 0 1 700 490M590 300V240A60 60 0 0 1 650 300M530 600V540A60 60 0 0 1 590 600"/>
+        <g class="bh-dims"></g>
+      </svg>
+      <div class="bh-rooms"></div>
+      <div class="bh-devices"></div>
+    </div>
+    <div class="bh-side">
+      <div class="bh-detail" aria-live="polite"></div>
+      <dl class="bh-count"></dl>
+      <p class="bh-hint" aria-live="polite"></p>
+    </div>
+    <figcaption>{{ $a.plan.caption }}</figcaption>
+  </figure>
+</section>
+
+{{- $n := 3 }}
+{{- range $key := slice "electrician" "technical" "state" }}
+{{- $s := index $a $key }}
+{{- $n = add $n 1 }}
+{{- $facts := slice }}
+{{- range $s.points }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}
+<section class="hz-feld-section tz-section tz-section--read" id="{{ $key }}">
+  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n $s.label) }}
+  <div><h2>{{ $s.title }}</h2>{{ with $s.text }}<p>{{ . | markdownify }}</p>{{ end }}</div>
+  {{ partial "horizont/facts.html" (dict "items" $facts) }}
+</section>
+{{- end }}
+{{- $n = add $n 1 }}
+<section class="hz-feld-section tz-section tz-section--read tz-section--faq" id="faq">
+  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n $a.faq.label) }}
+  <div>
+    <h2>{{ $a.faq.title }}</h2>
+    <div class="tz-faq">
+      {{- range $a.faq.items }}
+      <details>
+        <summary>{{ .q }}{{ partial "horizont/symbol.html" "expand_more" }}</summary>
+        <p>{{ .a | markdownify }}</p>
+      </details>
+      {{- end }}
+    </div>
+  </div>
+</section>
+</main>
+{{- $links := slice (dict "name" site.Title "url" ("" | relLangURL)) (dict "name" (i18n "feedback") "url" ("feedback/" | relLangURL)) (dict "name" (i18n "changelog") "url" ("changelog/" | relLangURL)) (dict "name" (i18n "imprint") "url" site.Params.legalUrl) (dict "name" (i18n "privacy") "url" site.Params.privacyUrl) (dict "name" (i18n "github") "url" site.Params.githubUrl) (dict "name" (i18n "instagram") "url" site.Params.instagramUrl) }}
+{{- with site.GetPage "/nutzungsbedingungen" }}{{ $links = $links | append (dict "name" (i18n "terms") "url" .RelPermalink) }}{{ end }}
+{{ partial "horizont/feld/foot.html" (dict "links" $links "sender" (i18n "footer_sender")) }}
+<p class="tz-mark t-caption">{{ i18n "footer_note" }}</p>
+</div>
+{{- $js := resources.Get "js/bauherren.js" | minify | fingerprint }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
+{{ partial "horizont/nav/script.html" . }}
+</body>
+</html>

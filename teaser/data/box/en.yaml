@@ -1,0 +1,128 @@
+hero:
+  kennung: "KNX box · Raspberry Pi"
+  title: "The bus records itself while you are away."
+  lead: "The KNX box is a Raspberry Pi that writes down every telegram around the clock and opens its own Wi-Fi. You set it up with the app: today with the Linux app, soon by QR code with iPhone, iPad and Android. No Home Assistant and no internet."
+  primary: "Get the image"
+  secondary: "How to set it up"
+
+need:
+  label: "Checklist"
+  title: "What you need."
+  text: "About half an hour at your desk to prepare it, no Linux knowledge needed."
+  points:
+    - { term: "Raspberry Pi", value: "Pi 5 or Pi 4 with a matching power supply (Pi 5: 27 W USB-C), details under Hardware" }
+    - { term: "SD card", value: "microSD of 16 GB or more and a card reader for your computer" }
+    - { term: "Computer", value: "Windows, Mac or Linux with the free [Raspberry Pi Imager](https://www.raspberrypi.com/software/)" }
+    - { term: "Network cable", value: "From the Pi to the router or switch the KNX IP gateway is on; not needed for the bus with the kBerry" }
+    - { term: "Gateway", value: "One free tunnel slot, Home Assistant or ETS often take one already. Or the kBerry plug-on module instead of a gateway" }
+    - { term: "App", value: "Today the [Linux app](https://github.com/regetskcob/KNX-Monitor/releases/latest), soon also iPhone, iPad and Android" }
+    - { term: "Printer", value: "Optional, for the sheet with the two labels and access details" }
+
+setup:
+  label: "Setup"
+  title: "Prepare it once, then just pair."
+  text: "Image and label are made once at your desk. On site it then takes a cable, power and the app."
+  steps:
+    - { term: "Download", value: "**Get the image** (button at the top, file `knx-box-….img.xz`). Don't unpack it, the Imager reads it as it is." }
+    - { term: "Write", value: "**In Raspberry Pi Imager:** choose the device (Pi 4 or Pi 5), under operating system at the very bottom \"Use custom\" and the downloaded file, then the SD card. Answer the question about customisation with **\"No\"**: the box sets up its name, Wi-Fi and passwords itself." }
+    - { term: "First start", value: "**SD card into the Pi, connect power;** no network cable needed yet. After a few minutes the Wi-Fi \"KNX-Box-…\" appears. Wait one more minute, then unplug the power." }
+    - { term: "Read the card", value: "**SD card back into the computer, print `knx-box-en.pdf`** (German: `knx-box-de.pdf`). The sheet has everything: **two labels** to cut out (1 for the app on top of the box, 2 with the Wi-Fi on the bottom), **Wi-Fi and box password**, the link for the Linux app and the next steps. Keep it safe, then put the card back into the Pi. Next to it are the QR codes as images (`knx-box-app.png`, `knx-box-wlan.png`), the link as `knx-box-link.txt` and the values in `knx-box.txt`." }
+    - { term: "Connect", value: "**Network cable to the router or switch at the gateway, then power.** After about a minute the box is ready." }
+    - { term: "Pair", value: "**In the app, \"Add KNX box\" and scan the label.** The app joins the box's Wi-Fi, pairs, sets the clock and looks for the gateway. If there is exactly one, it is set right away and the box records. Pairing with the app is part of Pro.", value_live: "**In the app, \"Add KNX box\" and scan the label.** The app joins the box's Wi-Fi, pairs, sets the clock and looks for the gateway. If there is exactly one, it is set right away and the box records." }
+    - { term: "With Linux", value: "**[Get the Linux app](https://github.com/regetskcob/KNX-Monitor/releases/latest),** unpack it and run `./install.sh` in the `bundle` folder: it installs KNX Monitor to the app menu, then the download can go. On the computer, switch to the Wi-Fi \"KNX-Box-…\" (Wi-Fi password from `knx-box.txt`). In the app, \"Add KNX box\" and paste the contents of `knx-box-link.txt`; the app does the rest as above." }
+  preview: "Scan the label, the app does the rest: Wi-Fi, pairing, clock and gateway. This is how it will look on iPhone, iPad and Android; today it works with the Linux app."
+  preview_alt: "The app sets up the KNX box: join the Wi-Fi, reach the box, pair, set the clock, find the gateway, all checked"
+  alt: "It works without the app too: the second QR code (`knx-box-wlan.png`) joins the box's Wi-Fi, then open `knx-box.local` in a browser with the box password (any user name)."
+
+data:
+  label: "Data"
+  title: "What the app puts on the box for you."
+  text: "Everything the box needs to know comes from the app. There is nothing to copy."
+  points:
+    - { term: "Gateway", value: "The box finds it on its cable; if there are several, you pick one in the app." }
+    - { term: "ETS project", value: "Import it in the app and it goes onto the box too. Then the box knows names, datapoint types and the time master." }
+    - { term: "Keyring", value: "For KNX Secure the same: the box records secured telegrams readably." }
+    - { term: "History", value: "The app shows it straight from the box, day by day, with replay and export." }
+    - { term: "Storage", value: "On a USB SSD named `KNXBOXDATA`, otherwise on the SD card, unencrypted either way. At five telegrams a second about 43 MB a day, raw." }
+
+recording:
+  label: "Recording"
+  title: "Starts by itself, never stops."
+  text: "As soon as a gateway is set, the box records. There is nothing to start and nothing to forget."
+  points:
+    - { term: "Always on", value: "One tunnel stays open, every telegram goes into a daily file, even with no device connected." }
+    - { term: "Clock", value: "**Without internet:** the box sets its clock from the iPhone or iPad that connects, or from the KNX time master on the line (DPT 19.001, 10.001 + 11.001)." }
+    - { term: "Until then", value: "The box already records and puts the time right afterwards. Or it waits, if you switch on \"Record only once the time is right\"." }
+    - { term: "Power cut", value: "After the restart the box reconnects and carries on; at most the last seconds are lost." }
+    - { term: "Retention", value: "Seven days by default, up to ten years." }
+    - { term: "Pause", value: "Frees the tunnel, for example when ETS needs the gateway's only slot." }
+
+connection:
+  label: "Connection"
+  title: "Over IP or straight on the bus."
+  text: "The box sits on a network cable to the KNX IP interface or IP router. Since 1.8.4 it can also sit right on the line: with the kBerry plug-on module, no IP gateway at all."
+  points:
+    - { term: "IP", value: "KNXnet/IP tunnelling or routing, KNX IP Secure included. The box takes one tunnel slot on the gateway." }
+    - { term: "TP with kBerry", value: "The bus cable goes straight to the box: through the Weinzierl KNX BAOS 838 kBerry, a module that plugs onto the Pi's pin header. Connection mode \"KNX-HAT (kBerry)\" in expert mode. No gateway needed, no tunnel slot taken." }
+    - { term: "Guide", value: "**Preview:** how the kBerry goes onto the Pi, how to prepare the Pi and how to assemble the matching case: [guide for tinkerers (PDF, German, preview)](/box/knx-box-kberry.pdf)." }
+    - { term: "Bus monitor", value: "Over TP the box also sees what a tunnel never shows: acknowledgements (ACK, NAK, BUSY) and repeats. It cannot send in this mode." }
+    - { term: "Address", value: "To listen, the box needs no individual address and no ETS programming." }
+    - { term: "Status", value: "Preview: tested on a Pi 4 on a real bus, not yet on the Pi 5 or in continuous use. More in the [issue on GitHub](https://github.com/regetskcob/KNX-Monitor/issues/1)." }
+
+hardware:
+  label: "Hardware"
+  title: "What goes into the case."
+  points:
+    - { term: "Computer", value: "Raspberry Pi 5 with 2 or 4 GB; a Pi 4 works too" }
+    - { term: "Clock", value: "Recommended: the RTC battery for the Pi 5 or a DS3231 module for the Pi 4. Then the time is right even before the first iPhone." }
+    - { term: "Power", value: "27 W power supply (USB-C); weaker ones crash under load" }
+    - { term: "Storage", value: "USB SSD or NVMe, 128 GB last for years" }
+    - { term: "Case", value: "**Preview:** [printable case (STL, zip)](/box/knx-box-case-vorschau.zip) for Pi 3B to 5 with the kBerry: slim lid, module bridge, USB cover, a DIN rail base with a screw-on spring clip (recommended: variant 1, still being refined) and test prints for the heat-set inserts and the lid. Print at 0.2 mm layer height. Description (German) in the README.md inside. The fit has only been checked on the model so far." }
+    - { term: "The rest", value: "A network cable, the two labels from the sheet; for the direct bus connection the kBerry plug-on module" }
+
+status:
+  label: "Status"
+  title: "A preview, to be honest."
+  text: "The image is built automatically and runs in the test setup and on a Raspberry Pi 4 on a real bus. Nobody has tried it in continuous use on a real site yet. Reports are very welcome."
+  points:
+    - { term: "App", value: "**The box works with the app:** setup, project and history go through it, the browser is only a stopgap (see Setup). iPhone, iPad, Android, Mac and Windows arrive in the coming weeks; until then use the [Linux app](https://github.com/regetskcob/KNX-Monitor/releases/latest)." }
+    - { term: "Gateway", value: "A gateway with a fixed address straight on the box's cable does not work yet; that needs the switch." }
+    - { term: "Wi-Fi", value: "The app joins by itself on iPhone, iPad and Android 10 or later; on Linux, Mac and Windows you join once yourself." }
+    - { term: "Alarms", value: "Without internet there are no notifications to your phone." }
+    - { term: "Feedback", value: "Bugs and experiences are welcome as an [issue on GitHub](https://github.com/regetskcob/KNX-Monitor/issues)." }
+
+faq:
+  label: "Questions"
+  title: "Common questions about the box"
+  items:
+    - q: "Do I need a PC?"
+      a: "Once at your desk: to write the image, read the SD card and print the QR code. Until iPhone, iPad and Android arrive, you pair the box with the Linux app; after that a phone or tablet is enough on site."
+    - q: "Do I need Home Assistant?"
+      a: "No. The box runs the same software as the Home Assistant add-on, just as a device of its own. If you have Home Assistant, the add-on is the better choice."
+    - q: "Does the box take up a tunnel on the gateway?"
+      a: "Over IP yes, exactly one, around the clock. Every iPhone and iPad in the box's Wi-Fi shares that tunnel. If ETS needs the only free slot, pause the box. Straight on the line with the kBerry this goes away."
+    - q: "Do devices in the box's Wi-Fi reach the customer's network?"
+      a: "No. The firewall keeps the box's Wi-Fi apart from the network on the cable. Only `INTERNET_SHARING=yes` in `knx-box.txt` lets devices in the Wi-Fi out."
+    - q: "Can the customer reach the box over their network?"
+      a: "No. Over the cable the box does not answer at all by default, only in its own Wi-Fi. For your own box on your own network, turn on \"Access via cable\" in the app under Box settings, or set `LAN_ACCESS=yes` in `knx-box.txt` before the first start."
+    - q: "What if someone walks off with the box?"
+      a: "Whoever has the label can pair. That is why the app suggests setting your own box password right after pairing; after that neither the label nor the SD card pairs new devices. Under Box settings you change it later and revoke devices you no longer need."
+    - q: "How well is the data on the box protected?"
+      a: "Without the box password or a paired device nobody gets at the data or the bus; the password is stored only as a hash on the box. Two limits: project and history are unencrypted on the SD card or SSD, so whoever has the medium can read them. And inside the box's Wi-Fi the connection has no TLS, so the Wi-Fi password is the real protection there. So don't leave the box openly accessible. On its own it sends nothing to us; if it has internet, it sets its clock that way."
+    - q: "May I record the bus in a lived-in house?"
+      a: "A bus recording shows when someone is home. Agree on it with the residents and keep the retention as short as you can."
+
+# The coupled laptop in "Recording": the box's log as the app shows it, fed by
+# the telegrams of the landing page (data/teaser) and the push button.
+log:
+  box: "KNX-Box-4F2A"
+  state: "Recording"
+  wlan: "Box Wi-Fi"
+  today: "today"
+  telegrams: "telegrams"
+  head: ["Time", "Source", "Target", "Name", "Value"]
+  caption: "On the coupled laptop: what the box is recording right now."
+  caption_taster: "The glass push button on the cable sends your own telegrams."
+  drawing: "Laptop with the app, coupled with the KNX box: a list of the telegrams the box records"
+taster:
+  note: "Go ahead and press it: the box records every telegram, yours too."

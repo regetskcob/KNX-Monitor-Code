@@ -1,0 +1,115 @@
+{{- /*
+  The small distribution board, drawn: a cabinet with a DIN rail, on it the
+  power supply, the IP interface and three generic actuators exactly as the
+  app draws them (lib/ui/actuator_view.dart, _GenericFrontPainter; sizes in
+  mm from lib/model/device_art.dart, colours from Palette). The devices keep
+  their own colours in both themes like in the app; cabinet and lines come
+  from the tokens. The green bus cable runs under the devices and leaves the
+  cabinet down into the horizon. teaser.js sends telegrams along it and
+  switches the channel LEDs; without script the board stands still.
+
+    partial "verteiler.html" (dict "alt" $d.drawing "cable" $d.cable)
+
+  cable  where the cable leads, written next to it above the horizon
+*/ -}}
+{{- $dev := slice
+  (dict "id" "power" "kind" "power" "te" 3 "addr" "1.1.1")
+  (dict "id" "ip" "kind" "ip" "te" 2 "addr" "1.1.20")
+  (dict "id" "switch" "kind" "generic" "keys" (slice "1" "2" "3" "4" "5" "6" "7" "8") "addr" "1.1.10")
+  (dict "id" "blinds" "kind" "generic" "keys" (slice "A" "B" "C" "D") "addr" "1.1.12")
+  (dict "id" "dim" "kind" "generic" "keys" (slice "A" "B" "C" "D") "addr" "1.1.11") -}}
+{{- /* Widths: 18 mm per TE; generic actuators 10 mm per channel, at least 2 TE. */ -}}
+{{- $widths := slice -}}
+{{- $total := 0.0 -}}
+{{- range $dev -}}
+  {{- $te := .te | default 0 -}}
+  {{- with .keys }}{{ $te = math.Ceil (div (add (mul (len .) 10.0) 12.0) 18.0) }}{{ if lt $te 2.0 }}{{ $te = 2.0 }}{{ end }}{{ end -}}
+  {{- $w := mul $te 18.0 -}}
+  {{- $widths = $widths | append $w -}}
+  {{- $total = add $total $w 1.0 -}}
+{{- end -}}
+{{- $W := 400.0 -}}
+{{- $cabX := 18.0 }}{{ $cabY := 14.0 }}{{ $cabW := sub $W 36.0 }}{{ $cabH := 156.0 -}}
+{{- $top := 44.0 -}}{{/* top edge of the devices */}}
+{{- $trunk := 147.0 -}}{{/* height of the bus cable under the devices */}}
+{{- $exit := sub (add $cabX $cabW) 30.0 -}}{{/* where the cable leaves the cabinet */}}
+{{- $x := add $cabX (div (sub $cabW $total) 2.0) -}}
+<svg class="knx-board" viewBox="0 0 {{ $W }} 220" role="img" aria-label="{{ .alt }}" data-trunk="{{ $trunk }}" data-exit="{{ $exit }}">
+  {{- /* Cabinet: frame, the sunken back plate, the DIN rail. */}}
+  <rect class="knx-board-cabinet" x="{{ $cabX }}" y="{{ $cabY }}" width="{{ $cabW }}" height="{{ $cabH }}" rx="10"/>
+  <rect class="knx-board-back" x="{{ add $cabX 8 }}" y="{{ add $cabY 8 }}" width="{{ sub $cabW 16 }}" height="{{ sub $cabH 16 }}" rx="5"/>
+  <rect class="knx-board-rail" x="{{ add $cabX 14 }}" y="{{ add $top 33 }}" width="{{ sub $cabW 28 }}" height="16" rx="1"/>
+  <rect class="knx-board-rail-slot" x="{{ add $cabX 14 }}" y="{{ add $top 39 }}" width="{{ sub $cabW 28 }}" height="4"/>
+
+  {{- /* Bus cable: the trunk from the first device to the exit and down. */}}
+  {{- $first := add $x 11.0 }}
+  <path class="knx-board-cable" d="M{{ $first }} {{ $trunk }} H{{ sub $exit 8 }} Q{{ $exit }} {{ $trunk }} {{ $exit }} {{ add $trunk 8 }} V220"/>
+
+  {{- range $i, $d := $dev }}
+  {{- $w := index $widths $i }}
+  <g class="knx-board-device" data-device="{{ $i }}" data-id="{{ $d.id }}" data-bus="{{ add $x 11 }}" data-x="{{ $x }}" data-x0="{{ div (sub $w (mul (len ($d.keys | default slice)) 10.0)) 2.0 }}" transform="translate({{ $x }} {{ $top }})">
+    <text class="knx-board-addr" x="{{ div $w 2 }}" y="-7">{{ $d.addr }}</text>
+    {{- /* Drop from the bus terminal: red and black core, then the sheath. */}}
+    <path class="knx-board-core knx-board-core--minus" d="M9.5 81 V88"/>
+    <path class="knx-board-core knx-board-core--plus" d="M12.5 81 V88"/>
+    <path class="knx-board-cable" d="M11 87 V{{ sub $trunk $top }}"/>
+    {{- /* Top terminals: housing, slot, the green strip, screws per channel. */}}
+    <rect class="dv-housing" x="{{ mul $w 0.06 }}" y="0.3" width="{{ mul $w 0.88 }}" height="11.6" rx="0.6"/>
+    <rect class="dv-slot" x="{{ mul $w 0.08 }}" y="3.7" width="{{ mul $w 0.84 }}" height="8" rx="0.4"/>
+    <rect class="dv-terminal" x="{{ add (mul $w 0.08) 0.6 }}" y="4.3" width="{{ sub (mul $w 0.84) 1.2 }}" height="6.8" rx="0.4"/>
+    {{- $n := len ($d.keys | default slice) }}
+    {{- $pitch := 10.0 }}
+    {{- $x0 := div (sub $w (mul $n $pitch)) 2.0 }}
+    {{- if eq $d.kind "generic" }}
+    {{- range $c, $k := $d.keys }}
+    {{- $cx := add $x0 (mul (add $c 0.5) $pitch) }}
+    {{- range slice -2.4 2.4 }}
+    <circle class="dv-screw" cx="{{ add $cx . }}" cy="7.7" r="1.9"/><path class="dv-slit" d="M{{ sub (add $cx .) 1.1 }} 8.8 l2.2 -2.2"/>
+    {{- end }}
+    {{- end }}
+    {{- else }}
+    {{- range $s := seq 0 (sub (int (div $w 9)) 1) }}
+    {{- $sx := add (mul $w 0.08) 4.5 (mul $s 9) }}
+    {{- if lt $sx (mul $w 0.9) }}<circle class="dv-screw" cx="{{ $sx }}" cy="7.7" r="1.9"/><path class="dv-slit" d="M{{ sub $sx 1.1 }} 8.8 l2.2 -2.2"/>{{ end }}
+    {{- end }}
+    {{- end }}
+    <rect class="dv-step" x="{{ mul $w 0.03 }}" y="11.4" width="{{ mul $w 0.94 }}" height="10"/>
+    <rect class="dv-step" x="{{ mul $w 0.04 }}" y="63.6" width="{{ mul $w 0.92 }}" height="8.6"/>
+    <rect class="dv-housing" x="{{ mul $w 0.07 }}" y="71.4" width="{{ mul $w 0.88 }}" height="10.3" rx="0.6"/>
+    {{- /* Bus terminal black/red. */}}
+    <rect class="dv-bus-minus" x="6" y="73" width="5" height="8.2"/><rect class="dv-bus-plus" x="11" y="73" width="5" height="8.2"/>
+    <rect class="dv-front" x="0.15" y="20.2" width="{{ sub $w 0.3 }}" height="44.4" rx="2"/>
+    {{- if eq $d.kind "generic" }}
+    {{- range $c, $k := $d.keys }}
+    {{- $cx := add $x0 (mul (add $c 0.5) $pitch) }}
+    {{- /* Relay symbol as printed, the LED, the letter below it. */}}
+    <path class="dv-ink" d="M{{ sub $cx 3.2 }} 27.4 V29 H{{ sub $cx 1.2 }} L{{ add $cx 1.4 }} 27.7 M{{ add $cx 1.6 }} 29 H{{ add $cx 3.2 }} V27.4"/>
+    <circle class="dv-led" data-channel="{{ $c }}" cx="{{ $cx }}" cy="35" r="1.6"/>
+    <text class="dv-key" x="{{ $cx }}" y="41.2">{{ $k }}</text>
+    {{- end }}
+    {{- else if eq $d.kind "power" }}
+    <text class="dv-type" x="{{ div $w 2 }}" y="31">KNX</text>
+    <text class="dv-key" x="{{ div $w 2 }}" y="36">640 mA</text>
+    {{- range $j, $l := slice "Run" "I>Imax" "Reset" }}
+    <circle class="dv-led{{ if eq $j 0 }} is-on{{ end }}" cx="{{ add (mul $w 0.25) (mul $j (mul $w 0.25)) }}" cy="46" r="1.6"/>
+    <text class="dv-key" x="{{ add (mul $w 0.25) (mul $j (mul $w 0.25)) }}" y="52">{{ $l }}</text>
+    {{- end }}
+    {{- else if eq $d.kind "ip" }}
+    <text class="dv-type" x="{{ div $w 2 }}" y="31">IP</text>
+    <rect class="dv-port" x="{{ sub (div $w 2) 7 }}" y="40" width="14" height="12" rx="1"/>
+    <rect class="dv-slot" x="{{ sub (div $w 2) 4 }}" y="43" width="8" height="6" rx="0.5"/>
+    <circle class="dv-led dv-led--traffic" cx="{{ mul $w 0.2 }}" cy="58" r="1.6"/>
+    <circle class="dv-led is-on" cx="{{ mul $w 0.45 }}" cy="58" r="1.6"/>
+    {{- end }}
+    {{- /* Prog button bottom right, like the originals. */}}
+    <circle class="dv-prog" cx="{{ sub $w 7 }}" cy="58" r="2.2"/>
+  </g>
+  {{- $x = add $x $w 1.0 }}
+  {{- end }}
+  {{- /* Cable gland where the bus leaves the cabinet. */}}
+  <rect class="knx-board-gland" x="{{ sub $exit 5 }}" y="{{ sub (add $cabY $cabH) 3 }}" width="10" height="7" rx="1.5"/>
+  {{- with .cable }}
+  <text class="knx-board-cable-label" x="{{ sub $exit 7 }}" y="212">{{ . }}</text>
+  {{- end }}
+  <circle class="knx-board-pulse" r="2.6" cx="-10" cy="-10"/>
+</svg>

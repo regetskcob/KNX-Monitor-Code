@@ -1,0 +1,340 @@
+/* KNX Monitor landing page: own rules on top of Horizont (tokens.css,
+   components.css from the module). Only tokens here, no raw colours. What is
+   missing in the module is marked "local", it belongs into horizont. */
+
+html { background: var(--bg); }
+body { margin: 0; }
+
+/* Skip link, visible on focus. */
+.knx-skip {
+  position: absolute; left: var(--s-16); top: var(--s-8); z-index: 10;
+  padding: var(--s-8) var(--s-12);
+  background: var(--surface); color: var(--text);
+  border: var(--line-hairline) solid var(--line-strong); border-radius: var(--r-6);
+  transform: translateY(-200%);
+}
+.knx-skip:focus { transform: none; }
+
+/* Links in running text and facts: the accent's text colour. */
+.hz-feld-section p a, .hz-facts dd a, .knx-prose a, .knx-faq a {
+  color: var(--accent-text);
+  text-underline-offset: 0.2em;
+}
+.hz-facts dd strong { font-weight: 600; color: var(--text); }
+.hz-facts dd .hz-badge { margin-right: var(--s-4); vertical-align: 1px; }
+.knx-value { color: var(--text-muted); white-space: nowrap; }
+.knx-value::before { content: "· "; }
+.knx-code {
+  font-family: var(--font-mono); font-size: 0.8125rem;
+  padding: var(--s-2) var(--s-4);
+  background: var(--sunken); border-radius: var(--r-2);
+  overflow-wrap: anywhere;
+}
+
+/* Local: content that runs under a section (gallery, FAQ). The section's
+   middle column starts after the Kennung column (180px in components.css). */
+.hz-feld-section:has(+ .knx-extend) { border-bottom: 0; padding-bottom: var(--s-24); }
+.knx-extend {
+  padding: 0 var(--s-32) var(--s-48) calc(var(--s-32) + 180px + var(--s-32));
+  border-bottom: var(--line-hairline) solid var(--line);
+}
+
+/* Screenshots in the middle column of their section (section-shots.html):
+   phones in one row, tablets in the next, each swiped sideways. Frames are
+   sized by the column (cqw): two phones or one tablet at a glance. */
+.knx-section-shots > div { min-width: 0; }
+/* Medium widths: Kennung above, text with gallery | facts. */
+@container (min-width: 721px) and (max-width: 1100px) {
+  .knx-section-shots { grid-template-columns: 1fr 1fr; row-gap: var(--s-16); }
+  .knx-section-shots > .hz-kennung { grid-column: 1 / -1; }
+}
+.knx-shots { container-type: inline-size; display: grid; gap: var(--s-32); margin-top: var(--s-32); }
+.knx-shots-row {
+  display: flex; gap: var(--s-24); align-items: flex-start;
+  overflow-x: auto; scroll-snap-type: x proximity;
+  padding: var(--s-4) var(--s-4) var(--s-8);
+}
+.knx-shot { flex: 0 0 auto; margin: 0; display: grid; gap: var(--s-12); align-content: start; scroll-snap-align: start; }
+/* The device's bezel and radii follow --w; set it, never squeeze the figure. */
+.knx-shots-row--phone .hz-device { --w: min(220px, 44cqw) !important; }
+.knx-shots-row--tablet .hz-device { --w: min(480px, 92cqw) !important; }
+.knx-shot figcaption { color: var(--text-muted); width: 0; min-width: 100%; }
+
+/* FAQ: hairlines between questions, no cards. */
+.knx-faq { max-width: var(--size-text-column); }
+.knx-faq details { border-top: var(--line-hairline) solid var(--line); }
+.knx-faq details:last-child { border-bottom: var(--line-hairline) solid var(--line); }
+.knx-faq summary {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--s-16);
+  min-height: var(--size-row); padding: var(--s-8) 0;
+  font-weight: 500; cursor: pointer; list-style: none;
+}
+.knx-faq summary::-webkit-details-marker { display: none; }
+.knx-faq summary .hz-symbol { color: var(--text-muted); transition: transform var(--motion-fast) var(--ease-standard); }
+.knx-faq details[open] summary .hz-symbol { transform: rotate(180deg); }
+.knx-faq details p { margin: 0 0 var(--s-16); color: var(--text-muted); max-width: 64ch; }
+
+/* Foot: sender, links and the trademark note, each centred, one below
+   the other. */
+.hz-feld-foot { flex-direction: column; align-items: center; gap: var(--s-12); text-align: center; }
+.hz-feld-foot .hz-feld-links { margin-left: 0; flex-wrap: wrap; justify-content: center; }
+.knx-note { margin: 0 auto; padding: 0 var(--s-32) var(--s-32); color: var(--text-muted); max-width: var(--size-text-column); text-align: center; }
+
+/* Text pages (Datenschutz, Support): Kennung and title, the horizon, the
+   reading column. */
+.knx-page-head { padding: var(--s-64) var(--s-32) 0; }
+.knx-page-head h1 {
+  margin: var(--s-16) 0 var(--s-24);
+  font-size: clamp(1.75rem, 7cqw, 2.75rem);
+  overflow-wrap: break-word; hyphens: auto;
+}
+.knx-page-head .hz-feld-actions { margin-bottom: var(--s-48); }
+.knx-page-head:not(:has(.hz-feld-actions)) h1 { margin-bottom: var(--s-48); }
+.knx-lead { color: var(--text-muted); max-width: 46ch; margin: 0 0 var(--s-32); }
+.knx-prose { max-width: var(--size-text-column); padding: var(--s-48) var(--s-32) var(--s-64); overflow-wrap: break-word; }
+.knx-prose > :first-child { margin-top: 0; }
+.knx-prose h2 { margin: var(--s-48) 0 var(--s-12); font: 300 1.5rem/1.25 var(--font-serif); }
+.knx-prose h3 { margin: var(--s-32) 0 var(--s-8); font: 600 1.0625rem/1.4 var(--font-sans); }
+.knx-prose p, .knx-prose ul, .knx-prose ol { margin: 0 0 var(--s-16); }
+.knx-prose ul, .knx-prose ol { padding-left: var(--s-24); }
+.knx-prose li + li { margin-top: var(--s-4); }
+.knx-prose strong { font-weight: 600; }
+.knx-prose blockquote {
+  margin: 0 0 var(--s-24); padding: var(--s-4) 0 var(--s-4) var(--s-16);
+  border-left: var(--line-hairline) solid var(--line-strong);
+  color: var(--text);
+}
+.knx-prose blockquote p { margin: 0; }
+.knx-prose .hz-kennung { display: block; margin-bottom: var(--s-24); }
+
+/* Local: the telegram list on the MacBook in the hero, at the size it has on
+   the real screen (after the draft lp-knx-screen.html in the Horizont docs). */
+.knx-mock { height: 100%; display: flex; flex-direction: column; background: var(--surface); font-size: 9px; overflow: hidden; }
+.knx-mock-bar {
+  flex: none; display: flex; align-items: center; gap: var(--s-8);
+  height: 22px; padding: 0 var(--s-8);
+  border-bottom: var(--line-hairline) solid var(--line);
+}
+.knx-mock-bar b { font-size: 10px; font-weight: 600; }
+.knx-mock-meta { color: var(--text-muted); font: 400 8.5px/1 var(--font-mono); }
+.knx-mock-bar .hz-badge { margin-left: auto; height: 14px; padding: 0 var(--s-4) 0 var(--s-2); gap: var(--s-2); font-size: 8px; }
+.knx-mock-lights { display: flex; gap: var(--s-4); }
+.knx-mock-lights i { width: 6px; height: 6px; border-radius: 50%; background: var(--line-strong); }
+.knx-mock .hz-table { font-size: 9px; }
+.knx-mock .hz-table th { padding: 5px 6px; font-size: 7.5px; }
+.knx-mock .hz-table td { height: 21px; padding: 0 6px; }
+.knx-mock .hz-table td.hz-mono { font-size: 8.5px; }
+.knx-mock-name { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.knx-type {
+  display: inline-grid; place-items: center; width: 14px; height: 14px;
+  border-radius: var(--r-2); font: 600 8px/1 var(--font-mono); text-decoration: none;
+}
+.knx-type--w { background: var(--accent-tint); color: var(--accent-text); }
+.knx-type--r { background: var(--warning-tint); color: var(--warning); }
+.knx-type--a { background: var(--info-tint); color: var(--info); }
+
+/* Phones. */
+@container (max-width: 720px) {
+  .knx-extend { padding: 0 var(--s-16) var(--s-32); }
+  .knx-note { padding: 0 var(--s-16) var(--s-32); }
+  .knx-page-head { padding: var(--s-48) var(--s-16) 0; }
+  .knx-prose { padding: var(--s-32) var(--s-16) var(--s-48); }
+}
+
+/* Local: the header image (layouts/header.html), 1200×630. The devices
+   stand on the horizon; below it only the ground. */
+.knx-header {
+  position: relative; width: 1200px; height: 630px; overflow: hidden;
+  background: var(--bg);
+}
+.knx-header-text {
+  position: absolute; left: var(--s-64); top: var(--s-48); bottom: calc(630px - 520px + var(--s-48)); width: 430px;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.knx-header-text .hz-lockup { font-size: 1.75rem; }
+.knx-header-text h1 { margin: var(--s-16) 0; text-wrap: balance; hyphens: none; }
+.knx-header-text p { margin: 0; color: var(--text-muted); }
+.knx-header-devices { position: absolute; left: 500px; right: var(--s-48); bottom: calc(630px - 520px); }
+.knx-header-horizon { position: absolute; left: 0; right: 0; top: 520px; }
+.knx-header::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 522px; bottom: 0;
+  background: var(--sunken);
+}
+
+/* Local: the store graphics (layouts/store.html). One canvas, sized from
+   the URL; type and gaps follow its short side (cqmin). Tall: text above,
+   device below; wide: text left, device right. The device stands on the
+   horizon, below it only the ground. */
+.knx-store {
+  --horizon: 93%;
+  position: relative; overflow: hidden; background: var(--bg);
+  container-type: size;
+}
+.knx-store::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+  top: calc(var(--horizon) + var(--line-selection));
+  background: var(--sunken);
+}
+.knx-store-horizon { position: absolute; left: 0; right: 0; top: var(--horizon); z-index: 1; }
+.knx-store-text { position: absolute; display: flex; flex-direction: column; gap: 4cqmin; }
+.knx-store-text .hz-lockup { font-size: 4.2cqmin; }
+.knx-store-text .hz-kennung { font-size: 2.4cqmin; }
+.knx-store-text h1 { margin: 2cqmin 0 2.5cqmin; font-size: 9cqmin; line-height: 1.08; text-wrap: balance; hyphens: none; }
+.knx-store-text p { margin: 0; color: var(--text-muted); font-size: 3.6cqmin; line-height: 1.4; text-wrap: pretty; }
+.knx-store-devices { position: absolute; display: flex; justify-content: center; align-items: flex-end; z-index: 2; }
+
+.knx-store[data-shape="tall"] .knx-store-text { left: 8cqw; right: 8cqw; top: 6cqh; }
+.knx-store[data-shape="tall"] .knx-store-devices { left: 6cqw; right: 6cqw; top: 31cqh; bottom: calc(100% - var(--horizon)); }
+
+.knx-store[data-shape="tall"][data-squat] .knx-store-text { top: 5cqh; gap: 3cqmin; }
+.knx-store[data-shape="tall"][data-squat] .knx-store-text h1 { font-size: 7.5cqmin; margin: 1.5cqmin 0 2cqmin; }
+.knx-store[data-shape="tall"][data-squat] .knx-store-text p { font-size: 3.2cqmin; }
+.knx-store[data-shape="square"] .knx-store-text { left: 6cqw; right: 6cqw; top: 5cqh; gap: 2.5cqmin; }
+.knx-store[data-shape="square"] .knx-store-text .hz-lockup { font-size: 3.2cqmin; }
+.knx-store[data-shape="square"] .knx-store-text .hz-kennung { font-size: 1.9cqmin; }
+.knx-store[data-shape="square"] .knx-store-text h1 { margin: 1.5cqmin 0 1.5cqmin; font-size: 6.5cqmin; }
+.knx-store[data-shape="square"] .knx-store-text p { font-size: 2.8cqmin; }
+.knx-store[data-shape="square"] .knx-store-devices { left: 6cqw; right: 6cqw; top: 36cqh; bottom: calc(100% - var(--horizon)); }
+
+.knx-store[data-shape="wide"] { --horizon: 92%; }
+.knx-store[data-shape="wide"] .knx-store-text { left: 6cqw; width: 30cqw; top: 8cqh; bottom: calc(100% - var(--horizon) + 8cqh); justify-content: space-between; }
+.knx-store[data-shape="wide"] .knx-store-text h1 { font-size: 7.5cqmin; }
+.knx-store[data-shape="wide"] .knx-store-devices { left: 40cqw; right: 4cqw; top: 6cqh; bottom: calc(100% - var(--horizon)); }
+
+/* Feature graphic (Play, 1024×500): text left, the phone cropped by the
+   horizon on the right, like the header. */
+.knx-store[data-mode="feature"] { --horizon: 82%; }
+.knx-store[data-mode="feature"] .knx-store-text { width: 52cqw; }
+.knx-store[data-mode="feature"] .knx-store-text h1 { font-size: 11cqmin; }
+.knx-store[data-mode="feature"] .knx-store-devices { left: 62cqw; right: 6cqw; }
+
+/* Local: the scene of every platform (_partials/knx-devices.html). The
+   devices stand on its bottom edge; width and position come in cqw. */
+.knx-devices {
+  position: relative; width: 100%; aspect-ratio: 100 / 37;
+  container-type: inline-size;
+}
+.knx-devices--search { aspect-ratio: 100 / 44; }
+.knx-devices > .hz-device { position: absolute; bottom: 0; }
+/* Hero (home.html): actions at the top of the right column, the scene
+   standing on the horizon at its bottom. On phones: words, actions, scene. */
+.knx-hero { grid-template-columns: 1fr 1.35fr; }
+.knx-hero > div:first-child { padding-bottom: var(--s-64); }
+.knx-hero > div:first-child > p { margin-bottom: 0; }
+.knx-hero-aside {
+  align-self: stretch; display: flex; flex-direction: column;
+  justify-content: space-between; gap: var(--s-32);
+}
+.knx-hero-aside > .hz-feld-actions { justify-content: flex-end; margin: 0; }
+.knx-hero-aside > .hz-device { align-self: center; }
+@container (max-width: 720px) {
+  .knx-hero { grid-template-columns: 1fr; gap: var(--s-24); }
+  .knx-hero > div:first-child { padding-bottom: 0; }
+  .knx-hero-aside > .hz-feld-actions { justify-content: flex-start; }
+}
+
+/* Local: the App Store header art (layouts/appheader.html). The scene
+   stands centred on the horizon; the store crops the sides on small
+   screens, so the devices keep to the middle. */
+.knx-appheader { --horizon: 80%; position: relative; overflow: hidden; background: var(--bg); container-type: size; }
+.knx-appheader::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+  top: calc(var(--horizon) + var(--line-selection)); background: var(--sunken);
+}
+.knx-appheader-horizon { position: absolute; left: 0; right: 0; top: var(--horizon); }
+.knx-appheader-scene {
+  position: absolute; left: 50%; bottom: calc(100% - var(--horizon));
+  width: min(70cqw, 150cqh); transform: translateX(-50%); z-index: 1;
+}
+.knx-appheader-scene[hidden] { display: none; }
+/* Search results show the header small: iPhone, iPad and Mac fill more of it. */
+.knx-appheader-scene[data-set="search"] { width: min(84cqw, 170cqh); }
+
+/* Local: the KNX box drawn (_partials/knx-pi.html), under its section. */
+.knx-pi { display: block; width: min(360px, 100%); height: auto; overflow: visible; }
+.knx-pi-board { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.5; }
+.knx-pi-hole { fill: var(--bg); stroke: var(--line-strong); stroke-width: 1.5; }
+.knx-pi-pin { fill: var(--sunken); stroke: var(--text-faint); stroke-width: 1; }
+.knx-pi-part { fill: var(--sunken); stroke: var(--line-strong); stroke-width: 1.5; }
+.knx-pi-port { fill: var(--bg); stroke: var(--text-muted); stroke-width: 1.5; }
+.knx-pi-led { fill: var(--accent); }
+.knx-pi-cable { fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round; }
+/* On the box page the Pi stands in the hero, its cable on the horizon. */
+.hz-feld-aside > .knx-pi { width: min(420px, 100%); }
+@container (max-width: 720px) {
+  .hz-feld-aside:has(> .knx-pi) { display: block; margin-top: var(--s-16); }
+}
+
+/* Local (belongs into horizont): the side buttons of the frames are 3 px
+   whatever the size. On small frames – the phones in the scene are about
+   60 px wide – they stuck out like blocks. Here they scale with the frame:
+   1 % of its width, the same 3 px at 300 px. */
+.hz-device--iphone::before, .hz-device--iphone::after, .hz-device--android::after {
+  width: calc(var(--w, 300px) * 0.01);
+}
+.hz-device--iphone::before { left: calc(var(--w, 300px) * -0.01); }
+.hz-device--iphone::after, .hz-device--android::after { right: calc(var(--w, 300px) * -0.01); }
+.hz-device--ipad::after { top: calc(var(--w, 600px) * -0.005); height: calc(var(--w, 600px) * 0.005); }
+
+/* Buy page (Windows): offers as buttons one below the other. */
+.knx-shop-offers { list-style: none; padding: 0; display: grid; gap: var(--s-8); max-width: 420px; }
+.knx-shop-offers .hz-button { width: 100%; justify-content: center; }
+
+/* Highlights: the strongest screens large, each with its words in a row
+   above (title left, text right) and the MacBook over the full width of the
+   page below; on phones the words stack. */
+.knx-highlights {
+  container-type: inline-size; display: grid; gap: calc(var(--s-64) + var(--s-32));
+  padding: var(--s-16) var(--s-32) calc(var(--s-64) + var(--s-32));
+}
+.knx-highlight { display: grid; gap: var(--s-32); }
+.knx-highlight-text {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  column-gap: var(--s-48); align-items: end;
+}
+.knx-highlight-text .hz-kennung { grid-column: 1 / -1; }
+.knx-highlight-text h3 { margin: var(--s-8) 0 0; font-family: var(--font-serif); font-weight: 300; font-size: 1.75rem; line-height: 1.2; }
+.knx-highlight-text p { margin: 0; color: var(--text-muted); max-width: 60ch; }
+.knx-highlight .hz-device { --w: 100% !important; width: 100%; margin: 0; }
+@container (max-width: 720px) {
+  .knx-highlights { padding: var(--s-16) var(--s-16) var(--s-64); gap: var(--s-64); }
+}
+@container (max-width: 640px) {
+  .knx-highlight-text { grid-template-columns: 1fr; row-gap: var(--s-12); }
+}
+
+/* Pricing: three tiers side by side, a row per feature; Pro tinted. On
+   phones the feature column shrinks and the cells stay compact. */
+/* Full width like the highlights. */
+.knx-plans-wrap { padding: 0 var(--s-32) calc(var(--s-64) + var(--s-32)); }
+.knx-plans { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.knx-plans thead td { width: 34%; }
+.knx-plans th, .knx-plans td { padding: var(--s-12) var(--s-12); text-align: center; vertical-align: middle; }
+.knx-plans thead th { vertical-align: bottom; text-align: left; border-bottom: var(--line-hairline) solid var(--line-strong); }
+.knx-plans-name { display: block; font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.knx-plans-price { display: block; margin-top: var(--s-4); font-size: 1.25rem; font-weight: 600; color: var(--text); }
+.knx-plans-sub { display: block; margin-top: var(--s-4); font-size: 0.8125rem; font-weight: 400; color: var(--text-muted); }
+.knx-plans tbody th[scope="row"] { text-align: left; font-weight: 400; color: var(--text); }
+.knx-plans tbody tr { border-bottom: var(--line-hairline) solid var(--line); }
+.knx-plans-group th {
+  padding-top: var(--s-32); text-align: left;
+  font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);
+}
+.knx-plans td .hz-symbol { color: var(--accent-text); }
+.knx-plans-no { color: var(--text-faint, var(--text-muted)); }
+.knx-plans .knx-plans-pro { background: var(--accent-tint); }
+.knx-plans thead .knx-plans-pro { border-radius: var(--r-6) var(--r-6) 0 0; }
+.knx-short { display: none; }
+.knx-plans td .hz-mono { font-size: 0.875rem; }
+.knx-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@container (max-width: 720px) {
+  .knx-plans-wrap { padding: 0 var(--s-16) var(--s-64); }
+  .knx-plans thead td { width: 34%; }
+  .knx-plans th, .knx-plans td { padding: var(--s-8) var(--s-4); }
+  .knx-plans-price { font-size: 1rem; }
+  .knx-plans-sub { display: none; }
+  .knx-plans .knx-long { display: none; }
+  .knx-plans .knx-short { display: inline; }
+  .knx-plans td .hz-mono { font-size: 0.75rem; }
+  .knx-plans tbody th[scope="row"] { font-size: 0.875rem; }
+}

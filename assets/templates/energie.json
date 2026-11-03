@@ -1,0 +1,33 @@
+{
+  "format": "knx-monitor-chart-template",
+  "version": 1,
+  "name": "Leistung und Verbrauch",
+  "perRoom": false,
+  "series": [
+    {
+      "role": "power"
+    },
+    {
+      "role": "energy"
+    }
+  ],
+  "gallery": {
+    "title": {
+      "de": "Leistung und Verbrauch",
+      "en": "Power and consumption"
+    },
+    "description": {
+      "de": "Momentanleistung und Zählerstand: Wann läuft was?",
+      "en": "Current power and meter reading: what runs when?"
+    },
+    "tags": [
+      "energie",
+      "leistung",
+      "zähler",
+      "strom",
+      "energy",
+      "power",
+      "meter"
+    ]
+  }
+}

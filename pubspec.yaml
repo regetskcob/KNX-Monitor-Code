@@ -1,0 +1,78 @@
+name: knx_monitor
+description: "KNX group monitor and diagnostic tool (KNXnet/IP)."
+publish_to: 'none'
+
+# <name>+<build>; the build number must grow with every store upload.
+version: 1.9.3+26
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  archive: ^4.5.2
+  crypto: ^3.0.8
+  file_picker: ^13.3.0
+  http: ^1.6.0
+  image: ^4.12.0
+  intl: ^0.20.3
+  path_provider: ^2.1.6
+  pdf: ^3.13.1
+  printing: ^5.15.1
+  shared_preferences: ^2.5.6
+  web: ^1.1.2
+  xml: ^7.1.0
+  pointycastle: ^4.0.0
+  # AES-GCM in reinem Dart: rund zehnmal so schnell wie pointycastle, läuft im Isolate
+  # und auf allen Plattformen ohne Native-Build (Messung: test/crypto_benchmark_test.dart).
+  cryptography: ^2.9.0
+  flutter_secure_storage: ^11.2.0
+
+  # Horizont: tokens, theme, fonts and symbols shared with the other products.
+  horizont:
+    git:
+      url: https://github.com/regetskcob/horizont.git
+      path: flutter
+      ref: v0.10.0
+  mobile_scanner: ^7.4.2
+  url_launcher: ^6.3.3
+  purchases_flutter: ^10.17.0
+  vector_graphics: ^1.2.4
+  supabase_flutter: ^2.18.3
+  sign_in_with_apple: ^8.2.0
+  share_plus: ^13.3.1
+  package_info_plus: ^10.2.2
+  passkeys: ^2.23.1
+  image_picker: ^1.2.4
+  local_auth: ^3.0.2
+
+dev_dependencies:
+  fake_async: any
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_driver:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  # Prüft die erzeugte Home-Assistant-Konfiguration im Test.
+  yaml: ^3.1.0
+flutter:
+  generate: true
+  uses-material-design: true
+  assets:
+    - assets/brand/icon_1024.png
+    # Herstellergrafiken, erzeugt von tool/device_art (nicht von Hand ändern).
+    - assets/device_art/
+    # Galerie geteilter Vorlagen: fest ausgeliefert, kein Netzabruf.
+    - assets/templates/
+    # Funktionskatalog des Hausplans, Momente, Fristen.
+
+dependency_overrides:
+  # Baut sonst nicht mit Visual Studio 2026, siehe third_party/local_auth_windows/README.vendored.md.
+  local_auth_windows:
+    path: third_party/local_auth_windows

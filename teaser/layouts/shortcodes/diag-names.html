@@ -1,0 +1,19 @@
+{{- /*
+  Feedback page: what "Include names" changes in a diagnostics package, as a
+  switch over a simplified excerpt (CSS only, no script).
+*/ -}}
+{{- $de := eq site.Language.Lang "de" -}}
+<div class="tz-names">
+  <label><input type="checkbox" checked> {{ if $de }}Namen mitsenden{{ else }}Include names{{ end }}</label>
+  <table>
+    <thead><tr><th>{{ if $de }}Adresse{{ else }}Address{{ end }}</th><th>Name</th><th>{{ if $de }}Typ{{ else }}Type{{ end }}</th></tr></thead>
+    <tbody>
+      {{- range (cond $de
+        (slice (slice "1/1/3" "Licht Küche" "DPT 1.001") (slice "3/2/0" "Dimmen Essen" "DPT 5.001") (slice "1.1.30" "Glastaster Flur" "Glastaster 2-fach"))
+        (slice (slice "1/1/3" "Kitchen light" "DPT 1.001") (slice "3/2/0" "Dining dimmer" "DPT 5.001") (slice "1.1.30" "Glass push button hall" "Glass push button 2-gang"))) }}
+      <tr><td>{{ index . 0 }}</td><td><span class="tz-on">{{ index . 1 }}</span><span class="tz-off">–</span></td><td>{{ index . 2 }}</td></tr>
+      {{- end }}
+    </tbody>
+  </table>
+  <p>{{ if $de }}Vereinfachter Ausschnitt. Adressen, Datentypen und Produkte gehen immer mit, damit wir den Fehler nachstellen können.{{ else }}Simplified excerpt. Addresses, datapoint types and products always go along, so we can reproduce the fault.{{ end }}</p>
+</div>

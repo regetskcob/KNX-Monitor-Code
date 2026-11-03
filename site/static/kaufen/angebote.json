@@ -1,0 +1,6 @@
+[
+  {"id": "pro_yearly", "period": "yearly", "trialDays": 14, "price": "149,00 €", "priceEn": "€149.00", "paddlePriceId": ""},
+  {"id": "pro_monthly", "period": "monthly", "price": "14,99 €", "priceEn": "€14.99", "paddlePriceId": ""},
+  {"id": "plus_yearly", "period": "yearly", "price": "24,99 €", "priceEn": "€24.99", "paddlePriceId": ""},
+  {"id": "plus_lifetime", "period": "lifetime", "price": "79,00 €", "priceEn": "€79.00", "paddlePriceId": ""}
+]

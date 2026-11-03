@@ -1,0 +1,12 @@
+# "Access via cable" switch in the app: the server stores the choice as a
+# file, knx-box-lan.service applies it to the firewall.
+[Unit]
+Description=KNX Monitor Box: Wahl zum Zugriff über das Kabel beobachten
+After=knx-box-data.service
+
+[Path]
+PathChanged=/var/lib/knx-box/lan-access
+Unit=knx-box-lan.service
+
+[Install]
+WantedBy=multi-user.target

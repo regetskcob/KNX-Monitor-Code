@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>KNX Monitor · KNX-Box direkt an der Linie</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="pages.css">
+<style>
+  /* Nur hier: Anleitungsschritte, Warnhinweis und die gezeichneten Maße. */
+  :root { --warn: #B3261E; --warn-tint: #FBE9E7; }
+  figure svg { display: block; width: 100%; }
+  .warn { background: var(--warn-tint); border-color: var(--warn); }
+  .warn h3 { color: var(--warn); }
+  .legend { grid-template-columns: 1fr 1fr 1fr; gap: 0 5mm; }
+  .legend div { font-size: 8pt; padding: 1.4mm 0; }
+  .legend b { display: inline; margin: 0 1.5mm 0 0; color: var(--accent-text); }
+  ol.howto { counter-reset: s; list-style: none; padding: 0; margin: 0; }
+  ol.howto li { counter-increment: s; position: relative; padding: 2.2mm 0 2.2mm 9mm; border-top: 0.6pt solid var(--line); font-size: 9pt; line-height: 1.45; }
+  ol.howto li:first-child { border-top: none; }
+  ol.howto li::before { content: counter(s, decimal-leading-zero); position: absolute; left: 0; top: 2.4mm; font: 600 8pt "Monaspace", monospace; color: var(--accent-text); letter-spacing: .06em; }
+  .cover .hero { margin-top: auto; margin-bottom: 6mm; }
+  svg text { font-family: "Monaspace", monospace; }
+  .board { fill: #F1F1EC; stroke: #8A8B84; stroke-width: .35; }
+  .part { fill: #E3E3DC; stroke: #8A8B84; stroke-width: .25; }
+  .hole { fill: #FAFAF7; stroke: #8A8B84; stroke-width: .25; }
+  .dim { stroke: #5C5E57; stroke-width: .2; fill: none; }
+  .lbl { font-size: 2.6px; fill: #5C5E57; }
+  .lbl-a { font-size: 2.6px; fill: #3E7516; font-weight: 600; }
+  .lbl-w { font-size: 2.6px; fill: #B3261E; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- 1 · Titel -->
+<section class="page cover" style="--p: .1">
+  <div class="lockup"><img src="img/icon.png" alt=""><span>KNX Monitor</span></div>
+  <p class="kennung">KNX-Box · Anleitung für Bastler · Weinzierl kBerry</p>
+  <h1>Die Box direkt an der Busleitung, ganz ohne IP-Gateway.</h1>
+  <p class="lead" style="max-width: 155mm">Die KNX-Box hängt per Netzwerkkabel am Gateway oder, seit Version 1.8.4, mit dem Aufsteckmodul KNX BAOS 838 kBerry von Weinzierl selbst an der Linie: kein Tunnelplatz, und ein Busmonitor, der auch Quittungen und Wiederholungen zeigt. Hier steht, wie das Modul auf den Raspberry Pi kommt und wie der Pi vorbereitet wird.</p>
+  <p><span class="badge">Vorschau · auf einem Raspberry Pi 4 am echten Bus geprüft</span></p>
+  <div class="horizon"></div>
+  <figure class="hero">
+    <svg id="topview" viewBox="-22 -16 128 86" style="width: 150mm; margin: 0 auto"></svg>
+    <figcaption>Raspberry Pi 4 bzw. 5 von oben, im Maßstab. Der kBerry steckt auf den Pins 1–26 und liegt über der Platine, die Busklemme zeigt zur microSD-Seite.</figcaption>
+  </figure>
+  <div class="folio"><span>KNX Monitor · knx-monitor.de/box · Vorschau</span><span>Stand 31.10.2026</span></div>
+</section>
+
+<!-- 2 · Warum und was -->
+<section class="page" style="--p: .2">
+  <p class="kennung"><span class="nr">02 —</span> Warum direkt am Bus</p>
+  <h2>Was ein Tunnel nie zeigt.</h2>
+  <p class="lead">Ein KNXnet/IP-Tunnel liefert nur Telegramme, die der Router durchlässt. Was auf der Leitung wirklich passiert, also wer quittiert, wer ablehnt und was wiederholt wird, sieht nur, wer selbst an der Leitung hängt.</p>
+
+  <div class="benefit" style="margin-bottom: 8mm">
+    <ul class="clean">
+      <li><b>Über IP</b>Netzwerkkabel zum Router oder Switch am Gateway; die Box belegt rund um die Uhr einen Tunnelplatz.</li>
+      <li><b>Nur Telegramme</b>Quittungen (ACK, NAK, BUSY) und Wiederholungen bleiben unsichtbar.</li>
+      <li><b>Pausieren</b>Braucht die ETS den letzten Platz am Gateway, muss die Box Pause machen.</li>
+    </ul>
+    <ul class="clean">
+      <li><b>Mit dem kBerry an der Linie</b>Busleitung direkt an die Klemme auf dem Modul, kein Gateway, kein Tunnelplatz.</li>
+      <li><b>Busmonitor</b>mit Quittungen und Wiederholungen, wie ihn sonst nur ein eigener Buszugang liefert.</li>
+      <li><b>Ohne ETS</b>Zum Mithören braucht die Box keine physikalische Adresse und keine Programmierung.</li>
+    </ul>
+  </div>
+
+  <p class="kennung">Das Modul</p>
+  <p class="small" style="margin-bottom: 4mm">Der kBerry ist eine kleine Platine mit eigenem, zertifiziertem KNX-Stack. Er spricht mit dem Pi über dessen seriellen Anschluss (UART) an der Stiftleiste; Bus und Pi sind dabei galvanisch getrennt. Eine Platine mit dem einfacheren TP-UART-Baustein gibt es für die Stiftleiste derzeit nicht offiziell zu kaufen.</p>
+  <div class="facts">
+    <div><b>Modell</b>KNX BAOS Module 838 kBerry, Weinzierl, Art.-Nr. 5208</div>
+    <div><b>Größe</b>56 × 35 mm, 8 mm hoch ohne Stecker, keine Befestigungslöcher</div>
+    <div><b>Anschluss Pi</b>26-polige Buchsenleiste auf den Pins 1–26: 3,3 V, GND, TXD, RXD</div>
+    <div><b>Anschluss Bus</b>KNX-Steckklemme rot/schwarz auf dem Modul</div>
+    <div><b>Versorgung</b>Busseite aus dem Bus (3 mA), Pi-Seite 3,3 V vom Pi; der Pi braucht sein eigenes Netzteil</div>
+    <div><b>Trennung</b>galvanisch getrennt zwischen Bus und Pi, SELV 29 V</div>
+    <div><b>Protokoll</b>UART 19200 oder 115200 Baud, 8E1, FT1.2-Rahmen mit cEMI</div>
+    <div><b>Busmonitor</b>laut Hersteller-Handbuch alle Telegramme einschließlich Quittungen</div>
+    <div><b>Umgebung</b>−5 bis +45 °C, nicht kondensierend</div>
+    <div><b>ETS</b>generischer Eintrag mit 1000 Gruppenobjekten, ETS 4, 5 und 6; für die Box nicht nötig</div>
+  </div>
+  <p class="small muted" style="margin-top: auto">Quellen: Beiblatt zum Modul (Stand 2025-01-23) und „KNX BAOS Starter Kit User's Guide“ von Weinzierl Engineering (weinzierl.de), Raspberry-Pi-Dokumentation „Configure UARTs“.</p>
+  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>2</span></div>
+</section>
+
+<!-- 3 · Aufstecken -->
+<section class="page" style="--p: .3">
+  <p class="kennung"><span class="nr">03 —</span> Aufstecken</p>
+  <h2>Pins 1–26, bündig am Pin-1-Ende.</h2>
+  <p class="lead">Die 40-polige Stiftleiste von Pi 4 und Pi 5 ist gleich belegt. Der kBerry nutzt nur den Teil zum Pin-1-Ende hin, die Pins 27–40 bleiben frei. Richtig gesteckt liegt die Platine über dem Pi, nicht daneben.</p>
+
+  <figure style="margin: 0 0 6mm">
+    <svg id="header" viewBox="-4 -24 130 58"></svg>
+    <figcaption>Stiftleiste von oben, Rand der Platine oben. Grün: vom kBerry belegt. Rot: 5 V, dort darf die VCC-Buchse des Moduls nie landen.</figcaption>
+  </figure>
+
+  <div class="grid2" style="grid-template-columns: 1.45fr 1fr; gap: 8mm; align-items: start">
+    <ol class="howto">
+      <li><b>Pi ausschalten und vom Strom trennen.</b> Die Busleitung kommt erst ganz am Ende dran.</li>
+      <li><b>Pin 1 am Pi finden:</b> das Ende der Stiftleiste weg von USB und LAN, in der inneren Reihe zur Platinenmitte. Auf der Unterseite hat Pin 1 ein eckiges Lötpad.</li>
+      <li><b>Pin 1 am kBerry finden:</b> neben der Buchsenleiste stehen „VCC“ und, eine Reihe weiter am Rand, „GND ↓ ↑“.</li>
+      <li><b>Aufstecken:</b> Buchse auf die Pins 1–26, bündig am Pin-1-Ende, gerade und ganz hinunter. Das Modul zeigt zur Vorderkante mit Strom und HDMI, die Busklemme zur microSD-Seite.</li>
+      <li><b>Kontrollieren:</b> Alle 26 Buchsen sitzen auf Stiften, neben dem Modul sind sieben Stiftpaare frei, das Modul liegt über dem Pi.</li>
+      <li><b>Busleitung anschließen:</b> rot an +, schwarz bzw. grau an −. Busspannung an, die Power-LED am Modul leuchtet.</li>
+      <li><b>Pi einschalten.</b> Den Pi vorher vorbereiten (nächste Seite), sonst landen Bootmeldungen im Modul.</li>
+    </ol>
+    <div>
+      <div class="card warn" style="margin-bottom: 5mm">
+        <h3>Um eine Reihe versetzt</h3>
+        <p class="small" style="margin: 0">liegt die VCC-Buchse des Moduls auf Pin 2 mit 5 V statt auf Pin 1 mit 3,3 V. Ragt das Modul über die Platinenkante hinaus, ist es um 180° gedreht. In beiden Fällen sofort ausschalten.</p>
+      </div>
+      <div class="card">
+        <h3>Im Gehäuse</h3>
+        <p class="small" style="margin: 0">Der kBerry hält nur an der Stiftleiste. Im kBerry-Gehäuse stützt ihn vorne eine gedruckte Modulbrücke über die ganze Breite (Seite 6 bis 8). Beim Pi 5 sitzt er über dem Active Cooler, der darunter nicht passt.</p>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>3</span></div>
+</section>
+
+<!-- 4 · Pi vorbereiten -->
+<section class="page" style="--p: .4">
+  <p class="kennung"><span class="nr">04 —</span> Raspberry Pi vorbereiten</p>
+  <h2>Den seriellen Anschluss für das Modul freimachen.</h2>
+  <p class="lead">Ab Werk liegt auf GPIO 14 und 15 beim Pi 4 Bluetooth bzw. die schwache Mini-UART, beim Pi 5 gar nichts, und der Pi schreibt Bootmeldungen auf die serielle Konsole. Das Box-Image stellt das selbst um; diese Seite gilt für eigene Versuche auf Raspberry Pi OS.</p>
+
+  <table style="margin: 0 0 6mm">
+    <tr><th></th><th>Raspberry Pi 4</th><th>Raspberry Pi 5</th></tr>
+    <tr><td>Ab Werk</td><td>Mini-UART auf GPIO 14/15, der volle UART gehört Bluetooth</td><td>UART auf GPIO 14/15 aus, Konsole am eigenen Debug-Stecker</td></tr>
+    <tr><td>Einstellung</td><td><code>dtoverlay=disable-bt</code>, Dienst <code>hciuart</code> aus</td><td><code>dtoverlay=uart0-pi5</code></td></tr>
+    <tr><td>Gerät</td><td><code>/dev/ttyAMA0</code></td><td><code>/dev/ttyAMA0</code></td></tr>
+    <tr><td>Achtung</td><td>Mini-UART kann keine Parität, für das Modul ungeeignet</td><td><b>kein</b> <code>enable_uart=1</code>: sonst gehen Kernel-Meldungen an das Modul</td></tr>
+  </table>
+
+  <div class="grid2" style="gap: 7mm; align-items: start">
+    <div>
+      <h3>1 · config.txt</h3>
+      <p class="small muted">Eine Datei für beide Modelle, die Abschnitte gelten je nach Pi.</p>
+<pre><span class="c"># /boot/firmware/config.txt (am Ende)</span>
+<span class="k">[pi4]</span>
+dtoverlay=disable-bt
+<span class="k">[pi5]</span>
+dtoverlay=uart0-pi5
+<span class="k">[all]</span></pre>
+      <h3 style="margin-top: 5mm">2 · Konsole und Bluetooth</h3>
+<pre><span class="c"># Login-Konsole über serial aus, Port an</span>
+sudo raspi-config nonint do_serial_cons 1
+<span class="c"># nur Pi 4</span>
+sudo systemctl disable hciuart
+sudo reboot</pre>
+    </div>
+    <div>
+      <h3>3 · Prüfen</h3>
+<pre><span class="c"># kein console=serial0 mehr</span>
+cat /proc/cmdline
+<span class="c"># Gerät da, Gruppe dialout</span>
+ls -l /dev/ttyAMA0
+<span class="c"># eigener Benutzer darf zugreifen</span>
+sudo usermod -aG dialout $USER</pre>
+      <h3 style="margin-top: 5mm">4 · Leitung testen, ohne Modul</h3>
+      <p class="small">Pi aus, Pin 8 und Pin 10 mit einer Steckbrücke verbinden, Pi an. Was man tippt, muss zurückkommen:</p>
+<pre>sudo apt install picocom
+picocom -b 19200 -y e /dev/ttyAMA0</pre>
+      <p class="small muted" style="margin-top: 2mm">Beenden mit Strg+A, Strg+X. Danach Brücke ab, Modul aufstecken.</p>
+    </div>
+  </div>
+  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>4</span></div>
+</section>
+
+<!-- 5 · Stand -->
+<section class="page" style="--p: .5">
+  <p class="kennung"><span class="nr">05 —</span> Erster Test und Stand</p>
+  <h2>Was geprüft ist und was noch offen ist.</h2>
+  <p class="lead">Das Box-Image bringt eine Prüfung mit: In der App unter Box-Einstellungen → KNX-HAT fährt die Box die Schritte unten ab und zeigt, was das Modul antwortet.</p>
+
+  <div class="steps">
+    <div class="step"><p class="n">01 · LEITUNG</p><p class="small">Gerät da, Konsole aus; mit Steckbrücke zwischen Pin 8 und 10 kommt das Echo zurück.</p></div>
+    <div class="step"><p class="n">02 · MODUL</p><p class="small">Busspannung an, Power-LED leuchtet, das Modul antwortet auf einen FT1.2-Reset.</p></div>
+    <div class="step"><p class="n">03 · TELEGRAMME</p><p class="small">Im Link-Layer-Modus kommen die Telegramme eines Tasters an.</p></div>
+    <div class="step"><p class="n">04 · BUSMONITOR</p><p class="small">Im Busmonitor-Modus erscheinen zusätzlich ACK, NAK und Wiederholungen.</p></div>
+  </div>
+
+  <div class="facts" style="margin-bottom: 7mm">
+    <div><b>Laut Hersteller</b>FT1.2 mit cEMI, 19200 Baud 8E1, umschaltbar auf 115200</div>
+    <div><b>Geprüft</b>Pi 4 am echten Bus: Der Busmonitor liefert Quittungen, Senden im Link Layer klappt</div>
+    <div><b>Busmonitor</b>Ob der Modus vorhanden ist, meldet das Modul selbst (cEMI PID 64)</div>
+    <div><b>Noch offen</b>Pi 5, Dauerbetrieb, Ausfall der Busspannung, einzelne Lücken im Busmonitor</div>
+    <div><b>Versorgung</b>aus dem Bus; ohne Busspannung antwortet das Modul nicht</div>
+    <div><b>Noch offen</b>Reicht 19200 Baud bei hoher Buslast, klappt 115200?</div>
+  </div>
+
+  <div class="grid2" style="gap: 8mm">
+    <div>
+      <h3>Erfahrungen anderer</h3>
+      <p class="small">In Foren läuft der kBerry meist mit knxd oder Calimero, vor allem an Pi 3 und 4. Die häufigsten Fehler: Busleitung falsch an der Klemme, serielle Konsole oder Bluetooth noch auf dem Anschluss, und ein Modul, das sich erst nach dem Aus- und Einschalten von Pi und Busnetzteil wieder meldet.</p>
+    </div>
+    <div class="card tint">
+      <h3>Mitmachen</h3>
+      <p class="small" style="margin: 0">Wer schon einen kBerry hat und mittesten mag: Erfahrungen, Fotos und den kopierten Prüfbericht gern im öffentlichen Issue zum direkten Busanschluss, <span class="mono">github.com/regetskcob/KNX-Monitor/issues/1</span>.</p>
+    </div>
+  </div>
+
+  <p class="small muted" style="margin-top: auto">Alle Angaben ohne Gewähr, am Bus bisher nur auf einem Pi 4 geprüft. Arbeiten an der KNX-Anlage nur mit Fachkenntnis; Busleitung und Netzspannung im Verteiler sicher trennen. Der kBerry ist ein Produkt der Weinzierl Engineering GmbH; KNX Monitor ist unabhängig davon. knx-monitor.de/box</p>
+  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>5</span></div>
+</section>
+
+<!-- 6 · Gehäuse -->
+<section class="page" style="--p: .6">
+  <p class="kennung"><span class="nr">06 —</span> Gehäuse</p>
+  <h2>Ein schlankes Gehäuse, das den kBerry trägt.</h2>
+  <p class="lead">Der schlanke Deckel macht die Box nur 29,5 mm hoch; die Busklemme steht gut 2 mm oben heraus. Eine Schürze umschließt die Klemme, hält Staub ab und stützt das Modul, wenn man die Klemme abzieht. Vorne trägt eine gedruckte Modulbrücke den kBerry.</p>
+
+  <p class="kennung" style="margin-top: 2mm">Schritt 1 · Einschmelzgewinde setzen</p>
+  <figure style="margin: 0 0 3mm">
+    <svg id="step1" viewBox="250 40 2190 700" style="width: 170mm"></svg>
+  </figure>
+  <div class="facts legend" style="grid-template-columns: 1fr 1fr; margin-bottom: 4mm"><div><b>A</b>Boden, Unterseite liegt auf</div><div><b>B</b>4× Einschmelzgewinde M2.5 × 4 in die Dome (Bohrung Ø 3,4)</div><div><b>C</b>Schlanker Deckel, umgedreht, Oberseite liegt auf</div><div><b>D</b>4× Einschmelzgewinde M3 × 4 in die Ecksäulen (Bohrung Ø 4,5)</div></div>
+  <p class="small">Boden und Deckel liegen auf ihrer geschlossenen Seite, der Deckel also umgedreht. Die Einsätze mit dem Lötkolben von oben bündig einschmelzen und abkühlen lassen. Die Bohrungen (M2.5: Ø 3,4, M3: Ø 4,5) sind per Stufenprobe bestimmt und gelten für <b>0,2 mm Schichthöhe</b>; mit 0,28 mm fallen sie zu eng aus.</p>
+
+  <div class="facts" style="margin-top: 5mm">
+    <div><b>Druckteile</b>Boden (oder Boden für die Hutschiene mit Clip), schlanker Deckel, Modulbrücke; optional USB-Abdeckung</div>
+    <div><b>Passproben</b>Stufenprobe für die Einschmelzgewinde, Deckel-Passprobe (dünne Platte mit Schürze und Stiftloch)</div>
+    <div><b>Einschmelzgewinde</b>CNC Kitchen: 4× M2.5 × 4, 4× M3 × 4</div>
+    <div><b>Schrauben</b>2× M2.5 × 6, 2× M2.5 × 16, 4× M3 × 8 Zylinderkopf (ISO 4762)</div>
+    <div><b>Material</b>PETG oder ASA, <b style="display:inline;font:inherit;font-weight:600;color:var(--text);text-transform:none;letter-spacing:0">bei 0,2 mm Schichthöhe drucken</b>, 4–5 Perimeter, ohne Stützen</div>
+    <div><b>Maße</b>100 × 69 × 29,5 mm; passt für Pi 3B, 3B+, 4B und 5</div>
+  </div>
+  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>6</span></div>
+</section>
+
+<!-- 7 · Montage, Zeichnung -->
+<section class="page" style="--p: .7">
+  <p class="kennung"><span class="nr">07 —</span> Schritt 2 · Montage</p>
+  <h2>Alles an seinem Platz.</h2>
+  <figure style="margin: 0 0 4mm">
+    <svg id="step2" viewBox="330 60 2340 1900" style="width: 160mm; margin: 0 auto"></svg>
+    <figcaption>Nummern in Montagereihenfolge, die Einschmelzgewinde sitzen schon. Die Einsatzbohrungen sind am Druck bestimmt, das vollständige Gehäuse bleibt Vorschau.</figcaption>
+  </figure>
+  <div class="facts legend"><div><b>01</b>Boden</div><div><b>02</b>Einschmelzgewinde M2.5 (aus Schritt 1)</div><div><b>03</b>Raspberry Pi 3B, 3B+, 4B oder 5</div><div><b>04</b>2× M2.5 × 6, Pi hinten</div><div><b>05</b>Modulbrücke (gedruckt)</div><div><b>06</b>2× M2.5 × 16 durch Brücke und Pi</div><div><b>07</b>Weinzierl KNX BAOS 838 kBerry</div><div><b>08</b>Buchsenleiste auf GPIO-Pins 1–26</div><div><b>09</b>KNX-Busklemme, rot vorne, grau hinten</div><div><b>10</b>Schlanker Deckel mit Schürze um die Klemme</div><div><b>11</b>Stiftloch über der Programmiertaste</div><div><b>12</b>4× M3 × 8 Zylinderkopf von unten</div><div><b>13</b>Klemmenöffnung mit Aderkanal nach links</div><div><b>14</b>USB-Abdeckung (optional)</div></div>
+  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>7</span></div>
+</section>
+
+<!-- 8 · Montage, Schritte -->
+<section class="page" style="--p: .8">
+  <p class="kennung"><span class="nr">08 —</span> Montage</p>
+  <h2>Schritt für Schritt zusammengebaut.</h2>
+  <p class="lead">Alle Schrauben greifen in Einschmelzgewinde, das Gehäuse lässt sich also beliebig oft öffnen. Die Busklemme zieht man bei geschlossenem Deckel nach oben ab.</p>
+
+  <div class="grid2" style="grid-template-columns: 1.35fr 1fr; gap: 8mm; align-items: start">
+    <ol class="howto">
+      <li><b>Einschmelzgewinde</b> wie in Schritt 1 setzen: 4× M2.5 × 4 in den Boden (Ø 3,4), 4× M3 × 4 in den Deckel (Ø 4,5).</li>
+      <li><b>Pi</b> auf die Dome legen und hinten mit 2× M2.5 × 6 festschrauben (03, 04). Optional vorher flache Kühlkörper bis 8 mm Höhe auf SoC und RAM.</li>
+      <li><b>Modulbrücke</b> auf die beiden vorderen Pi-Löcher setzen, 2× M2.5 × 16 durch Brücke und Pi in die Einsätze (05, 06).</li>
+      <li><b>Gummipunkt</b> unter dem vorderen Ende des kBerry entfernen; die Brücke stützt das Modul.</li>
+      <li><b>kBerry</b> auf die GPIO-Pins 1–26 stecken wie auf Seite 3, Busklemme aufstecken (07–09).</li>
+      <li><b>Deckel</b> aufsetzen, die Schürze umschließt die Klemme; 4× M3 × 8 von unten durch die Ecken des Bodens (10, 12).</li>
+      <li><b>Busleitung</b> durch den Aderkanal links an die Klemme (13).</li>
+      <li><b>USB-Abdeckung (optional)</b> mit den Zapfen in die USB-Buchsen stecken, Griffmulde zur RJ45-Buchse; beim Pi 3 und 5 um 180° gedreht (14).</li>
+    </ol>
+    <div>
+      <div class="card tint" style="margin-bottom: 5mm">
+        <h3>Erst die Passproben</h3>
+        <p class="small" style="margin: 0">Zuerst die Stufenprobe drucken und Einsätze einschmelzen: Halten sie in Ø 3,4 bzw. Ø 4,5, ohne durchzufallen oder zu klemmen? Dann die Deckel-Passprobe allein an die rechten Pi-Löcher schrauben (sie belegt wie die Brücke das vordere rechte Loch): Liegt die Klemme mittig in der Schürze, trifft das Stiftloch die Taste? Danach die Brücke.</p>
+      </div>
+      <div class="card">
+        <h3>USB-Abdeckung</h3>
+        <p class="small" style="margin: 0">Optionales Zubehör: schließt das rechte Fenster vor den USB-Buchsen, die Netzwerkbuchse bleibt frei. Vier Zapfen stecken etwa 6 mm tief in den Buchsen; zum Abziehen an der Griffmulde schräg herausziehen. Am Pi noch nicht getestet.</p>
+      </div>
+      <figure style="margin-top: 5mm">
+        <img src="img/case-angeschlossen.png" alt="Geschlossenes Gehäuse mit angeschlossener KNX-Busleitung" style="border: none; border-radius: 0">
+        <figcaption>Fertig angeschlossen: rote Ader (+) an Rot, schwarze (−) an Grau, durch den Aderkanal nach links; auch eine durchgeschleifte zweite Leitung passt.</figcaption>
+      </figure>
+    </div>
+  </div>
+  <p class="small muted" style="margin-top: auto">Die Status-LEDs sind bei geschlossenem Deckel nicht sichtbar, die Programmiertaste erreicht man mit einem Stift. Der Active Cooler des Pi 5 passt unter dem kBerry nicht. Beim Pi 5 sind Power-Taster und PCIe-Anschluss bei geschlossenem Gehäuse nicht erreichbar.</p>
+  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>8</span></div>
+</section>
+
+<!-- 9 · Hutschiene -->
+<section class="page" style="--p: .9">
+  <p class="kennung"><span class="nr">09 —</span> Optional · Montage im Verteiler</p>
+  <h2>Auf die Hutschiene geklickt.</h2>
+  <p class="lead">Für den Verteiler gibt es einen zweiten Boden mit Aufnahme für TS35-Hutschienen und einen gefederten Clip, der unten angeschraubt wird. Deckel, Modulbrücke und Montage bleiben gleich.</p>
+  <div class="grid2" style="grid-template-columns: 1fr 1.05fr; gap: 8mm; align-items: start">
+    <div>
+    <figure style="margin: 0">
+      <img src="img/case-hutschiene.png" alt="Geschlossenes Gehäuse auf einer TS35-Hutschiene mit angeschlossener Busleitung" style="border: none; border-radius: 0">
+      <figcaption>Hochkant auf der Schiene: KNX-Leitung oben, LAN und USB unten.</figcaption>
+    </figure>
+    <div class="facts" style="grid-template-columns: 1fr; margin-top: 4mm">
+      <div><b>Breite auf der Schiene</b>69 mm, etwa 4 Teilungseinheiten</div>
+      <div><b>Bautiefe</b>Box 32,5 mm hoch (Boden 3 mm dicker), mit Schiene etwa 40 mm</div>
+      <div><b>Zusätzlich nur für die Hutschiene</b>2× Einschmelzgewinde M3 × 4, 2× Schraube M3 × 6 ISO&nbsp;7380</div>
+      <div><b>Anschlüsse</b>USB-C und HDMI liegen seitlich: Winkelstecker verwenden oder Abstand zum Nachbargerät lassen</div>
+    </div>
+    </div>
+    <div>
+      <ol class="howto">
+        <li><b>Drucken:</b> Boden <span class="mono">knx-box-case-base-din-rail.stl</span> statt des normalen, Unterseite aufs Bett. Dazu den Clip <span class="mono">knx-box-case-din-rail-clip-1.stl</span> (empfohlen), Druck und Varianten siehe Seite 10. Beide ohne Stützen, 0,2 mm Schichthöhe; im Slicer keine Stützen erzwingen.</li>
+        <li><b>Clip montieren</b> wie auf Seite 10: zwei Einschmelzgewinde M3 in den Boden, Clip unten (LAN-Seite) einlegen und mit 2× M3 × 6 ISO&nbsp;7380 anschrauben.</li>
+        <li><b>Zusammenbauen</b> wie auf Seite 8; die Deckelschrauben bleiben M3 × 8.</li>
+        <li><b>Aufsetzen:</b> oben in die Schiene einhängen, unten andrücken, bis die Feder einrastet.</li>
+        <li><b>Abnehmen:</b> einen Schraubendreher unten in das Loch des Lösehebels stecken und nach außen ziehen; die Box kippt oben aus der Schiene.</li>
+      </ol>
+    </div>
+  </div>
+  <div class="card warn" style="margin-top: 6mm">
+    <h3>Vorschau</h3>
+    <p class="small" style="margin: 0">Hutschienen-Boden und Clip sind nur am Modell gegen ein TS35-Profil geprüft, erst teilweise am Druck. Beim Clip ist Variante · gewählt, sie wird noch nachgebessert. Im Verteiler gelten die üblichen Regeln: Busleitung und Netzspannung sicher trennen, für den Pi ein Netzteil mit sicherer Trennung, Arbeiten nur mit Fachkenntnis.</p>
+  </div>
+  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>9</span></div>
+</section>
+
+<!-- 10 · Hutschienen-Clip -->
+<section class="page" style="--p: 1">
+  <p class="kennung"><span class="nr">10 —</span> Optional · Clip montieren</p>
+  <h2>Der Clip wird angeschraubt.</h2>
+  <p class="lead">Ein steifer Riegel mit der Rastnase hängt an zwei Mäanderfedern und weicht beim Einrasten als Ganzes aus. Zwei Schrauben halten den Clip unten im Boden.</p>
+  <figure style="margin: 0 0 3mm">
+    <svg id="step3" viewBox="330 180 2600 1440" style="width: 150mm; margin: 0 auto"></svg>
+    <figcaption>Boden mit der Unterseite nach oben, gezeigt ist Variante ··; empfohlen ist Variante · (clip-1), Aufbau und Montage sind gleich.</figcaption>
+  </figure>
+  <div class="facts legend" style="grid-template-columns: 1fr 1fr; margin-bottom: 4mm"><div><b>01</b>Boden für die Hutschiene, Unterseite oben</div><div><b>02</b>Aufnahme Hutschiene TS35</div><div><b>03</b>Feste Lippe, kommt zuerst in die Schiene</div><div><b>04</b>Clip-Tasche mit 2 Domen</div><div><b>05</b>2× Einschmelzgewinde M3 × 4</div><div><b>06</b>Riegel-Clip (gedruckt), Senkungen außen</div><div><b>07</b>Mäanderfedern</div><div><b>08</b>Rastlippe mit Einführschräge</div><div><b>09</b>Lösehebel mit Schraubendreher-Loch</div><div><b>10</b>Punkte = Federstärke (·, ··, ···)</div><div><b>11</b>2× M3 × 6 Flach- bzw. Linsenkopf (ISO&nbsp;7380)</div></div>
+  <ol class="howto">
+    <li><b>Drucken:</b> flach, Senkungen und Punkte aufs Bett, mindestens 2 Wandlinien, 100 % Füllung, ohne Stützen. Die Federn biegen sich in der Schichtebene.</li>
+    <li><b>Einsätze:</b> Boden mit der Unterseite nach oben, zwei Einschmelzgewinde M3 (Ø&nbsp;4,5) bündig in die Dome der Clip-Tasche.</li>
+    <li><b>Einlegen:</b> Clip mit Senkungen und Punkten nach außen, Rastlippe zur Schienennut, Lösehebel zur LAN-Seite.</li>
+    <li><b>Anschrauben:</b> die zwei M3 × 6 festziehen, dann weiter wie gewohnt nach Seite 7 und 8.</li>
+  </ol>
+  <div class="facts" style="grid-template-columns: 1fr 1fr 1fr; margin-top: 4mm">
+    <div><b>Variante · (clip-1), empfohlen</b>Stege 1,2 mm, ca. 5 N, am steifsten</div>
+    <div><b>Variante ·· (clip-2)</b>Stege 1,0 mm, ca. 3 N</div>
+    <div><b>Variante ··· (clip-3)</b>5 Stege 0,8 mm, ca. 1,3 N, am weichsten</div>
+  </div>
+  <p class="small" style="margin-top: 2mm">Empfohlen ist Variante · (clip-1): Sie hat sich im Drucktest durchgesetzt und wird noch nachgebessert. Die weicheren Varianten ·· und ··· bleiben vorerst als Testvarianten dabei. Die Kräfte sind grobe Schätzungen für PLA, mit PETG etwa 40 % niedriger. </p>
+  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>10</span></div>
+</section>
+
+<script>
+// Zeichnungen in Millimetern. Pi 4/5: 85 × 56 mm, Stiftleiste mittig bei
+// x = 32,5 mm, Reihen 3,5 mm ± 1,27 mm von der Rückkante. kBerry nach der
+// Maßzeichnung im Weinzierl-Handbuch (S. 77/79): 35,2 × 56 mm, erste
+// Stiftspalte 2,36 mm vom Rand, Busklemme 1–12 mm vom Rand, 30–43 mm von der
+// Stiftleisten-Kante.
+const NS = 'http://www.w3.org/2000/svg';
+function el(parent, name, attrs, text) {
+  const e = document.createElementNS(NS, name);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (text != null) e.textContent = text;
+  parent.appendChild(e);
+  return e;
+}
+const pinX = n => 8.37 + 2.54 * Math.floor((n - 1) / 2);
+const pinY = n => (n % 2 ? 4.77 : 2.23);
+
+// Pi von oben mit kBerry
+(() => {
+  const s = document.getElementById('topview');
+  el(s, 'rect', { x: 0, y: 0, width: 85, height: 56, rx: 3, class: 'board' });
+  for (const [x, y] of [[3.5, 3.5], [61.5, 3.5], [3.5, 52.5], [61.5, 52.5]]) el(s, 'circle', { cx: x, cy: y, r: 1.4, class: 'hole' });
+  // USB und LAN rechts, Strom und HDMI vorn, microSD links unten
+  el(s, 'rect', { x: 68, y: 2, width: 19, height: 14, class: 'part' });
+  el(s, 'rect', { x: 68, y: 20, width: 19, height: 14, class: 'part' });
+  el(s, 'rect', { x: 66, y: 38, width: 21, height: 16, class: 'part' });
+  el(s, 'text', { x: 89, y: 10, class: 'lbl' }, 'USB');
+  el(s, 'text', { x: 89, y: 28, class: 'lbl' }, 'USB');
+  el(s, 'text', { x: 89, y: 47, class: 'lbl' }, 'LAN');
+  for (const [x, w] of [[7.5, 9], [21.5, 7], [35, 7]]) el(s, 'rect', { x, y: 50.5, width: w, height: 7, class: 'part' });
+  el(s, 'text', { x: 7.5, y: 62.5, class: 'lbl' }, 'Strom · HDMI (vorn)');
+  el(s, 'rect', { x: -2.5, y: 22, width: 12, height: 11, class: 'part', 'stroke-dasharray': '1 .7', fill: 'none' });
+  el(s, 'text', { x: -21, y: 29, class: 'lbl' }, 'microSD');
+  // Stiftleiste
+  el(s, 'rect', { x: 7.1, y: 0.96, width: 50.8, height: 5.08, rx: .4, fill: '#1B1C19', opacity: .12 });
+  for (let n = 1; n <= 40; n++) el(s, 'circle', { cx: pinX(n), cy: pinY(n), r: .55, fill: n <= 26 ? '#437F18' : '#85877F' });
+  // kBerry
+  el(s, 'rect', { x: 6.01, y: -0.5, width: 35.2, height: 56, rx: .8, fill: '#E8F2DC', 'fill-opacity': .75, stroke: '#437F18', 'stroke-width': .45 });
+  for (let n = 1; n <= 26; n++) el(s, 'circle', { cx: pinX(n), cy: pinY(n), r: .55, fill: '#437F18' });
+  el(s, 'text', { x: 23.6, y: 20, class: 'lbl-a', 'text-anchor': 'middle', 'font-size': 3.4 }, 'kBerry');
+  el(s, 'text', { x: 23.6, y: 24, class: 'lbl', 'text-anchor': 'middle' }, '35 × 56 mm');
+  // Busklemme mit Leitung nach links
+  el(s, 'rect', { x: 7, y: 29.5, width: 11, height: 6.5, fill: '#5C5E57' });
+  el(s, 'rect', { x: 7, y: 36, width: 11, height: 6.5, fill: '#C62828' });
+  el(s, 'path', { d: 'M7 32.7 C 0 32.7, -4 34, -12 34 M7 39.2 C 0 39.2, -4 38, -12 38', stroke: '#1B1C19', 'stroke-width': .9, fill: 'none' });
+  el(s, 'text', { x: -21, y: 42.5, class: 'lbl' }, 'Busleitung');
+  el(s, 'text', { x: 19.5, y: 36.8, class: 'lbl' }, 'KNX −/+');
+  // Pin 1 und Maße
+  el(s, 'path', { d: 'M8.37 4.77 L 2 -8', class: 'dim' });
+  el(s, 'text', { x: -4, y: -9.5, class: 'lbl-a' }, 'Pin 1');
+  el(s, 'path', { d: 'M41.39 -1 L 46 -8', class: 'dim' });
+  el(s, 'text', { x: 44, y: -9.5, class: 'lbl' }, 'Pins 27–40 frei');
+  el(s, 'path', { d: 'M0 64.5 h85 M0 63 v3 M85 63 v3', class: 'dim' });
+  el(s, 'text', { x: 60, y: 68.5, class: 'lbl', 'text-anchor': 'middle' }, '85 mm');
+})();
+
+// Stiftleiste vergrößert: Pins 1–32, Rand oben (gerade Nummern), Mitte unten
+(() => {
+  const s = document.getElementById('header');
+  const k = 7.2, x0 = 6, yTop = 0, yBot = 9;
+  const role = { 1: ['3,3 V', 'VCC', 'a'], 2: ['5 V', '', 'w'], 4: ['5 V', '', 'w'], 6: ['GND', 'GND', 'a'], 8: ['TXD', '→ RX', 'a'], 10: ['RXD', '← TX', 'a'] };
+  el(s, 'rect', { x: x0 - 4, y: -4, width: 13 * k + 0.8, height: 17, rx: 1.5, fill: '#E8F2DC', stroke: '#437F18', 'stroke-width': .4 });
+  el(s, 'rect', { x: x0 - 4 + 13 * k + 0.8, y: -4, width: 3 * k, height: 17, rx: 1.5, fill: '#F1F1EC', stroke: '#8A8B84', 'stroke-width': .3, 'stroke-dasharray': '1 .7' });
+  for (let n = 1; n <= 32; n++) {
+    const c = Math.floor((n - 1) / 2), x = x0 + c * k, y = n % 2 ? yBot : yTop;
+    const r = role[n], used = n <= 26;
+    el(s, 'circle', { cx: x, cy: y, r: 2.3, fill: r && r[2] === 'w' ? '#FBE9E7' : used ? '#FFFFFF' : '#FAFAF7', stroke: r ? (r[2] === 'w' ? '#B3261E' : '#437F18') : used ? '#8A8B84' : '#E3E3DC', 'stroke-width': r ? .7 : .35 });
+    el(s, 'text', { x, y: y + 1, 'text-anchor': 'middle', 'font-size': 2.6, fill: used ? '#1B1C19' : '#85877F', 'font-weight': r ? 600 : 400 }, n);
+  }
+  // Beschriftung der belegten Pins
+  const top = [[2, '5 V'], [6, 'GND'], [8, 'TXD → kBerry RX'], [10, 'RXD ← kBerry TX']];
+  for (const [n, t] of top) {
+    const x = x0 + Math.floor((n - 1) / 2) * k, w = role[n][2] === 'w';
+    el(s, 'path', { d: `M${x} -2.6 V${n === 8 ? -13 : n === 10 ? -8 : -8}`, stroke: w ? '#B3261E' : '#437F18', 'stroke-width': .3 });
+    el(s, 'text', { x: x + (n === 2 ? -3 : -2), y: n === 8 ? -14 : -9, class: w ? 'lbl-w' : 'lbl-a', 'font-size': 2.8 }, t);
+  }
+  el(s, 'path', { d: `M${x0} 11.4 V19`, stroke: '#437F18', 'stroke-width': .3 });
+  el(s, 'text', { x: x0 - 2, y: 22, class: 'lbl-a', 'font-size': 2.8 }, 'Pin 1 · 3,3 V → kBerry VCC');
+  el(s, 'text', { x: x0 + 13 * k - 2.5, y: 18, class: 'lbl', 'font-size': 2.6 }, '27–40 frei');
+  el(s, 'text', { x: x0 + 13 * k - 2.5, y: 22, class: 'lbl', 'font-size': 2.6 }, 'zu USB/LAN →');
+  el(s, 'text', { x: x0 - 4, y: -19, class: 'lbl', 'font-size': 2.6 }, 'Rand der Platine (äußere Reihe, gerade Nummern)');
+  el(s, 'text', { x: x0 - 4, y: 29, class: 'lbl', 'font-size': 2.6 }, 'zur Platinenmitte (innere Reihe, ungerade Nummern)');
+})();
+// Explosionszeichnungen aus 3d-design (Montage 0422084, Einsätze 33b6a93, Clip 2c4d28d) mit
+// Punkten an den Enden der Hinweislinien.
+function callouts(id, href, w, h, points, r) {
+  const s = document.getElementById(id);
+  el(s, 'image', { href, x: 0, y: 0, width: w, height: h });
+  for (const [n, x, y] of points) {
+    el(s, 'circle', { cx: x, cy: y, r, fill: '#437F18' });
+    el(s, 'text', { x, y: y + r * 0.36, 'text-anchor': 'middle', 'font-size': r, 'font-weight': 600, fill: '#FFFFFF' }, n);
+  }
+}
+callouts('step1', 'img/case-1-einsaetze.png', 2690, 860, [["A", 400, 393], ["B", 400, 198], ["C", 2290, 634], ["D", 2290, 408]], 30);
+callouts('step3', 'img/case-hutschiene-clip.png', 3250, 1780, [["01", 400, 1115], ["03", 400, 1185], ["02", 400, 1307], ["04", 400, 1377], ["11", 2850, 360], ["10", 2850, 599], ["08", 2850, 669], ["07", 2850, 739], ["06", 2850, 809], ["09", 2850, 879], ["05", 2850, 1050]], 34);
+callouts('step2', 'img/case-2-montage.png', 3000, 2280, [["01", 400, 1608], ["02", 2600, 1516], ["03", 400, 1352], ["04", 2600, 1213], ["05", 400, 1142], ["06", 400, 997], ["07", 2600, 916], ["08", 2600, 836], ["09", 400, 788], ["10", 2600, 383], ["11", 400, 343], ["12", 2600, 1897], ["13", 400, 269], ["14", 2600, 765]], 32);
+</script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# werkbank – shared build, release and screenshot steps of the app repos.
+#
+#   werkbank layout                    folder structure as in STANDARD.md
+#   werkbank verify [--quick]          layout, l10n, format, analyze, tests, then the
+#                                      project's verify_extra (skipped with --quick)
+#   werkbank version [name|build]      version from pubspec.yaml
+#   werkbank android [-- <flutter args>]
+#                                      signed AAB, checked against the debug key,
+#                                      copied to build/release/
+#   werkbank ios [--upload] [-- <flutter args>]
+#                                      IPA, copied to build/release/; --upload sends
+#                                      it to App Store Connect (API key)
+#   werkbank site <folder> <base URL> [blog <subfolder> [--push]]
+#                                      build a Hugo site into build/site/<folder>/,
+#                                      optionally copy it into the blog repository
+#   werkbank collect aab|apk|ipa <path> [variant]
+#                                      take a bundle built elsewhere (fastlane) into
+#                                      build/release/, AAB/APK checked like above
+#   werkbank symbols <platform>        keep build/symbols/<platform> outside the repo
+#   werkbank sim <name> <device type> <runtime>
+#                                      find or create the simulator, boot it, print
+#                                      its UDID (e.g. "Store iPhone 6.9"
+#                                      com.apple.CoreSimulator.SimDeviceType.iPhone-16-Pro-Max iOS)
+#   werkbank doctor                    which tools and keys are there
+#
+# Works from any directory: a copy in tool/werkbank/ always acts on its own
+# project. Project settings come from
+# tool/werkbank.conf (a bash file, see STANDARD.md); tool/werkbank/ itself is a
+# copy of the werkbank repository and is never edited in the project.
+set -euo pipefail
+
+# shellcheck source-path=SCRIPTDIR/..
+# shellcheck source=lib/common.sh
+. "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
+
+wb_enter_repo
+wb_load_conf
+
+cmd="${1:-}"
+[ $# -gt 0 ] && shift
+case "$cmd" in
+  layout) wb_layout ;;
+  verify) wb_verify "$@" ;;
+  version) wb_version "${1:-}" ;;
+  android) wb_android "$@" ;;
+  ios) wb_ios "$@" ;;
+  collect) wb_collect "$@" ;;
+  symbols) wb_symbols "${1:?platform}" ;;
+  site)
+    out=$(wb_site_build "${1:?site folder}" "${2:?base URL}")
+    say "Built $out"
+    if [ "${3:-}" = blog ]; then wb_site_blog "$out" "${4:?folder below static/}" "${@:5}"; fi
+    ;;
+  sim) wb_sim "$@" ;;
+  doctor) wb_doctor ;;
+  *) sed -n '2,30p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac

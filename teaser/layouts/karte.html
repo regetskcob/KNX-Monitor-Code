@@ -1,0 +1,13 @@
+{{- /*
+  /karte/: the Flurkarte of knx-monitor.de as a page, where the mark of the
+  horizon line leads without JavaScript. Only this site's own fields.
+*/ -}}
+{{- $body := printf `<article class="knx-page">
+  <header class="knx-page-head">
+    %s
+    <h1 class="t-display">%s</h1>
+  </header>
+  <hr class="hz-feld-horizon">
+  %s
+</article>` (partial "horizont/kennung.html" (dict "text" (printf "%s · %s" site.Title .Title) "tag" "p")) .Title (partial "horizont/nav/karte.html" (dict "home" "knx" "here" "knx" "map" "knx" "projects" false)) -}}
+{{ partial "textpage.html" (dict "page" . "body" ($body | safeHTML)) }}

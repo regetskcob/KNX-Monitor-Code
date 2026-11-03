@@ -1,0 +1,87 @@
+{{ define "main" }}
+{{- /*
+  Buy page for Windows, without an account: the app opens it with
+  #product=…; from the web it also works without. The fragment does not reach the server; the
+  page then also removes it from the address bar. paddle.js only loads when a purchase
+  is actually possible, so that otherwise the page loads nothing from third parties
+  (privacy policy). Paddle (merchant of record) handles payment, VAT and
+  invoice; after the purchase the function paddle-webhook sends the licence by mail.
+  With an account (switch BETRIEB) #user=<account ID>&email=… is added, then the purchase
+  reaches the account via RevenueCat's Paddle integration.
+  Offers and price IDs: static/kaufen/angebote.json (the app reads it too).
+*/ -}}
+{{- $de := eq site.Language.Lang "de" -}}
+{{- $p := site.Params.paddle -}}
+<article class="knx-page">
+  <header class="knx-page-head">
+    {{ partial "horizont/kennung.html" (dict "text" (printf "%s · %s" site.Title .Title) "tag" "p") }}
+    <h1 class="t-display">{{ .Title }}</h1>
+    <p class="knx-lead">{{ cond $de "Für KNX Monitor unter Windows, ganz ohne Konto: Nach dem Kauf kommt deine Lizenz per Mail. Bezahlt wird über Paddle, unseren Händler; du bekommst eine ordentliche Rechnung mit Umsatzsteuer." "For KNX Monitor on Windows, no account needed: after buying, your license arrives by email. Payment runs through Paddle, our reseller; you get a proper invoice with VAT." }}</p>
+  </header>
+  <hr class="hz-feld-horizon">
+  <div class="knx-prose t-reading">
+    <div id="knx-shop" data-token="{{ $p.clientToken }}" data-env="{{ $p.environment }}" data-key="{{ $p.customDataKey }}" data-lang="{{ site.Language.Lang }}" data-offers="{{ "kaufen/angebote.json" | absURL }}">
+      <p id="knx-shop-state">{{ cond $de "Lädt …" "Loading …" }}</p>
+      <ul id="knx-shop-offers" class="knx-shop-offers"></ul>
+    </div>
+    <h2>{{ cond $de "So geht es" "How it works" }}</h2>
+    <ol>
+      <li>{{ cond $de "Angebot wählen und bei Paddle bezahlen." "Choose an offer and pay at Paddle." }}</li>
+      <li>{{ cond $de "Die Lizenz kommt per Mail an die Adresse, die du beim Kauf angibst." "Your license is sent to the email address you enter when buying." }}</li>
+      <li>{{ cond $de "In der App unter „Plus und Pro“ → „Lizenz eingeben“ die Zeile aus der Mail einfügen. Auf einem neuen Gerät genauso." "In the app under “Plus and Pro” → “Enter license”, paste the line from the email. Same on a new device." }}</li>
+    </ol>
+    <p>{{ cond $de "Ein Abo kündigst du jederzeit über den Link in der Bestätigungsmail von Paddle." "Cancel a subscription any time via the link in Paddle’s confirmation email." }}</p>
+  </div>
+</article>
+<script>
+(() => {
+  const root = document.getElementById('knx-shop');
+  const state = document.getElementById('knx-shop-state');
+  const list = document.getElementById('knx-shop-offers');
+  const de = root.dataset.lang === 'de';
+  const q = new URLSearchParams(location.hash.slice(1) || location.search);
+  if (location.hash || location.search) history.replaceState(null, '', location.pathname);
+  const say = (deText, enText) => { state.textContent = de ? deText : enText; };
+  if (q.get('done')) return say(q.get('user') ? 'Danke! Tippe jetzt in der App auf „Käufe wiederherstellen“.' : 'Danke! Deine Lizenz kommt gleich per Mail. Falls nicht: Spam-Ordner prüfen oder an support@knx-monitor.de schreiben.', q.get('user') ? 'Thank you! Now tap “Restore purchases” in the app.' : 'Thank you! Your license is on its way by email. If it does not arrive, check your spam folder or write to support@knx-monitor.de.');
+  if (!root.dataset.token) return say('Der Kauf für Windows ist bald verfügbar.', 'Buying for Windows is coming soon.');
+  const script = document.createElement('script');
+  script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
+  script.onerror = () => say('Die Kaufseite von Paddle lädt gerade nicht. Bitte später erneut versuchen.', 'Paddle’s checkout does not load right now. Please try again later.');
+  script.onload = () => start(q, say);
+  document.head.appendChild(script);
+})();
+function start(q, say) {
+  const root = document.getElementById('knx-shop');
+  const state = document.getElementById('knx-shop-state');
+  const list = document.getElementById('knx-shop-offers');
+  const de = root.dataset.lang === 'de';
+  if (root.dataset.env === 'sandbox') Paddle.Environment.set('sandbox');
+  Paddle.Initialize({ token: root.dataset.token });
+  const period = { yearly: de ? 'pro Jahr' : 'per year', monthly: de ? 'pro Monat' : 'per month', lifetime: de ? 'einmalig' : 'one-time' };
+  const open = (o) => Paddle.Checkout.open({
+    items: [{ priceId: o.paddlePriceId, quantity: 1 }],
+    customer: q.get('email') ? { email: q.get('email') } : undefined,
+    // The language of the licence mail; with an account also the account ID for RevenueCat.
+    customData: { lang: root.dataset.lang, ...(q.get('user') ? { [root.dataset.key]: q.get('user') } : {}) },
+    settings: { locale: de ? 'de' : 'en', successUrl: location.origin + location.pathname + (q.get('user') ? '?done=1&user=1' : '?done=1') },
+  });
+  fetch(root.dataset.offers).then((r) => r.json()).then((offers) => {
+    const usable = offers.filter((o) => o.paddlePriceId);
+    if (!usable.length) return say('Der Kauf für Windows ist bald verfügbar.', 'Buying for Windows is coming soon.');
+    state.textContent = '';
+    for (const o of usable) {
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.className = 'hz-button ' + (o.id === q.get('product') ? 'hz-button--primary' : 'hz-button--secondary');
+      const name = o.id.startsWith('pro') ? 'Pro' : 'Plus';
+      b.textContent = `${name} · ${de ? o.price : o.priceEn} ${period[o.period] ?? ''}`;
+      b.onclick = () => open(o);
+      li.appendChild(b);
+      list.appendChild(li);
+    }
+    const chosen = usable.find((o) => o.id === q.get('product'));
+    if (chosen) open(chosen);
+  });
+}
+</script>
+{{ end }}

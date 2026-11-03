@@ -1,0 +1,132 @@
+{{- /*
+  The KNX box as its own Feldseite (moved here from the landing page): hero
+  with the Pi drawn on the horizon, then a checklist, setup, data, recording, connection
+  (IP today, TP planned), hardware, status and questions as numbered
+  sections, their Kennungen as marks on the horizon. As on the landing page
+  the Pi's cable runs on through the page; a glass push button on it sends
+  telegrams to the box, and a coupled laptop shows what the box records
+  (box.js). Texts from data/box/<lang>.yaml.
+*/ -}}
+{{- $b := index site.Data.box site.Language.Lang -}}
+{{- $d := index site.Data.teaser site.Language.Lang -}}
+{{- $de := eq site.Language.Lang "de" -}}
+{{- $target := "" }}{{ range .Translations }}{{ $target = . }}{{ end -}}
+{{- $lang := dict -}}
+{{- with $target }}{{ $lang = dict "current" (upper site.Language.Lang) "name" (upper .Language.Lang) "url" .RelPermalink "hreflang" .Language.Lang }}{{ end -}}
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode }}" data-product="knx">
+{{ partial "head.html" (dict "page" . "title" (printf "%s · %s" .Title site.Title) "description" .Description "image" (printf "images/og-box-%s.png" site.Language.Lang)) }}
+<body class="hz tz">
+{{ partial "horizont/nav/horizon.html" (dict
+    "product" "knx"
+    "place" (printf "%s / %s" site.Title .Title)
+    "marks" "auto"
+    "lang" $lang
+    "karte" (dict "home" "knx" "here" "knx" "map" "knx" "projects" false "field" "box" "url" ("karte/" | relLangURL))) }}
+<div class="hz-feld tz-feld">
+{{- /* The Pi's cable on through the page (box.js draws its path). */}}
+<svg class="tz-thread" aria-hidden="true" focusable="false">
+  <path class="tz-thread-line"/>
+  <circle class="tz-thread-pulse" r="4" cx="-10" cy="-10"/>
+</svg>
+{{- /* The glass push button of the landing page on the cable (large
+       windows; box.js places it where there is room). */}}
+{{- with index $d.sensors 0 }}
+<div class="tz-sensors">
+  <div class="tz-sensor tz-sensor--{{ .kind }}" data-addr="{{ .addr }}" hidden>
+    <span class="tz-sensor-addr">{{ .addr }} · {{ .name }}</span>
+    <div class="tz-sensor-body">
+      {{- with .display }}<span class="tz-sensor-display">{{ . }}</span>{{ end }}
+      {{- range .keys }}
+      <button class="tz-key" type="button" aria-label="{{ .hint }}" title="{{ .hint }}" data-key="{{ . | jsonify }}"><i class="tz-key-led"></i><b>{{ .label }}</b><small>{{ .hint }}</small></button>
+      {{- end }}
+    </div>
+    <p class="tz-sensor-note">{{ $b.taster.note }}</p>
+  </div>
+</div>
+{{- end }}
+<main id="main" class="tz-main">
+{{- $n := 1 }}
+{{ partial "horizont/feld/hero.html" (dict
+    "kennung" (printf "01 — %s" $b.hero.kennung)
+    "title" $b.hero.title
+    "text" (printf "%s %s" (partial "horizont/badge.html" (dict "status" "info" "label" (index site.Data.home site.Language.Lang).box.tag)) $b.hero.lead)
+    "primary" (dict "label" $b.hero.primary "url" site.Params.boxUrl)
+    "secondary" (dict "label" $b.hero.secondary "url" "#setup")
+    "aside" (partial "knx-pi.html" .)) }}
+{{- with $b.need }}
+{{- $n = add $n 1 }}
+{{- $need := slice }}
+{{- range .points }}{{ $need = $need | append (dict "term" .term "value" .value) }}{{ end }}
+<section class="hz-feld-section tz-section tz-section--read" id="need">
+  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n .label) }}
+  <div><h2>{{ .title }}</h2>{{ with .text }}<p>{{ . | markdownify }}</p>{{ end }}</div>
+  {{ partial "horizont/facts.html" (dict "items" $need) }}
+</section>
+{{- end }}
+{{- $facts := slice }}
+{{- range $b.setup.steps }}{{ $facts = $facts | append (dict "term" .term "value" (partial "live.html" (dict "ctx" . "key" "value"))) }}{{ end }}
+{{- $facts = $facts | append (dict "term" (cond $de "Ohne App" "Without app") "value" $b.setup.alt) }}
+{{- $n = add $n 1 }}
+<section class="hz-feld-section tz-section tz-section--read" id="setup">
+  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n $b.setup.label) }}
+  <div>
+    <h2>{{ $b.setup.title }}</h2><p>{{ $b.setup.text | markdownify }}</p>
+    {{- /* The setup in the app on a phone, the top of its screen (the rest is
+           empty): a preview, today only the Linux app pairs. */}}
+    {{- with resources.Get (printf "images/box-setup-%s.png" site.Language.Lang) }}
+    <figure class="tz-box-setup">
+      {{ partial "horizont/device.html" (dict "device" "iphone" "width" 240 "cropped" true "height" 300 "image" . "alt" $b.setup.preview_alt) }}
+      <figcaption class="t-caption">{{ partial "horizont/badge.html" (dict "status" "info" "label" (index site.Data.home site.Language.Lang).box.tag) }} {{ $b.setup.preview }}</figcaption>
+    </figure>
+    {{- end }}
+  </div>
+  {{ partial "horizont/facts.html" (dict "items" $facts) }}
+</section>
+{{- range $key := slice "data" "recording" "connection" "hardware" "status" }}
+{{- $s := index $b $key }}
+{{- $n = add $n 1 }}
+{{- $facts = slice }}
+{{- range $s.points }}{{ $facts = $facts | append (dict "term" .term "value" (partial "live.html" (dict "ctx" . "key" "value"))) }}{{ end }}
+<section class="hz-feld-section tz-section tz-section--read" id="{{ $key }}">
+  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n $s.label) }}
+  <div>
+    <h2>{{ $s.title }}</h2>{{ with $s.text }}<p>{{ . | markdownify }}</p>{{ end }}
+    {{- if eq $key "recording" }}
+    <figure class="tz-boxlog-figure">
+      {{ partial "horizont/device.html" (dict "device" "laptop" "width" 460 "inner" (partial "box-log.html" $b.log)) }}
+      <figcaption class="t-caption">{{ $b.log.caption }} <span class="tz-boxlog-taster">{{ $b.log.caption_taster }}</span></figcaption>
+    </figure>
+    {{- end }}
+  </div>
+  {{ partial "horizont/facts.html" (dict "items" $facts) }}
+</section>
+{{- end }}
+{{- $n = add $n 1 }}
+<section class="hz-feld-section tz-section tz-section--read tz-section--faq" id="faq">
+  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n $b.faq.label) }}
+  <div>
+    <h2>{{ $b.faq.title }}</h2>
+    <div class="tz-faq">
+      {{- range $b.faq.items }}
+      <details>
+        <summary>{{ .q }}{{ partial "horizont/symbol.html" "expand_more" }}</summary>
+        <p>{{ .a | markdownify }}</p>
+      </details>
+      {{- end }}
+    </div>
+  </div>
+</section>
+</main>
+{{- $links := slice (dict "name" site.Title "url" ("" | relLangURL)) (dict "name" (i18n "imprint") "url" site.Params.legalUrl) (dict "name" (i18n "privacy") "url" site.Params.privacyUrl) (dict "name" (i18n "feedback") "url" ("feedback/" | relLangURL)) (dict "name" (i18n "changelog") "url" ("changelog/" | relLangURL)) (dict "name" (i18n "github") "url" site.Params.githubUrl) (dict "name" (i18n "instagram") "url" site.Params.instagramUrl) }}
+{{- with site.GetPage "/nutzungsbedingungen" }}{{ $links = $links | append (dict "name" (i18n "terms") "url" .RelPermalink) }}{{ end }}
+{{ partial "horizont/feld/foot.html" (dict "links" $links "sender" (i18n "footer_sender")) }}
+<p class="tz-mark t-caption">{{ i18n "footer_note" }}</p>
+</div>
+<script id="tz-telegrams" type="application/json">{{ $d.telegrams | jsonify | safeJS }}</script>
+<script id="tz-words" type="application/json">{{ dict "on" $d.switch_on "off" $d.switch_off | jsonify | safeJS }}</script>
+{{- $js := resources.Get "js/box.js" | minify | fingerprint }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
+{{ partial "horizont/nav/script.html" . }}
+</body>
+</html>

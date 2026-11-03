@@ -1,0 +1,8 @@
+# Private repository: issues here are internal only (stores, keys, prices,
+# payment providers, business). Bugs, feature requests, votes and announced
+# features belong in the public repository, where users can read and join in.
+blank_issues_enabled: true
+contact_links:
+  - name: Bug, feature request or support
+    url: https://github.com/regetskcob/KNX-Monitor/issues/new/choose
+    about: Everything users may read goes to the public repository regetskcob/KNX-Monitor.

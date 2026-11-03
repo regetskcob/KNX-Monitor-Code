@@ -1,0 +1,5 @@
+---
+title: "Home-Assistant-Add-on"
+description: "KNX Monitor als Home-Assistant-Add-on: Busmonitor in der Seitenleiste, ohne eigenen Tunnel über die KNX-Integration, Ereignisse und Blueprints für Automationen, Gerät mit Entitäten über MQTT."
+layout: "addon"
+---

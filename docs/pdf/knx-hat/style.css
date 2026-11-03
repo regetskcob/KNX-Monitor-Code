@@ -1,0 +1,85 @@
+@font-face { font-family: "Mona Sans"; src: url(fonts/MonaSans-Regular.ttf); font-weight: 400; }
+@font-face { font-family: "Mona Sans"; src: url(fonts/MonaSans-Medium.ttf); font-weight: 500; }
+@font-face { font-family: "Mona Sans"; src: url(fonts/MonaSans-SemiBold.ttf); font-weight: 600; }
+@font-face { font-family: "Mona Display"; src: url(fonts/MonaSansDisplayExpanded-Bold.ttf); font-weight: 700; }
+@font-face { font-family: "Literata"; src: url(fonts/Literata-Light.ttf); font-weight: 300; }
+@font-face { font-family: "Literata"; src: url(fonts/Literata-LightItalic.ttf); font-weight: 300; font-style: italic; }
+@font-face { font-family: "Monaspace"; src: url(fonts/MonaspaceArgon-Regular.otf); font-weight: 400; }
+@font-face { font-family: "Monaspace"; src: url(fonts/MonaspaceArgon-SemiBold.otf); font-weight: 600; }
+
+:root {
+  --bg: #FAFAF7; --surface: #FFFFFF; --sunken: #F1F1EC; --line: #E3E3DC; --line-strong: #8A8B84;
+  --text: #1B1C19; --muted: #5C5E57; --faint: #85877F;
+  --accent: #437F18; --accent-tint: #E8F2DC; --accent-text: #3E7516;
+  --dark: #121311; --dark-text: #E7E7E0; --dark-muted: #A0A398;
+}
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font: 400 10.5pt/1.5 "Mona Sans", sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+.page { width: 210mm; height: 297mm; padding: 20mm 20mm 16mm; position: relative; overflow: hidden; page-break-after: always; display: flex; flex-direction: column; }
+.page:last-child { page-break-after: auto; }
+.folio { position: absolute; left: 20mm; right: 20mm; bottom: 9mm; display: flex; justify-content: space-between; font: 400 7.5pt "Monaspace", monospace; color: var(--faint); letter-spacing: .04em; text-transform: uppercase; }
+
+.kennung { font: 600 8pt "Monaspace", monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4mm; }
+h1 { font: 300 32pt/1.08 "Literata", serif; letter-spacing: -.01em; margin: 0 0 6mm; }
+h2 { font: 300 22pt/1.15 "Literata", serif; letter-spacing: -.005em; margin: 0 0 5mm; }
+h3 { font: 600 11pt/1.3 "Mona Sans", sans-serif; margin: 0 0 1.5mm; }
+p { margin: 0 0 3mm; }
+.lead { font: 300 13pt/1.5 "Literata", serif; color: var(--text); margin-bottom: 6mm; }
+.muted { color: var(--muted); }
+.small { font-size: 8.5pt; line-height: 1.45; }
+code, .mono { font-family: "Monaspace", monospace; font-size: .92em; }
+
+figure { margin: 0; }
+figure img { display: block; width: 100%; border-radius: 6px; border: 0.6pt solid var(--line); }
+figcaption { font-size: 8pt; color: var(--muted); margin-top: 2mm; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; }
+.card { background: var(--surface); border: 0.6pt solid var(--line-strong); border-radius: 6px; padding: 5mm; }
+.tint { background: var(--accent-tint); border-color: var(--accent); }
+
+ul.clean { list-style: none; padding: 0; margin: 0; }
+ul.clean li { padding: 2.2mm 0; border-top: 0.6pt solid var(--line); }
+ul.clean li:first-child { border-top: none; }
+ul.dash { padding-left: 4mm; margin: 0 0 3mm; }
+ul.dash li { margin: 0 0 1.2mm; }
+
+table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+th, td { text-align: left; vertical-align: top; padding: 2mm 3mm 2mm 0; border-top: 0.6pt solid var(--line); }
+th { font: 600 7.5pt "Monaspace", monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-top: none; }
+td:first-child { font-weight: 600; white-space: nowrap; }
+
+pre { margin: 0; background: var(--dark); color: var(--dark-text); border-radius: 6px; padding: 5mm; font: 400 8pt/1.55 "Monaspace", monospace; white-space: pre; }
+pre .k { color: #A8DC6E; } pre .c { color: var(--dark-muted); }
+
+/* Titel */
+.cover { padding-top: 24mm; }
+.cover h1 { font-size: 38pt; max-width: 150mm; }
+.cover .hero { margin-top: auto; }
+.cover .hero img { border: none; border-radius: 0; }
+.badge { display: inline-block; font: 600 7.5pt "Monaspace", monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--accent-text); background: var(--accent-tint); border-radius: 4px; padding: 1mm 2.2mm; }
+
+.dark-band { background: var(--dark); border-radius: 8px; padding: 6mm; }
+.dark-band img { border: none; }
+
+.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin-bottom: 8mm; }
+.step { border-top: 2pt solid var(--accent); padding-top: 3mm; }
+.step .n { font: 600 8pt "Monaspace", monospace; color: var(--accent-text); letter-spacing: .06em; }
+.gallery { display: flex; flex-wrap: wrap; gap: 7mm 5mm; margin-top: 6mm; align-items: flex-end; }
+.gallery figure { margin: 0; }
+.gallery img { border: none; border-radius: 0; display: block; }
+.gallery figcaption { font-size: 6.5pt; line-height: 1.3; margin-top: 1.5mm; white-space: nowrap; }
+
+/* Wie die Landingpage (Horizont): Horizontlinie oben mit Fortschritt,
+   dunkles Titelblatt mit App-Icon, Wortmarke und grüner Buslinie. */
+.page::before { content: ""; position: absolute; left: 20mm; right: 20mm; top: 10mm; height: 0.6pt; background: var(--line); }
+.page::after { content: ""; position: absolute; left: 20mm; top: calc(10mm - 0.6pt); height: 1.8pt; width: calc(170mm * var(--p, 0)); background: var(--accent); }
+.kennung .nr { color: var(--accent-text); }
+
+.lockup { display: flex; align-items: center; gap: 4mm; margin: 0 0 10mm; }
+.lockup img { width: 15mm; height: 15mm; border-radius: 3.4mm; }
+.lockup span { font: 600 15pt "Mona Sans", sans-serif; letter-spacing: -.01em; }
+.horizon { height: 0.6pt; background: var(--accent); margin: 6mm -20mm 0; }

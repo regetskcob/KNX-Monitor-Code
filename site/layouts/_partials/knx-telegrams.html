@@ -1,0 +1,43 @@
+{{- /*
+  KNX Monitor's live telegram list for the MacBook in the hero, after the
+  draft in the Horizont docs (site/partials/lp-knx-screen.html there). Built
+  from Horizont's table and badge; only the window chrome is local.
+  Context: the page (for the language).
+*/ -}}
+{{- $de := eq site.Language.Lang "de" -}}
+{{- $rows := cond $de
+  (slice
+    (slice "14:32:07.412" "w" "1/2/3" "Wohnzimmer Decke Licht – Ein" "Ein" false)
+    (slice "14:32:07.468" "w" "1/2/4" "Wohnzimmer Decke Licht – Status" "Ein" false)
+    (slice "14:32:08.120" "w" "3/1/10" "Küche Temperatur Ist" "21,4 °C" false)
+    (slice "14:32:09.004" "r" "2/0/7" "Bad Rollladen Position" "–" false)
+    (slice "14:32:09.031" "a" "2/0/7" "Bad Rollladen Position" "35 %" true)
+    (slice "14:32:11.250" "w" "4/0/1" "Zähler Wirkleistung" "1,82 kW" false)
+    (slice "14:32:12.902" "w" "4/0/2" "Außenhelligkeit" "10 193 lx" false)
+    (slice "14:32:14.377" "w" "2/2/5" "EG Arbeitszimmer Stellwert" "20 %" false))
+  (slice
+    (slice "14:32:07.412" "w" "1/2/3" "Living room ceiling light – On" "On" false)
+    (slice "14:32:07.468" "w" "1/2/4" "Living room ceiling light – Status" "On" false)
+    (slice "14:32:08.120" "w" "3/1/10" "Kitchen temperature actual" "21.4 °C" false)
+    (slice "14:32:09.004" "r" "2/0/7" "Bathroom blind position" "–" false)
+    (slice "14:32:09.031" "a" "2/0/7" "Bathroom blind position" "35 %" true)
+    (slice "14:32:11.250" "w" "4/0/1" "Meter active power" "1.82 kW" false)
+    (slice "14:32:12.902" "w" "4/0/2" "Outdoor brightness" "10,193 lx" false)
+    (slice "14:32:14.377" "w" "2/2/5" "Study heating output" "20 %" false)) -}}
+{{- $type := dict "w" (cond $de "Schreiben" "Write") "r" (cond $de "Lesen" "Read") "a" (cond $de "Antwort" "Response") -}}
+<div class="knx-mock">
+  <div class="knx-mock-bar">
+    <span class="knx-mock-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+    <b>Live</b>
+    <span class="knx-mock-meta">{{ cond $de "Demo-Haus · Tunnel" "Demo house · tunnel" }}</span>
+    {{ partial "horizont/badge.html" (dict "status" "positive" "label" (cond $de "Verbunden" "Connected")) }}
+  </div>
+  <table class="hz-table">
+    <thead><tr><th>{{ cond $de "Zeit" "Time" }}</th><th>{{ cond $de "Art" "Type" }}</th><th>{{ cond $de "Ziel" "Target" }}</th><th>Name</th><th class="hz-num">{{ cond $de "Wert" "Value" }}</th></tr></thead>
+    <tbody>
+    {{- range $rows }}
+      <tr{{ if index . 5 }} aria-selected="true"{{ end }}><td class="hz-mono">{{ index . 0 }}</td><td><abbr class="knx-type knx-type--{{ index . 1 }}" title="{{ index $type (index . 1) }}">{{ partial "horizont/symbol.html" (index (dict "w" "edit" "r" "download" "a" "reply") (index . 1)) }}</abbr></td><td class="hz-mono">{{ index . 2 }}</td><td class="knx-mock-name">{{ index . 3 }}</td><td class="hz-mono hz-num">{{ index . 4 }}</td></tr>
+    {{- end }}
+    </tbody>
+  </table>
+</div>

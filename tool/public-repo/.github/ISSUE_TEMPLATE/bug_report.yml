@@ -1,0 +1,48 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please do **not** attach your ETS project (`.knxproj`) or recordings publicly – they can contain private data.
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Home Assistant add-on
+        - iOS / iPadOS
+        - Android
+        - macOS
+        - Windows
+        - Linux
+        - KNX Box
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: App or add-on version
+      placeholder: "1.2.0"
+    validations:
+      required: true
+  - type: input
+    id: gateway
+    attributes:
+      label: KNX gateway
+      placeholder: "Gira X1, MDT SCN-IP100.03, …"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Steps to reproduce and what you expected instead
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: For the add-on, see Settings → Add-ons → KNX Monitor → Log
+      render: text

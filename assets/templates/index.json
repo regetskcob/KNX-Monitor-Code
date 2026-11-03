@@ -1,0 +1,10 @@
+[
+  "raumklima.json",
+  "luftqualitaet.json",
+  "licht_praesenz.json",
+  "innen_aussen.json",
+  "beschattung.json",
+  "wetterstation.json",
+  "energie.json",
+  "busgesundheit.json"
+]

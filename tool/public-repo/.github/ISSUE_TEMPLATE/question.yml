@@ -1,0 +1,29 @@
+name: Question or support
+description: Ask how something works or get help with your setup
+labels: [question]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What are you trying to do, and where are you stuck?
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - Home Assistant add-on
+        - Linux
+        - iOS / iPadOS
+        - Android
+        - macOS
+        - Windows
+        - KNX Box
+  - type: textarea
+    id: setup
+    attributes:
+      label: Your setup
+      description: Version, KNX interface or router (e.g. Gira X1), tunneling or routing, KNX Secure

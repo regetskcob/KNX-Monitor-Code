@@ -1,0 +1,13 @@
+{{- /* House in section, bauherren.js sets lights and blinds: (dict "id" … "label" …) */ -}}
+<svg class="bh-scene" id="{{ .id }}" viewBox="0 0 358 196" role="img" aria-label="{{ .label }}">
+  <rect class="bh-sky" width="358" height="176"/>
+  <circle class="bh-sun" cx="310" cy="50" r="14"/>
+  <path class="bh-house" d="M59 176V74L179 18l120 56v102Z"/>
+  <path class="bh-floor" d="M59 124H299M179 74v102"/>
+  {{- range slice (dict "x" 60 "y" 75 "h" 48 "wx" 102) (dict "x" 180 "y" 75 "h" 48 "wx" 222) (dict "x" 60 "y" 125 "h" 50 "wx" 102) (dict "x" 180 "y" 125 "h" 50 "wx" 222) }}
+  <rect class="bh-light" x="{{ .x }}" y="{{ .y }}" width="118" height="{{ .h }}"/>
+  <rect class="bh-window" x="{{ .wx }}" y="{{ add .y 13 }}" width="34" height="28"/>
+  <rect class="bh-blind" x="{{ .wx }}" y="{{ add .y 13 }}" width="34" height="28"/>
+  {{- end }}
+  <path class="bh-horizon" d="M0 176H358"/>
+</svg>

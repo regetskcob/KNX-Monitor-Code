@@ -1,0 +1,97 @@
+{{- /*
+  The <head> of every teaser page (home, KNX box).
+
+    partial "head.html" (dict "page" . "title" "…" "description" "…" "image" "images/og-box-de.png")
+
+  image  the preview image for links (LinkedIn, Facebook, forums), 1200×630;
+         default the hero of the language (images/og-<lang>.png, made by
+         tool/teaser_og.sh)
+*/ -}}
+{{- $p := .page -}}
+{{- $hz := site.Data.horizont -}}
+{{- $og := .image | default (printf "images/og-%s.png" site.Language.Lang) | absURL -}}
+{{- $home := "" | absLangURL -}}
+{{- $root := "" | absURL -}}
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ .title }}</title>
+<meta name="description" content="{{ .description }}">
+<link rel="canonical" href="{{ $p.Permalink }}">
+{{- range $p.AllTranslations }}
+<link rel="alternate" hreflang="{{ .Language.LanguageCode }}" href="{{ .Permalink }}">
+{{- end }}
+{{- range where $p.AllTranslations "Language.Lang" "de" }}
+<link rel="alternate" hreflang="x-default" href="{{ .Permalink }}">
+{{- end }}
+{{ partial "horizont/theme-color.html" (dict "product" "knx") }}
+<meta name="color-scheme" content="light dark">
+{{- if site.Params.noindex }}
+<meta name="robots" content="noindex, nofollow">
+{{- end }}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{ site.Title }}">
+<meta property="og:title" content="{{ .title }}">
+<meta property="og:description" content="{{ .description }}">
+<meta property="og:url" content="{{ $p.Permalink }}">
+<meta property="og:image" content="{{ $og }}">
+<meta property="og:image:secure_url" content="{{ $og }}">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{ .title }}">
+<meta property="og:locale" content="{{ replace site.Language.LanguageCode "-" "_" }}">
+{{- range $p.Translations }}
+<meta property="og:locale:alternate" content="{{ replace .Language.LanguageCode "-" "_" }}">
+{{- end }}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ .title }}">
+<meta name="twitter:description" content="{{ .description }}">
+<meta name="twitter:image" content="{{ $og }}">
+<meta name="twitter:image:alt" content="{{ .title }}">
+<link rel="icon" href="{{ "favicon.ico" | relURL }}" sizes="32x32">
+<link rel="icon" href="{{ "favicon.svg" | relURL }}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{{ "apple-touch-icon.png" | relURL }}">
+<link rel="manifest" href="{{ "site.webmanifest" | relURL }}">
+{{- $css := slice
+  (resources.Get "css/horizont/tokens.css" | resources.ExecuteAsTemplate "css/horizont-tokens.css" $hz)
+  (resources.Get "css/horizont/components.css")
+  (resources.Get "css/teaser.css")
+  | resources.Concat "css/teaser.css" | minify | fingerprint }}
+<link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
+{{- /* Structured data: the site, the app (free, its publisher, GitHub) and
+       this page about it. Platforms only those available today. */}}
+{{- $d := index site.Data.teaser site.Language.Lang -}}
+{{- $author := dict "@type" "Person" "name" "regetskcob" "url" "https://www.regetskcob.de/" -}}
+{{- $website := dict "@type" "WebSite" "@id" (printf "%s#website" $root) "name" site.Title "url" $root "inLanguage" site.Language.LanguageCode "publisher" $author -}}
+{{- /* Plus the platforms whose public beta is open (partial beta.html). */}}
+{{- $beta := partial "beta.html" . -}}
+{{- $os := "Home Assistant, Linux" -}}
+{{- if in (slice "ios" "both") $beta }}{{ $os = printf "%s, iOS, iPadOS" $os }}{{ end -}}
+{{- if in (slice "android" "both") $beta }}{{ $os = printf "%s, Android" $os }}{{ end -}}
+{{- $app := dict
+  "@type" "SoftwareApplication"
+  "@id" (printf "%s#app" $root)
+  "name" site.Title
+  "url" $home
+  "description" (index $d.description $beta)
+  "applicationCategory" "UtilitiesApplication"
+  "operatingSystem" $os
+  "isAccessibleForFree" true
+  "offers" (dict "@type" "Offer" "price" "0" "priceCurrency" "EUR")
+  "image" $og
+  "downloadUrl" (printf "%s/releases" site.Params.githubUrl)
+  "sameAs" (slice site.Params.githubUrl site.Params.instagramUrl)
+  "author" $author -}}
+{{- $page := dict
+  "@type" "WebPage"
+  "@id" (printf "%s#page" $p.Permalink)
+  "url" $p.Permalink
+  "name" .title
+  "description" .description
+  "inLanguage" site.Language.LanguageCode
+  "isPartOf" (dict "@id" (printf "%s#website" $root))
+  "about" (dict "@id" (printf "%s#app" $root))
+  "primaryImageOfPage" $og -}}
+<script type="application/ld+json">{{ dict "@context" "https://schema.org" "@graph" (slice $website $app $page) | jsonify | safeJS }}</script>
+</head>

@@ -1,0 +1,35 @@
+{
+  "format": "knx-monitor-chart-template",
+  "version": 1,
+  "name": "Luftqualität",
+  "perRoom": true,
+  "series": [
+    {
+      "role": "co2"
+    },
+    {
+      "role": "humidity"
+    },
+    {
+      "role": "temperature"
+    }
+  ],
+  "gallery": {
+    "title": {
+      "de": "Luftqualität",
+      "en": "Air quality"
+    },
+    "description": {
+      "de": "CO₂, Luftfeuchte und Temperatur je Raum: Wann sollte gelüftet werden?",
+      "en": "CO₂, humidity and temperature per room: when is it time to ventilate?"
+    },
+    "tags": [
+      "luft",
+      "co2",
+      "feuchte",
+      "lüften",
+      "air",
+      "humidity"
+    ]
+  }
+}

@@ -1,0 +1,86 @@
+{{- /*
+  Store graphics as a page (tool/store_graphics.py), in the layout of the
+  Feldseite and the header: Kennung, headline in Literata, one line of text,
+  the app in its Horizont device standing on the horizon, the ground below.
+  Everything comes from the URL, so one page renders every format:
+
+    ?w=660&h=1434&device=iphone&src=…&kennung=…&title=…&text=…&lang=de
+    ?mode=feature&w=1024&h=500&device=android&src=…&title=…&text=…
+
+  w, h are CSS pixels (the script shoots at 2×, or 1× where noted), src is
+  a frameless shot. A draft: rendered only by `hugo server -D`.
+*/ -}}
+{{- $hz := site.Data.horizont -}}
+{{- $css := slice
+  (resources.Get "css/horizont/tokens.css" | resources.ExecuteAsTemplate "css/horizont-tokens.css" $hz)
+  (resources.Get "css/horizont/components.css")
+  (resources.Get "css/site.css")
+  | resources.Concat "css/knx-store.css" }}
+<!doctype html>
+<html lang="de" data-product="knx" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>{{ .Title }}</title>
+<link rel="stylesheet" href="{{ $css.RelPermalink }}">
+</head>
+<body class="hz">
+<div class="knx-store" id="store">
+  <div class="knx-store-text">
+    {{ partial "horizont/lockup.html" (dict "product" "knx" "label" site.Title) }}
+    <div>
+      <span class="t-kennung hz-kennung" id="kennung"></span>
+      <h1 class="t-display" id="title"></h1>
+      <p class="t-body" id="text"></p>
+    </div>
+  </div>
+  <div class="knx-store-devices">
+    <figure class="hz-device" id="device">
+      <div class="hz-device-screen"><img id="shot" alt="" style="display:block;width:100%;height:auto"></div>
+    </figure>
+  </div>
+  <hr class="hz-feld-horizon knx-store-horizon">
+</div>
+<script>
+  // Fill the canvas from the URL, then fit the device into the space above
+  // the horizon; the script waits for data-ready before shooting.
+  const q = new URLSearchParams(location.search);
+  const store = document.getElementById('store');
+  const w = +q.get('w'), h = +q.get('h');
+  store.style.width = w + 'px';
+  store.style.height = h + 'px';
+  store.dataset.mode = q.get('mode') || 'shot';
+  // Side by side only on really wide canvases; 4:3 (iPad) stacks with
+  // smaller type.
+  store.dataset.shape = w / h >= 1.5 ? 'wide' : w > h ? 'square' : 'tall';
+  // 9:16 (Play phones) is squatter than 19.5:9 (iPhone): smaller type.
+  if (h / w < 2) store.dataset.squat = '1';
+  document.documentElement.lang = q.get('lang') || 'de';
+  for (const id of ['kennung', 'title', 'text']) document.getElementById(id).textContent = q.get(id) || '';
+  const device = document.getElementById('device');
+  // Android tablet: Horizont's tablet frame (iPad) with a 16:10 screen.
+  const kind = q.get('device') || 'iphone';
+  device.classList.add('hz-device--' + (kind === 'android-tablet' ? 'ipad' : kind));
+  if (kind === 'android-tablet') device.firstElementChild.style.aspectRatio = '16 / 10';
+  const shot = document.getElementById('shot');
+  shot.src = q.get('src');
+  const fit = () => {
+    // Stacked: the device starts below the words, however long they run.
+    const area = document.querySelector('.knx-store-devices');
+    if (store.dataset.shape !== 'wide') {
+      const text = document.querySelector('.knx-store-text').getBoundingClientRect();
+      area.style.top = Math.ceil(text.bottom + Math.min(w, h) * 0.04) + 'px';
+    }
+    const box = area.getBoundingClientRect();
+    let width = box.width;
+    for (let i = 0; i < 4; i++) {
+      device.style.setProperty('--w', width + 'px');
+      const r = device.getBoundingClientRect();
+      width = Math.min(box.width, width * box.height / r.height);
+    }
+    device.style.setProperty('--w', Math.floor(width) + 'px');
+    store.dataset.ready = '1';
+  };
+  Promise.all([document.fonts.ready, shot.decode()]).then(fit, fit);
+</script>
+</body>
+</html>

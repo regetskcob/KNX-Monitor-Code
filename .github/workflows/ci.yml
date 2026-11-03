@@ -1,0 +1,135 @@
+# Every pull request: app (format, analysis, tests, web build for the HA
+# add-on) and the add-on server. main changes only through pull requests, so
+# there is no second run after the merge. Changes only to the website or docs
+# start no run. Desktop (Linux, Windows) builds run only on an app-v* tag
+# (tool/release.sh app pushes it) or by hand; the Android test APK only by hand
+# (store builds come from tool/release.sh android). The repository is private,
+# so Actions minutes and artifact storage count against the quota;
+# tool/release.sh desktop publishes the artifacts of the tag run.
+name: CI
+
+on:
+  push:
+    tags: ['app-v*']
+    paths-ignore: ['site/**', 'teaser/**', 'docs/**', '**.md']
+  pull_request:
+    paths-ignore: ['site/**', 'teaser/**', 'docs/**', '**.md']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: 3.47.6
+          channel: stable
+          cache: true
+      - name: Folder structure
+        run: tool/werkbank/bin/werkbank layout
+      - run: flutter pub get
+      - name: Translations up to date
+        run: flutter gen-l10n && git diff --exit-code -- lib/l10n
+      - name: Formatting
+        run: dart format --output=none --set-exit-if-changed lib test integration_test test_driver
+      - run: flutter analyze
+      - run: flutter test --exclude-tags golden
+      - name: Web build (Home Assistant add-on)
+        run: flutter build web --release --no-web-resources-cdn
+
+  linux:
+    if: startsWith(github.ref, 'refs/tags/app-v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: 3.47.6
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Linux desktop build
+        run: flutter build linux --release --obfuscate --split-debug-info=build/symbols
+      - run: tar -czf knx-monitor-linux-x64.tar.gz -C build/linux/x64/release bundle
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: knx-monitor-linux
+          path: knx-monitor-linux-x64.tar.gz
+          retention-days: 7
+
+  windows:
+    if: startsWith(github.ref, 'refs/tags/app-v') || github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: 3.47.6
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Windows desktop build
+        run: flutter build windows --release --obfuscate --split-debug-info=build/symbols --dart-define=WINDOWS_SHOP=true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: knx-monitor-windows
+          path: build/windows/x64/runner/Release
+          retention-days: 7
+
+  # Installable APK as a build artifact for testing. Without key.properties
+  # it is signed with the debug key (not for Google Play).
+  android:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: 3.47.6
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Android build (APK)
+        run: flutter build apk --release
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: knx-monitor-android
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
+
+  addon-server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ha-addon/knx_monitor/server
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+        with:
+          sdk: 3.13.6
+      - run: dart pub get --enforce-lockfile
+      - name: Formatting
+        run: dart format --output=none --set-exit-if-changed bin lib test
+      - run: dart analyze
+      - run: dart test
+      - run: dart compile exe bin/server.dart -o /tmp/server

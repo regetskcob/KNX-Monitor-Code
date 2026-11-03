@@ -1,0 +1,41 @@
+blueprint:
+  name: KNX Monitor – bus connection lost or back
+  description: >-
+    Runs your actions when the KNX Monitor add-on loses its bus connection or
+    gets it back (event `knx_monitor_bus`). The event data holds `connected`,
+    `state`, `reason` and `installation`. Short drop-outs are reported too;
+    the MQTT entity "Bus connected" (with a "for" duration) suits waiting a
+    few minutes before acting.
+  domain: automation
+  source_url: https://github.com/regetskcob/KNX-Monitor/blob/main/blueprints/automation/knx_monitor_bus.yaml
+  input:
+    when:
+      name: When
+      default: lost
+      selector:
+        select:
+          options:
+            - label: Connection lost
+              value: lost
+            - label: Connection back
+              value: back
+    actions:
+      name: Actions
+      selector:
+        action: {}
+
+variables:
+  when: !input when
+
+triggers:
+  - trigger: event
+    event_type: knx_monitor_bus
+
+conditions:
+  - condition: template
+    value_template: "{{ trigger.event.data.connected == (when == 'back') }}"
+
+actions: !input actions
+
+mode: queued
+max: 10

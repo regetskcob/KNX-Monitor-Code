@@ -1,0 +1,16 @@
+# Forgot the password: put knx-box-reset.txt on the boot partition from a PC
+# (BOX_PASSWORD=…, WLAN_PASSWORD=…), restart the box. The file is removed.
+[Unit]
+Description=KNX Monitor Box: Passwörter von der SD-Karte setzen
+After=local-fs.target knx-box-firstboot.service knx-box-data.service
+Wants=knx-box-data.service
+Before=knx-box.service
+ConditionPathExists=|/boot/firmware/knx-box-reset.txt
+ConditionPathExists=|/boot/knx-box-reset.txt
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/knx-box/secrets.sh --reset
+
+[Install]
+WantedBy=multi-user.target
