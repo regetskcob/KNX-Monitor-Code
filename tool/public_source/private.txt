@@ -94,3 +94,6 @@ CLAUDE.md
 .claude
 store
 
+
+# Dependency updates run here; in the snapshot repository their PRs could never be merged
+.github/dependabot.yml

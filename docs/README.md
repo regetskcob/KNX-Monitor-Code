@@ -2,6 +2,9 @@
 
 Technical documentation of KNX Monitor. Users of the Home Assistant add-on find
 their guide in [ha-addon/knx_monitor/DOCS.md](../ha-addon/knx_monitor/DOCS.md).
+The same documents are published as the
+[wiki](https://github.com/regetskcob/KNX-Monitor-Code/wiki), generated from
+this folder on every release; changes go here.
 
 ## Overview
 

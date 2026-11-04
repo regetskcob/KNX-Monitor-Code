@@ -9,7 +9,10 @@ is a preview, set up with the app, on an IP gateway or directly on the bus with 
 
 This repository hosts the Home Assistant add-on repository, the Linux and
 KNX Box downloads, and the issue tracker. The source code is open under GPLv3
-in [regetskcob/KNX-Monitor-Code](https://github.com/regetskcob/KNX-Monitor-Code). Questions about the code also go to the issues here.
+in [regetskcob/KNX-Monitor-Code](https://github.com/regetskcob/KNX-Monitor-Code),
+the technical documentation in its
+[wiki](https://github.com/regetskcob/KNX-Monitor-Code/wiki). Questions about
+the code also go to the issues here.
 
 [![Add repository to my Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fregetskcob%2FKNX-Monitor)
 

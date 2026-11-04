@@ -42,8 +42,9 @@ KNX Monitor and not in this repository; the app builds and runs without them.
 
 ## Documentation
 
-Start with [docs/architecture.md](docs/architecture.md). All documents:
-[docs/README.md](docs/README.md).
+Read it in the [wiki](https://github.com/regetskcob/KNX-Monitor-Code/wiki),
+or here in [docs/](docs/README.md), where it is written. Start with
+[docs/architecture.md](docs/architecture.md).
 
 | Topic | Document |
 | --- | --- |
