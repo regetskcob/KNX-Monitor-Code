@@ -364,6 +364,32 @@ GroupCatalog mergeLearned(GroupCatalog project, GroupCatalog learned) {
   );
 }
 
+/// [catalog] with the names corrected in the app (`CatalogStore.names`) instead of those from the
+/// project; addresses the catalog does not know are skipped.
+GroupCatalog withNames(GroupCatalog catalog, Map<int, String> names) {
+  if (names.isEmpty) return catalog;
+  return GroupCatalog(
+    {
+      for (final MapEntry(key: a, value: g) in catalog.groups.entries)
+        a: switch (names[a]) {
+          final name? => GroupInfo(
+            address: a,
+            name: name,
+            path: g.path,
+            dpt: g.dpt,
+            description: g.description,
+            links: g.links,
+          ),
+          null => g,
+        },
+    },
+    devices: catalog.devices,
+    projectName: catalog.projectName,
+    manufacturers: catalog.manufacturers,
+    style: catalog.style,
+  );
+}
+
 /// Rooms that already occur in the learned data or the project (for suggestions).
 List<String> knownRooms(GroupCatalog c) {
   final rooms = <String>{

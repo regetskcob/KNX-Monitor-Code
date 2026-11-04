@@ -1,5 +1,5 @@
 name: KNX Monitor
-version: "1.9.6"
+version: "1.9.7"
 slug: knx_monitor
 description: KNX bus monitor, continuous recording, health check and commissioning in the sidebar
 url: https://knx-monitor.de
@@ -19,6 +19,11 @@ homeassistant_api: true
 # MQTT device "KNX Monitor" when a broker (e.g. Mosquitto) is present.
 services:
   - mqtt:want
+# Offers the KNX Monitor integration ("New device found"), see ha_integration.dart;
+# hassio_api for the add-on's own host name in the announcement.
+discovery:
+  - knx_monitor
+hassio_api: true
 # Put the dashboard card into /config/www/knx-monitor/ (option dashboard_card).
 map:
   - type: homeassistant_config

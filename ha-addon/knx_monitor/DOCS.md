@@ -243,6 +243,25 @@ Blueprints for the key figures:
 Without a broker everything else keeps working; the device appears as soon as
 one is set up (the add-on checks every 5 minutes).
 
+## KNX Monitor integration (without MQTT)
+
+Instead of the MQTT device, the add-on can be a device of its own integration:
+install **KNX Monitor** from HACS (custom repository
+`https://github.com/regetskcob/KNX-Monitor-HA`, type *Integration*), restart
+Home Assistant, and confirm "New device found: KNX Monitor". The add-on hands
+over address and access by itself; no MQTT broker is needed.
+
+The integration brings the same sensors and recording switch as the MQTT device,
+device triggers for watchers, alarms, faults and the bus connection, the services
+`knx_monitor.create_report` and `knx_monitor.export_history` (ETS file in the
+`knx_monitor` folder of the configuration), a diagnostics download and repairs
+when the bus has been disconnected for more than 10 minutes or recording paused
+because the disk is full.
+
+While it is set up, the add-on stops announcing its MQTT entities; remove the
+integration and they come back. The integration reaches only a few endpoints of
+the add-on with its own token (`/api/ha/`), everything else stays behind Ingress.
+
 ## Dashboard card
 
 Charts you save in KNX Monitor (Tools → Charts) can go straight onto your

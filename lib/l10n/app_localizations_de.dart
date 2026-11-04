@@ -8904,4 +8904,73 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get annotationValuesLabel => 'Werte';
+
+  @override
+  String get groupRename => 'Namen korrigieren';
+
+  @override
+  String get groupRenamed => 'Name selbst korrigiert – ändern';
+
+  @override
+  String groupRenameTitle(String address) {
+    return 'Name für $address';
+  }
+
+  @override
+  String get groupRenameField => 'Name';
+
+  @override
+  String groupRenameHelp(String name) {
+    return 'Im Projekt: „$name“. Die Korrektur gilt in der App und geht mit den Aufgaben für die ETS als Gruppenadress-Import zurück.';
+  }
+
+  @override
+  String get groupRenameRevert => 'Wie im Projekt';
+
+  @override
+  String get groupReplaceTitle => 'Namen suchen und ersetzen';
+
+  @override
+  String get groupReplaceFind => 'Suchen';
+
+  @override
+  String get groupReplaceWith => 'Ersetzen durch';
+
+  @override
+  String get groupReplaceHint =>
+      'Zum Beispiel einen Tippfehler, der in vielen Namen vorkommt. Groß- und Kleinschreibung zählt.';
+
+  @override
+  String groupReplaceCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Namen werden geändert, zum Beispiel:',
+      one: '1 Name wird geändert:',
+      zero: 'Kein Name enthält diesen Text.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get groupReplaceApply => 'Ersetzen';
+
+  @override
+  String groupReplaceDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Namen korrigiert. Sie gehen mit den Aufgaben für die ETS zurück.',
+      one: '1 Name korrigiert. Er geht mit den Aufgaben für die ETS zurück.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get etsTitleRename => 'Name korrigiert';
+
+  @override
+  String etsTodoRename(String name) {
+    return 'Namen in „$name“ ändern – erledigt der Gruppenadress-Import.';
+  }
 }

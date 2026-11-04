@@ -15,6 +15,7 @@ import '../theme/palette.dart';
 import '../model/filter.dart';
 import 'common.dart';
 import 'ets_tasks_export.dart';
+import 'group_names.dart';
 import 'filter_observations.dart';
 
 /// Comparison of the bus traffic with the ETS project, plus checks on the
@@ -447,6 +448,16 @@ class _ProjectCheckScreenState extends State<ProjectCheckScreen> {
       appBar: AppBar(
         title: Text(s.checkTitle),
         actions: [
+          if (!store.project.isEmpty)
+            IconButton(
+              icon: const Icon(AppIcons.edit),
+              tooltip: s.groupReplaceTitle,
+              onPressed: () async {
+                await replaceGroupNames(context);
+                // Names changed: the cached project check ("no name") is outdated.
+                if (mounted) setState(() => _lint = null);
+              },
+            ),
           if (!store.catalog.isEmpty)
             Builder(
               builder: (button) => IconButton(

@@ -15025,6 +15025,96 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Werte'**
   String get annotationValuesLabel;
+
+  /// Knopf im Detailblatt: Namen einer Gruppenadresse aus dem Projekt korrigieren (z. B. Tippfehler)
+  ///
+  /// In de, this message translates to:
+  /// **'Namen korrigieren'**
+  String get groupRename;
+
+  /// Knopf im Detailblatt, wenn der Name schon in der App korrigiert wurde
+  ///
+  /// In de, this message translates to:
+  /// **'Name selbst korrigiert – ändern'**
+  String get groupRenamed;
+
+  /// Titel des Umbenennen-Dialogs
+  ///
+  /// In de, this message translates to:
+  /// **'Name für {address}'**
+  String groupRenameTitle(String address);
+
+  /// Eingabefeld im Umbenennen-Dialog
+  ///
+  /// In de, this message translates to:
+  /// **'Name'**
+  String get groupRenameField;
+
+  /// Hilfetext im Umbenennen-Dialog mit dem Namen aus dem Projekt
+  ///
+  /// In de, this message translates to:
+  /// **'Im Projekt: „{name}“. Die Korrektur gilt in der App und geht mit den Aufgaben für die ETS als Gruppenadress-Import zurück.'**
+  String groupRenameHelp(String name);
+
+  /// Knopf im Umbenennen-Dialog: Korrektur zurücknehmen
+  ///
+  /// In de, this message translates to:
+  /// **'Wie im Projekt'**
+  String get groupRenameRevert;
+
+  /// Titel/Tooltip: Text in allen Gruppenadress-Namen des Projekts ersetzen
+  ///
+  /// In de, this message translates to:
+  /// **'Namen suchen und ersetzen'**
+  String get groupReplaceTitle;
+
+  /// Eingabefeld: zu ersetzender Text
+  ///
+  /// In de, this message translates to:
+  /// **'Suchen'**
+  String get groupReplaceFind;
+
+  /// Eingabefeld: neuer Text
+  ///
+  /// In de, this message translates to:
+  /// **'Ersetzen durch'**
+  String get groupReplaceWith;
+
+  /// Hinweis im Ersetzen-Dialog, solange das Suchfeld leer ist
+  ///
+  /// In de, this message translates to:
+  /// **'Zum Beispiel einen Tippfehler, der in vielen Namen vorkommt. Groß- und Kleinschreibung zählt.'**
+  String get groupReplaceHint;
+
+  /// Vorschau im Ersetzen-Dialog
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =0{Kein Name enthält diesen Text.} =1{1 Name wird geändert:} other{{count} Namen werden geändert, zum Beispiel:}}'**
+  String groupReplaceCount(int count);
+
+  /// Knopf im Ersetzen-Dialog
+  ///
+  /// In de, this message translates to:
+  /// **'Ersetzen'**
+  String get groupReplaceApply;
+
+  /// Meldung nach dem Ersetzen
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Name korrigiert. Er geht mit den Aufgaben für die ETS zurück.} other{{count} Namen korrigiert. Sie gehen mit den Aufgaben für die ETS zurück.}}'**
+  String groupReplaceDone(int count);
+
+  /// ETS-Aufgabe: Name in der App korrigiert
+  ///
+  /// In de, this message translates to:
+  /// **'Name korrigiert'**
+  String get etsTitleRename;
+
+  /// ETS-Aufgabe: korrigierten Namen übernehmen
+  ///
+  /// In de, this message translates to:
+  /// **'Namen in „{name}“ ändern – erledigt der Gruppenadress-Import.'**
+  String etsTodoRename(String name);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

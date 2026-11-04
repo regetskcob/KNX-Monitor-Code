@@ -290,15 +290,27 @@ Future<void> serveEtsXml(HttpRequest request, Recorder recorder, {String? host})
     response.statusCode = HttpStatus.noContent;
     return response.close();
   }
+  return serveEtsXmlRange(request, recorder, range.from, range.to, host: host);
+}
+
+/// The ETS file of `[from, to)` as a download (checked range).
+Future<void> serveEtsXmlRange(
+  HttpRequest request,
+  Recorder recorder,
+  DateTime from,
+  DateTime to, {
+  String? host,
+}) async {
+  final response = request.response;
   // What is still in the buffer belongs to the download.
   await recorder.flush();
-  final lastDay = Recorder.dayName(range.to.subtract(const Duration(microseconds: 1)));
-  final name = 'knx-monitor-${Recorder.dayName(range.from)}-$lastDay.xml';
+  final lastDay = Recorder.dayName(to.subtract(const Duration(microseconds: 1)));
+  final name = 'knx-monitor-${Recorder.dayName(from)}-$lastDay.xml';
   response.headers
     ..contentType = ContentType('application', 'xml', charset: 'utf-8')
     ..set(HttpHeaders.cacheControlHeader, 'no-store')
     ..set('Content-Disposition', 'attachment; filename="$name"');
-  await writeEtsXml(recorder, range.from, range.to, (chunk) async {
+  await writeEtsXml(recorder, from, to, (chunk) async {
     response.add(utf8.encode(chunk));
     await response.flush();
   }, host: host);

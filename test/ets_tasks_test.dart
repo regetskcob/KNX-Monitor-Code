@@ -5,8 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:knx_monitor/catalog_store.dart';
 import 'package:knx_monitor/export/pdf_export.dart';
 import 'package:knx_monitor/knx/group_catalog.dart';
+import 'package:knx_monitor/knx/telegram.dart';
 import 'package:knx_monitor/model/device_inventory.dart';
+import 'package:knx_monitor/export/ets_ga_export.dart';
 import 'package:knx_monitor/model/ets_tasks.dart';
+import 'package:knx_monitor/model/teach_in.dart';
+import 'package:knx_monitor/ui/group_names.dart';
 
 int ga(int main, int middle, int sub) => (main << 11) | (middle << 8) | sub;
 int pa(int line, int device) => (1 << 12) | (line << 8) | device;
@@ -116,6 +120,77 @@ void main() {
     expect(tasks.imports.firstWhere((e) => e.address == ga(1, 0, 9)).dpt, const Dpt(1, 1));
     // Mit angelerntem Namen gibt es keine Aufgabe „ohne Namen“.
     expect(tasks.manual.where((t) => t.kind == EtsTaskKind.noName), isEmpty);
+  });
+
+  test('Korrigierte Namen: Aufgabe und Import, zusammen mit dem Typ', () {
+    final project = GroupCatalog({
+      ga(1, 5, 0): GroupInfo(address: ga(1, 5, 0), name: 'EG WZ Rücmledung Wert', path: 'Licht › Rückmeldung'),
+      ga(1, 5, 1): GroupInfo(address: ga(1, 5, 1), name: 'EG KU Rücmledung Wert', dpt: const Dpt(5, 1)),
+      ga(1, 5, 2): GroupInfo(address: ga(1, 5, 2), name: 'Neue Gruppenadresse'),
+      ga(1, 5, 3): GroupInfo(address: ga(1, 5, 3), name: 'Flur'),
+    });
+    final names = replaceInNames(project, const {}, 'Rücmledung', 'Rückmeldung');
+    expect(names, {ga(1, 5, 0): 'EG WZ Rückmeldung Wert', ga(1, 5, 1): 'EG KU Rückmeldung Wert'});
+    final tasks = EtsTasks.of(
+      project,
+      {ga(1, 5, 0): const Dpt(5, 1)},
+      names: {
+        ...names,
+        // Korrektur gewinnt vor dem Angelernten; gleicher Name wie im Projekt ist keine Aufgabe, eine
+        // Adresse außerhalb des Projekts auch nicht.
+        ga(1, 5, 2): 'EG WC Licht',
+        ga(1, 5, 3): 'Flur',
+        ga(9, 9, 9): 'Fremd',
+      },
+      learned: GroupCatalog({ga(1, 5, 2): GroupInfo(address: ga(1, 5, 2), name: 'Gäste-WC')}),
+    );
+    expect(
+      [for (final t in tasks.importable) (t.group, t.kind)],
+      [
+        (ga(1, 5, 0), EtsTaskKind.dpt),
+        (ga(1, 5, 0), EtsTaskKind.rename),
+        (ga(1, 5, 1), EtsTaskKind.rename),
+        (ga(1, 5, 2), EtsTaskKind.rename),
+      ],
+    );
+    expect(tasks.importable.firstWhere((t) => t.group == ga(1, 5, 1)).beforeName, 'EG KU Rücmledung Wert');
+    // Eine Zeile je Adresse: neuer Name, Typ und Gruppen bleiben erhalten.
+    expect(tasks.imports, [
+      (
+        address: ga(1, 5, 0),
+        name: 'EG WZ Rückmeldung Wert',
+        dpt: const Dpt(5, 1),
+        description: null,
+        path: 'Licht › Rückmeldung',
+      ),
+      (address: ga(1, 5, 1), name: 'EG KU Rückmeldung Wert', dpt: const Dpt(5, 1), description: null, path: null),
+      (address: ga(1, 5, 2), name: 'EG WC Licht', dpt: null, description: null, path: null),
+    ]);
+    // Mit Korrektur keine Aufgabe „ohne Namen“.
+    expect(tasks.manual.where((t) => t.kind == EtsTaskKind.noName), isEmpty);
+    expect(
+      etsImportXml(tasks.imports, GroupStyle.threeLevel),
+      contains('Name="EG KU Rückmeldung Wert" Address="1/5/1"'),
+    );
+  });
+
+  test('Ersetzen baut auf früheren Korrekturen auf, Anzeige zeigt sie', () {
+    final project = GroupCatalog({
+      ga(1, 1, 72): GroupInfo(address: ga(1, 1, 72), name: 'Terasse Licht', dpt: const Dpt(1, 1)),
+      ga(1, 1, 73): GroupInfo(address: ga(1, 1, 73), name: 'Garten Licht'),
+    });
+    final first = replaceInNames(project, const {}, 'Terasse', 'Terrasse');
+    expect(replaceInNames(project, first, 'Licht', 'Beleuchtung'), {
+      ga(1, 1, 72): 'Terrasse Beleuchtung',
+      ga(1, 1, 73): 'Garten Beleuchtung',
+    });
+    expect(replaceInNames(project, first, 'terasse', 'x'), isEmpty);
+    expect(replaceInNames(project, first, '', 'x'), isEmpty);
+    expect(replaceInNames(project, first, 'Licht', 'Licht'), isEmpty);
+    final shown = withNames(project, first);
+    expect(shown[ga(1, 1, 72)]!.name, 'Terrasse Licht');
+    expect(shown[ga(1, 1, 72)]!.dpt, const Dpt(1, 1));
+    expect(identical(withNames(project, const {}), project), isTrue);
   });
 
   test('Inventar: fehlt im Projekt, Seriennummer anders, antwortet nicht', () {

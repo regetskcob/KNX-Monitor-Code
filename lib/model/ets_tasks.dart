@@ -17,6 +17,9 @@ enum EtsTaskKind {
   /// Learned address that is missing from the project.
   learnedNew,
 
+  /// Name corrected in the app (e.g. a typo), different from the project.
+  rename,
+
   // --- on group addresses, by hand in the ETS ---
 
   /// Address without a name (ETS default), not learned either.
@@ -82,7 +85,7 @@ enum EtsTaskKind {
   standardDeviation;
 
   /// Whether it belongs in the group address import (name, datapoint type, new address).
-  bool get importable => this == dpt || this == learnedName || this == learnedNew;
+  bool get importable => this == dpt || this == learnedName || this == learnedNew || this == rename;
 }
 
 /// Communication object of a device: device, number and text.
@@ -130,7 +133,8 @@ class EtsTask {
   /// New datapoint type ([EtsTaskKind.dpt], [EtsTaskKind.learnedNew]).
   final Dpt? dpt;
 
-  /// Learned name ([EtsTaskKind.learnedName], [EtsTaskKind.learnedNew]).
+  /// Learned or corrected name ([EtsTaskKind.learnedName], [EtsTaskKind.learnedNew],
+  /// [EtsTaskKind.rename]).
   final String? name;
 
   /// Line (area and line as in the individual address, without the device
@@ -171,18 +175,19 @@ typedef EtsDeviation = ({int? group, int? device, int? line, String text});
 typedef EtsImportEntry = ({int address, String name, Dpt? dpt, String? description, String? path});
 
 /// All tasks for the ETS: on group addresses, per device and on the project,
-/// from the project checks ([ProjectLint]), the datapoint types set in the app,
-/// what was learned without a project, and the device inventory. Data only, so
+/// from the project checks ([ProjectLint]), the datapoint types and names set in
+/// the app, what was learned without a project, and the device inventory. Data only, so
 /// the PDF can be created in the background.
 class EtsTasks {
   EtsTasks._(this.groups, this.devices, this.project, this.imports, {required this.hasFlags});
 
-  /// [project] is the imported project (without learned data), [learned] the
-  /// learned data, [inventory] the result of the last inventory (empty if none
-  /// ran).
+  /// [project] is the imported project (without learned data or corrected
+  /// names), [names] the names corrected in the app, [learned] the learned data,
+  /// [inventory] the result of the last inventory (empty if none ran).
   factory EtsTasks.of(
     GroupCatalog project,
     Map<int, Dpt> overrides, {
+    Map<int, String> names = const {},
     GroupCatalog? learned,
     List<InventoryEntry> inventory = const [],
     List<EtsDeviation> deviations = const [],
@@ -206,13 +211,19 @@ class EtsTasks {
       if (info == null || info.dpt == dpt) continue;
       groups.add(EtsTask(EtsTaskKind.dpt, group: address, dpt: dpt, beforeDpt: info.dpt));
     }
+    // Names corrected in the app before learned ones.
+    for (final MapEntry(key: address, value: name) in names.entries) {
+      final info = project[address];
+      if (info == null || info.name == name) continue;
+      groups.add(EtsTask(EtsTaskKind.rename, group: address, name: name, beforeName: info.name));
+    }
     // Names and new addresses from teach-in.
     for (final g in learned.groups.values) {
       final info = project[g.address];
       final named = !isDefaultGroupName(g);
       if (info == null) {
         groups.add(EtsTask(EtsTaskKind.learnedNew, group: g.address, name: g.name, dpt: overrides[g.address] ?? g.dpt));
-      } else if (named && isDefaultGroupName(info)) {
+      } else if (named && isDefaultGroupName(info) && !names.containsKey(g.address)) {
         groups.add(EtsTask(EtsTaskKind.learnedName, group: g.address, name: g.name, beforeName: info.name));
       }
     }
@@ -222,8 +233,12 @@ class EtsTasks {
       final current = imports[t.group!];
       imports[t.group!] = (
         address: t.group!,
-        name: t.kind == EtsTaskKind.dpt ? current?.name ?? info?.name ?? learnedInfo?.name ?? '' : t.name ?? '',
-        dpt: t.kind == EtsTaskKind.learnedName ? current?.dpt ?? dpts[t.group!] ?? info?.dpt : t.dpt ?? current?.dpt,
+        name: t.kind == EtsTaskKind.dpt
+            ? current?.name ?? names[t.group!] ?? info?.name ?? learnedInfo?.name ?? ''
+            : t.name ?? '',
+        dpt: t.kind == EtsTaskKind.learnedName || t.kind == EtsTaskKind.rename
+            ? current?.dpt ?? dpts[t.group!] ?? info?.dpt
+            : t.dpt ?? current?.dpt,
         description: info?.description,
         path: info?.path ?? learnedInfo?.path,
       );
@@ -232,7 +247,7 @@ class EtsTasks {
     for (final i in lint.incomplete) {
       final a = i.group.address;
       final learnedName = learned[a];
-      if (i.noName && (learnedName == null || isDefaultGroupName(learnedName))) {
+      if (i.noName && !names.containsKey(a) && (learnedName == null || isDefaultGroupName(learnedName))) {
         groups.add(EtsTask(EtsTaskKind.noName, group: a));
       }
       if (i.noDpt && !dpts.containsKey(a)) groups.add(EtsTask(EtsTaskKind.noDpt, group: a));
@@ -343,8 +358,8 @@ class EtsTasks {
   /// Tasks on the project itself (lines).
   final List<EtsTask> project;
 
-  /// Addresses for the group address import: changed datapoint types, learned
-  /// names and new addresses, one entry per address.
+  /// Addresses for the group address import: changed datapoint types, corrected
+  /// and learned names and new addresses, one entry per address.
   final List<EtsImportEntry> imports;
 
   /// Whether the project contains flags; otherwise the flag checks are missing

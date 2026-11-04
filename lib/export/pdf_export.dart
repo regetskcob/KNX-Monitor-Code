@@ -650,6 +650,7 @@ Future<Uint8List> buildEtsTasksPdf(
     EtsTaskKind.dpt => s.etsTitleDpt,
     EtsTaskKind.learnedName => s.etsTitleLearnedName,
     EtsTaskKind.learnedNew => s.etsTitleLearnedNew,
+    EtsTaskKind.rename => s.etsTitleRename,
     EtsTaskKind.noName => s.etsTitleNoName,
     EtsTaskKind.noDpt => s.etsTitleNoDpt,
     EtsTaskKind.withoutSender => s.checkWithoutSender,
@@ -673,6 +674,7 @@ Future<Uint8List> buildEtsTasksPdf(
     EtsTaskKind.dpt => s.etsTodoDpt(dptText(t.dpt)),
     EtsTaskKind.learnedName => s.etsTodoLearnedName(t.name ?? ''),
     EtsTaskKind.learnedNew => s.etsTodoLearnedNew(t.name ?? ''),
+    EtsTaskKind.rename => s.etsTodoRename(t.name ?? ''),
     EtsTaskKind.noName => s.etsTodoNoName,
     EtsTaskKind.noDpt => s.etsTodoNoDpt,
     EtsTaskKind.withoutSender => s.etsTodoWithoutSender,
@@ -707,6 +709,7 @@ Future<Uint8List> buildEtsTasksPdf(
     EtsTaskKind.dpt ||
     EtsTaskKind.learnedName ||
     EtsTaskKind.learnedNew ||
+    EtsTaskKind.rename ||
     EtsTaskKind.notInProject ||
     EtsTaskKind.serialMismatch ||
     EtsTaskKind.missingOnBus ||
@@ -835,7 +838,7 @@ Future<Uint8List> buildEtsTasksPdf(
   // tasks themselves: in the background the catalog only knows project and learned data combined.
   String importBefore(EtsTask t) => switch (t.kind) {
     EtsTaskKind.dpt => dptText(t.beforeDpt),
-    EtsTaskKind.learnedName => t.beforeName ?? '—',
+    EtsTaskKind.learnedName || EtsTaskKind.rename => t.beforeName ?? '—',
     _ => '—',
   };
   String importAfter(EtsTask t) => switch (t.kind) {

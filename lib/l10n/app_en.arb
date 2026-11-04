@@ -2526,5 +2526,20 @@
   "exportsEtsHistoryAll": "Everything",
   "exportsEtsHistoryAllHint": "The whole history as a zip with one file per day. SpectrumKNX imports it in one go, for example when moving. With many weeks this can take a few minutes.",
   "chartsAnnotateHere": "Comment here",
-  "annotationValuesLabel": "Values"
+  "annotationValuesLabel": "Values",
+  "groupRename": "Correct name",
+  "groupRenamed": "Name corrected – change",
+  "groupRenameTitle": "Name for {address}",
+  "groupRenameField": "Name",
+  "groupRenameHelp": "In the project: “{name}”. The correction applies in the app and goes back to the ETS as a group address import with the tasks for ETS.",
+  "groupRenameRevert": "As in the project",
+  "groupReplaceTitle": "Find and replace in names",
+  "groupReplaceFind": "Find",
+  "groupReplaceWith": "Replace with",
+  "groupReplaceHint": "For example a typo that occurs in many names. Case matters.",
+  "groupReplaceCount": "{count, plural, =0{No name contains this text.} =1{1 name will change:} other{{count} names will change, for example:}}",
+  "groupReplaceApply": "Replace",
+  "groupReplaceDone": "{count, plural, =1{1 name corrected. It goes back with the tasks for ETS.} other{{count} names corrected. They go back with the tasks for ETS.}}",
+  "etsTitleRename": "Name corrected",
+  "etsTodoRename": "Change the name to “{name}” – the group address import does this."
 }

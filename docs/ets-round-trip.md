@@ -10,6 +10,7 @@ ETS yet; the ETS test procedure is at the end.
 | --- | --- | --- | --- |
 | **Datapoint type of a group address** | can be set ("Set datapoint type", `CatalogStore.overrides`) | **ETS group address import (XML)**, official, no signature | built (`lib/export/ets_ga_export.dart`), not yet tested in ETS |
 | Names of unnamed addresses, new addresses | learned without a project (`CatalogStore.learned`) | same XML import | built, not yet tested in ETS |
+| **Corrected names** (typos) | per address in the details sheet ("Correct name") or for all project names at once in the project check ("Find and replace in names"), `CatalogStore.names` | same XML import | built, not yet tested in ETS |
 | **Flags of an object** (C R W T U) | read and checked only (project check) | no official file import; only in ETS itself (by hand or via an ETS app) | task list ("Tasks for ETS") |
 | **Links** object ↔ group address | read and checked only | as for flags | task list |
 | Descriptions of group addresses | cannot be changed | would work with the same XML import | not built |
@@ -39,7 +40,8 @@ XML because it carries the range names. Example of the format:
 `etsGroupAddressXml(catalog, overrides)` for datapoint types only):
 
 - writes **only the addresses that changed** (datapoint type set in the app,
-  learned name, learned new address). The import leaves all others alone.
+  corrected name, learned name, learned new address). The import leaves all
+  others alone.
 - takes name, description and main and middle group from the imported
   project, so nothing changes except the intended field.
 - supports three-level addresses only. Two-level and free projects produce
@@ -103,6 +105,7 @@ passed).
 | Source | Tasks | Where |
 | --- | --- | --- |
 | Datapoint types set in the app | set datapoint type | import |
+| Names corrected in the app (`CatalogStore.names`, `name_overrides.json`) | change the name; wins over a learned name | import |
 | Learning without a project (`CatalogStore.learned`) | name for unnamed addresses, new addresses, datapoint types | import |
 | Project check (`ProjectLint`) | no name, no datapoint type, no sender, no receiver (also unlinked), main group 14/15 | by hand, at the address |
 | Project check (`ProjectLint`) | feedback without T flag, read without R flag, R flag more than once, no C flag, several senders, device without links | by hand, per device |

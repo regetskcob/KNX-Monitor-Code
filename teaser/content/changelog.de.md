@@ -6,8 +6,36 @@ slug: "changelog"
 ---
 Was die letzten Versionen von KNX Monitor gebracht haben, neueste zuerst. App, Home-Assistant-Add-on und KNX-Box haben eine gemeinsame Versionsnummer. Jede Version liegt auf [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant zeigt das Add-on dieselben Hinweise vor einem Update (auf Englisch).
 
-## 1.9.3 – in Vorbereitung
+## 1.9.7 – 4.11.2026
 
+- Neu für Home Assistant: die Integration „KNX Monitor“ über HACS ([KNX-Monitor-HA](https://github.com/regetskcob/KNX-Monitor-HA)). Läuft das Add-on, meldet Home Assistant „Neues Gerät gefunden“. Danach gibt es Sensoren und den Schalter für die Aufzeichnung wie beim MQTT-Gerät, Geräte-Auslöser für Wächter, Alarme und die Busverbindung, die Dienste „Bericht erstellen“ und „Verlauf exportieren“, eine Diagnose zum Herunterladen und Reparaturhinweise, wenn der Bus länger weg ist oder der Speicher voll. Ein MQTT-Broker ist dafür nicht nötig.
+
+## 1.9.6 – 4.11.2026
+
+- Diagramme: Neben „Geladen“ gibt es jetzt „Heute“, „7 Tage“ und „30 Tage“ aus der dauerhaften Aufzeichnung von Add-on und KNX-Box. Ein Klick setzt das Fadenkreuz und bietet genau dort „Hier kommentieren“ an; der Kommentar hält den vorherigen und den aktuellen Wert jeder Linie fest.
+- Übersicht: Alle Karten mit Werteverlauf zeigen ihn wieder, Schaltzustände wie Fenster und Licht als Blöcke für „Ein“. Die Verläufe zeichnen seltener neu.
+- Beim Überfahren der Aktivitätsleiste siehst du, zu welcher Zeit der Balken gehört. Die Ursachenkette nennt die Ankunftszeit des Telegramms.
+- Kommentare erscheinen auf iPad, Mac und im Browser als richtiger Dialog statt als schmaler Hinweis.
+- Home-Assistant-Add-on: Läuft die Verbindung über die KNX-Integration, füllt das Add-on Lücken aus deren Telegrammspeicher (ab Home Assistant 2026.7). Nach der Installation siehst du also gleich, was Home Assistant schon aufgezeichnet hat, und ein Update reißt kein Loch mehr.
+- Der ganze Verlauf lässt sich als ZIP mit einer ETS-Datei pro Tag exportieren, SpectrumKNX liest ihn in einem Rutsch ein. Auch auf der KNX-Box.
+
+## 1.9.5 – 3.11.2026
+
+- Der Verlauf von Add-on und KNX-Box lässt sich als Gruppenmonitor-Datei der ETS herunterladen. Dasselbe Format nutzen der Telegrammspeicher von Home Assistant und SpectrumKNX.
+- Aufnahmen importieren liest jetzt auch Dateien aus Home Assistant, SpectrumKNX, der ETS 6, von Gira-Loggern und Node-RED knx-ultimate.
+- Home Assistant: Das MQTT-Gerät „KNX Monitor“ liefert Buslast, offene Alarme, Verfügbarkeit der letzten 24 Stunden und den freien Speicher, dazu zwei neue Blueprints.
+
+## 1.9.4 – 3.11.2026
+
+- KNX Monitor ist Open Source unter der GPLv3: [KNX-Monitor-Code](https://github.com/regetskcob/KNX-Monitor-Code). Alles, was der Server auf den Bus schickt, läuft durch eine einzige Datei.
+- Neue Option „Nur lesen“ im Add-on, von Anfang an eingeschaltet: Der Server sendet nichts auf den Bus, auch keine Leseanfragen. Aufzeichnung und Auswertung laufen weiter. Docker und KNX-Box haben dasselbe als Schalter.
+- Im dunklen Modus haben Umrisse etwas mehr Kontrast.
+
+## 1.9.3 – 2.11.2026
+
+- Neue Oberfläche: ein grüner Statuskasten über Übersicht, Details und Live, Karten im Raster, ein Schreiben-Knopf oben und eine Live-Liste, die mit Adresse und Namen beginnt.
+- Das Menü ist nach Aufgaben sortiert, mit Symbolen; Auswertungen stehen für sich.
+- Die Kommunikationskarte zeigt Geräte in Ebenen und Zoomstufen, Topologie und Projekt-Abgleich öffnen schneller.
 - Konten gibt es vorerst nicht mehr: Die App meldet nichts mehr an und spricht mit keinem Kontodienst. Deine Daten auf dem Gerät bleiben, wie sie sind.
 
 ## 1.9.2 – 1.11.2026
@@ -131,3 +159,60 @@ Was die letzten Versionen von KNX Monitor gebracht haben, neueste zuerst. App, H
 - Diagramme: Ein/Aus-Werte bekommen eine eigene Zeile; Diagramme lassen sich mit Projektadressen vorbereiten, die noch nichts gesendet haben; „Freie Auswahl“ entfällt.
 - Die Projektprüfung nutzt auf breiten Bildschirmen zwei Spalten.
 - Die Seitenleiste beginnt mit der Übersicht.
+
+## 1.6.0 – 21.10.2026
+
+- Topologie: Linien, Koppler und Geräte als Baum mit Detailbereich. Linienkoppler, Netzteile, Aktoren, Taster, Präsenzmelder, Wetterstationen und Rauchmelder sind gezeichnet wie die echten Geräte, mit Status-LEDs und Telegramm-Pulsen auf der Busleitung.
+- Schaltobjekte lassen sich direkt aus der Objektliste und der Topologie mit 0/1 senden.
+- Der Projekt-Import liest die Flags der Kommunikationsobjekte (K L S Ü A); der Projekt-Abgleich vergleicht das ETS-Projekt auch ganz ohne Busverkehr.
+- Werte ohne Projekt: 3- und 8-Byte-Werte erscheinen als Datum und Uhrzeit.
+- Diagnosepaket für den Support: Fehlerbericht, Aufnahme, Projekt und technische Angaben als ZIP, ohne persönliche Daten.
+- Daten liegen jetzt je Anlage; vorhandene Daten ziehen beim Start in die erste Anlage um.
+
+## 1.5.1 – 19.10.2026
+
+- Sicherheit im Add-on: Die Busverbindung mit den IP-Secure-Passwörtern und die Zugangsdaten der KNX-Box sind über den Dateispeicher des Add-ons nicht mehr erreichbar.
+
+## 1.5.0 – 19.10.2026
+
+- Neues Aussehen mit Horizont, dem Design-System aller meiner Projekte. In Home Assistant übernimmt das Add-on die neutralen Farben von Home Assistant, Akzent, Schrift und Linien bleiben.
+- Neues Symbol: eine Busklemme auf der grünen Busleitung.
+- Werte, Adressen und Zeiten in einer Schrift mit fester Breite; jeder Status hat ein Zeichen und ein Wort, nicht nur eine Farbe.
+- Aufnahmen: Langes Drücken auf Aufnehmen behält die letzten 10 Sekunden. Vor einer Wiedergabe lassen sich Werte ändern und Telegramme entfernen.
+- Diagramme werden je Anlage gespeichert und erscheinen als eigene Sektion in der Übersicht.
+- Ab 600 px ist das Menü eine Seitenleiste.
+
+## 1.4.0 – 18.10.2026
+
+- Schnellfilter wie „Unbeantwortet“ wirken jetzt auch in Übersicht und Objekten.
+- Raumnummern wie „OG K1“ in ETS-Namen werden erkannt, Objekte landen im richtigen Raum.
+- Sichereres Speichern: Ein abgebrochener Schreibvorgang hinterlässt keine leere Datei mehr.
+
+## 1.3.0 – 17.10.2026
+
+- Neu im Add-on: die dauerhafte Aufzeichnung. Das Add-on hält selbst eine Busverbindung offen, auch ohne offenen Browser, verbindet sich nach Aussetzern sofort neu und schreibt den Verlauf. Alle offenen Ansichten teilen sich diesen einen Tunnel.
+- Verbindungsarten: Tunnel über UDP oder TCP, feste Tunneladresse, KNXnet/IP-Routing, KNX IP Secure und ein Home-Assistant-Modus, der die Telegramme der KNX-Integration ohne eigenen Tunnel mitliest.
+- KNX Data Secure: Keyring aus der ETS importieren, gesicherte Telegramme werden live und in der Aufnahme entschlüsselt.
+- Alarm-Mitteilungen kommen jetzt vom Add-on selbst, Langzeitstatistik mit Aktivitäts-Heatmap.
+
+## 1.2.0 – 17.10.2026
+
+- Neu: Werkzeug „Gesundheit“. Es liest bekannte Status-Adressen, meldet verstummte Adressen, überwacht Zyklen, prüft Plausibilität, Datentyp je Absender und Busqualität.
+- Neu: Inbetriebnahme-Checkliste mit Notizen und PDF-Protokoll.
+- Die Kommunikationskarte startet mit einer Übersicht aller Adressen und Geräte.
+- Sender und Empfänger aus dem ETS-Projekt anhand der Flags; Tunneladressen getrennt in der Topologie.
+- Das Add-on kommt als fertiges Image für amd64 und aarch64.
+
+## 1.1.0 – 15.10.2026
+
+- Alarm-Mitteilungen über Home Assistant, Busmonitor mit allen Frames samt Quittungen, Topologie mit Linien und Kopplern.
+
+## 1.0.0 – 14.10.2026
+
+Der erste Tag: An einem Tag entstand aus einer Idee die erste Fassung der App, und am Abend lief sie schon als Add-on in der Seitenleiste von Home Assistant.
+
+- Verbindung per KNXnet/IP-Tunnel, Gruppenmonitor live, Werte schreiben.
+- Gruppenadressen aus der ETS als CSV oder direkt aus der Projektdatei (.knxproj), PDF-Export ausgewählter Telegramme.
+- Übersicht nach Räumen und Objekten, Verlaufsdiagramme, Aufnahmen mit Wiedergabe und Trigger-Aufnahme mit Vor- und Nachlauf.
+- Diagnose: Status lesen, Programmiermodus finden, Adressen prüfen, Geräteinfo, Linienscan, Kommunikationskarte, Statistik und Projekt-Abgleich.
+- Deutsch und Englisch, iPhone, iPad, Mac und Home-Assistant-Add-on.

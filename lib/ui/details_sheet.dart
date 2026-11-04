@@ -30,6 +30,7 @@ import '../theme/tokens.dart';
 import 'annotations.dart';
 import 'cause_chain_view.dart';
 import 'common.dart';
+import 'group_names.dart';
 import 'recording_timeline.dart';
 import 'history_chart.dart';
 import 'value_board.dart' show Sparkline;
@@ -446,23 +447,34 @@ class _TelegramDetailsState extends State<TelegramDetails> {
           style: theme.textTheme.bodySmall?.copyWith(color: hz.textFaint),
         ),
         if (expert)
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: TextButton.icon(
-              onPressed: () async {
-                await pickDpt(context, t.destination);
-                if (mounted) setState(() {});
-              },
-              icon: const Icon(AppIcons.edit, size: 18),
-              // Known from the ETS: "ändern" (change); changed: the ETS value
-              // alongside, for the ETS.
-              label: Text(switch ((store.overrides.containsKey(t.destination), store.catalog[t.destination]?.dpt)) {
-                (true, final ets?) => s.dptChangedFromEts('$ets'),
-                (true, null) => s.dptOverridden,
-                (false, _?) => s.dptChange,
-                (false, null) => s.dptChoose,
-              }),
-            ),
+          Wrap(
+            children: [
+              TextButton.icon(
+                onPressed: () async {
+                  await pickDpt(context, t.destination);
+                  if (mounted) setState(() {});
+                },
+                icon: const Icon(AppIcons.edit, size: 18),
+                // Known from the ETS: "ändern" (change); changed: the ETS value
+                // alongside, for the ETS.
+                label: Text(switch ((store.overrides.containsKey(t.destination), store.catalog[t.destination]?.dpt)) {
+                  (true, final ets?) => s.dptChangedFromEts('$ets'),
+                  (true, null) => s.dptOverridden,
+                  (false, _?) => s.dptChange,
+                  (false, null) => s.dptChoose,
+                }),
+              ),
+              // Only addresses from the project; learned ones are renamed in teach-in.
+              if (store.project[t.destination] != null)
+                TextButton.icon(
+                  onPressed: () async {
+                    await renameGroup(context, t.destination);
+                    if (mounted) setState(() {});
+                  },
+                  icon: const Icon(AppIcons.edit, size: 18),
+                  label: Text(store.names.containsKey(t.destination) ? s.groupRenamed : s.groupRename),
+                ),
+            ],
           ),
         if (activeAlarm(t) case final alarm?) ...[
           const SizedBox(height: Gap.inner),

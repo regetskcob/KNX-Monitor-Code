@@ -1,0 +1,17 @@
+{
+  "domain": "knx_monitor",
+  "name": "KNX Monitor",
+  "after_dependencies": [
+    "hassio"
+  ],
+  "codeowners": [
+    "@regetskcob"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/regetskcob/KNX-Monitor-HA",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/regetskcob/KNX-Monitor/issues",
+  "requirements": [],
+  "version": "1.0.1"
+}

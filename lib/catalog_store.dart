@@ -73,20 +73,21 @@ class CatalogStore extends ChangeNotifier {
   }
 
   void _merge() {
-    _catalog = mergeLearned(_project, _learned);
+    _catalog = withNames(mergeLearned(_project, _learned), names);
     groupStyle = _catalog.style;
   }
 
-  ({GroupCatalog project, GroupCatalog learned})? _beforeDemo;
+  ({GroupCatalog project, GroupCatalog learned, Map<int, String> names})? _beforeDemo;
   int _demoDepth = 0;
 
-  /// Demo house: its project only in memory, without its own learned data. Data learned in the demo
+  /// Demo house: its project only in memory, without its own learned data and name corrections. Data learned in the demo
   /// also stays in memory only. When nested (tour started from the demo), only the outer [endDemo]
   /// counts.
   void beginDemo(GroupCatalog demo) {
     if (_demoDepth++ == 0) {
-      _beforeDemo = (project: _project, learned: _learned);
+      _beforeDemo = (project: _project, learned: _learned, names: names);
       _learned = GroupCatalog.empty;
+      names = {};
     }
     catalog = demo;
     notifyListeners();
@@ -98,6 +99,7 @@ class CatalogStore extends ChangeNotifier {
     final before = _beforeDemo!;
     _beforeDemo = null;
     _learned = before.learned;
+    names = before.names;
     catalog = before.project;
     notifyListeners();
   }
@@ -113,6 +115,7 @@ class CatalogStore extends ChangeNotifier {
   static const _path = 'catalog.json';
   static const _overridesPath = 'dpt_overrides.json';
   static const _learnedPath = 'learned.json';
+  static const _namesPath = 'name_overrides.json';
 
   /// Files of the active installation.
   AppStorage get _storage => InstallationStore.instance.storage;
@@ -153,17 +156,57 @@ class CatalogStore extends ChangeNotifier {
         {};
   }
 
+  /// Corrected names per group address of the project, e.g. typos – shown everywhere instead of the
+  /// project name and returned to the ETS with the group address import. Survive a project change;
+  /// once the project has the same name, the correction no longer shows up as a task.
+  Map<int, String> names = {};
+
+  /// Corrects the name of a project address; `null` or the project name reverts to the project.
+  Future<void> setName(int address, String? name) => setNames({address: name});
+
+  /// Corrects several names at once (`null` = revert to the project), saved once.
+  Future<void> setNames(Map<int, String?> changes) async {
+    for (final MapEntry(key: address, value: name) in changes.entries) {
+      final trimmed = name?.trim();
+      if (trimmed == null || trimmed.isEmpty || trimmed == _project[address]?.name) {
+        names.remove(address);
+      } else {
+        names[address] = trimmed;
+      }
+    }
+    _merge();
+    notifyListeners();
+    // Demo: persist nothing.
+    if (_beforeDemo != null || DemoTunnel.active) return;
+    await _storage.write(_namesPath, jsonEncode({for (final MapEntry(:key, :value) in names.entries) '$key': value}));
+  }
+
+  Future<void> _loadNames() async {
+    names =
+        await readStored(
+          _storage,
+          _namesPath,
+          (text) => {
+            for (final MapEntry(:key, :value) in (jsonDecode(text) as Map<String, Object?>).entries)
+              int.parse(key): value! as String,
+          },
+        ) ??
+        {};
+  }
+
   /// Load the project of the (just switched) active installation.
   Future<void> reload() async {
     _learned = GroupCatalog.empty;
     catalog = GroupCatalog.empty;
     fileName = null;
     overrides = {};
+    names = {};
     await load();
   }
 
   Future<void> load() async {
     await _loadOverrides();
+    await _loadNames();
     await _loadLearned();
     final prefs = await SharedPreferences.getInstance();
     fileName = prefs.getString(_name);

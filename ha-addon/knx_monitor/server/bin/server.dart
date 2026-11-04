@@ -131,6 +131,19 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
     unawaited(HomeAssistant.instance.refreshKnx());
     Timer.periodic(const Duration(minutes: 10), (_) => HomeAssistant.instance.refreshKnx());
   }
+  // In the add-on: access for the KNX Monitor integration (ha_integration.dart).
+  // While it is set up, it provides the entities instead of the MQTT device.
+  final mqttDiscovery = env['MQTT_DISCOVERY'] != 'false';
+  final ha = HomeAssistant.instance.available
+      ? HaIntegration(
+          data,
+          () => installations.bus,
+          version: env['ADDON_VERSION'] ?? 'dev',
+          port: port,
+          onClaim: (claimed) => mqtt?.setDiscovery(mqttDiscovery && !claimed),
+        )
+      : null;
+  await ha?.start();
   // Device "KNX Monitor" via MQTT: in the add-on with the Supervisor's broker,
   // otherwise (Docker, box) with MQTT_HOST and friends.
   final envBroker = MqttBroker.fromEnvironment(env);
@@ -139,7 +152,7 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
       () => installations.bus,
       version: env['ADDON_VERSION'] ?? 'dev',
       broker: envBroker != null ? () async => envBroker : null,
-      discovery: env['MQTT_DISCOVERY'] != 'false',
+      discovery: mqttDiscovery && !(ha?.claimed ?? false),
     );
     unawaited(mqtt.start());
   }
@@ -170,7 +183,16 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
 
   void accept(HttpServer server) => server.listen(
     (request) => unawaited(
-      _handle(request, web: web, installations: installations, allowAll: allowAll, box: box, hat: hat, crash: crash),
+      _handle(
+        request,
+        web: web,
+        installations: installations,
+        allowAll: allowAll,
+        box: box,
+        hat: hat,
+        crash: crash,
+        ha: ha,
+      ),
     ),
     onError: (Object e) => stderr.writeln('Verbindung: $e'),
   );
@@ -226,6 +248,7 @@ Future<void> _handle(
   BoxAccess? box,
   KberryService? hat,
   CrashWatch? crash,
+  HaIntegration? ha,
 }) async {
   final response = request.response;
   response.headers
@@ -237,6 +260,11 @@ Future<void> _handle(
     // setup.sh on the box: a response below 300 without login, but without data,
     // so that it reveals nothing on the network either.
     if (request.uri.path == healthPath) return await answerHealth(response);
+    // The KNX Monitor integration with its token: only the endpoints below /api/ha/.
+    if (ha != null && HaIntegration.handles(request.uri.path) && ha.authorized(request)) {
+      await ha.serve(request);
+      return;
+    }
     // Without the box only Ingress gets through (Home Assistant users): may administer.
     var admin = true;
     if (box != null) {
@@ -251,6 +279,7 @@ Future<void> _handle(
     }
     final path = request.uri.path;
     final bus = installations.bus;
+    if (ha != null && await ha.serve(request)) return;
     if (await serveInstallations(request, installations, admin: admin)) return;
     if (await serveReports(request, bus.report, admin: admin)) return;
     // Read access like the history below, therefore before the export settings (admin).

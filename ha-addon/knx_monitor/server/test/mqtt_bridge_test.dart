@@ -101,6 +101,21 @@ void main() {
     await data.delete(recursive: true);
   });
 
+  test('integration takes over: announcements are cleared, and come back', () async {
+    await bridge.start();
+    const config = 'homeassistant/sensor/knx_monitor/bus_load/config';
+    expect(sink.retained[config], isNotEmpty);
+    await bridge.setDiscovery(false);
+    expect(sink.subscribed, contains('homeassistant/+/knx_monitor/+/config'));
+    // The broker delivers the retained announcement on subscribe; it is cleared.
+    sink.receive(config, sink.retained[config]!);
+    await until(() => sink.retained[config] == '');
+    await bridge.settled;
+    expect(sink.retained['knx_monitor/state'], isNotNull, reason: 'state keeps going');
+    await bridge.setDiscovery(true);
+    expect(jsonDecode(sink.retained[config]!), isA<Map<String, Object?>>());
+  });
+
   test('kündigt Gerät, Entitäten und Gerätetrigger an', () async {
     await rules([('wind', 'Wind'), ('tuer', 'Haustür')]);
     await bridge.start();

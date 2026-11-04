@@ -15,10 +15,12 @@ export 'src/free_space.dart';
 export 'src/grafana.dart';
 export 'src/ha.dart';
 export 'src/ha_history.dart';
+export 'src/ha_integration.dart';
 export 'src/ha_link.dart';
 export 'src/history_query.dart';
 export 'src/mqtt_bridge.dart';
 export 'src/installations.dart';
+export 'src/key_figures.dart';
 
 export 'package:knx/knx.dart';
 

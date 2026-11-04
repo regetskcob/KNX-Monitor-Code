@@ -8,7 +8,9 @@ is a preview, set up with the app, on an IP gateway or directly on the bus with 
 **Website:** <https://knx-monitor.de>
 
 This repository hosts the Home Assistant add-on repository, the Linux and
-KNX Box downloads, and the issue tracker. The source code is open under GPLv3
+KNX Box downloads, and the issue tracker. The KNX Monitor integration for Home
+Assistant (HACS) lives in
+[regetskcob/KNX-Monitor-HA](https://github.com/regetskcob/KNX-Monitor-HA). The source code is open under GPLv3
 in [regetskcob/KNX-Monitor-Code](https://github.com/regetskcob/KNX-Monitor-Code),
 the technical documentation in its
 [wiki](https://github.com/regetskcob/KNX-Monitor-Code/wiki). Questions about

@@ -6,6 +6,7 @@ import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 
 import 'bus.dart';
+import 'key_figures.dart';
 import 'ha.dart';
 
 /// Access to the MQTT broker as the Supervisor reports it under
@@ -156,25 +157,43 @@ class MqttBridge {
     Future<MqttBroker?> Function()? broker,
     this.interval = const Duration(seconds: 60),
     this.retry = const Duration(minutes: 5),
-    this.discovery = true,
+    bool discovery = true,
     DateTime Function() clock = DateTime.now,
   }) : _sinkFactory = sink ?? MqttClientSink.new,
        _broker = broker ?? brokerFromSupervisor,
-       _clock = clock;
+       _discoveryOn = discovery,
+       _figures = KeyFigures(currentBus, clock: clock);
 
   /// Bus of the active installation (changes with the installation).
   final BusService Function() currentBus;
   final String version;
   final Duration interval;
   final Duration retry;
-  final bool discovery;
 
   /// Whether to send Home Assistant discovery; off (MQTT_DISCOVERY=false) for
   /// systems like ioBroker that would only create superfluous data points
-  /// from it. State, single values and events are sent regardless.
+  /// from it, and while the KNX Monitor integration provides the entities
+  /// (ha_integration.dart). State, single values and events are sent regardless.
+  bool get discovery => _discoveryOn;
+  bool _discoveryOn;
+
+  /// Switches discovery on or off while running: off clears this device's
+  /// announcements (retained, delivered again on subscribe), on announces it.
+  Future<void> setDiscovery(bool on) async {
+    if (on == _discoveryOn) return;
+    _discoveryOn = on;
+    final sink = _sink;
+    if (sink == null) return;
+    if (on) {
+      await announce();
+    } else {
+      sink.subscribe('$_discovery/+/$_device/+/config');
+    }
+  }
+
   final MqttSink Function(MqttBroker broker) _sinkFactory;
   final Future<MqttBroker?> Function() _broker;
-  final DateTime Function() _clock;
+  final KeyFigures _figures;
 
   static const base = 'knx_monitor';
   static const _discovery = 'homeassistant';
@@ -189,25 +208,6 @@ class MqttBridge {
   Timer? _timer;
   bool _stopped = false;
   final _watcherTriggers = <String>{};
-
-  // Per-minute counters: value at the last send, per bus (installation).
-  BusService? _countedBus;
-  int _lastToday = 0;
-  int _lastRepeats = 0;
-  double _lastBusy = 0;
-  DateTime? _lastTick;
-  double _perMinute = 0;
-  double _repeatsPerMinute = 0;
-  double _busLoad = 0;
-
-  // Values that need file access, refreshed in [tick] instead of on every
-  // state message: history size every tick, availability every
-  // [_availabilityEvery] (it reads the month's heartbeat file).
-  int? _historyBytes;
-  double? _availability;
-  DateTime? _availabilityAt;
-  BusService? _availabilityBus;
-  static const _availabilityEvery = Duration(minutes: 15);
 
   bool get connected => _sink != null;
 
@@ -238,7 +238,7 @@ class MqttBridge {
     // device on subscribe; each one is cleared (including those of long-deleted
     // watchers), otherwise Home Assistant keeps building the entities.
     if (!discovery) sink.subscribe('$_discovery/+/$_device/+/config');
-    await _measure();
+    await _figures.measure();
     await announce();
     _timer = Timer.periodic(interval, (_) => unawaited(tick()));
   }
@@ -289,98 +289,16 @@ class MqttBridge {
   /// Updates the counters, sends the state and syncs the watchers' device
   /// triggers (the app can change rules at any time).
   Future<void> tick() async {
-    _count();
-    await _measure();
+    _figures.count();
+    await _figures.measure();
     _publishState();
     await _syncWatcherTriggers();
   }
 
-  void _count() {
-    final bus = currentBus();
-    final now = _clock();
-    final last = _lastTick;
-    // Different installation or new day: start over instead of jumps.
-    if (!identical(bus, _countedBus) ||
-        last == null ||
-        bus.today < _lastToday ||
-        bus.repeats < _lastRepeats ||
-        bus.busy < _lastBusy) {
-      _countedBus = bus;
-      _perMinute = 0;
-      _repeatsPerMinute = 0;
-      _busLoad = 0;
-    } else {
-      final ms = now.difference(last).inMilliseconds;
-      if (ms > 0) {
-        _perMinute = (bus.today - _lastToday) / (ms / 60000);
-        _repeatsPerMinute = (bus.repeats - _lastRepeats) / (ms / 60000);
-        // Occupied seconds per elapsed second, as the app's bus load (9600 bit/s).
-        _busLoad = ((bus.busy - _lastBusy) / (ms / 1000) * 100).clamp(0.0, 100.0);
-      }
-    }
-    _lastToday = bus.today;
-    _lastRepeats = bus.repeats;
-    _lastBusy = bus.busy;
-    _lastTick = now;
-  }
-
-  /// History size and availability over the last 24 hours (file access).
-  Future<void> _measure() async {
-    final bus = currentBus();
-    try {
-      _historyBytes = (await bus.recorder.usage())['bytes'] as int?;
-    } on Object catch (e) {
-      stderr.writeln('MQTT Verlaufsgröße: $e');
-    }
-    final now = _clock();
-    final at = _availabilityAt;
-    if (identical(bus, _availabilityBus) && at != null && now.difference(at) < _availabilityEvery) return;
-    _availabilityBus = bus;
-    _availabilityAt = now;
-    try {
-      _availability = await bus.availability.ratio(now.subtract(const Duration(hours: 24)), now);
-    } on Object catch (e) {
-      _availability = null;
-      stderr.writeln('MQTT Verfügbarkeit: $e');
-    }
-  }
-
-  /// Megabyte as Home Assistant's `data_size` unit `MB` (10^6 bytes).
-  static const _mb = 1000 * 1000;
-
-  static double? _round(double? v) => v == null ? null : double.parse(v.toStringAsFixed(1));
-
   void _publishState() {
     final sink = _sink;
     if (sink == null) return;
-    final bus = currentBus();
-    final alarm = bus.alarms.lastTriggered;
-    final free = bus.recorder.lastFree;
-    final history = _historyBytes;
-    final state = {
-      'connected': bus.state == 'connected',
-      'recording': bus.config.enabled,
-      'per_minute': _round(_perMinute),
-      'repeats_per_minute': _round(_repeatsPerMinute),
-      'today': bus.today,
-      'last': bus.lastTelegram?.toUtc().toIso8601String(),
-      if (bus.installation?['name'] case final String name) 'installation': name,
-      'bus_load': _round(_busLoad),
-      'open_alarms': bus.alarms.openCount,
-      // Name from the project, otherwise the group address.
-      'last_alarm': alarm == null
-          ? null
-          : alarm.change.name.isEmpty
-          ? alarm.change.groupAddress
-          : alarm.change.name,
-      'last_alarm_kind': alarm?.change.kind,
-      'last_alarm_address': alarm?.change.groupAddress,
-      'last_alarm_time': alarm?.time.toUtc().toIso8601String(),
-      'history_mb': history == null ? null : _round(history / _mb),
-      'free_mb': free == null ? null : _round(free / _mb),
-      'low_space': bus.recorder.lowSpace,
-      'availability_24h': _round(_availability == null ? null : _availability! * 100),
-    };
+    final state = _figures.state();
     sink.publish('$base/state', jsonEncode(state), retain: true);
     // The same values individually, for systems without Home Assistant
     // discovery (ioBroker creates one data point per topic). Only on change.

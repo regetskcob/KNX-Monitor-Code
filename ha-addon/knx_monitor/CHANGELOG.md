@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.9.7
+
+- New: the KNX Monitor integration for Home Assistant, installed through HACS
+  (<https://github.com/regetskcob/KNX-Monitor-HA>). With the add-on running, Home
+  Assistant offers it as "New device found: KNX Monitor": sensors and recording
+  switch as on the MQTT device, device triggers, the services "Create report" and
+  "Export history", a diagnostics download and repairs when the bus has been gone
+  for 10 minutes or the disk is full. No MQTT broker needed; while the integration
+  is set up, the add-on no longer announces the same entities over MQTT.
+- The integration gets its own token and only a few endpoints of the add-on
+  (`/api/ha/`); everything else stays reachable through Ingress only.
+
 ## 1.9.6
 
 - Connection "Home Assistant": the add-on now fills gaps in its history from the

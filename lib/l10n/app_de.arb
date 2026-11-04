@@ -12192,5 +12192,90 @@
   "annotationValuesLabel": "Werte",
   "@annotationValuesLabel": {
     "description": "Kommentar-Dialog: Überschrift der Diagrammwerte (vorher → zu diesem Zeitpunkt)"
+  },
+  "groupRename": "Namen korrigieren",
+  "@groupRename": {
+    "description": "Knopf im Detailblatt: Namen einer Gruppenadresse aus dem Projekt korrigieren (z. B. Tippfehler)"
+  },
+  "groupRenamed": "Name selbst korrigiert – ändern",
+  "@groupRenamed": {
+    "description": "Knopf im Detailblatt, wenn der Name schon in der App korrigiert wurde"
+  },
+  "groupRenameTitle": "Name für {address}",
+  "@groupRenameTitle": {
+    "description": "Titel des Umbenennen-Dialogs",
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "groupRenameField": "Name",
+  "@groupRenameField": {
+    "description": "Eingabefeld im Umbenennen-Dialog"
+  },
+  "groupRenameHelp": "Im Projekt: „{name}“. Die Korrektur gilt in der App und geht mit den Aufgaben für die ETS als Gruppenadress-Import zurück.",
+  "@groupRenameHelp": {
+    "description": "Hilfetext im Umbenennen-Dialog mit dem Namen aus dem Projekt",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupRenameRevert": "Wie im Projekt",
+  "@groupRenameRevert": {
+    "description": "Knopf im Umbenennen-Dialog: Korrektur zurücknehmen"
+  },
+  "groupReplaceTitle": "Namen suchen und ersetzen",
+  "@groupReplaceTitle": {
+    "description": "Titel/Tooltip: Text in allen Gruppenadress-Namen des Projekts ersetzen"
+  },
+  "groupReplaceFind": "Suchen",
+  "@groupReplaceFind": {
+    "description": "Eingabefeld: zu ersetzender Text"
+  },
+  "groupReplaceWith": "Ersetzen durch",
+  "@groupReplaceWith": {
+    "description": "Eingabefeld: neuer Text"
+  },
+  "groupReplaceHint": "Zum Beispiel einen Tippfehler, der in vielen Namen vorkommt. Groß- und Kleinschreibung zählt.",
+  "@groupReplaceHint": {
+    "description": "Hinweis im Ersetzen-Dialog, solange das Suchfeld leer ist"
+  },
+  "groupReplaceCount": "{count, plural, =0{Kein Name enthält diesen Text.} =1{1 Name wird geändert:} other{{count} Namen werden geändert, zum Beispiel:}}",
+  "@groupReplaceCount": {
+    "description": "Vorschau im Ersetzen-Dialog",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupReplaceApply": "Ersetzen",
+  "@groupReplaceApply": {
+    "description": "Knopf im Ersetzen-Dialog"
+  },
+  "groupReplaceDone": "{count, plural, =1{1 Name korrigiert. Er geht mit den Aufgaben für die ETS zurück.} other{{count} Namen korrigiert. Sie gehen mit den Aufgaben für die ETS zurück.}}",
+  "@groupReplaceDone": {
+    "description": "Meldung nach dem Ersetzen",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "etsTitleRename": "Name korrigiert",
+  "@etsTitleRename": {
+    "description": "ETS-Aufgabe: Name in der App korrigiert"
+  },
+  "etsTodoRename": "Namen in „{name}“ ändern – erledigt der Gruppenadress-Import.",
+  "@etsTodoRename": {
+    "description": "ETS-Aufgabe: korrigierten Namen übernehmen",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   }
 }

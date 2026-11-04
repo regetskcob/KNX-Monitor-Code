@@ -29,9 +29,9 @@ import 'filter_observations.dart';
 const _drawingWidth = 900.0;
 
 /// Exports the "tasks for ETS": a PDF with an overview and one page per device
-/// (drawing with channel cards, tasks, channel mapping). If datapoint types
-/// were changed in the app, the group address import for ETS is included as
-/// well, and the result is a ZIP. Uses the share menu or save dialog like the
+/// (drawing with channel cards, tasks, channel mapping). If datapoint types or
+/// names were changed in the app, the group address import for ETS is included
+/// as well, and the result is a ZIP. Uses the share menu or save dialog like the
 /// other exports.
 Future<void> exportEtsTasks(BuildContext context, {Rect? origin, TelegramLog? log}) async {
   final messenger = ScaffoldMessenger.of(context);
@@ -42,6 +42,7 @@ Future<void> exportEtsTasks(BuildContext context, {Rect? origin, TelegramLog? lo
   final tasks = EtsTasks.of(
     store.project,
     Map.of(store.overrides),
+    names: Map.of(store.names),
     learned: store.learned,
     inventory: DeviceInventory.lastFor(InstallationStore.instance.active.id),
     deviations: deviations,
