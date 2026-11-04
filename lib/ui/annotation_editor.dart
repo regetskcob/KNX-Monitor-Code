@@ -15,18 +15,24 @@ typedef AnnotationEdit = ({String note, List<String> shots, bool delete});
 
 /// Writes or edits a comment: what happened, plus up to three screenshots.
 /// [context] shows at the top what the comment is attached to (telegram, chart,
-/// point in time). `null` = cancelled.
-Future<AnnotationEdit?> showAnnotationEditor(BuildContext context, {required String about, Annotation? initial}) =>
-    showAdaptiveDialog<AnnotationEdit>(
-      context: context,
-      builder: (_) => _AnnotationDialog(about: about, initial: initial),
-    );
+/// point in time). [values]: the chart's values at that time, shown below it.
+/// `null` = cancelled.
+Future<AnnotationEdit?> showAnnotationEditor(
+  BuildContext context, {
+  required String about,
+  Annotation? initial,
+  List<ChartValue> values = const [],
+}) => showAdaptiveDialog<AnnotationEdit>(
+  context: context,
+  builder: (_) => _AnnotationDialog(about: about, initial: initial, values: values),
+);
 
 class _AnnotationDialog extends StatefulWidget {
-  const _AnnotationDialog({required this.about, this.initial});
+  const _AnnotationDialog({required this.about, this.initial, this.values = const []});
 
   final String about;
   final Annotation? initial;
+  final List<ChartValue> values;
 
   @override
   State<_AnnotationDialog> createState() => _AnnotationDialogState();
@@ -63,75 +69,148 @@ class _AnnotationDialogState extends State<_AnnotationDialog> {
     Navigator.pop(context, (note: note, shots: _shots, delete: false));
   }
 
+  /// Value before → value then, one row per series.
+  Widget _values(BuildContext context) {
+    final hz = context.hz;
+    final theme = Theme.of(context);
+    final name = theme.textTheme.bodySmall?.copyWith(color: hz.textMuted);
+    final value = context.mono(theme.textTheme.bodyMedium).copyWith(color: hz.text);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: HzSpace.s4,
+      children: [
+        Kennung(s.annotationValuesLabel),
+        for (final v in widget.values)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Expanded(
+                child: Text(v.name, style: name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: HzSpace.s12),
+              if (v.before case final before?) ...[
+                Text(before, style: value.copyWith(color: hz.textMuted)),
+                Text('  →  ', style: value.copyWith(color: hz.textFaint)),
+              ],
+              Text(v.now, style: value.copyWith(fontWeight: FontWeight.w600)),
+            ],
+          ),
+      ],
+    );
+  }
+
+  /// Wide screens (iPad, Mac, browser) get a regular dialog with buttons
+  /// instead of the narrow phone alert.
+  Widget _action(
+    BuildContext context, {
+    required bool wide,
+    required String label,
+    required VoidCallback onPressed,
+    bool primary = false,
+    bool destructive = false,
+  }) {
+    if (!wide) {
+      return horizontDialogAction(
+        context,
+        label: label,
+        onPressed: onPressed,
+        primary: primary,
+        destructive: destructive,
+      );
+    }
+    final theme = HorizontTheme.of(context);
+    if (primary) return FilledButton(onPressed: onPressed, child: Text(label));
+    return TextButton(
+      style: destructive ? TextButton.styleFrom(foregroundColor: theme.colors.critical) : null,
+      onPressed: onPressed,
+      child: Text(label),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final editing = widget.initial != null;
     final muted = Theme.of(context).textTheme.bodySmall?.copyWith(color: context.hz.textMuted);
+    final wide = MediaQuery.sizeOf(context).width >= 600;
+    final title = Text(editing ? s.annotationEditTitle : s.annotationTitle);
+    final content = Material(
+      type: MaterialType.transparency,
+      child: SizedBox(
+        width: wide ? 520 : 460,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(widget.about, style: context.mono(muted)),
+            if (widget.values.isNotEmpty) ...[const SizedBox(height: HzSpace.s16), _values(context)],
+            const SizedBox(height: HzSpace.s16),
+            HorizontField(
+              label: s.annotationNoteLabel,
+              child: TextField(
+                style: context.hzTheme.field,
+                controller: _note,
+                autofocus: !editing,
+                minLines: wide ? 3 : 2,
+                maxLines: 6,
+                textCapitalization: TextCapitalization.sentences,
+                onChanged: (_) => _error == null ? null : setState(() => _error = null),
+                decoration: InputDecoration(hintText: s.annotationNoteHint, errorText: _error),
+              ),
+            ),
+            const SizedBox(height: HzSpace.s16),
+            ShotPicker(
+              shots: _shots,
+              onChanged: (v) => setState(() {
+                _added.addAll(v.where((id) => !_shots.contains(id) && !(widget.initial?.shots.contains(id) ?? false)));
+                _shots = v;
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+    final actions = [
+      if (editing)
+        _action(
+          context,
+          wide: wide,
+          label: s.annotationDelete,
+          destructive: true,
+          onPressed: () {
+            // Images newly added in the dialog don't belong to anything yet:
+            // delete them.
+            _dropUnused(cancelled: true);
+            Navigator.pop(context, (note: '', shots: <String>[], delete: true));
+          },
+        ),
+      _action(
+        context,
+        wide: wide,
+        label: s.commonCancel,
+        onPressed: () {
+          _dropUnused(cancelled: true);
+          Navigator.pop(context);
+        },
+      ),
+      _action(context, wide: wide, label: s.commonSave, primary: true, onPressed: _submit),
+    ];
+    if (wide) {
+      return AlertDialog(
+        scrollable: true,
+        title: title,
+        content: content,
+        actionsPadding: const EdgeInsets.fromLTRB(HzSpace.s24, 0, HzSpace.s24, HzSpace.s24),
+        actions: actions,
+      );
+    }
     return AlertDialog.adaptive(
       // With the keyboard open, small phones get cramped (A14): the content
       // scrolls.
       scrollable: true,
-      title: Text(editing ? s.annotationEditTitle : s.annotationTitle),
-      content: Material(
-        type: MaterialType.transparency,
-        child: SizedBox(
-          width: 460,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(widget.about, style: context.mono(muted)),
-              const SizedBox(height: HzSpace.s16),
-              HorizontField(
-                label: s.annotationNoteLabel,
-                child: TextField(
-                  style: context.hzTheme.field,
-                  controller: _note,
-                  autofocus: !editing,
-                  minLines: 2,
-                  maxLines: 6,
-                  textCapitalization: TextCapitalization.sentences,
-                  onChanged: (_) => _error == null ? null : setState(() => _error = null),
-                  decoration: InputDecoration(hintText: s.annotationNoteHint, errorText: _error),
-                ),
-              ),
-              const SizedBox(height: HzSpace.s16),
-              ShotPicker(
-                shots: _shots,
-                onChanged: (v) => setState(() {
-                  _added.addAll(
-                    v.where((id) => !_shots.contains(id) && !(widget.initial?.shots.contains(id) ?? false)),
-                  );
-                  _shots = v;
-                }),
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        if (editing)
-          horizontDialogAction(
-            context,
-            label: s.annotationDelete,
-            destructive: true,
-            onPressed: () {
-              // Images newly added in the dialog don't belong to anything yet:
-              // delete them.
-              _dropUnused(cancelled: true);
-              Navigator.pop(context, (note: '', shots: <String>[], delete: true));
-            },
-          ),
-        horizontDialogAction(
-          context,
-          label: s.commonCancel,
-          onPressed: () {
-            _dropUnused(cancelled: true);
-            Navigator.pop(context);
-          },
-        ),
-        horizontDialogAction(context, label: s.commonSave, primary: true, onPressed: _submit),
-      ],
+      title: title,
+      content: content,
+      actions: actions,
     );
   }
 }

@@ -14927,7 +14927,7 @@ abstract class AppLocalizations {
   /// Exporte: Unterzeile zum ETS-Verlauf
   ///
   /// In de, this message translates to:
-  /// **'Dauerhafte Aufzeichnung, bis 30 Tage'**
+  /// **'Dauerhafte Aufzeichnung, einzelne Tage oder alles'**
   String get exportsEtsHistoryMeta;
 
   /// Dialog ETS-Verlauf: Erklärung
@@ -14953,6 +14953,78 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Verlauf wird geladen …'**
   String get exportsEtsHistoryLoading;
+
+  /// Diagramme: Zeitraum = was die App gerade im Speicher hat
+  ///
+  /// In de, this message translates to:
+  /// **'Geladen'**
+  String get chartsPeriodLoaded;
+
+  /// Diagramme: Zeitraum heute ab Mitternacht (aus dem Verlauf des Servers)
+  ///
+  /// In de, this message translates to:
+  /// **'Heute'**
+  String get chartsPeriodToday;
+
+  /// Diagramme: Erklärung der Zeitraum-Auswahl (Tooltip)
+  ///
+  /// In de, this message translates to:
+  /// **'Geladen zeigt die letzten 5.000 Telegramme, die die App gerade im Speicher hat. Heute, 7 und 30 Tage kommen aus dem Verlauf von Add-on oder Box.'**
+  String get chartsPeriodLoadedHint;
+
+  /// Diagramme: Laden des Zeitraums vom Server fehlgeschlagen
+  ///
+  /// In de, this message translates to:
+  /// **'Verlauf nicht geladen: {error}'**
+  String chartsPeriodFailed(String error);
+
+  /// Diagramme: Hinweis, wenn ein längerer Zeitraum gewählt ist und Kennzahlen im Diagramm sind
+  ///
+  /// In de, this message translates to:
+  /// **'Bus-Kennzahlen zeigen nur den geladenen Zeitraum.'**
+  String get chartsPeriodMetrics;
+
+  /// Diagramme: Legende für gestrichelte Linienenden
+  ///
+  /// In de, this message translates to:
+  /// **'Gestrichelt: Der letzte Wert gilt weiter, seitdem kam kein neues Telegramm.'**
+  String get chartsDashedHint;
+
+  /// Diagramme: Server nicht erreichbar beim Laden eines Zeitraums
+  ///
+  /// In de, this message translates to:
+  /// **'Add-on oder Box antwortet nicht.'**
+  String get chartsPeriodUnreachable;
+
+  /// Diagramme: Knopf nach einem Fehler beim Laden des Zeitraums
+  ///
+  /// In de, this message translates to:
+  /// **'Erneut laden'**
+  String get chartsPeriodRetry;
+
+  /// Dialog ETS-Verlauf: Auswahl ganzer Verlauf
+  ///
+  /// In de, this message translates to:
+  /// **'Alles'**
+  String get exportsEtsHistoryAll;
+
+  /// Dialog ETS-Verlauf: Hinweis, wenn 'Alles' gewählt ist
+  ///
+  /// In de, this message translates to:
+  /// **'Der ganze Verlauf als ZIP mit einer Datei pro Tag. SpectrumKNX importiert sie in einem Rutsch, etwa für einen Umzug. Bei vielen Wochen kann das einige Minuten dauern.'**
+  String get exportsEtsHistoryAllHint;
+
+  /// Diagramme: Knopf neben dem angeklickten Fadenkreuz
+  ///
+  /// In de, this message translates to:
+  /// **'Hier kommentieren'**
+  String get chartsAnnotateHere;
+
+  /// Kommentar-Dialog: Überschrift der Diagrammwerte (vorher → zu diesem Zeitpunkt)
+  ///
+  /// In de, this message translates to:
+  /// **'Werte'**
+  String get annotationValuesLabel;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

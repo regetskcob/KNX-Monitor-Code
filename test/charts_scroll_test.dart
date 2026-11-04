@@ -55,10 +55,10 @@ void main() {
       tester.state<ScrollableState>(find.descendant(of: plots(), matching: find.byType(Scrollable))).position;
 
   /// Sekunden seit Beginn am Fadenkreuz, aus dem Kommentar-Knopf
-  /// („Kommentar bei 08:41:20 …“).
+  /// („Kommentar bei 08:41:20 …“, an einem anderen Tag „Kommentar bei Mo 2. 08:41:20 …“).
   int? cursor(WidgetTester tester) {
     for (final tip in tester.widgetList<Tooltip>(find.byType(Tooltip))) {
-      final m = RegExp(r'Kommentar bei (\d\d):(\d\d):(\d\d)').firstMatch(tip.message ?? '');
+      final m = RegExp(r'Kommentar bei (?:\S+ \d+\. )?(\d\d):(\d\d):(\d\d)').firstMatch(tip.message ?? '');
       if (m != null) {
         final t = DateTime(start.year, start.month, start.day, int.parse(m[1]!), int.parse(m[2]!), int.parse(m[3]!));
         return t.difference(start).inSeconds;

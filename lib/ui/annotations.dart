@@ -164,17 +164,23 @@ Future<void> annotateChart(
   required List<int> groups,
   required DateTime from,
   required DateTime to,
+  List<ChartValue> values = const [],
 }) async {
-  final chart = ChartRef(groups: groups, from: from, to: to);
+  final chart = ChartRef(groups: groups, from: from, to: to, values: values);
   final draft = Annotation(id: Annotation.newId(), time: time, chart: chart);
-  final edit = await showAnnotationEditor(context, about: describeAnnotation(draft));
+  final edit = await showAnnotationEditor(context, about: describeAnnotation(draft), values: values);
   if (edit == null || edit.delete) return;
   await AnnotationScope._add(draft.copyWith(note: edit.note, shots: edit.shots));
 }
 
 /// Edits or deletes a comment.
 Future<void> editAnnotation(BuildContext context, Annotation a) async {
-  final edit = await showAnnotationEditor(context, about: describeAnnotation(a), initial: a);
+  final edit = await showAnnotationEditor(
+    context,
+    about: describeAnnotation(a),
+    initial: a,
+    values: a.chart?.values ?? const [],
+  );
   if (edit == null) return;
   await AnnotationScope._replace(a, edit.delete ? null : a.copyWith(note: edit.note, shots: edit.shots));
 }

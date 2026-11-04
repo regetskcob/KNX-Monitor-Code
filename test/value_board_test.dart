@@ -183,6 +183,73 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  group('history on the card', () {
+    Widget card(Telegram telegram, List<double>? history, {List<DateTime>? times}) => MaterialApp(
+      theme: AppTheme.light(),
+      home: Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 240,
+            height: 160,
+            child: ValueCard(
+              telegram: telegram,
+              count: 3,
+              history: history,
+              times: times,
+              onTap: () {},
+              onLongPress: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    setUp(() {
+      CatalogStore.instance.catalog = GroupCatalog({
+        parseGroup('4/1/19')!: GroupInfo(address: parseGroup('4/1/19')!, name: 'Fenster', dpt: const Dpt(1, 19)),
+        parseGroup('8/1/1')!: GroupInfo(address: parseGroup('8/1/1')!, name: 'Wind', dpt: const Dpt(9, 5)),
+      });
+    });
+    tearDown(() => CatalogStore.instance.catalog = GroupCatalog.empty);
+
+    testWidgets('switching states get a step line on a time axis', (tester) async {
+      final now = DateTime.now();
+      await tester.pumpWidget(
+        card(
+          t('4/1/19'),
+          const [0, 1, 0],
+          times: [
+            for (final m in [30, 20, 10]) now.subtract(Duration(minutes: m)),
+          ],
+        ),
+      );
+      final line = tester.widget<Sparkline>(find.byType(Sparkline));
+      expect(line.step, isTrue);
+      expect(line.times, hasLength(3));
+    });
+
+    testWidgets('no line without a change or without a history', (tester) async {
+      await tester.pumpWidget(card(t('4/1/19'), const [0, 0, 0]));
+      expect(find.byType(Sparkline), findsNothing);
+      await tester.pumpWidget(card(t('8/1/1'), null));
+      expect(find.byType(Sparkline), findsNothing);
+    });
+
+    testWidgets('unchanged values are not painted again on a rebuild', (tester) async {
+      CustomPainter painter() => tester
+          .widget<CustomPaint>(find.descendant(of: find.byType(Sparkline), matching: find.byType(CustomPaint)))
+          .painter!;
+      await tester.pumpWidget(card(t('8/1/1'), const [1.5, 2.5, 2]));
+      final before = painter();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpWidget(card(t('8/1/1'), const [1.5, 2.5, 2]));
+      expect(painter().shouldRepaint(before), isFalse);
+      await tester.pumpWidget(card(t('8/1/1'), const [1.5, 2.5, 3]));
+      expect(painter().shouldRepaint(before), isTrue);
+      expect(find.ancestor(of: find.byType(CustomPaint).last, matching: find.byType(RepaintBoundary)), findsWidgets);
+    });
+  });
+
   testWidgets('eingeklappter Kopf mit kurzem Wert reicht bis an den rechten Rand', (tester) async {
     SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(1200, 900);

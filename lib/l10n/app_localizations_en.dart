@@ -8808,7 +8808,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exportsEtsHistory => 'History as ETS file (for Home Assistant and SpectrumKNX)';
 
   @override
-  String get exportsEtsHistoryMeta => 'Continuous recording, up to 30 days';
+  String get exportsEtsHistoryMeta => 'Continuous recording, single days or everything';
 
   @override
   String get exportsEtsHistoryHint =>
@@ -8822,4 +8822,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get exportsEtsHistoryLoading => 'Loading history …';
+
+  @override
+  String get chartsPeriodLoaded => 'Loaded';
+
+  @override
+  String get chartsPeriodToday => 'Today';
+
+  @override
+  String get chartsPeriodLoadedHint =>
+      'Loaded shows the latest 5,000 telegrams the app holds in memory. Today, 7 and 30 days come from the history of the add-on or box.';
+
+  @override
+  String chartsPeriodFailed(String error) {
+    return 'History not loaded: $error';
+  }
+
+  @override
+  String get chartsPeriodMetrics => 'Bus metrics show only the loaded period.';
+
+  @override
+  String get chartsDashedHint => 'Dashed: the last value still applies, no new telegram has arrived since.';
+
+  @override
+  String get chartsPeriodUnreachable => 'The add-on or box does not answer.';
+
+  @override
+  String get chartsPeriodRetry => 'Load again';
+
+  @override
+  String get exportsEtsHistoryAll => 'Everything';
+
+  @override
+  String get exportsEtsHistoryAllHint =>
+      'The whole history as a zip with one file per day. SpectrumKNX imports it in one go, for example when moving. With many weeks this can take a few minutes.';
+
+  @override
+  String get chartsAnnotateHere => 'Comment here';
+
+  @override
+  String get annotationValuesLabel => 'Values';
 }

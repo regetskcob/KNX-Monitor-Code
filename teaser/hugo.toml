@@ -38,7 +38,7 @@ disableKinds = ["taxonomy", "term", "rss", "section"]
   legalUrl = "https://www.regetskcob.de/legal/"
   supportMail = "support@knx-monitor.de"
   # KNX Box image (as on the landing page).
-  boxUrl = "https://github.com/regetskcob/KNX-Monitor/releases/tag/box-v1.9.2"
+  boxUrl = "https://github.com/regetskcob/KNX-Monitor/releases/tag/box-v1.9.6"
 
 [languages]
   [languages.de]

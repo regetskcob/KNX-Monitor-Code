@@ -296,4 +296,26 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Kommentar'), findsOneWidget);
   });
+
+  test('chart values survive saving; older files without them still load', () {
+    final ref = ChartRef(
+      groups: const [2561],
+      from: DateTime(2026, 11, 4, 9),
+      to: DateTime(2026, 11, 4, 12),
+      values: const [ChartValue(group: 2561, name: 'Wind', now: '3,9 m/s', before: '1,8 m/s')],
+    );
+    final back = ChartRef.fromJson(ref.toJson());
+    expect(back.values.single.now, '3,9 m/s');
+    expect(back.values.single.before, '1,8 m/s');
+    final old = ChartRef.fromJson({
+      'groups': [1],
+      'from': 0,
+      'to': 1,
+    });
+    expect(old.values, isEmpty);
+    expect(
+      ChartRef(groups: const [1], from: DateTime(2026), to: DateTime(2026)).toJson().containsKey('values'),
+      isFalse,
+    );
+  });
 }

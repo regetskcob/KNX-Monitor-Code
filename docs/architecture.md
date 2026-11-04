@@ -72,7 +72,10 @@ the static web app.
 | `bus.dart` | `BusService`: one bus connection per installation, reconnects, shares frames with all views over `/ws/bus`, accepts send requests |
 | `link.dart` | KNXnet/IP tunnelling and routing, `BusLink` interface (frames, IP Secure and Data Secure from `packages/knx`) |
 | `telegram_json.dart`, `dpt_value.dart` | History lines and numeric values, thin adapters over `packages/knx` |
+| `history_query.dart` | Telegrams of a few addresses over a period, thinned, for the app's charts |
 | `ha_link.dart` | Uses the telegrams of Home Assistant's KNX integration instead of an own tunnel |
+| `zip_stream.dart` | Writes a zip while it is sent (whole history as ETS files) |
+| `ha_history.dart` | Fills gaps in the history from the telegram store of Home Assistant's KNX integration |
 | `ft12.dart`, `ft12_link.dart`, `kberry.dart` | Serial link to the kBerry HAT, see [kberry.md](kberry.md) |
 | `read_only.dart`, `cemi_policy.dart` | What may be sent: read-only mode, limits for paired devices |
 | `recorder.dart` | Day files `history/YYYY-MM-DD.ndjson`, one JSON line per telegram |

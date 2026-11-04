@@ -14,6 +14,7 @@ import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'plan_screen.dart';
 import 'figure_box.dart';
+import 'telegram_row.dart' show formatDate, formatTime;
 
 /// Cause chain of a telegram in the inspector: one sentence, below it the
 /// telegrams before and after with their time offset. When locked (Plus), only
@@ -107,8 +108,9 @@ class _FocusRow extends StatelessWidget {
                 title: CauseChainView.groupName(telegram),
                 detail: '${CatalogStore.instance.value(telegram)} · ${CauseChainView.deviceName(telegram.source)}',
                 strong: true,
+                time: telegram.time,
               )
-            : _RowContent(offset: s.chainThis, title: telegramSentence(telegram), strong: true),
+            : _RowContent(offset: s.chainThis, title: telegramSentence(telegram), strong: true, time: telegram.time),
       ),
     );
   }
@@ -143,12 +145,16 @@ class _LinkRow extends StatelessWidget {
 }
 
 class _RowContent extends StatelessWidget {
-  const _RowContent({required this.offset, required this.title, this.detail, this.strong = false});
+  const _RowContent({required this.offset, required this.title, this.detail, this.strong = false, this.time});
 
   final String offset;
   final String title;
   final String? detail;
   final bool strong;
+
+  /// Arrival of the telegram itself on the right (with the date if it is not
+  /// today); the other rows have their offset instead.
+  final DateTime? time;
 
   @override
   Widget build(BuildContext context) {
@@ -171,6 +177,14 @@ class _RowContent extends StatelessWidget {
             ],
           ),
         ),
+        // Same quiet style as the offsets on the left.
+        if (time case final t?) ...[
+          const SizedBox(width: HzSpace.s12),
+          Text(
+            DateUtils.isSameDay(t, DateTime.now()) ? formatTime(t) : '${formatDate(t)} ${formatTime(t)}',
+            style: data.copyWith(color: hz.textMuted, fontSize: 12),
+          ),
+        ],
       ],
     );
   }

@@ -83,6 +83,10 @@ class TelegramLog extends ChangeNotifier {
   /// Tick marks below the bars every this many segments (0 = none).
   int get activityTicks => 0;
 
+  /// Start of segment [i] of [activityBins], for the time shown on hover;
+  /// `null` if the segments have no time.
+  DateTime? activityTimeOf(int i) => null;
+
   /// Label of the activity bars, e.g. "last 60 s".
   String get activityLabel => '';
 

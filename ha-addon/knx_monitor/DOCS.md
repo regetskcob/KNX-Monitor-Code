@@ -62,15 +62,17 @@ backups.
 
 Exports › Continuous › "History as ETS file" downloads the add-on's recording
 for today, the last 7 or the last 30 days as an ETS group monitor file
-(`CommunicationLog` XML). In the browser the file goes straight to your
-downloads folder, so long periods do not pass through the app.
+(`CommunicationLog` XML). "Everything" downloads the whole history as a zip with
+one such file per day, for example to move it to SpectrumKNX in one go. In the
+browser the file goes straight to your downloads folder, so long periods do not
+pass through the app.
 
 The same format is read and written by the ETS group monitor, by the telegram
 store of Home Assistant's KNX integration (library knx-telegram-store) and by
 SpectrumKNX:
 
 - **SpectrumKNX:** use its telegram import and choose the downloaded `.xml`
-  file. Telegrams already in its database are skipped.
+  or `.zip` file. Telegrams already in its database are skipped.
 - **ETS:** open the file in the group monitor.
 - **Other tools** that use knx-telegram-store can read it as well. Home
   Assistant itself currently offers no file import for its KNX telegram history.
@@ -80,7 +82,8 @@ the ETS (also ETS 6), Home Assistant / knx-telegram-store, SpectrumKNX, Gira
 loggers and Node-RED knx-ultimate. Only group telegrams are taken over.
 
 The app fetches it from `GET /api/export/ets-xml?from=<ms>&to=<ms>` (Unix
-time in milliseconds, at most 31 days). It is reachable only the way the app
+time in milliseconds, at most 31 days), or the zip with
+`GET /api/export/ets-xml?all=1`. It is reachable only the way the app
 is: through Home Assistant Ingress, on the KNX Box with the box password or a
 paired device.
 
@@ -94,6 +97,10 @@ paired device.
 - **Home Assistant** – no own tunnel: reads what the KNX integration of Home
   Assistant receives and sends via `knx.send` / `knx.read`. Device access
   (programming mode, address check, bus monitor) is not available this way.
+  With Home Assistant 2026.7 or newer the add-on also fills gaps in its history
+  from the telegram store of the KNX integration: after the first start and after
+  every restart it adds what Home Assistant received in the meantime, at most as
+  far back as the history's retention.
 
 ## KNX Data Secure
 

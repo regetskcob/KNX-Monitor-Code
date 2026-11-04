@@ -117,7 +117,7 @@ Future<void> addonPutFile(String path, List<int> bytes) async {}
 /// box session); nothing passes through the app's memory, hence `null`. First
 /// the same request with `check=1` (no body): an expired session or an invalid
 /// range then shows as an error instead of being saved as the file.
-Future<Uint8List?> addonDownload(String path, String fileName) async {
+Future<Uint8List?> addonDownload(String path, String fileName, {Duration? timeout}) async {
   final url = _api(path);
   final probe = await http.get(url.replace(queryParameters: {...url.queryParameters, 'check': '1'}));
   if (probe.statusCode >= 300) {

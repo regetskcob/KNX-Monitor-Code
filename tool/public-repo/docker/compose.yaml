@@ -9,7 +9,7 @@ services:
   knx-monitor:
     # A fixed version, so an update only happens when you decide. Newer version:
     # KNX_MONITOR_VERSION=x.y.z in .env, or download this file again.
-    image: ghcr.io/regetskcob/knx-monitor:${KNX_MONITOR_VERSION:-1.9.5}
+    image: ghcr.io/regetskcob/knx-monitor:${KNX_MONITOR_VERSION:-1.9.6}
     container_name: knx-monitor
     restart: unless-stopped
     # Host network: KNXnet/IP over UDP, gateway search and routing need it.

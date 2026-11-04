@@ -12120,7 +12120,7 @@
   "@exportsEtsHistory": {
     "description": "Exporte: dauerhafte Aufzeichnung des Servers als ETS-Gruppenmonitor-Datei"
   },
-  "exportsEtsHistoryMeta": "Dauerhafte Aufzeichnung, bis 30 Tage",
+  "exportsEtsHistoryMeta": "Dauerhafte Aufzeichnung, einzelne Tage oder alles",
   "@exportsEtsHistoryMeta": {
     "description": "Exporte: Unterzeile zum ETS-Verlauf"
   },
@@ -12139,5 +12139,58 @@
   "exportsEtsHistoryLoading": "Verlauf wird geladen …",
   "@exportsEtsHistoryLoading": {
     "description": "Fortschritt beim Laden des ETS-Verlaufs von der Box"
+  },
+  "chartsPeriodLoaded": "Geladen",
+  "@chartsPeriodLoaded": {
+    "description": "Diagramme: Zeitraum = was die App gerade im Speicher hat"
+  },
+  "chartsPeriodToday": "Heute",
+  "@chartsPeriodToday": {
+    "description": "Diagramme: Zeitraum heute ab Mitternacht (aus dem Verlauf des Servers)"
+  },
+  "chartsPeriodLoadedHint": "Geladen zeigt die letzten 5.000 Telegramme, die die App gerade im Speicher hat. Heute, 7 und 30 Tage kommen aus dem Verlauf von Add-on oder Box.",
+  "@chartsPeriodLoadedHint": {
+    "description": "Diagramme: Erklärung der Zeitraum-Auswahl (Tooltip)"
+  },
+  "chartsPeriodFailed": "Verlauf nicht geladen: {error}",
+  "@chartsPeriodFailed": {
+    "description": "Diagramme: Laden des Zeitraums vom Server fehlgeschlagen",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "chartsPeriodMetrics": "Bus-Kennzahlen zeigen nur den geladenen Zeitraum.",
+  "@chartsPeriodMetrics": {
+    "description": "Diagramme: Hinweis, wenn ein längerer Zeitraum gewählt ist und Kennzahlen im Diagramm sind"
+  },
+  "chartsDashedHint": "Gestrichelt: Der letzte Wert gilt weiter, seitdem kam kein neues Telegramm.",
+  "@chartsDashedHint": {
+    "description": "Diagramme: Legende für gestrichelte Linienenden"
+  },
+  "chartsPeriodUnreachable": "Add-on oder Box antwortet nicht.",
+  "@chartsPeriodUnreachable": {
+    "description": "Diagramme: Server nicht erreichbar beim Laden eines Zeitraums"
+  },
+  "chartsPeriodRetry": "Erneut laden",
+  "@chartsPeriodRetry": {
+    "description": "Diagramme: Knopf nach einem Fehler beim Laden des Zeitraums"
+  },
+  "exportsEtsHistoryAll": "Alles",
+  "@exportsEtsHistoryAll": {
+    "description": "Dialog ETS-Verlauf: Auswahl ganzer Verlauf"
+  },
+  "exportsEtsHistoryAllHint": "Der ganze Verlauf als ZIP mit einer Datei pro Tag. SpectrumKNX importiert sie in einem Rutsch, etwa für einen Umzug. Bei vielen Wochen kann das einige Minuten dauern.",
+  "@exportsEtsHistoryAllHint": {
+    "description": "Dialog ETS-Verlauf: Hinweis, wenn 'Alles' gewählt ist"
+  },
+  "chartsAnnotateHere": "Hier kommentieren",
+  "@chartsAnnotateHere": {
+    "description": "Diagramme: Knopf neben dem angeklickten Fadenkreuz"
+  },
+  "annotationValuesLabel": "Werte",
+  "@annotationValuesLabel": {
+    "description": "Kommentar-Dialog: Überschrift der Diagrammwerte (vorher → zu diesem Zeitpunkt)"
   }
 }

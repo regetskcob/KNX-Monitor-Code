@@ -1,5 +1,5 @@
 name: KNX Monitor
-version: "1.9.5"
+version: "1.9.6"
 slug: knx_monitor
 description: KNX bus monitor, continuous recording, health check and commissioning in the sidebar
 url: https://knx-monitor.de

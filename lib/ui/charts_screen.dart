@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -28,6 +29,7 @@ import 'figure_box.dart';
 import 'history_chart.dart';
 import 'telegram_row.dart';
 import '../model/installation.dart';
+import '../platform/addon.dart';
 
 /// A series in the chart.
 class ChartSeries {
@@ -81,8 +83,14 @@ ChartSeries? seriesFor(int id, TelegramLog log, Color color) {
     if (rates.isEmpty) return null;
     return ChartSeries(id, [for (final (t, v) in rates) ChartPoint(t, v, _noTelegram(t))], ChartKind.line, null, color);
   }
+  return seriesOf(id, log.forAddress(id), color);
+}
+
+/// Series of the group address [id] from [telegrams] (any order). `null`
+/// without values.
+ChartSeries? seriesOf(int id, List<Telegram> telegrams, Color color) {
   final dpt = CatalogStore.instance.dptOf(id);
-  final d = chartData(dpt, log.forAddress(id)..sort((x, y) => x.time.compareTo(y.time)));
+  final d = chartData(dpt, telegrams..sort((x, y) => x.time.compareTo(y.time)));
   if (d.points.isEmpty) return null;
   return ChartSeries(
     id,
@@ -130,6 +138,34 @@ List<ChartPoint> downsample(List<ChartPoint> points, int max) {
   return result;
 }
 
+/// Period of the charts: what the app holds in memory, or a longer one from the
+/// history of the add-on or box.
+enum ChartPeriod {
+  loaded(null),
+  today(null),
+  week(7),
+  month(30);
+
+  const ChartPeriod(this.days);
+
+  /// Days back for [week] and [month]; [today] starts at midnight.
+  final int? days;
+
+  String get label => switch (this) {
+    loaded => s.chartsPeriodLoaded,
+    today => s.chartsPeriodToday,
+    _ => s.historyDays(days!),
+  };
+
+  /// Start of the period at [now]; `null` for [loaded].
+  DateTime? from(DateTime now) => switch (this) {
+    loaded => null,
+    today => DateTime(now.year, now.month, now.day),
+    // Calendar days: across a clock change the same time of day.
+    _ => DateTime(now.year, now.month, now.day - days!, now.hour, now.minute, now.second),
+  };
+}
+
 /// Several group addresses over time: one panel per unit, shared time axis,
 /// crosshair with all values, saved selection, export.
 class ChartsScreen extends StatefulWidget {
@@ -159,8 +195,55 @@ class _ChartsScreenState extends State<ChartsScreen> {
   String? _chart;
   DateTime? _cursor;
 
+  /// The crosshair was placed by a click or tap: it stays there (the pointer
+  /// may move on to the action next to it) until the next click.
+  bool _pinned = false;
+
+  void _pin(DateTime t) => setState(() {
+    _cursor = t;
+    _pinned = true;
+  });
+
   /// Height per chart dragged by the user; `null` = fills the screen.
   double? _panelHeight;
+
+  static const _periodKey = 'chart_period';
+
+  /// Chosen period (the selected chip).
+  ChartPeriod _period = ChartPeriod.loaded;
+
+  /// Period the chart shows. While a longer period loads, the previous chart
+  /// stays (dimmed) instead of briefly showing the loaded telegrams.
+  ChartPeriod _shown = ChartPeriod.loaded;
+
+  /// Telegrams of the selected addresses from the server for [_shown].
+  Map<int, List<Telegram>>? _remote;
+
+  /// End of [_remote]; newer telegrams come from the log.
+  DateTime? _remoteTo;
+  bool _remoteLoading = false;
+  String? _remoteError;
+
+  /// First day of the server's history; periods reaching no further back than
+  /// a shorter one are hidden. `null` while unknown (then all are offered).
+  DateTime? _historyStart;
+
+  /// Periods worth offering: one only if the history reaches further back
+  /// than the next shorter one.
+  List<ChartPeriod> get _periods {
+    final start = _historyStart;
+    if (start == null) return ChartPeriod.values;
+    final now = DateTime.now();
+    return [
+      ChartPeriod.loaded,
+      ChartPeriod.today,
+      if (start.isBefore(ChartPeriod.today.from(now)!)) ChartPeriod.week,
+      if (start.isBefore(ChartPeriod.week.from(now)!)) ChartPeriod.month,
+    ];
+  }
+
+  /// Latest request; an older answer arriving late is dropped.
+  int _remoteRequest = 0;
 
   /// Minimum distance between two data points in full screen, in pixels.
   static const _pointSpacing = 14.0;
@@ -185,14 +268,90 @@ class _ChartsScreenState extends State<ChartsScreen> {
     if (mounted) setState(() {});
   }
 
-  void _open(String? chart) => setState(() {
-    _chart = chart;
-    _selected = chart == null ? [] : [...?_saved.charts[chart]];
-  });
+  void _open(String? chart) {
+    setState(() {
+      _chart = chart;
+      _selected = chart == null ? [] : [...?_saved.charts[chart]];
+    });
+    _reloadRemote();
+  }
+
+  Future<void> _setPeriod(ChartPeriod period) async {
+    // Tapping the selected chip again does not ask the server again, unless
+    // the last attempt failed.
+    if (period == _period && _remoteError == null) {
+      return;
+    }
+    if (period == _period) return _reloadRemote();
+    setState(() {
+      _period = period;
+      _remoteError = null;
+      // The loaded telegrams are at hand: switch at once.
+      if (period == ChartPeriod.loaded) _shown = period;
+    });
+    unawaited(_reloadRemote());
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_periodKey, period.name);
+  }
+
+  /// Fetches [_period] for the selected addresses from the add-on or box.
+  Future<void> _reloadRemote() async {
+    final request = ++_remoteRequest;
+    final now = DateTime.now();
+    final from = _period.from(now);
+    final addresses = {
+      for (final a in _selected)
+        if (BusMetric.of(a) == null) a: CatalogStore.instance.dptOf(a),
+    };
+    if (from == null || !Addon.available || addresses.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _remoteLoading = false;
+          if (from != null && addresses.isEmpty) _shown = _period;
+        });
+      }
+      return;
+    }
+    setState(() {
+      _remoteLoading = true;
+      _remoteError = null;
+    });
+    try {
+      final result = await Addon.historyTelegrams(addresses, from, now);
+      if (!mounted || request != _remoteRequest) return;
+      setState(() {
+        _remote = result;
+        _remoteTo = now;
+        _shown = _period;
+        _remoteLoading = false;
+      });
+    } on Object catch (e) {
+      if (!mounted || request != _remoteRequest) return;
+      setState(() {
+        // Without an answer (server stopped, network gone) a plain sentence
+        // instead of the browser's technical message.
+        _remoteError = e is AddonException ? e.message : s.chartsPeriodUnreachable;
+        _remoteLoading = false;
+      });
+    }
+  }
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     await _saved.load();
+    var period = Addon.available
+        ? ChartPeriod.values.where((p) => p.name == prefs.getString(_periodKey)).firstOrNull
+        : null;
+    if (Addon.available) {
+      try {
+        final storage = (await Addon.status())['storage'] as Map<String, Object?>?;
+        _historyStart = DateTime.tryParse(storage?['first'] as String? ?? '');
+      } on Object catch (e) {
+        debugPrint('Verlaufsbeginn unbekannt: $e');
+      }
+      // A remembered period the history no longer covers: the longest one it does.
+      if (period != null && !_periods.contains(period)) period = _periods.last;
+    }
     final last = [
       for (final v in prefs.getStringList(InstallationStore.instance.key(_lastKey)) ?? const <String>[])
         ?int.tryParse(v),
@@ -204,7 +363,9 @@ class _ChartsScreenState extends State<ChartsScreen> {
       } else if (_selected.isEmpty) {
         _selected = last;
       }
+      if (period != null) _period = period;
     });
+    unawaited(_reloadRemote());
   }
 
   Future<void> _store() async {
@@ -219,11 +380,28 @@ class _ChartsScreenState extends State<ChartsScreen> {
       if (!_selected.remove(address) && _selected.length < _maxSeries) _selected.add(address);
     });
     _store();
+    _reloadRemote();
   }
+
+  /// A longer period shows the server's history; what arrived since then comes
+  /// from the log, so the chart keeps running live.
+  bool get _fromServer => _shown != ChartPeriod.loaded && Addon.available;
 
   List<ChartSeries> _series() {
     final dark = Theme.of(context).colorScheme.isDark;
-    return [for (final (i, a) in _selected.indexed) ?seriesFor(a, widget.log, Palette.series(i, dark: dark))];
+    final remote = _remote;
+    ChartSeries? of(int i, int a) {
+      final color = Palette.series(i, dark: dark);
+      if (!_fromServer || remote == null || BusMetric.of(a) != null) return seriesFor(a, widget.log, color);
+      final since = _remoteTo!;
+      return seriesOf(a, [
+        ...?remote[a],
+        for (final t in widget.log.forAddress(a))
+          if (t.time.isAfter(since)) t,
+      ], color);
+    }
+
+    return [for (final (i, a) in _selected.indexed) ?of(i, a)];
   }
 
   Future<void> _pick() async {
@@ -251,9 +429,91 @@ class _ChartsScreenState extends State<ChartsScreen> {
       ];
     });
     await _store();
+    unawaited(_reloadRemote());
   }
 
   Future<String?> _askName({String initial = ''}) => askChartName(context, initial: initial);
+
+  /// Per series the value that applied at [t] and the different one before it,
+  /// for the comment.
+  static List<ChartValue> _valuesAt(DateTime t, List<ChartSeries> series) => [
+    for (final sr in series)
+      if (sr.points.lastIndexWhere((p) => !p.time.isAfter(t)) case final i when i >= 0)
+        ChartValue(
+          group: sr.address,
+          name: sr.name,
+          now: sr.valueOf(sr.points[i]),
+          before: switch (sr.points.sublist(0, i).lastIndexWhere((p) => p.value != sr.points[i].value)) {
+            final j when j >= 0 => sr.valueOf(sr.points[j]),
+            _ => null,
+          },
+        ),
+  ];
+
+  /// "Comment here" next to the pinned crosshair; to its left near the right
+  /// edge. The cross unpins it, the crosshair follows the pointer again.
+  Widget _commentHere(DateTime t0, DateTime t1, double width, List<ChartSeries> series) {
+    final c = _cursor!;
+    final span = math.max(1, t1.microsecondsSinceEpoch - t0.microsecondsSinceEpoch);
+    final x = (width - _MultiChartPainter.right) * (c.microsecondsSinceEpoch - t0.microsecondsSinceEpoch) / span;
+    final chip = InputChip(
+      avatar: const Icon(AppIcons.annotation, size: 16),
+      label: Text(s.chartsAnnotateHere),
+      onPressed: () =>
+          annotateChart(context, time: c, groups: [..._selected], from: t0, to: t1, values: _valuesAt(c, series)),
+      deleteButtonTooltipMessage: s.commonClose,
+      onDeleted: () => setState(() => _pinned = false),
+    );
+    return x > width * 0.6
+        ? Positioned(right: width - x + HzSpace.s8, top: HzSpace.s8, child: chip)
+        : Positioned(left: x + HzSpace.s8, top: HzSpace.s8, child: chip);
+  }
+
+  /// Period chips; while loading a small indicator, an error below them.
+  Widget _periodBar(List<ChartSeries> series) {
+    final hz = context.hz;
+    final muted = Theme.of(context).textTheme.bodySmall?.copyWith(color: hz.textMuted);
+    return Padding(
+      padding: const EdgeInsets.only(top: Gap.item),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: HzSpace.s8,
+        children: [
+          Tooltip(
+            message: s.chartsPeriodLoadedHint,
+            child: Wrap(
+              spacing: HzSpace.s8,
+              runSpacing: HzSpace.s8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                for (final p in _periods)
+                  ChoiceChip(
+                    showCheckmark: false,
+                    label: Text(p.label),
+                    selected: _period == p,
+                    onSelected: (_) => _setPeriod(p),
+                  ),
+                if (_remoteLoading)
+                  const SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator.adaptive(strokeWidth: Lines.selection),
+                  ),
+              ],
+            ),
+          ),
+          if (_remoteError case final error?)
+            Row(
+              children: [
+                Flexible(child: Text(s.chartsPeriodFailed(error), style: muted)),
+                const SizedBox(width: HzSpace.s8),
+                TextButton(onPressed: _reloadRemote, child: Text(s.chartsPeriodRetry)),
+              ],
+            ),
+          if (_fromServer && series.any((sr) => sr.metric != null)) Text(s.chartsPeriodMetrics, style: muted),
+        ],
+      ),
+    );
+  }
 
   Future<void> _rename() async {
     final from = _chart;
@@ -433,10 +693,23 @@ class _ChartsScreenState extends State<ChartsScreen> {
               // Comment at the crosshair: what stood out there, with time
               // window and series.
               IconButton(
-                tooltip: _cursor == null ? s.chartsAnnotateHint : s.chartsAnnotate(formatTime(_cursor!)),
+                tooltip: _cursor == null
+                    ? s.chartsAnnotateHint
+                    : s.chartsAnnotate(
+                        DateUtils.isSameDay(_cursor, DateTime.now())
+                            ? formatTime(_cursor!)
+                            : '${formatTick(_cursor!, const Duration(days: 1))} ${formatTime(_cursor!)}',
+                      ),
                 onPressed: _cursor == null || series.isEmpty
                     ? null
-                    : () => annotateChart(context, time: _cursor!, groups: [..._selected], from: t0, to: t1),
+                    : () => annotateChart(
+                        context,
+                        time: _cursor!,
+                        groups: [..._selected],
+                        from: t0,
+                        to: t1,
+                        values: _valuesAt(_cursor!, series),
+                      ),
                 icon: const Icon(AppIcons.annotation),
               ),
               IconButton(tooltip: s.chartsAdd, onPressed: _pick, icon: const Icon(AppIcons.add)),
@@ -450,6 +723,7 @@ class _ChartsScreenState extends State<ChartsScreen> {
                   '\u0000clear' => () {
                     setState(() => _selected = []);
                     _store();
+                    _reloadRemote();
                   }(),
                   '\u0000rename' => _rename(),
                   '\u0000template' => _shareTemplate(),
@@ -487,6 +761,7 @@ class _ChartsScreenState extends State<ChartsScreen> {
               : ListView(
                   padding: Gap.page,
                   children: [
+                    if (Addon.available) _periodBar(series),
                     // Comments in the visible time window; tapping shows them,
                     // the crosshair jumps there.
                     ListenableBuilder(
@@ -529,175 +804,191 @@ class _ChartsScreenState extends State<ChartsScreen> {
                       )
                     else ...[
                       const SizedBox(height: Gap.inner),
-                      SectionCard(
-                        padding: const EdgeInsets.all(HzSpace.s8),
-                        child: RepaintBoundary(
-                          key: _boundary,
-                          child: ColoredBox(
-                            color: hz.surface,
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                // All values visible: with many points wider
-                                // than the window and scrollable sideways,
-                                // newest on the right when opened. The y-axis
-                                // and row names stay fixed.
-                                const gutter = _MultiChartPainter.left;
-                                final textScale = MediaQuery.textScalerOf(context).scale(1);
-                                final viewport = constraints.maxWidth - gutter;
-                                final points = series.fold(0, (n, sr) => math.max(n, sr.points.length));
-                                final width = math.max(viewport, points * _pointSpacing);
-                                final scrolls = width > viewport;
-                                DateTime timeAt(double x) {
-                                  final f = (x / (width - _MultiChartPainter.right)).clamp(0.0, 1.0);
-                                  return DateTime.fromMicrosecondsSinceEpoch(
-                                    t0.microsecondsSinceEpoch +
-                                        ((t1.microsecondsSinceEpoch - t0.microsecondsSinceEpoch) * f).round(),
+                      // Dimmed while another period loads; the chips show the spinner.
+                      AnimatedOpacity(
+                        opacity: _remoteLoading ? 0.4 : 1,
+                        duration: Motion.of(context, Motion.fast),
+                        child: SectionCard(
+                          padding: const EdgeInsets.all(HzSpace.s8),
+                          child: RepaintBoundary(
+                            key: _boundary,
+                            child: ColoredBox(
+                              color: hz.surface,
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  // All values visible: with many points wider
+                                  // than the window and scrollable sideways,
+                                  // newest on the right when opened. The y-axis
+                                  // and row names stay fixed.
+                                  const gutter = _MultiChartPainter.left;
+                                  final textScale = MediaQuery.textScalerOf(context).scale(1);
+                                  final viewport = constraints.maxWidth - gutter;
+                                  final points = series.fold(0, (n, sr) => math.max(n, sr.points.length));
+                                  // From the server the period fits the window
+                                  // (already thinned); the loaded telegrams keep
+                                  // their spacing and scroll.
+                                  final width = _fromServer ? viewport : math.max(viewport, points * _pointSpacing);
+                                  final scrolls = width > viewport;
+                                  DateTime timeAt(double x) {
+                                    final f = (x / (width - _MultiChartPainter.right)).clamp(0.0, 1.0);
+                                    return DateTime.fromMicrosecondsSinceEpoch(
+                                      t0.microsecondsSinceEpoch +
+                                          ((t1.microsecondsSinceEpoch - t0.microsecondsSinceEpoch) * f).round(),
+                                    );
+                                  }
+
+                                  final axisStyle = axis ?? data;
+                                  final axisHeight =
+                                      (TextPainter(
+                                        text: TextSpan(text: '0', style: axisStyle),
+                                        textDirection: TextDirection.ltr,
+                                        textScaler: MediaQuery.textScalerOf(context),
+                                      )..layout()).height +
+                                      2 * HzSpace.s4;
+                                  _MultiChartPainter numbers(
+                                    String unit,
+                                    List<ChartSeries> list, {
+                                    required bool axisOnly,
+                                  }) => _MultiChartPainter(
+                                    series: list,
+                                    unit: unit,
+                                    t0: t0,
+                                    t1: t1,
+                                    cursor: _cursor,
+                                    colors: hz,
+                                    label: data,
+                                    textScale: textScale,
+                                    maxPoints: (width * 2).round(),
+                                    axisOnly: axisOnly,
                                   );
-                                }
+                                  _LanePainter lane(ChartSeries sr, {required bool axisOnly}) => _LanePainter(
+                                    series: sr,
+                                    t0: t0,
+                                    t1: t1,
+                                    cursor: _cursor,
+                                    colors: hz,
+                                    label: data,
+                                    textScale: textScale,
+                                    axisOnly: axisOnly,
+                                  );
 
-                                final axisStyle = axis ?? data;
-                                final axisHeight =
-                                    (TextPainter(
-                                      text: TextSpan(text: '0', style: axisStyle),
-                                      textDirection: TextDirection.ltr,
-                                      textScaler: MediaQuery.textScalerOf(context),
-                                    )..layout()).height +
-                                    2 * HzSpace.s4;
-                                _MultiChartPainter numbers(
-                                  String unit,
-                                  List<ChartSeries> list, {
-                                  required bool axisOnly,
-                                }) => _MultiChartPainter(
-                                  series: list,
-                                  unit: unit,
-                                  t0: t0,
-                                  t1: t1,
-                                  cursor: _cursor,
-                                  colors: hz,
-                                  label: data,
-                                  textScale: textScale,
-                                  maxPoints: (width * 2).round(),
-                                  axisOnly: axisOnly,
-                                );
-                                _LanePainter lane(ChartSeries sr, {required bool axisOnly}) => _LanePainter(
-                                  series: sr,
-                                  t0: t0,
-                                  t1: t1,
-                                  cursor: _cursor,
-                                  colors: hz,
-                                  label: data,
-                                  textScale: textScale,
-                                  axisOnly: axisOnly,
-                                );
-
-                                final plots = GestureDetector(
-                                  // Wider than the window: dragging scrolls,
-                                  // crosshair via tap/pointer.
-                                  onHorizontalDragUpdate: scrolls
-                                      ? null
-                                      : (d) => setState(() => _cursor = timeAt(d.localPosition.dx)),
-                                  onTapDown: (d) => setState(() => _cursor = timeAt(d.localPosition.dx)),
-                                  child: MouseRegion(
-                                    onHover: (e) => setState(() => _cursor = timeAt(e.localPosition.dx)),
-                                    child: Column(
-                                      children: [
-                                        for (final MapEntry(key: unit, value: list) in byUnit.entries)
-                                          SizedBox(
-                                            height: panelHeight,
-                                            width: width,
-                                            child: CustomPaint(painter: numbers(unit, list, axisOnly: false)),
-                                          ),
-                                        for (final sr in lanes)
-                                          SizedBox(
-                                            height: _LanePainter.height,
-                                            width: width,
-                                            child: CustomPaint(painter: lane(sr, axisOnly: false)),
-                                          ),
-                                        SizedBox(
-                                          height: axisHeight,
-                                          width: width,
-                                          child: CustomPaint(
-                                            painter: _TimeAxisPainter(
-                                              t0: t0,
-                                              t1: t1,
-                                              cursor: _cursor,
-                                              style: axisStyle,
-                                              cursorStyle: axisStyle.copyWith(
-                                                color: hz.text,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                              textScaler: MediaQuery.textScalerOf(context),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                                final nameStyle = data.copyWith(
-                                  color: hz.text,
-                                  fontSize: data.fontSize == null
-                                      ? null
-                                      : data.fontSize! * _MultiChartPainter._labelRatio,
-                                );
-                                return Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    SizedBox(
-                                      width: gutter,
-                                      child: Column(
-                                        children: [
-                                          for (final MapEntry(key: unit, value: list) in byUnit.entries)
-                                            SizedBox(
-                                              height: panelHeight,
-                                              width: gutter,
-                                              child: CustomPaint(painter: numbers(unit, list, axisOnly: true)),
-                                            ),
-                                          for (final sr in lanes)
-                                            SizedBox(
-                                              height: _LanePainter.height,
-                                              width: gutter,
-                                              child: CustomPaint(painter: lane(sr, axisOnly: true)),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Stack(
-                                        children: [
-                                          if (scrolls)
-                                            SingleChildScrollView(
-                                              scrollDirection: Axis.horizontal,
-                                              reverse: true,
-                                              child: plots,
-                                            )
-                                          else
-                                            plots,
-                                          // Names of the switching rows fixed at the left edge.
-                                          for (final (i, sr) in lanes.indexed)
-                                            Positioned(
-                                              left: HzSpace.s8,
-                                              right: _MultiChartPainter.right + HzSpace.s8,
-                                              top: byUnit.length * panelHeight + i * _LanePainter.height,
-                                              height: _LanePainter.height,
-                                              child: IgnorePointer(
-                                                child: Align(
-                                                  alignment: Alignment.centerLeft,
-                                                  child: Text(
-                                                    sr.name,
-                                                    style: nameStyle,
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
+                                  final plots = Stack(
+                                    children: [
+                                      GestureDetector(
+                                        // Wider than the window: dragging scrolls,
+                                        // crosshair via tap/pointer.
+                                        onHorizontalDragUpdate: scrolls
+                                            ? null
+                                            : (d) => _pin(timeAt(d.localPosition.dx)),
+                                        onTapDown: (d) => _pin(timeAt(d.localPosition.dx)),
+                                        child: MouseRegion(
+                                          onHover: (e) {
+                                            if (!_pinned) setState(() => _cursor = timeAt(e.localPosition.dx));
+                                          },
+                                          child: Column(
+                                            children: [
+                                              for (final MapEntry(key: unit, value: list) in byUnit.entries)
+                                                SizedBox(
+                                                  height: panelHeight,
+                                                  width: width,
+                                                  child: CustomPaint(painter: numbers(unit, list, axisOnly: false)),
+                                                ),
+                                              for (final sr in lanes)
+                                                SizedBox(
+                                                  height: _LanePainter.height,
+                                                  width: width,
+                                                  child: CustomPaint(painter: lane(sr, axisOnly: false)),
+                                                ),
+                                              SizedBox(
+                                                height: axisHeight,
+                                                width: width,
+                                                child: CustomPaint(
+                                                  painter: _TimeAxisPainter(
+                                                    t0: t0,
+                                                    t1: t1,
+                                                    cursor: _cursor,
+                                                    style: axisStyle,
+                                                    cursorStyle: axisStyle.copyWith(
+                                                      color: hz.text,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                    textScaler: MediaQuery.textScalerOf(context),
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                        ],
+                                            ],
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                );
-                              },
+                                      // Beside the tap area, so tapping it does not move the crosshair.
+                                      if (_pinned && _cursor != null) _commentHere(t0, t1, width, series),
+                                    ],
+                                  );
+                                  final nameStyle = data.copyWith(
+                                    color: hz.text,
+                                    fontSize: data.fontSize == null
+                                        ? null
+                                        : data.fontSize! * _MultiChartPainter._labelRatio,
+                                  );
+                                  return Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      SizedBox(
+                                        width: gutter,
+                                        child: Column(
+                                          children: [
+                                            for (final MapEntry(key: unit, value: list) in byUnit.entries)
+                                              SizedBox(
+                                                height: panelHeight,
+                                                width: gutter,
+                                                child: CustomPaint(painter: numbers(unit, list, axisOnly: true)),
+                                              ),
+                                            for (final sr in lanes)
+                                              SizedBox(
+                                                height: _LanePainter.height,
+                                                width: gutter,
+                                                child: CustomPaint(painter: lane(sr, axisOnly: true)),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Stack(
+                                          children: [
+                                            if (scrolls)
+                                              SingleChildScrollView(
+                                                scrollDirection: Axis.horizontal,
+                                                reverse: true,
+                                                child: plots,
+                                              )
+                                            else
+                                              plots,
+                                            // Names of the switching rows fixed at the left edge.
+                                            for (final (i, sr) in lanes.indexed)
+                                              Positioned(
+                                                left: HzSpace.s8,
+                                                right: _MultiChartPainter.right + HzSpace.s8,
+                                                top: byUnit.length * panelHeight + i * _LanePainter.height,
+                                                height: _LanePainter.height,
+                                                child: IgnorePointer(
+                                                  child: Align(
+                                                    alignment: Alignment.centerLeft,
+                                                    child: Text(
+                                                      sr.name,
+                                                      style: nameStyle,
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
                             ),
                           ),
                         ),
@@ -724,6 +1015,14 @@ class _ChartsScreenState extends State<ChartsScreen> {
                         ),
                       ),
                     ],
+                    // Legend for the dashed ends: only when a line has one.
+                    if (byUnit.values
+                        .expand((l) => l)
+                        .any((sr) => t1.difference(sr.points.last.time) > t1.difference(t0) * 0.01))
+                      Text(
+                        s.chartsDashedHint,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: hz.textMuted),
+                      ),
                     if (series.isNotEmpty || waiting.isNotEmpty) ...[
                       SectionHead(s.chartsAddresses, detail: s.hpRoomsOf(series.length, _selected.length)),
                       RowCard(
@@ -1047,8 +1346,15 @@ class _TimeAxisPainter extends CustomPainter {
     final span = math.max(t1.microsecondsSinceEpoch - a, 1);
     double x(DateTime t) => right * (t.microsecondsSinceEpoch - a) / span;
     DateTime at(double x) => DateTime.fromMicrosecondsSinceEpoch(a + (span * x / right).round());
+    // Over more than one day (or another day) the crosshair also names the day.
+    final days = !DateUtils.isSameDay(t0, t1) || !DateUtils.isSameDay(t1, DateTime.now());
     TextPainter text(DateTime t, TextStyle style) => TextPainter(
-      text: TextSpan(text: formatTime(t, millis: false), style: style),
+      text: TextSpan(
+        text: days
+            ? '${formatTick(t, const Duration(days: 1))} ${formatTime(t, millis: false)}'
+            : formatTime(t, millis: false),
+        style: style,
+      ),
       textDirection: TextDirection.ltr,
       textScaler: textScaler,
     )..layout();

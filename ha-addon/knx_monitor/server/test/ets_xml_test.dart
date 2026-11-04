@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:knx_monitor_server/bus.dart';
 import 'package:test/test.dart';
@@ -38,6 +39,34 @@ void main() {
 
     final dayStart = DateTime(first.year, first.month, first.day);
     final dayEnd = DateTime(first.year, first.month, first.day + 1);
+
+    test('whole history as zip: one ETS file per day, readable by unzip', () async {
+      File('${data.path}/history/$day.ndjson.gz').writeAsBytesSync(gzip.encode(utf8.encode('${lines.join('\n')}\n')));
+      final later = DateTime(first.year, first.month, first.day + 2, 9);
+      final laterDay = Recorder.dayName(later);
+      File('${data.path}/history/$laterDay.ndjson').writeAsStringSync(
+        '${jsonEncode({'t': later.microsecondsSinceEpoch, 's': 4402, 'd': 4096, 'y': 2, 'x': '01', 'm': true})}\n',
+      );
+      final bytes = BytesBuilder();
+      final count = await writeEtsZip(recorder, (b) async => bytes.add(b));
+      expect(count, lines.length + 1);
+      final file = File('${data.path}/all.zip')..writeAsBytesSync(bytes.takeBytes());
+
+      final test = await Process.run('unzip', ['-t', file.path]);
+      expect(test.exitCode, 0, reason: '${test.stdout}${test.stderr}');
+      final list = await Process.run('unzip', ['-Z1', file.path]);
+      expect(const LineSplitter().convert(list.stdout as String), [
+        'knx-monitor-$day.xml',
+        'knx-monitor-$laterDay.xml',
+      ]);
+      final content = await Process.run('unzip', ['-p', file.path, 'knx-monitor-$day.xml'], stdoutEncoding: utf8);
+      expect(content.stdout, expected);
+    });
+
+    test('crc32 like zlib', () {
+      expect(crc32(utf8.encode('123456789')), 0xCBF43926);
+      expect(crc32(utf8.encode('6789'), crc32(utf8.encode('12345'))), 0xCBF43926);
+    });
 
     test('gepackt, ungeordnet und mit kaputter Zeile: wie die App', () async {
       // Day packed, plus an open part; one line out of order, one truncated.

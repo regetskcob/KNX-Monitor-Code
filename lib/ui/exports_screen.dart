@@ -243,13 +243,18 @@ class _ExportsScreenState extends State<ExportsScreen> {
     final now = DateTime.now();
     // Whole days like the long-term statistics: today and the days before.
     final from = DateTime(now.year, now.month, now.day - (days - 1));
+    final all = days == _EtsHistoryDialog.all;
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final bytes = Addon.embedded
-          ? await Addon.etsHistory(from, now)
-          : await withProgress(context, s.exportsEtsHistoryLoading, () => Addon.etsHistory(from, now));
+      Future<Uint8List?> load() => all ? Addon.etsHistoryAll() : Addon.etsHistory(from, now);
+      final bytes = Addon.embedded ? await load() : await withProgress(context, s.exportsEtsHistoryLoading, load);
       if (bytes == null || !mounted) return;
-      await saveBytes(context, bytes, Addon.etsHistoryFileName(from, now), mimeType: 'application/xml');
+      await saveBytes(
+        context,
+        bytes,
+        all ? Addon.etsHistoryAllFileName(now) : Addon.etsHistoryFileName(from, now),
+        mimeType: all ? 'application/zip' : 'application/xml',
+      );
     } on AddonException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(s.exportFailed(e.message))));
     }
@@ -453,7 +458,10 @@ class _ExportsScreenState extends State<ExportsScreen> {
 class _EtsHistoryDialog extends StatefulWidget {
   const _EtsHistoryDialog();
 
-  static const choices = [1, 7, 30];
+  /// Choice for the whole history (a zip with one file per day).
+  static const all = 0;
+
+  static const choices = [1, 7, 30, all];
 
   @override
   State<_EtsHistoryDialog> createState() => _EtsHistoryDialogState();
@@ -481,12 +489,16 @@ class _EtsHistoryDialogState extends State<_EtsHistoryDialog> {
               for (final d in _EtsHistoryDialog.choices)
                 ChoiceChip(
                   showCheckmark: false,
-                  label: Text(s.historyDays(d)),
+                  label: Text(d == _EtsHistoryDialog.all ? s.exportsEtsHistoryAll : s.historyDays(d)),
                   selected: _days == d,
                   onSelected: (_) => setState(() => _days = d),
                 ),
             ],
           ),
+          if (_days == _EtsHistoryDialog.all) ...[
+            const SizedBox(height: HzSpace.s16),
+            Text(s.exportsEtsHistoryAllHint, style: theme.textTheme.bodySmall),
+          ],
         ],
       ),
       actions: [

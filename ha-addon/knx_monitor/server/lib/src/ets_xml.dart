@@ -15,11 +15,13 @@ import 'dart:typed_data';
 import 'package:knx/knx.dart';
 
 import 'recorder.dart';
+import 'zip_stream.dart';
 
 /// Namespace of the ETS telegram format.
 const etsNamespace = 'http://knx.org/xml/telegrams/01';
 
-/// `GET /api/export/ets-xml?from=<ms>&to=<ms>[&installation=<id>]`.
+/// `GET /api/export/ets-xml?from=<ms>&to=<ms>[&installation=<id>]`, or with
+/// `all=1` instead of `from`/`to` the whole history as a zip ([writeEtsZip]).
 const etsXmlPath = '/api/export/ets-xml';
 
 /// Longest period one download may cover.
@@ -211,6 +213,35 @@ Future<int> writeEtsXml(
   return count;
 }
 
+/// Days of the history from the first to the last (`YYYY-MM-DD`), including
+/// the days between without a file; empty without history.
+Future<List<String>> historyDays(Recorder recorder) async {
+  final first = (await recorder.usage())['first'] as String?;
+  if (first == null) return const [];
+  final start = DateTime.parse(first);
+  final today = DateTime.now();
+  return [for (var d = start; !d.isAfter(today); d = DateTime(d.year, d.month, d.day + 1)) Recorder.dayName(d)];
+}
+
+/// Writes the whole history of [recorder] as a zip with one ETS file per day
+/// (`knx-monitor-YYYY-MM-DD.xml`) to [emit]. SpectrumKNX imports such a zip in
+/// one go; each file is also a regular ETS group monitor file. Days without
+/// telegrams are left out. Returns the number of telegrams.
+Future<int> writeEtsZip(Recorder recorder, Future<void> Function(List<int> bytes) emit, {String? host}) async {
+  final zip = ZipStream(emit);
+  var count = 0;
+  for (final day in await historyDays(recorder)) {
+    if (await recorder.dayLines(day) == null) continue;
+    final from = DateTime.parse(day);
+    final to = DateTime(from.year, from.month, from.day + 1);
+    await zip.add('knx-monitor-$day.xml', from, (write) async {
+      count += await writeEtsXml(recorder, from, to, write, host: host);
+    });
+  }
+  await zip.close();
+  return count;
+}
+
 /// Largest millisecond value a [DateTime] accepts.
 const _maxEpochMs = 8640000000000000;
 
@@ -243,6 +274,7 @@ Future<void> serveEtsXml(HttpRequest request, Recorder recorder, {String? host})
     response.statusCode = HttpStatus.methodNotAllowed;
     return response.close();
   }
+  if (request.uri.queryParameters['all'] == '1') return _serveEtsZip(request, recorder, host: host);
   String? error;
   final range = etsXmlRange(request.uri.queryParameters, onError: (e) => error = e);
   if (range == null) {
@@ -268,6 +300,32 @@ Future<void> serveEtsXml(HttpRequest request, Recorder recorder, {String? host})
     ..set('Content-Disposition', 'attachment; filename="$name"');
   await writeEtsXml(recorder, range.from, range.to, (chunk) async {
     response.add(utf8.encode(chunk));
+    await response.flush();
+  }, host: host);
+  await response.close();
+}
+
+Future<void> _serveEtsZip(HttpRequest request, Recorder recorder, {String? host}) async {
+  final response = request.response;
+  await recorder.flush();
+  final days = await historyDays(recorder);
+  if (days.isEmpty) {
+    response
+      ..statusCode = HttpStatus.badRequest
+      ..headers.contentType = ContentType.text
+      ..write('Noch kein Verlauf aufgezeichnet.');
+    return response.close();
+  }
+  if (request.uri.queryParameters['check'] == '1') {
+    response.statusCode = HttpStatus.noContent;
+    return response.close();
+  }
+  response.headers
+    ..contentType = ContentType('application', 'zip')
+    ..set(HttpHeaders.cacheControlHeader, 'no-store')
+    ..set('Content-Disposition', 'attachment; filename="knx-monitor-${days.first}-${days.last}.zip"');
+  await writeEtsZip(recorder, (bytes) async {
+    response.add(bytes);
     await response.flush();
   }, host: host);
   await response.close();

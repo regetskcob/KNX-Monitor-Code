@@ -766,18 +766,15 @@ class _ValueCardState extends State<ValueCard> with SingleTickerProviderStateMix
   }
 
   /// Card in the grid: content with padding, the history runs to the bottom edge.
-  /// Only for measured values; states (on/off) are shown by the history in the details.
+  /// For every value that has a history at all ([numericValue]: measured values,
+  /// counters, percentages and switching states); switching states as a step
+  /// line on a time axis. Texts, times and scenes have none.
   Widget _framed(BuildContext context) {
     final hz = context.hz;
     final t = widget.telegram;
     final dpt = CatalogStore.instance.info(t.destination)?.dpt;
     final history = widget.history;
-    final trend =
-        history != null &&
-        history.length >= 2 &&
-        history.any((v) => v != history.first) &&
-        dpt?.main != 1 &&
-        !t.isSmall;
+    final trend = history != null && history.length >= 2 && history.any((v) => v != history.first);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -790,7 +787,14 @@ class _ValueCardState extends State<ValueCard> with SingleTickerProviderStateMix
         if (trend)
           SizedBox(
             height: 22,
-            child: Sparkline(values: history, color: hz.accent, fill: hz.accentTint, expand: true),
+            child: Sparkline(
+              values: history,
+              times: widget.times,
+              color: hz.accent,
+              fill: hz.accentTint,
+              step: isStepDpt(dpt, t),
+              expand: true,
+            ),
           ),
       ],
     );
@@ -850,7 +854,7 @@ class _ValueCardState extends State<ValueCard> with SingleTickerProviderStateMix
             times: widget.times,
             color: hz.accent,
             averageColor: hz.lineStrong,
-            step: info?.dpt?.main == 1 || t.isSmall,
+            step: isStepDpt(info?.dpt, t),
             average: average == null ? null : widget.average,
           );
     // "4/0/2 · DPT 9.004 · Wetterstation"
@@ -989,29 +993,47 @@ class Sparkline extends StatelessWidget {
   final Color color;
   final bool step;
 
+  /// Resolution of the time axis' right edge ("now"): the step line grows in
+  /// steps of this size instead of a repaint on every rebuild of the board.
+  static const nowResolution = Duration(seconds: 10);
+
   @override
   Widget build(BuildContext context) {
-    return ExcludeSemantics(
-      child: SizedBox(
-        width: expand ? double.infinity : 72,
-        height: expand ? double.infinity : 28,
-        child: CustomPaint(
-          painter: _SparklinePainter(
-            List.of(values),
-            color,
-            averageColor ?? context.hz.lineStrong,
-            step: step,
-            times: step && times != null && times!.length == values.length ? List.of(times!) : null,
-            now: DateTime.now(),
-            average: step ? null : average,
-            fill: fill,
-            bleed: expand,
+    final axis = step && times != null && times!.length == values.length ? List.of(times!) : null;
+    final ms = DateTime.now().millisecondsSinceEpoch;
+    // Only a time axis depends on the current time; without one, `now` stays
+    // fixed so unchanged values are not painted again.
+    final now = axis == null
+        ? DateTime.fromMillisecondsSinceEpoch(0)
+        : DateTime.fromMillisecondsSinceEpoch(ms - ms % nowResolution.inMilliseconds + nowResolution.inMilliseconds);
+    // Own layer: the card's afterglow and neighbouring cards repaint without it.
+    return RepaintBoundary(
+      child: ExcludeSemantics(
+        child: SizedBox(
+          width: expand ? double.infinity : 72,
+          height: expand ? double.infinity : 28,
+          child: CustomPaint(
+            painter: _SparklinePainter(
+              List.of(values),
+              color,
+              averageColor ?? context.hz.lineStrong,
+              step: step,
+              times: axis,
+              now: now,
+              average: step ? null : average,
+              fill: fill,
+              bleed: expand,
+            ),
           ),
         ),
       ),
     );
   }
 }
+
+/// Whether a history is a switching state (step line from 0 to 1): DPT 1 and 2
+/// and short telegrams without a known type.
+bool isStepDpt(Dpt? dpt, Telegram t) => dpt?.main == 1 || dpt?.main == 2 || t.isSmall;
 
 class _SparklinePainter extends CustomPainter {
   _SparklinePainter(
@@ -1070,6 +1092,31 @@ class _SparklinePainter extends CustomPainter {
         canvas.drawLine(Offset(dx, y(avg)), Offset((dx + 2).clamp(0, size.width), y(avg)), dash);
       }
     }
+    // Switching state on the card: only the "on" stretches, as filled blocks
+    // with an edge on top (like the rows in the charts); "off" stays empty.
+    if (step && fill != null) {
+      final timed = times != null && span > 0;
+      // Without times every value gets a slot of its own, so the last one is
+      // visible too instead of ending at the edge.
+      double from(int i) => timed ? x(i) : size.width * i / values.length;
+      double to(int i) =>
+          timed ? (i + 1 < values.length ? x(i + 1) : size.width) : size.width * (i + 1) / values.length;
+      final block = Paint()..color = fill!;
+      final edge = Paint()
+        ..color = color
+        ..strokeWidth = bleed ? 1.5 : Lines.data;
+      for (var i = 0; i < values.length; i++) {
+        if (values[i] <= lo) continue;
+        final left = from(i);
+        final right = to(i);
+        if (right <= left) continue;
+        final top = y(values[i]);
+        canvas
+          ..drawRect(Rect.fromLTRB(left, top, right, size.height + over), block)
+          ..drawLine(Offset(left, top), Offset(right, top), edge);
+      }
+      return;
+    }
     final line = Path()..moveTo(at(0).dx, at(0).dy);
     for (var i = 1; i < values.length; i++) {
       if (step) line.lineTo(at(i).dx, at(i - 1).dy);
@@ -1102,7 +1149,8 @@ class _SparklinePainter extends CustomPainter {
       old.now != now ||
       old.average != average ||
       old.fill != fill ||
-      !listEquals(old.values, values);
+      !listEquals(old.values, values) ||
+      !listEquals(old.times, times);
 }
 
 /// Columns of the overview: on the phone one card per row, otherwise one column

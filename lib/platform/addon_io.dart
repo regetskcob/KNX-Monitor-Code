@@ -194,12 +194,13 @@ Future<Uint8List?> addonGetFile(String path, {String base = 'api/files/'}) async
 }
 
 /// Download from the box (e.g. `api/export/ets-xml`) as bytes; the caller saves
-/// them. Generous timeout: the server reads up to a month of history.
-Future<Uint8List?> addonDownload(String path, String fileName) async {
+/// them. Generous timeout: the server reads up to a month of history ([timeout]
+/// longer for the whole history).
+Future<Uint8List?> addonDownload(String path, String fileName, {Duration timeout = const Duration(minutes: 5)}) async {
   final box = _box;
   final http.Response r;
   try {
-    r = await _http(box).get(box.url.resolve(path), headers: _headers(box)).timeout(const Duration(minutes: 5));
+    r = await _http(box).get(box.url.resolve(path), headers: _headers(box)).timeout(timeout);
   } on Object {
     throw AddonException(s.boxUnreachable(box.address));
   }

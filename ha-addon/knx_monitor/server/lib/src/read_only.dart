@@ -13,6 +13,7 @@ library;
 
 import 'dart:typed_data';
 
+import 'ha_link.dart';
 import 'link.dart';
 
 /// Text for log and view when a telegram is rejected.
@@ -24,6 +25,13 @@ class ReadOnlyLink implements BusLink {
   ReadOnlyLink(this._inner);
 
   final BusLink _inner;
+
+  /// Home Assistant's telegram store if the wrapped connection has one; it
+  /// only reads, so it is passed on (filling the history, ha_history.dart).
+  TelegramStore? get telegramStore => switch (_inner) {
+    HaLink(:final store) => store,
+    _ => null,
+  };
 
   @override
   Stream<Uint8List> get frames => _inner.frames;

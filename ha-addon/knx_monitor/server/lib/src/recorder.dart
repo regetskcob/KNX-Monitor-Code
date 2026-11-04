@@ -500,6 +500,46 @@ class Recorder {
     return bytes.transform(utf8.decoder).transform(const LineSplitter());
   }
 
+  /// Time of the newest recorded telegram, only before [before] if given;
+  /// `null` without history. Lines in the buffer only count after a [flush].
+  Future<DateTime?> lastTime({DateTime? before}) async {
+    if (!await _dir.exists()) return null;
+    final limit = before?.microsecondsSinceEpoch;
+    final days = {for (final f in await _dayFiles()) f.uri.pathSegments.last.substring(0, 10)}.toList()..sort();
+    for (final day in days.reversed) {
+      if (before != null && day.compareTo(dayName(before)) > 0) continue;
+      int? newest;
+      // A day can be out of order (clock corrected later), so read all of it.
+      await for (final line in (await dayLines(day))!) {
+        final t = int.tryParse(field(line, 't') ?? '');
+        if (t != null && (limit == null || t < limit) && (newest == null || t > newest)) newest = t;
+      }
+      if (newest != null) return DateTime.fromMicrosecondsSinceEpoch(newest);
+    }
+    return null;
+  }
+
+  /// Recorded lines between [from] and [to] (both included), in file order.
+  Future<List<Map<String, Object?>>> linesBetween(DateTime from, DateTime to) async {
+    final result = <Map<String, Object?>>[];
+    final start = from.microsecondsSinceEpoch;
+    final end = to.microsecondsSinceEpoch;
+    for (var d = DateTime(from.year, from.month, from.day); !d.isAfter(to); d = DateTime(d.year, d.month, d.day + 1)) {
+      final lines = await dayLines(dayName(d));
+      if (lines == null) continue;
+      await for (final line in lines) {
+        final t = int.tryParse(field(line, 't') ?? '');
+        if (t == null || t < start || t > end) continue;
+        try {
+          result.add(jsonDecode(line) as Map<String, Object?>);
+        } on FormatException {
+          // truncated line
+        }
+      }
+    }
+    return result;
+  }
+
   /// Number after `"[key]":` in a history line, without fully decoding it.
   static String? field(String line, String key) {
     final i = line.indexOf('"$key":');

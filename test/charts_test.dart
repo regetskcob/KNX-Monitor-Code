@@ -31,6 +31,26 @@ void main() {
     expect(thin.last, same(points.last));
   });
 
+  test('chart periods: today from midnight, 7 and 30 days back, loaded without a start', () {
+    final now = DateTime(2026, 11, 4, 11, 30);
+    expect(ChartPeriod.loaded.from(now), isNull);
+    expect(ChartPeriod.today.from(now), DateTime(2026, 11, 4));
+    expect(ChartPeriod.week.from(now), DateTime(2026, 10, 28, 11, 30));
+    expect(ChartPeriod.month.from(now), DateTime(2026, 10, 5, 11, 30));
+  });
+
+  test('a series from server telegrams and newer ones from the log, in time order', () {
+    final start = DateTime(2026, 11, 4, 8);
+    final telegrams = [
+      _t(start.add(const Duration(hours: 3)), 7),
+      _t(start, 7),
+      _t(start.add(const Duration(hours: 1)), 7),
+    ];
+    final series = seriesOf(7, telegrams, const Color(0xFF000000))!;
+    expect(series.points.map((p) => p.time.hour), [8, 9, 11]);
+    expect(series.kind, ChartKind.step);
+  });
+
   test('Heatmap staffelt die Auflösung nach Zeitspanne', () {
     // Unter einer Stunde: je Minute, Zeilen je Stunde.
     var map = heatmapForTimes([DateTime(2026, 10, 12, 9, 5), DateTime(2026, 10, 12, 9, 50)]);

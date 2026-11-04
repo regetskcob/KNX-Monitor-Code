@@ -81,7 +81,11 @@ class BusActivity extends StatelessWidget {
         : Semantics(
             label: s.activitySemantics(data.activityLabel),
             excludeSemantics: true,
-            child: CustomPaint(
+            child: _HoverBars(
+              count: bins.length,
+              past: data.activityPast,
+              timeOf: data.activityTimeOf,
+              seconds: data.activitySwitchable && ActivityRangeSetting.instance.value == ActivityRange.seconds,
               painter: _ActivityPainter(
                 values: List.of(bins),
                 alarms: List.of(data.alarmBins),
@@ -92,7 +96,6 @@ class BusActivity extends StatelessWidget {
                 ticks: data.activityTicks,
                 tick: hz.textFaint,
               ),
-              size: Size.infinite,
             ),
           );
 
@@ -232,6 +235,108 @@ class _TypeCount extends StatelessWidget {
 /// critical (the key figure next to it names them with a word and symbol).
 /// Segments from [past] on lie in the future: no bars, only the baseline, so
 /// the rest of the day doesn't read as a gap.
+/// Bars with the time of the segment under the pointer (or finger): only
+/// the time for today, otherwise date and time.
+class _HoverBars extends StatefulWidget {
+  const _HoverBars({
+    required this.painter,
+    required this.count,
+    required this.past,
+    required this.timeOf,
+    required this.seconds,
+  });
+
+  final CustomPainter painter;
+  final int count;
+  final int past;
+  final DateTime? Function(int segment) timeOf;
+
+  /// Segments of one second: the time with seconds.
+  final bool seconds;
+
+  @override
+  State<_HoverBars> createState() => _HoverBarsState();
+}
+
+class _HoverBarsState extends State<_HoverBars> {
+  int? _segment;
+
+  void _at(double x, double width) {
+    final i = (x / (width / widget.count)).floor().clamp(0, widget.count - 1);
+    if (i != _segment) setState(() => _segment = i);
+  }
+
+  void _clear() {
+    if (_segment != null) setState(() => _segment = null);
+  }
+
+  /// "10:15", "10:15:42" or "03.11.2026 10:15".
+  String _label(DateTime t) {
+    final now = DateTime.now();
+    final time = formatTime(t, seconds: widget.seconds, millis: false);
+    return DateUtils.isSameDay(t, now) ? time : '${formatDate(t)} $time';
+  }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final width = box.maxWidth;
+      final i = _segment;
+      final time = i == null || i >= widget.past ? null : widget.timeOf(i);
+      final slot = width / widget.count;
+      final hz = context.hz;
+      final style = context.mono(Theme.of(context).textTheme.labelSmall).copyWith(color: hz.text);
+      return MouseRegion(
+        onHover: (e) => _at(e.localPosition.dx, width),
+        onExit: (_) => _clear(),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (d) => _at(d.localPosition.dx, width),
+          onHorizontalDragUpdate: (d) => _at(d.localPosition.dx, width),
+          onTapUp: (_) => _clear(),
+          onHorizontalDragEnd: (_) => _clear(),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned.fill(child: CustomPaint(painter: widget.painter)),
+              if (time != null) ...[
+                // Marker over the segment, the time above it, kept inside the bars.
+                Positioned(
+                  left: (i! + 0.5) * slot - Lines.hairline / 2,
+                  top: 0,
+                  bottom: 0,
+                  child: SizedBox(
+                    width: Lines.hairline,
+                    child: ColoredBox(color: hz.textMuted),
+                  ),
+                ),
+                Positioned(
+                  bottom: box.maxHeight + HzSpace.s2,
+                  left: ((i + 0.5) * slot - 60).clamp(0.0, math.max(0.0, width - 120)),
+                  width: 120,
+                  child: Center(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: hz.surface,
+                        borderRadius: Radii.row,
+                        border: Border.all(color: hz.line, width: Lines.hairline),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: HzSpace.s4, vertical: HzSpace.s2),
+                        child: Text(_label(time), style: style, maxLines: 1),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
 class _ActivityPainter extends CustomPainter {
   _ActivityPainter({
     required this.values,

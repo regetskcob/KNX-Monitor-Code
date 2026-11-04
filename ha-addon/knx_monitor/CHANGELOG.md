@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.9.6
+
+- Connection "Home Assistant": the add-on now fills gaps in its history from the
+  telegram store of the KNX integration (Home Assistant 2026.7 or newer). After the
+  first start you see what Home Assistant already recorded, and telegrams from an
+  update or restart of the add-on are no longer missing. It goes back at most as far
+  as the history's retention; telegrams both have are taken only once.
+- Exports › History as ETS file › "Everything": the whole history as a zip with one
+  ETS file per day. SpectrumKNX imports it in one go. Also on the KNX Box.
+- Charts: choose Loaded, Today, 7 or 30 days. The longer periods come from the
+  history of the add-on or box, thinned on the server so peaks stay visible; periods
+  the history does not reach yet are hidden. A click pins the crosshair and offers
+  "Comment here" right there; across several days it also names the day. Dashed line
+  ends are explained below the chart.
+- Overview: every card whose value can be shown over time has its history again,
+  switching states (windows, lights) as a step line. The histories repaint less often.
+- Activity bar: hovering shows the time of the bar under the pointer.
+
 ## 1.9.5
 
 - The history can be downloaded as an ETS group monitor file (Exports › Continuous,

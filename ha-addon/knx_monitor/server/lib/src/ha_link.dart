@@ -84,15 +84,70 @@ class HaLink implements BusLink {
     if (result['success'] != true) {
       throw LinkException('KNX-Integration nicht verfügbar: ${(result['error'] as Map?)?['message'] ?? 'unbekannt'}');
     }
+    // Only now: what arrived during the handshake is still in the store, and
+    // the fill compares the end of the gap with the first live telegrams.
+    liveSince = DateTime.now();
   }
 
-  Future<Map<String, Object?>> _call(Map<String, Object?> message) {
+  /// When the subscription was confirmed: from then on telegrams arrive live,
+  /// earlier ones only from [storedTelegrams].
+  DateTime? liveSince;
+
+  /// Read access to the telegram store without access to the bus.
+  late final TelegramStore store = _HaStore(this);
+
+  /// Telegrams of Home Assistant's telegram store (KNX integration since
+  /// 2026.7, WebSocket `knx/query_telegrams`) between [from] and [to], oldest
+  /// first, one list per page. Fails with [LinkException] if the integration
+  /// has no store (older Home Assistant) or it is still starting.
+  ///
+  /// Each page continues at the timestamp of the previous page's last
+  /// telegram instead of a growing `offset`: the store's database would skip
+  /// all earlier rows again for every page, and its nightly cleanup would
+  /// shift the pages under a running query. Only the telegrams at exactly
+  /// that timestamp are skipped by `offset`.
+  Stream<List<Map<String, Object?>>> storedTelegrams(DateTime from, DateTime to, {int page = 5000}) async* {
+    var start = from.toUtc().toIso8601String();
+    var offset = 0;
+    while (true) {
+      final result = await _call({
+        'type': 'knx/query_telegrams',
+        'start_time': start,
+        'end_time': to.toUtc().toIso8601String(),
+        'order_descending': false,
+        'limit': page,
+        'offset': offset,
+      }, timeout: const Duration(seconds: 60));
+      if (result['success'] != true) {
+        final error = (result['error'] as Map?)?.cast<String, Object?>();
+        throw LinkException('Telegrammspeicher: ${error?['message'] ?? error?['code'] ?? 'nicht verfügbar'}');
+      }
+      // A changed answer is an error, not an empty store.
+      final list = switch (result['result']) {
+        {'telegrams': final List<Object?> list} when list.every((t) => t is Map) => list,
+        _ => throw const LinkException('Telegrammspeicher: unbekannte Antwort von Home Assistant'),
+      };
+      final telegrams = [for (final t in list) (t! as Map).cast<String, Object?>()];
+      if (telegrams.isNotEmpty) yield telegrams;
+      if (telegrams.length < page) return;
+      final last = telegrams.last['timestamp'] as String?;
+      if (last == null) return;
+      final atLast = telegrams.reversed.takeWhile((t) => t['timestamp'] == last).length;
+      // A whole page at one timestamp: keep counting from there.
+      offset = last == start ? offset + atLast : atLast;
+      start = last;
+    }
+  }
+
+  Future<Map<String, Object?>> _call(Map<String, Object?> message, {Duration timeout = const Duration(seconds: 10)}) {
+    final ws = _ws;
+    if (ws == null) return Future.error(const LinkException('Nicht verbunden'));
     final id = _nextId++;
     final done = Completer<Map<String, Object?>>();
     _pending[id] = done;
-    _ws!.add(jsonEncode({...message, 'id': id}));
+    ws.add(jsonEncode({...message, 'id': id}));
     return done.future.timeout(
-      const Duration(seconds: 10),
+      timeout,
       onTimeout: () {
         _pending.remove(id);
         throw const LinkException('Home Assistant antwortet nicht');
@@ -150,6 +205,25 @@ class HaLink implements BusLink {
     _ws = null;
     if (!_frames.isClosed) await _frames.close();
   }
+}
+
+/// What filling the history needs from the connection (see ha_history.dart):
+/// the store and the start of the live telegrams, nothing that reaches the bus.
+abstract interface class TelegramStore {
+  DateTime? get liveSince;
+  Stream<List<Map<String, Object?>>> storedTelegrams(DateTime from, DateTime to, {int page});
+}
+
+class _HaStore implements TelegramStore {
+  _HaStore(this._link);
+  final HaLink _link;
+
+  @override
+  DateTime? get liveSince => _link.liveSince;
+
+  @override
+  Stream<List<Map<String, Object?>>> storedTelegrams(DateTime from, DateTime to, {int page = 5000}) =>
+      _link.storedTelegrams(from, to, page: page);
 }
 
 /// Telegram from Home Assistant (TelegramDict of the KNX integration) as a

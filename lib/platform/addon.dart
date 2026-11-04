@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'addon_io.dart' if (dart.library.js_interop) 'addon_web.dart' as impl;
+import '../knx/telegram.dart';
 import 'box_link.dart';
 
 /// Connection to the server of the Home Assistant add-on or the KNX box.
@@ -106,10 +107,44 @@ abstract final class Addon {
     etsHistoryFileName(from, to),
   );
 
+  /// The server's whole history as a zip with one ETS file per day (SpectrumKNX imports it in one
+  /// go). In the browser straight to disk (`null`), natively as bytes; reading weeks of history on
+  /// the box can take minutes.
+  static Future<Uint8List?> etsHistoryAll({String? installation}) => impl.addonDownload(
+    'api/export/ets-xml?all=1'
+    '${installation == null ? '' : '&installation=${Uri.encodeQueryComponent(installation)}'}',
+    etsHistoryAllFileName(DateTime.now()),
+    timeout: const Duration(minutes: 30),
+  );
+
+  /// File name of [etsHistoryAll]: `knx-monitor-history-<today>.zip`.
+  static String etsHistoryAllFileName(DateTime now) =>
+      'knx-monitor-history-${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}.zip';
+
   /// File name of [etsHistory], like the server's: `knx-monitor-<first day>-<last day>.xml`.
   static String etsHistoryFileName(DateTime from, DateTime to) {
     String day(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
     return 'knx-monitor-${day(from)}-${day(to.subtract(const Duration(microseconds: 1)))}.xml';
+  }
+
+  /// Telegrams of [addresses] (with their DPT for thinning) between [from] and [to] from the
+  /// server's history, at most 31 days, already thinned to a few thousand per address (see
+  /// `server/lib/src/history_query.dart`). The last value before [from] comes first.
+  static Future<Map<int, List<Telegram>>> historyTelegrams(Map<int, Dpt?> addresses, DateTime from, DateTime to) async {
+    final a = [
+      for (final MapEntry(key: address, value: dpt) in addresses.entries)
+        dpt == null ? '$address' : '$address:${dpt.main}${dpt.sub == null ? '' : '.${dpt.sub}'}',
+    ].join(',');
+    final j = await impl.addonGet(
+      'api/bus/telegrams?a=$a&from=${from.millisecondsSinceEpoch}&to=${to.millisecondsSinceEpoch}',
+    );
+    final telegrams = j['telegrams'] as Map<String, Object?>? ?? const {};
+    return {
+      for (final MapEntry(:key, :value) in telegrams.entries)
+        ?int.tryParse(key): [
+          for (final line in value as List<Object?>? ?? const []) Telegram.fromJson(line! as Map<String, Object?>),
+        ],
+    };
   }
 
   /// Grafana template (`prometheus` or `influxdb`).

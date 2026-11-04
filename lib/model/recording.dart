@@ -201,6 +201,10 @@ class RecordingLog extends TelegramLog {
   }
 
   @override
+  DateTime? activityTimeOf(int i) =>
+      recording.started.add(Duration(microseconds: recording.duration.inMicroseconds * i ~/ _bins));
+
+  @override
   String get activityLabel => s.activityOverRecording;
 }
 

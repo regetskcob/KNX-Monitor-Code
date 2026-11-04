@@ -267,6 +267,10 @@ class _TelegramDetailsState extends State<TelegramDetails> {
     final ownSource = t.outgoing || t.source == tunnel?.tunnelAddress;
     final interpretations = t.interpretations;
     final chart = chartData(dpt, widget.history);
+    // The latest values, as on the card.
+    final recent = chart.points.length > TelegramLog.historyLength
+        ? chart.points.sublist(chart.points.length - TelegramLog.historyLength)
+        : chart.points;
     final values = widget.history.where((h) => h.type != TelegramType.read).toList();
     final sender = ownSource
         ? '${s.rowThisTunnel} ${t.sourceText}'
@@ -420,13 +424,9 @@ class _TelegramDetailsState extends State<TelegramDetails> {
                     child: Semantics(
                       label: s.detailsHistory,
                       child: Sparkline(
-                        values: [
-                          for (final p
-                              in chart.points.length > TelegramLog.historyLength
-                                  ? chart.points.sublist(chart.points.length - TelegramLog.historyLength)
-                                  : chart.points)
-                            p.value,
-                        ],
+                        values: [for (final p in recent) p.value],
+                        // Time axis: a state lasts until now, also the last one.
+                        times: [for (final p in recent) p.time],
                         color: hz.accent,
                         fill: hz.accent.withValues(alpha: 0.16),
                         expand: true,

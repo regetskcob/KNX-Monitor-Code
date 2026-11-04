@@ -154,10 +154,14 @@ String describeAnnotation(Annotation a) {
     final names = [
       for (final g in chart.groups.take(3)) catalog[g]?.name.isNotEmpty == true ? catalog[g]!.name : formatGroup(g),
     ];
-    return [formatTime(a.time), s.annotationAboutChart(names.join(', '))].join(metaSeparator);
+    return [_when(a.time), s.annotationAboutChart(names.join(', '))].join(metaSeparator);
   }
-  return s.annotationAboutTime(formatTime(a.time));
+  return s.annotationAboutTime(_when(a.time));
 }
+
+/// Time of a comment, with the date if it is not today.
+String _when(DateTime t) =>
+    DateUtils.isSameDay(t, DateTime.now()) ? formatTime(t) : '${formatDate(t)} ${formatTime(t)}';
 
 /// A comment in lists (timeline, finding): time and reference, text, images.
 class AnnotationTile extends StatelessWidget {

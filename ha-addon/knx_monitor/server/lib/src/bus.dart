@@ -7,6 +7,7 @@ import 'alarms.dart';
 import 'exporter.dart';
 import 'ft12_link.dart';
 import 'ha.dart';
+import 'ha_history.dart';
 import 'ha_link.dart';
 import 'kberry.dart' show TtyLine;
 
@@ -668,6 +669,7 @@ class BusService {
         _setState('connected');
         stdout.writeln('Bus verbunden: ${link.label}');
         unawaited(_askTime(link));
+        unawaited(_fillGap(link, generation));
         final reason = await link.lost;
         await sub.cancel();
         if (!_current(generation)) return;
@@ -707,6 +709,25 @@ class BusService {
       _fire(HomeAssistant.busEvent, {'connected': next == 'connected', 'state': next, 'reason': ?error});
     }
   }
+
+  /// Mode `ha`: adds what Home Assistant recorded while the add-on was not
+  /// listening (see ha_history.dart). Never affects the connection.
+  Future<void> _fillGap(BusLink link, int generation) async {
+    final store = switch (link) {
+      ReadOnlyLink(:final telegramStore) => telegramStore,
+      HaLink(:final store) => store,
+      _ => null,
+    };
+    if (store == null) return;
+    try {
+      await fillFromHomeAssistant(store, recorder, settle: gapSettle);
+    } on Object catch (e) {
+      if (_current(generation)) stdout.writeln('Verlauf aus Home Assistant nicht nachgeladen: $e');
+    }
+  }
+
+  /// Wait before filling the gap, see [fillFromHomeAssistant] (shorter in tests).
+  Duration gapSettle = const Duration(seconds: 5);
 
   /// Box without a confirmed time: asks the project's time sender once
   /// instead of waiting for its next send cycle.

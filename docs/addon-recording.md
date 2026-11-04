@@ -38,7 +38,7 @@ Browser ⇄ WS /ws (UDP relay) ⇄ gateway     – gateway discovery, bus monito
 | `udp`, `tcp` | Tunnelling. TCP (KNXnet/IP 2.0) copes better with lossy links. Optionally a fixed tunnel address; if it is taken, `fallback` uses any free one. |
 | `routing` | Multicast via an IP router; uses no tunnel slot. |
 | `secure` | IP Secure tunnel over TCP. |
-| `ha` | No own connection: reads and sends through the KNX integration of Home Assistant. Device access (programming mode, address check, bus monitor) is not available. |
+| `ha` | No own connection: reads and sends through the KNX integration of Home Assistant. Device access (programming mode, address check, bus monitor) is not available. Gaps in the history are filled from the integration's telegram store, see below. |
 | `hat` | KNX HAT of the box on a serial port (`/dev/ttyAMA0` by default), no gateway. |
 
 KNX Data Secure group keys come from `secure_keys.json`, which the app writes
@@ -135,6 +135,52 @@ day uncompressed, at 20/s about 170 MB; gzip saves roughly a factor of 8–10.
 The history, settings and an imported keyring are part of Home Assistant
 backups (`backup: hot`); the history is not excluded.
 
+### Telegrams for charts
+
+`GET /api/bus/telegrams?a=<address>[:<main>.<sub>],…&from=<ms>&to=<ms>[&installation=<id>]`
+(`history_query.dart`) returns the telegrams of up to 12 group addresses
+over at most 31 days as history lines, per address oldest first and with the
+last value before `from` in front. The app's charts use it for the periods
+Today, 7 and 30 days; "Loaded" stays what the app holds in memory (the latest
+5,000 telegrams). Telegrams that arrive after the query are added from the
+live view, so the chart keeps running.
+
+- Access like `/api/bus/stats`.
+- Only lines of the asked addresses are decoded; the others are skipped by
+  their `d` field. Reads are left out.
+- Thinned per address to about 4,000 lines: runs of the same value keep only
+  their first and last line (a step line still changes at the right time); if
+  that is still too many, each of 1,000 time columns keeps its first, last,
+  lowest and highest value (the DPT given with the address decides what is a
+  number).
+
+### Filling gaps from Home Assistant
+
+In mode `ha` the KNX integration records anyway: since Home Assistant 2026.7
+it keeps its telegrams in its own store (library knx-telegram-store, SQLite or
+PostgreSQL, retention set in the integration). After every connect,
+`ha_history.dart` adds to the history what the integration received while the
+add-on was not listening:
+
+- The gap runs from the newest recorded telegram before the subscription
+  (`HaLink.liveSince`) up to the subscription; without history it starts at
+  the history's retention.
+- It is read with the WebSocket command `knx/query_telegrams`, oldest first,
+  in pages of 5,000, and written page by page. Each page continues at the
+  previous page's last timestamp (the store filters `>=` and orders by
+  timestamp); `offset` only skips the telegrams at exactly that timestamp.
+- Both sides stamp a telegram with their own time of arrival. At both edges of
+  the gap a telegram with the same sender, address, type and data within 3 s
+  counts as already recorded; each recorded telegram matches once.
+- Lines for days already packed go into a new day file; packing merges it in.
+- `knx/query_telegrams` is an interface of the integration's own panel, not a
+  documented API. If it is missing (Home Assistant before 2026.7), still
+  starting or changed, the gap stays as before and the log says why; the
+  connection itself is never affected.
+
+Only the add-on's history is filled. Comments, recordings, watchers and alarms
+work on the add-on's own data and do not see these telegrams live.
+
 ### Export as ETS file
 
 `GET /api/export/ets-xml?from=<ms>&to=<ms>[&installation=<id>]`
@@ -159,6 +205,15 @@ file (`CommunicationLog`, namespace `http://knx.org/xml/telegrams/01`), with
   `server/test/fixtures/ets_xml/` was written by the app; both
   `server/test/ets_xml_test.dart` and the app's `test/telegram_files_test.dart`
   compare against it.
+
+With `?all=1` instead of `from`/`to` the endpoint returns the whole history as
+a zip, `knx-monitor-<first day>-<last day>.zip`, with one file
+`knx-monitor-YYYY-MM-DD.xml` per day that has telegrams (each written like a
+single-day export). SpectrumKNX imports a zip of such files in one go. The zip
+is written while it is sent (`zip_stream.dart`: deflate, sizes and CRC in a data
+descriptor after each entry, no Zip64), so neither the server nor the browser
+holds it in memory; the native app receives it as bytes, about a tenth of the
+XML. Without history the answer is 400.
 
 Other programs with this format, checked against their source:
 

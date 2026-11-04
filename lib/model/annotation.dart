@@ -130,22 +130,51 @@ class TelegramRef {
 
 /// A chart as a reference: the group addresses shown and the visible window.
 class ChartRef {
-  const ChartRef({required this.groups, required this.from, required this.to});
+  const ChartRef({required this.groups, required this.from, required this.to, this.values = const []});
 
   final List<int> groups;
   final DateTime from;
   final DateTime to;
 
+  /// Values of the series at the comment's time, as shown then.
+  final List<ChartValue> values;
+
   Map<String, Object?> toJson() => {
     'groups': groups,
     'from': from.microsecondsSinceEpoch,
     'to': to.microsecondsSinceEpoch,
+    if (values.isNotEmpty) 'values': [for (final v in values) v.toJson()],
   };
 
   factory ChartRef.fromJson(Map<String, Object?> j) => ChartRef(
     groups: [...(j['groups']! as List).cast<int>()],
     from: DateTime.fromMicrosecondsSinceEpoch(j['from']! as int),
     to: DateTime.fromMicrosecondsSinceEpoch(j['to']! as int),
+    values: [
+      for (final v in (j['values'] as List?) ?? const [])
+        if (v is Map) ChartValue.fromJson(v.cast<String, Object?>()),
+    ],
+  );
+}
+
+/// Value of a chart series at a comment: the one that applied then ([now]) and
+/// the different one before it ([before]), as text in the app's language.
+class ChartValue {
+  const ChartValue({required this.group, required this.name, required this.now, this.before});
+
+  /// Group address (or metric id) of the series.
+  final int group;
+  final String name;
+  final String now;
+  final String? before;
+
+  Map<String, Object?> toJson() => {'g': group, 'n': name, 'v': now, 'b': ?before};
+
+  factory ChartValue.fromJson(Map<String, Object?> j) => ChartValue(
+    group: j['g'] as int? ?? 0,
+    name: j['n'] as String? ?? '',
+    now: j['v'] as String? ?? '',
+    before: j['b'] as String?,
   );
 }
 

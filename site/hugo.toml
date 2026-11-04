@@ -20,7 +20,7 @@ disableKinds = ["taxonomy", "term", "rss"]
   appStoreUrl = "#"
   playStoreUrl = "#"
   desktopUrl = "https://github.com/regetskcob/KNX-Monitor/releases/latest"
-  boxUrl = "https://github.com/regetskcob/KNX-Monitor/releases/tag/box-v1.9.2"
+  boxUrl = "https://github.com/regetskcob/KNX-Monitor/releases/tag/box-v1.9.6"
   # Home Assistant add-on repository (Settings → Add-ons → Add-on Store → ⋮ → Repositories)
   haRepoUrl = "https://github.com/regetskcob/KNX-Monitor"
   # Legal notice lives on the main site (applies to DE and EN)

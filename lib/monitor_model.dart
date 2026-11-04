@@ -258,6 +258,17 @@ class MonitorModel extends TelegramLog {
   };
 
   @override
+  DateTime? activityTimeOf(int i) {
+    final now = DateTime.now();
+    return switch (ActivityRangeSetting.instance.value) {
+      // The last segment is the current second or minute.
+      ActivityRange.seconds => now.subtract(Duration(seconds: activity.length - 1 - i)),
+      ActivityRange.hour => DateTime(now.year, now.month, now.day, now.hour, now.minute - (59 - i)),
+      ActivityRange.today => DateTime(now.year, now.month, now.day, 0, 15 * i),
+    };
+  }
+
+  @override
   int get activityPast {
     if (ActivityRangeSetting.instance.value != ActivityRange.today) return activityBins.length;
     final now = DateTime.now();

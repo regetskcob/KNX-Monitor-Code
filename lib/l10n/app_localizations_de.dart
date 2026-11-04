@@ -8850,7 +8850,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get exportsEtsHistory => 'Verlauf als ETS-Datei (für Home Assistant und SpectrumKNX)';
 
   @override
-  String get exportsEtsHistoryMeta => 'Dauerhafte Aufzeichnung, bis 30 Tage';
+  String get exportsEtsHistoryMeta => 'Dauerhafte Aufzeichnung, einzelne Tage oder alles';
 
   @override
   String get exportsEtsHistoryHint =>
@@ -8864,4 +8864,44 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get exportsEtsHistoryLoading => 'Verlauf wird geladen …';
+
+  @override
+  String get chartsPeriodLoaded => 'Geladen';
+
+  @override
+  String get chartsPeriodToday => 'Heute';
+
+  @override
+  String get chartsPeriodLoadedHint =>
+      'Geladen zeigt die letzten 5.000 Telegramme, die die App gerade im Speicher hat. Heute, 7 und 30 Tage kommen aus dem Verlauf von Add-on oder Box.';
+
+  @override
+  String chartsPeriodFailed(String error) {
+    return 'Verlauf nicht geladen: $error';
+  }
+
+  @override
+  String get chartsPeriodMetrics => 'Bus-Kennzahlen zeigen nur den geladenen Zeitraum.';
+
+  @override
+  String get chartsDashedHint => 'Gestrichelt: Der letzte Wert gilt weiter, seitdem kam kein neues Telegramm.';
+
+  @override
+  String get chartsPeriodUnreachable => 'Add-on oder Box antwortet nicht.';
+
+  @override
+  String get chartsPeriodRetry => 'Erneut laden';
+
+  @override
+  String get exportsEtsHistoryAll => 'Alles';
+
+  @override
+  String get exportsEtsHistoryAllHint =>
+      'Der ganze Verlauf als ZIP mit einer Datei pro Tag. SpectrumKNX importiert sie in einem Rutsch, etwa für einen Umzug. Bei vielen Wochen kann das einige Minuten dauern.';
+
+  @override
+  String get chartsAnnotateHere => 'Hier kommentieren';
+
+  @override
+  String get annotationValuesLabel => 'Werte';
 }
