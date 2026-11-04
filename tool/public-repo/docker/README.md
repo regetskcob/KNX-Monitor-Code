@@ -57,6 +57,22 @@ cosign verify ghcr.io/regetskcob/knx-monitor:<version> \
   --certificate-identity-regexp '^https://github.com/regetskcob/KNX-Monitor-Source/\.github/workflows/addon\.yml@refs/tags/addon-v'
 ```
 
+## Build the image yourself
+
+The source code is in
+[KNX-Monitor-Code](https://github.com/regetskcob/KNX-Monitor-Code). Its
+`Dockerfile` in the root builds web app and server in one go, no Flutter or
+Dart needed on your machine:
+
+```sh
+git clone https://github.com/regetskcob/KNX-Monitor-Code.git
+cd KNX-Monitor-Code
+docker build -t knx-monitor --build-arg BUILD_VERSION="$(sed -n 's/^version: "\(.*\)"/\1/p' ha-addon/knx_monitor/config.yaml)" .
+```
+
+Then replace the `image:` line in `compose.yaml` with `image: knx-monitor`.
+The build takes a few minutes, mostly for the web app.
+
 ## Settings
 
 | Variable | Meaning |

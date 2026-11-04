@@ -1,0 +1,24 @@
+# Build context of the Dockerfile in the root: only what web app and server
+# need, no local build state (it would overwrite what pub get created).
+**/.dart_tool
+**/build
+.git
+.github
+android
+ios
+macos
+linux
+windows
+box
+docs
+ha-integration
+integration_test
+site
+store
+supabase
+teaser
+test
+test_driver
+ha-addon/knx_monitor/web
+ha-addon/knx_monitor/packages
+.claude

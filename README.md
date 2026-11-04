@@ -87,6 +87,15 @@ machine only. To install a local build into Home Assistant:
 `tool/build_ha_addon.sh hassio@homeassistant.local` (copies the add-on over
 SSH to `/addons`; then **Check for updates** in the add-on store).
 
+**Docker image** (the same as `ghcr.io/regetskcob/knx-monitor`), without a
+local Flutter or Dart; the [Dockerfile](Dockerfile) builds web app and server:
+
+```bash
+docker build -t knx-monitor --build-arg BUILD_VERSION="$(sed -n 's/^version: "\(.*\)"/\1/p' ha-addon/knx_monitor/config.yaml)" .
+```
+
+Then use `image: knx-monitor` in the [compose file](tool/public-repo/docker/compose.yaml).
+
 **KNX Box image:** see [docs/knx-box.md](docs/knx-box.md). **Releases:**
 [docs/releasing.md](docs/releasing.md).
 
