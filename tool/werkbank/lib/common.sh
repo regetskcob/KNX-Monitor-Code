@@ -211,6 +211,33 @@ wb_symbols() {
 # variant tells apart several bundles of one version (phone, wear, …).
 wb_release_path() { echo "build/release/$WB_APP${2:+-$2}-$(wb_version).$1"; }
 
+# Package.resolved of the Apple platforms (SwiftPM) that differ from HEAD,
+# new ones included. A store build (flutter build ipa/macos, xcodebuild archive)
+# resolves the Swift packages again and may rewrite them – then the checkout is
+# dirty and the next release step refuses with "uncommitted changes".
+wb_resolved_changed() {
+  git status --porcelain --untracked-files=all -- ':(glob)ios/**/Package.resolved' ':(glob)macos/**/Package.resolved' | cut -c4-
+}
+
+# After a store build: fails while it left a changed Package.resolved, before
+# anything is uploaded or tagged. The build used exactly these versions, so they
+# belong in the repository – committed via PR, then the build is repeated from
+# the clean main (STANDARD.md, Release).
+#
+# Hooks that build and upload themselves (release_<product>, build_<platform>)
+# must call it between their build and their upload: werkbank checks again only
+# after the hook returns, when it can still stop the tag but no longer the
+# upload. That late check passes "after-hook" and says so.
+wb_resolved_guard() {
+  local files
+  files=$(wb_resolved_changed)
+  [ -z "$files" ] && return 0
+  local f outcome="nothing was uploaded or tagged"
+  [ "${1:-}" = after-hook ] && outcome="nothing was tagged; if the hook uploaded without calling wb_resolved_guard first, that build is already in the store"
+  while IFS= read -r f; do printf '  %s\n' "$f" >&2; done <<<"$files"
+  die "the build resolved the Swift packages anew (Package.resolved above) – commit them via PR (\"Swift-Pakete wie beim Store-Build aufgelöst\"), then build again from the clean main; $outcome"
+}
+
 # Signed App Bundle. Arguments after -- go to flutter build appbundle, after
 # those of the project's android_args hook.
 wb_android() {
@@ -261,6 +288,7 @@ wb_ios() {
   mkdir -p build/release
   cp "$ipa" "$out"
   say "IPA: $out"
+  wb_resolved_guard
   if $upload; then
     say "Uploading to App Store Connect"
     API_PRIVATE_KEYS_DIR=$(dirname "$(wb_asc_key)") \
@@ -645,6 +673,7 @@ wb_release_build() {
   local p=$1 upload=$2 platform
   if wb_has_hook "release_$p"; then
     "release_$p" "$upload"
+    wb_resolved_guard after-hook
     return
   fi
   for platform in $(wb_platforms "$p"); do
@@ -660,8 +689,11 @@ wb_release_build() {
       *)
         wb_has_hook "build_$platform" || die "no werkbank build for $platform – define build_$platform in tool/werkbank.conf"
         "build_$platform" "$upload"
+        wb_resolved_guard after-hook
+        continue
         ;;
     esac
+    wb_resolved_guard
   done
 }
 
@@ -701,7 +733,8 @@ wb_release() {
   say "Preflight"
   local problems=()
   [ "$(git branch --show-current)" = main ] || problems+=("not on main")
-  [ -z "$(git status --porcelain)" ] || problems+=("uncommitted changes")
+  [ -z "$(wb_resolved_changed)" ] || problems+=("Package.resolved changed, probably by a store build: $(wb_resolved_changed | paste -sd ' ' -) – commit via PR (werkbank resolved)")
+  [ -z "$(git status --porcelain -- . ':(exclude,glob)ios/**/Package.resolved' ':(exclude,glob)macos/**/Package.resolved')" ] || problems+=("uncommitted changes")
   git fetch -q origin main 2>/dev/null || true
   [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main 2>/dev/null)" ] || problems+=("main differs from origin/main")
   for p in "${todo[@]}"; do

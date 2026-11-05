@@ -74,6 +74,7 @@ changelog_section() {
 require_clean_main() {
   [ "$(git branch --show-current)" = main ] || die "not on main"
   git fetch -q origin
+  [ -z "$(wb_resolved_changed)" ] || die "Package.resolved changed, probably by a store build: $(wb_resolved_changed | paste -sd ' ' -) – commit via PR first"
   [ -z "$(git status --porcelain --untracked-files=no)" ] || die "uncommitted changes – commit or stash first"
   if [ "${1:-}" = ahead ]; then
     git merge-base --is-ancestor origin/main HEAD || die "main is behind or diverged from origin/main – pull first"
@@ -292,6 +293,7 @@ cmd_macos() {
   xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner -configuration Release -archivePath "$archive" archive
   [ -d "$archive" ] || die "no archive at $archive"
   say "Archive in the Organizer: $archive"
+  wb_resolved_guard
   if [ "${UPLOAD:-}" = 1 ]; then wb_upload_apple "$archive"; fi
 }
 

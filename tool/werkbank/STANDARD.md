@@ -69,6 +69,7 @@ Watch-App, Seiten-Deploy), steht als eigener Befehl daneben.
 | `changelog [--draft]` | Changelog-Abschnitt der Version in allen Sprachen fertig? `--draft` macht aus „Unreleased“ die Version | `werkbank changelog` |
 | `notes [--draft]` | Release-Texte des Builds vollständig? `--draft` legt Entwürfe aus den gemergten PRs an | `werkbank notes` |
 | `upload-apple <xcarchive>` | Archiv (iOS, macOS) zu App Store Connect, mit dem in Xcode angemeldeten Konto | `werkbank upload-apple` |
+| `resolved` | schlägt fehl, solange ein Store-Build `ios/**/Package.resolved` oder `macos/**/Package.resolved` geändert hat | `werkbank resolved` |
 | `upload-play [aab] [track]` | AAB mit Versionshinweisen in eine Play-Spur (Dienstkonto) | `werkbank upload-play` |
 | `devicetest` | Integrationstests nacheinander auf allen angeschlossenen Geräten, Bericht in `build/devicetest/` | `werkbank devicetest` |
 | `shots` | Rohaufnahmen nach `store/raw/` | Projekt (Simulator über `werkbank sim`) |
@@ -105,6 +106,19 @@ Standard `pubspec.yaml`), ein Tag-Präfix (`WB_TAG_PREFIX_<p>`, für die App `WB
 sonst `<p>-v`) und Plattformen (`WB_PLATFORMS_<p>`, für die App die vorhandenen Ordner `ios`,
 `android`, `macos`). Ein Produkt, dessen Tag es schon gibt, gilt als veröffentlicht und wird
 übersprungen. Der Changelog ist die eine Quelle für GitHub-Release, Seite und Store-Texte.
+
+**Swift-Pakete (`Package.resolved`):** Ein Store-Build für iOS oder macOS (`flutter build
+ipa|macos`, `xcodebuild archive`) löst die Swift-Pakete neu auf und kann
+`ios/**/Package.resolved` und `macos/**/Package.resolved` umschreiben. Dann ist der Checkout
+nicht mehr sauber und der nächste Release-Schritt bricht mit „uncommitted changes“ ab.
+`werkbank ios` und jeder werkbank-Build in `release` prüfen das gleich danach
+(`wb_resolved_guard`) und brechen vor Hochladen und Tag ab. Eigene Apple-Builds eines Projekts
+(z. B. `cmd_macos`) und Hooks, die selbst hochladen (`build_<plattform>`, `release_<produkt>`),
+rufen `wb_resolved_guard` zwischen Build und Upload auf; die werkbank prüft nach dem Hook nur
+noch einmal und kann dann zwar den Tag, aber keinen schon erfolgten Upload mehr verhindern. Dann: die Dateien per PR committen („Swift-Pakete wie beim Store-Build
+aufgelöst“) und den Build vom sauberen `main` wiederholen – der Build hat genau diese
+Versionen benutzt, sie gehören ins Repo. Die Vorprüfung nennt geänderte `Package.resolved`
+eigens; `werkbank resolved` prüft von Hand.
 
 ### Changelog
 
