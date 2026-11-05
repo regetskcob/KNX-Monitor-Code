@@ -7,7 +7,8 @@ import 'knx_crypto.dart';
 class IpSecureException implements Exception {
   const IpSecureException(this.reason, [this.status]);
 
-  /// `auth` = user/password rejected, `device` = device code does not match, `timeout`, `closed`.
+  /// `auth` = user/password rejected, `device` = device code does not match, `key` = the gateway's
+  /// public key yields no usable shared secret, `timeout`, `closed`.
   final String reason;
   final int? status;
   @override
@@ -89,7 +90,11 @@ class IpSecureSession {
       final (_, macTr) = ctr(_deviceKey, counter0, mac);
       if (!bytesEqual(expected, macTr)) throw const IpSecureException('device');
     }
-    _key = sha256(x25519(_keys.$1, serverKey)).sublist(0, 16);
+    final shared = x25519(_keys.$1, serverKey);
+    // A low-order public key (e.g. all zeros) forces the shared secret to zero, so whoever sent it
+    // would know the session key (RFC 7748, section 6.1).
+    if (shared.every((b) => b == 0)) throw const IpSecureException('key');
+    _key = sha256(shared).sublist(0, 16);
     final authMac = cbcMac(_userKey, [0x06, 0x10, 0x09, 0x53, 0x00, 0x18, 0x00, userId, ...xor]);
     final (_, authMacEnc) = ctr(_userKey, counter0, authMac);
     _status = Completer();

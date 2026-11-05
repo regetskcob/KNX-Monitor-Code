@@ -63,4 +63,22 @@ void main() {
     expect(xml, contains('<GroupRange Name="5" RangeStart="10240" RangeEnd="12287">'));
     expect(etsImportXml(const [], GroupStyle.threeLevel), isNull);
   });
+
+  test('CSV: Namen, die eine Tabelle als Formel liest, bekommen ein Apostroph, „+“ und „-“ nur als Formel', () {
+    final csv = etsImportCsv([
+      (address: ga(1, 0, 1), name: '=HYPERLINK("http://x")', dpt: null, description: '@SUM(A1)', path: '=Licht › @OG'),
+      (address: ga(1, 0, 2), name: '-1 Keller', dpt: null, description: '+ Zentral', path: 'Licht › @OG'),
+      (address: ga(1, 0, 3), name: '+SUM(A1)', dpt: null, description: '-1+1', path: 'Licht › @OG'),
+    ], GroupStyle.threeLevel)!;
+    final lines = csv.split('\r\n');
+    expect(lines[1], startsWith('''"'=Licht"'''));
+    expect(lines[2], startsWith('''"","'@OG"'''));
+    expect(lines[3], contains('''"'=HYPERLINK(""http://x"")"'''));
+    expect(lines[3], contains('''"'@SUM(A1)"'''));
+    expect(lines[4], contains('"-1 Keller"'));
+    expect(lines[4], contains('"+ Zentral"'));
+    // Formula-shaped + and - are escaped as well.
+    expect(lines[5], contains('''"'+SUM(A1)"'''));
+    expect(lines[5], contains('''"'-1+1"'''));
+  });
 }

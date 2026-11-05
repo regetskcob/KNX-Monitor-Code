@@ -193,11 +193,15 @@ class HistoryStore extends ChangeNotifier {
   AppStorage _storageOf(String? installation) =>
       installation == null || kIsWeb ? _storage : ScopedStorage(AppStorage.instance, 'installations/$installation/');
 
-  /// History on the box; older boxes do not know installations.
+  /// History on the box; older boxes do not know installations (404) and keep
+  /// it in the root. Any other refusal (403: a paired device only sees the
+  /// active installation) must not fall back, or the active installation's
+  /// history would appear under another installation's name.
   Future<List<Object?>> _boxFiles(String installation) async {
     try {
       return await Addon.listInstallationFiles(installation, _dir);
-    } on AddonException {
+    } on AddonException catch (e) {
+      if (e.status != 404) rethrow;
       return Addon.listFiles(_dir);
     }
   }
@@ -206,7 +210,8 @@ class HistoryStore extends ChangeNotifier {
     final id = day.installation ?? InstallationStore.instance.active.id;
     try {
       return await Addon.getInstallationFile(id, day.path);
-    } on AddonException {
+    } on AddonException catch (e) {
+      if (e.status != 404) rethrow;
       return Addon.getFile(day.path);
     }
   }

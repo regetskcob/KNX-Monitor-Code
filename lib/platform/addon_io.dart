@@ -27,9 +27,44 @@ Map<String, String> _headers(BoxLink box) => {if (box.key.isNotEmpty) 'Authoriza
 /// Dart only consults `badCertificateCallback` for certificates it does not already consider valid
 /// itself, and one from a public authority would bypass the fingerprint. Validity period and name
 /// do not count: the box often has no clock, and the fingerprint says more than both.
-HttpClient pinnedHttpClient(String fp) =>
-    HttpClient(context: SecurityContext(withTrustedRoots: false))
-      ..badCertificateCallback = (cert, host, port) => certificateFingerprint(cert.der) == fp;
+///
+/// Which certificate the platform hands to that callback is not documented: on some it may be
+/// another one of the chain the server sent. So each connection is opened here ([pinnedConnection])
+/// and only handed on once the peer certificate – the leaf whose key the server proved in the
+/// handshake – matches.
+HttpClient pinnedHttpClient(String fp) {
+  final context = SecurityContext(withTrustedRoots: false);
+  bool matches(X509Certificate cert) => certificateFingerprint(cert.der) == fp;
+  return HttpClient(context: context)
+    ..badCertificateCallback = ((cert, host, port) => matches(cert))
+    // The box is in the local network; a proxy from the environment would only stand in between.
+    ..findProxy = ((_) => 'DIRECT')
+    ..connectionFactory = ((uri, proxyHost, proxyPort) => pinnedConnection(uri, context, matches));
+}
+
+/// Opens the TLS connection for [pinnedHttpClient] and checks the leaf certificate with [matches]
+/// before anything is sent over it. The handshake itself accepts any chain: whatever the platform
+/// would pass to `onBadCertificate`, only the leaf decides, the same way on every platform. Plain
+/// HTTP stays as it is.
+Future<ConnectionTask<Socket>> pinnedConnection(
+  Uri uri,
+  SecurityContext context,
+  bool Function(X509Certificate cert) matches,
+) async {
+  if (uri.scheme != 'https' && uri.scheme != 'wss') return Socket.startConnect(uri.host, uri.port);
+  final task = await SecureSocket.startConnect(uri.host, uri.port, context: context, onBadCertificate: (_) => true);
+  return ConnectionTask.fromSocket(
+    task.socket.then((socket) {
+      final leaf = socket.peerCertificate;
+      if (leaf == null || !matches(leaf)) {
+        socket.destroy();
+        throw const HandshakeException('Box: certificate does not match the fingerprint');
+      }
+      return socket;
+    }),
+    task.cancel,
+  );
+}
 
 /// SHA-256 of [der], base64url without padding (like the server and `tls-cert.sh`).
 String certificateFingerprint(List<int> der) => base64Url.encode(sha256.convert(der).bytes).replaceAll('=', '');
@@ -54,6 +89,10 @@ AddonException _refused(http.Response r) {
   final text = utf8.decode(r.bodyBytes, allowMalformed: true);
   if (r.statusCode == HttpStatus.forbidden && text.startsWith('Nur mit dem Box-Passwort')) {
     return AddonException(s.boxNotAdmin);
+  }
+  // Password change or "lock out all" with a wrong current password.
+  if (r.statusCode == HttpStatus.forbidden && text.startsWith('Das aktuelle Passwort')) {
+    return AddonException(s.boxPasswordCurrentWrong, status: HttpStatus.forbidden);
   }
   if (r.statusCode == HttpStatus.preconditionRequired) return AddonException(s.boxPasswordRequired);
   return AddonException(s.boxUnauthorized);

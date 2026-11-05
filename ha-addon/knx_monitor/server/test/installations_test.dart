@@ -199,9 +199,19 @@ void main() {
       expect(await read('installations/b1/catalog.json'), '{"project":"Neu"}');
       expect(await read('installations/default/catalog.json'), '{"project":"Alt"}');
 
-      // Alte Installation: lesen ja (auch Gerätezugang), schreiben nein.
-      (status, text) = await send('/api/installations/default/files/catalog.json', admin: false);
+      // Alte Installation: lesen ja, schreiben nein. Ein Gerät ohne Admin-Recht sieht nur
+      // die aktive: frühere Kunden und Baustellen gehen es nichts an.
+      (status, text) = await send('/api/installations/default/files/catalog.json');
       expect((status, text), (200, '{"project":"Alt"}'));
+      expect((await send('/api/installations/default/files/catalog.json', admin: false)).$1, 403);
+      expect((await send('/api/installations/default/files/history/', admin: false)).$1, 403);
+      expect((await send('/api/installations/b1/files/catalog.json', admin: false)).$1, 200);
+      (status, text) = await send('/api/installations', admin: false);
+      expect(jsonDecode(text), {
+        'active': 'b1',
+        'list': [containsPair('id', 'b1')],
+      });
+      expect(((jsonDecode((await send('/api/installations')).$2) as Map)['list'] as List).length, 2);
       for (final method in ['PUT', 'POST', 'DELETE']) {
         expect((await send('/api/installations/default/files/catalog.json', method: method, body: '{}')).$1, 405);
       }

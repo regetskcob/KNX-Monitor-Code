@@ -23,11 +23,18 @@ for arg in "$@"; do
   esac
 done
 [ -z "$(git status --porcelain)" ] || { echo "commit first: the snapshot is built from HEAD" >&2; exit 1; }
+# Only what is reviewed and merged becomes public: a branch or an unpushed
+# commit on main would publish code that never went through a pull request.
+git fetch -q origin
+[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] ||
+  { echo "HEAD differs from origin/main – publish only the merged main" >&2; exit 1; }
 
 if [ ! -d "$DIR/.git" ]; then
   git clone -q "git@github.com:$PUBLIC_CODE.git" "$DIR"
 fi
-git -C "$DIR" pull -q --ff-only 2>/dev/null || true
+# The checkout is replaced below: only a clean one that is up to date.
+[ -z "$(git -C "$DIR" status --porcelain)" ] || { echo "$DIR has local changes – look at them first" >&2; exit 1; }
+git -C "$DIR" pull -q --ff-only || { echo "$DIR cannot fast-forward to origin – look at it first" >&2; exit 1; }
 
 snapshot=$(mktemp -d)
 trap 'rm -rf "$snapshot"' EXIT
@@ -64,7 +71,8 @@ if [ ! -d "$WIKI/.git" ]; then
   fi
 fi
 if [ -d "$WIKI/.git" ]; then
-  git -C "$WIKI" pull -q --ff-only 2>/dev/null || true
+  [ -z "$(git -C "$WIKI" status --porcelain)" ] || { echo "$WIKI has local changes – look at them first" >&2; exit 1; }
+  git -C "$WIKI" pull -q --ff-only || { echo "$WIKI cannot fast-forward to origin – look at it first" >&2; exit 1; }
   python3 -I tool/public_source/build_wiki.py "$snapshot/tree" "$WIKI"
   git -C "$WIKI" add -A
   if ! git -C "$WIKI" diff --cached --quiet; then

@@ -86,7 +86,9 @@ Future<AddonSocket> _openBus() async {
 }
 
 Future<Object?> _decode(http.Response r) {
-  if (r.statusCode >= 300) throw Addon.errorOf(r.bodyBytes) ?? AddonException('Add-on: HTTP ${r.statusCode}');
+  if (r.statusCode >= 300) {
+    throw Addon.errorOf(r.bodyBytes) ?? AddonException('Add-on: HTTP ${r.statusCode}', status: r.statusCode);
+  }
   return Future.value(r.bodyBytes.isEmpty ? null : jsonDecode(utf8.decode(r.bodyBytes)));
 }
 

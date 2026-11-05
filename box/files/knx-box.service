@@ -36,6 +36,21 @@ DeviceAllow=char-ttyACM rw
 SupplementaryGroups=dialout
 ProtectKernelTunables=yes
 ProtectControlGroups=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+UMask=0077
+# The boot partition holds knx-box.txt with the sticker and Wi-Fi passwords:
+# hidden from the server. Only config.txt stays readable, for the HAT check
+# (kberrySystem in kberry.dart reads the UART overlays from it).
+TemporaryFileSystem=/boot:ro
+BindReadOnlyPaths=-/boot/firmware/config.txt -/boot/config.txt
+# No SystemCallFilter= or MemoryDenyWriteExecute=: the Dart VM may need
+# writable and executable memory, and that cannot be tested without a Pi.
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
 Restart=always
 RestartSec=3

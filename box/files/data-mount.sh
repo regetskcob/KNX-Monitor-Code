@@ -34,7 +34,9 @@ if [ "$rc" -gt 1 ]; then
   exit 0
 fi
 install -d -m 0750 "$dir"
-if ! mount -t ext4 -o noatime,commit=5 "$dev" "$dir"; then
+# nosuid,nodev,noexec: whoever plugs in a drive labelled KNXBOXDATA decides its
+# content, so it must not bring set-uid programs, device nodes or executables.
+if ! mount -t ext4 -o noatime,commit=5,nosuid,nodev,noexec "$dev" "$dir"; then
   echo "KNX-Box: KNXBOXDATA lässt sich nicht einhängen, Daten auf der SD-Karte" >&2
   exit 0
 fi

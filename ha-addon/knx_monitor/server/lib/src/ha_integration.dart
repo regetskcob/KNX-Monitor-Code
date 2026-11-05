@@ -126,8 +126,10 @@ class HaIntegration {
   }
 
   /// Announces host, port and token to the Supervisor (`POST /discovery`).
-  /// The add-on runs in the host network; Home Assistant reaches it under the
-  /// add-on's host name, the integration falls back to 127.0.0.1.
+  /// The add-on runs in the host network; the Supervisor's DNS resolves its
+  /// host name to the gateway of the hassio network (the host), so Home
+  /// Assistant reaches it there. The integration sends the token only to the
+  /// announced address; 127.0.0.1 only if no host name is known.
   Future<bool> announce() async {
     final supervisorToken = _supervisorToken;
     if (supervisorToken == null || _token == null) return false;

@@ -285,11 +285,11 @@ class _BoxSetupScreenState extends State<BoxSetupScreen> {
 /// site). Asks for the own box password and sets it; `true` if that worked.
 /// With [required] the dialog cannot be dismissed: the box allows nothing else
 /// before.
-Future<bool> askBoxPassword(BuildContext context, {bool required = false}) async =>
+Future<bool> askBoxPassword(BuildContext context, {bool required = false, bool needsCurrent = false}) async =>
     await showAdaptiveDialog<bool>(
       context: context,
       barrierDismissible: !required,
-      builder: (_) => _BoxPasswordDialog(required: required),
+      builder: (_) => _BoxPasswordDialog(required: required, needsCurrent: needsCurrent),
     ) ==
     true;
 
@@ -303,16 +303,20 @@ Future<void> offerBoxPassword(BuildContext context) async {
     final info = await Addon.boxInfo();
     if (info['mustChangePassword'] != true || info['role'] != 'admin' || !context.mounted) return;
     _passwordOffered = true;
-    await askBoxPassword(context);
+    // Only while the change is not yet required does the box ask for the current one.
+    await askBoxPassword(context, needsCurrent: info['passwordChangeRequired'] != true);
   } on AddonException {
     // Box currently unreachable: try next time.
   }
 }
 
 class _BoxPasswordDialog extends StatefulWidget {
-  const _BoxPasswordDialog({required this.required});
+  const _BoxPasswordDialog({required this.required, this.needsCurrent = false});
 
   final bool required;
+
+  /// Field for the current password (the sticker one, see [askBoxPassword]).
+  final bool needsCurrent;
 
   @override
   State<_BoxPasswordDialog> createState() => _BoxPasswordDialogState();
@@ -320,12 +324,14 @@ class _BoxPasswordDialog extends StatefulWidget {
 
 class _BoxPasswordDialogState extends State<_BoxPasswordDialog> {
   final _password = TextEditingController();
+  final _current = TextEditingController();
   String? _error;
   bool _busy = false;
 
   @override
   void dispose() {
     _password.dispose();
+    _current.dispose();
     super.dispose();
   }
 
@@ -337,7 +343,7 @@ class _BoxPasswordDialogState extends State<_BoxPasswordDialog> {
     }
     setState(() => _busy = true);
     try {
-      await Addon.changeBoxPassword(next);
+      await Addon.changeBoxPassword(next, current: widget.needsCurrent ? _current.text : null);
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context, true);
@@ -345,7 +351,7 @@ class _BoxPasswordDialogState extends State<_BoxPasswordDialog> {
     } on AddonException catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.message;
+          _error = e.status == 403 ? s.boxPasswordCurrentWrong : e.message;
           _busy = false;
         });
       }
@@ -364,12 +370,27 @@ class _BoxPasswordDialogState extends State<_BoxPasswordDialog> {
         children: [
           Text(s.boxPasswordAskBody),
           const SizedBox(height: Gap.section),
+          if (widget.needsCurrent) ...[
+            HorizontField(
+              label: s.boxPasswordCurrent,
+              child: TextField(
+                controller: _current,
+                autofocus: true,
+                obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                autofillHints: const [AutofillHints.password],
+                textInputAction: TextInputAction.next,
+              ),
+            ),
+            const SizedBox(height: Gap.item),
+          ],
           HorizontField(
             label: s.boxPasswordChange,
             help: s.boxPasswordHint,
             child: TextField(
               controller: _password,
-              autofocus: true,
+              autofocus: !widget.needsCurrent,
               obscureText: true,
               autocorrect: false,
               enableSuggestions: false,
@@ -414,6 +435,7 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
   List<Map<String, Object?>> _devices = const [];
   String? _error;
   final _password = TextEditingController();
+  final _currentPassword = TextEditingController();
   String? _passwordError;
   final _wifi = TextEditingController();
   String? _wifiError;
@@ -437,6 +459,7 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
   @override
   void dispose() {
     _password.dispose();
+    _currentPassword.dispose();
     _wifi.dispose();
     super.dispose();
   }
@@ -528,14 +551,20 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
       setState(() => _passwordError = s.boxPasswordHint);
       return;
     }
+    final needsCurrent = _info?['passwordChangeRequired'] != true;
+    if (needsCurrent && _currentPassword.text.isEmpty) {
+      setState(() => _passwordError = s.boxPasswordCurrentWrong);
+      return;
+    }
     try {
-      await Addon.changeBoxPassword(next);
+      await Addon.changeBoxPassword(next, current: needsCurrent ? _currentPassword.text : null);
       _password.clear();
+      _currentPassword.clear();
       if (!mounted) return;
       setState(() => _passwordError = null);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.boxPasswordChanged)));
     } on AddonException catch (e) {
-      if (mounted) setState(() => _passwordError = e.message);
+      if (mounted) setState(() => _passwordError = e.status == 403 ? s.boxPasswordCurrentWrong : e.message);
     }
   }
 
@@ -681,7 +710,11 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
                       contentPadding: EdgeInsets.zero,
                       title: Text(d['name'] as String? ?? ''),
                       subtitle: Text(
-                        [if (d['self'] == true) s.boxDeviceSelf, if (d['admin'] == true) s.boxDeviceAdmin].join(' · '),
+                        [
+                          if (d['self'] == true) s.boxDeviceSelf,
+                          if (d['admin'] == true) s.boxDeviceAdmin,
+                          if (d['viewOnly'] == true) s.boxDeviceViewOnly,
+                        ].join(' · '),
                         style: muted,
                       ),
                       trailing: d['self'] == true
@@ -711,6 +744,20 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
                   const SizedBox(height: Gap.section),
                   Kennung(s.boxPasswordChange),
                   const SizedBox(height: Gap.item),
+                  if (_info?['passwordChangeRequired'] != true) ...[
+                    HorizontField(
+                      label: s.boxPasswordCurrent,
+                      child: TextField(
+                        style: context.hzTheme.field,
+                        controller: _currentPassword,
+                        obscureText: true,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        autofillHints: const [AutofillHints.password],
+                      ),
+                    ),
+                    const SizedBox(height: Gap.item),
+                  ],
                   HorizontField(
                     label: s.boxPasswordChange,
                     help: s.boxPasswordHint,

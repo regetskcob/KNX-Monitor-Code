@@ -13,6 +13,7 @@ import '../platform/addon.dart';
 import '../platform/file_cipher.dart';
 import '../platform/storage.dart';
 import 'annotation.dart';
+import 'box_keyring_consent.dart';
 import 'betrieb_mode.dart';
 import 'export_history.dart';
 import 'commissioning.dart';
@@ -63,6 +64,13 @@ class Installation {
   final String id;
   final String name;
   final GatewayRef? gateway;
+
+  static final _validId = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
+
+  /// Whether [id] may name an installation. It becomes a folder (`installations/<id>/`) and part of
+  /// settings keys, so every id from outside – box, restored backup, index file – is checked; one
+  /// like "../../x" would otherwise reach files outside the data folder.
+  static bool isValidId(String id) => _validId.hasMatch(id);
   final DateTime created;
   final DateTime? lastUsed;
 
@@ -82,13 +90,16 @@ class Installation {
     'lastUsed': ?lastUsed?.millisecondsSinceEpoch,
   };
 
+  /// Throws [FormatException] for an invalid id ([isValidId]); the index then skips the entry.
   factory Installation.fromJson(Map<String, Object?> j) => Installation(
-    id: j['id']! as String,
+    id: _checkedId(j['id']! as String),
     name: j['name'] as String? ?? '',
     created: DateTime.fromMillisecondsSinceEpoch(j['created'] as int? ?? 0),
     gateway: j['gateway'] == null ? null : GatewayRef.fromJson((j['gateway']! as Map).cast<String, Object?>()),
     lastUsed: j['lastUsed'] == null ? null : DateTime.fromMillisecondsSinceEpoch(j['lastUsed']! as int),
   );
+
+  static String _checkedId(String id) => isValidId(id) ? id : throw FormatException('invalid installation id', id);
 }
 
 /// The installations and which one is currently active.
@@ -127,6 +138,7 @@ class InstallationStore extends ChangeNotifier {
     'handover_origin.json',
     'site_photos.json',
     HomePlanStore.path,
+    KeyringStore.sequencePath,
   ];
 
   /// Folders with the installation's documents; deleted along with it (customer data).
@@ -241,7 +253,7 @@ class InstallationStore extends ChangeNotifier {
   static Future<List<Installation>> _recover(SharedPreferences prefs) async {
     final ids = {
       for (final path in await allStoredPaths())
-        if (RegExp(r'^installations/([^/]+)/').firstMatch(path) case final m?) m[1]!,
+        if (RegExp(r'^installations/([^/]+)/').firstMatch(path) case final m? when Installation.isValidId(m[1]!)) m[1]!,
     };
     return [for (final id in ids.toList()..sort()) await _recovered(id, prefs)];
   }
@@ -435,7 +447,9 @@ class InstallationStore extends ChangeNotifier {
   }
 
   /// Creates an empty installation (does not become active).
+  /// Throws [ArgumentError] for an invalid [id] ([Installation.isValidId]).
   Future<Installation> create(String name, {GatewayRef? gateway, String? id}) async {
+    if (id != null && !Installation.isValidId(id)) throw ArgumentError.value(id, 'id', 'invalid installation id');
     final i = Installation(id: id ?? newId(), name: name.trim(), created: DateTime.now(), gateway: gateway);
     _list.add(i);
     _sort();
@@ -560,10 +574,12 @@ class InstallationStore extends ChangeNotifier {
     }
     try {
       final j = await Addon.installations();
-      boxActive = j['active'] as String?;
+      // The box is a device on the network: an id that cannot be a folder name is ignored.
+      final active = j['active'] as String?;
+      boxActive = active != null && Installation.isValidId(active) ? active : null;
       boxList = {
         for (final e in (j['list'] as List? ?? const []).cast<Map<Object?, Object?>>())
-          e['id']! as String: e['name'] as String? ?? '',
+          if (e['id'] case final String id when Installation.isValidId(id)) id: e['name'] as String? ?? '',
       };
       if (adopt) {
         for (final MapEntry(key: id, value: name) in boxList.entries) {
@@ -589,9 +605,13 @@ class InstallationStore extends ChangeNotifier {
   /// The box moves: from now on it records into [id], and the app switches along.
   /// Creates it on the box with the same id, then passes along the project, custom
   /// types, keyring and (if known) the bus connection.
+  ///
+  /// A box paired via a link from outside gets none of this until the user confirmed
+  /// ([BoxProjectConsent]); the app then only switches locally.
   Future<void> useOnBox(String id) async {
     await switchTo(id);
-    if (Addon.box == null) return;
+    final box = Addon.box;
+    if (box == null || !await BoxProjectConsent.allowed(box)) return;
     final i = active;
     try {
       if (!boxList.containsKey(id)) await Addon.createInstallation(id, i.name);

@@ -1,14 +1,28 @@
 # Access via cable according to the choice in the app or LAN_ACCESS (knx-box.txt).
 # No RemainAfterExit: a unit that stayed active is not started again by
 # knx-box-lan.path, so the switch in the app would only work after a reboot.
+# The block itself is in place earlier (knx-box-lan-lock.service); this unit
+# only opens or closes the exception.
 [Unit]
 Description=KNX Monitor Box: Zugriff über das Kabel
-After=knx-box-firstboot.service knx-box-data.service
+After=knx-box-firstboot.service knx-box-data.service knx-box-lan-lock.service
 Before=knx-box.service
 
 [Service]
 Type=oneshot
 ExecStart=/usr/local/lib/knx-box/lan-access.sh
+# Root helper: nft (CAP_NET_ADMIN); reads its request as the server user
+# (setpriv: CAP_SETUID, CAP_SETGID); looks into the server's 0750 directory
+# (CAP_DAC_READ_SEARCH, CAP_DAC_OVERRIDE).
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_SETUID CAP_SETGID CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE
 
 [Install]
 WantedBy=multi-user.target

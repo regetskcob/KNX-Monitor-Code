@@ -5,8 +5,11 @@
 # or manually. Image and bundle stay artifacts of the run;
 # `tool/release.sh box <version>` publishes them in the public repo.
 #
-# On tags cosign signs bundle and image without a key of our own (keyless, via
-# the OIDC token of the run); the bundles go into the release too. Verify:
+# On tag pushes cosign signs bundle and image without a key of our own
+# (keyless, via the OIDC token of the run); the bundles go into the release
+# too. A manual run is never signed, even when started on a tag, and a tag run
+# only builds with the pinned pi-gen revision. `tool/release.sh box` publishes
+# only runs of the tag push whose signatures verify. Verify:
 # docs/release-security.md.
 name: Box-Image
 
@@ -40,18 +43,29 @@ jobs:
         run: |
           version=$(grep -E '^version:' ha-addon/knx_monitor/config.yaml | cut -d'"' -f2)
           [ "$GITHUB_REF_NAME" = "box-v$version" ] || { echo "::error::Tag $GITHUB_REF_NAME does not match config.yaml version $version"; exit 1; }
+      # PI_GEN_COMMIT is only checked for the default revision: on a tag no
+      # other one is allowed, so a release image always has the verified pi-gen.
+      - name: Check pi-gen revision on tags
+        if: github.ref_type == 'tag'
+        env:
+          PI_GEN_INPUT: ${{ inputs.pi_gen_ref }}
+        run: |
+          if [ -n "$PI_GEN_INPUT" ] && [ "$PI_GEN_INPUT" != 2026-10-06-raspios-trixie-arm64 ]; then
+            echo "::error::A tag build must use the pinned pi-gen revision, not $PI_GEN_INPUT"
+            exit 1
+          fi
       - name: Check box scripts
         run: |
           shellcheck box/*.sh box/files/*.sh box/pi-gen/stage-knx-box/prerun.sh \
             box/pi-gen/stage-knx-box/00-knx-box/01-run.sh
           box/test-firstboot.sh
           box/test-setup.sh
-      - run: flutter pub get && flutter gen-l10n
+      - run: flutter pub get --enforce-lockfile && flutter gen-l10n
       - run: box/bundle.sh --out build/knx-box.tar.gz
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
       - name: Sign package
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         run: cosign sign-blob --yes --bundle build/knx-box.tar.gz.sigstore.json build/knx-box.tar.gz
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -83,9 +97,9 @@ jobs:
           PI_GEN_COMMIT: ${{ (inputs.pi_gen_ref == '' || inputs.pi_gen_ref == '2026-10-06-raspios-trixie-arm64') && 'b2cd98a9ee08a31ef7d0110ed09f2492bbd972ec' || '' }}
         run: box/build-image.sh "$PWD/build/knx-box.tar.gz"
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
       - name: Sign image
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         run: |
           for image in build/knx-box-image/pi-gen/deploy/*.img.xz; do
             cosign sign-blob --yes --bundle "$image.sigstore.json" "$image"

@@ -14,6 +14,16 @@ services:
     restart: unless-stopped
     # Host network: KNXnet/IP over UDP, gateway search and routing need it.
     network_mode: host
+    # The server needs no privileges: ports 8765 and 8443 are above 1024 and
+    # KNXnet/IP uses plain UDP sockets. Without NET_RAW it cannot sniff or spoof
+    # traffic on the host network. Kept: DAC_OVERRIDE and FOWNER, only for
+    # ./data, so a data folder created by a host user (not by Docker as root)
+    # stays writable and the server can still set it to 0700.
+    # No "user:" on purpose: existing data folders belong to root, an update
+    # would no longer be able to read them.
+    cap_drop: [ALL]
+    cap_add: [DAC_OVERRIDE, FOWNER]
+    security_opt: ["no-new-privileges:true"]
     environment:
       BOX: "1"                       # standalone mode with password
       # No default on purpose: the container is reachable from your network.

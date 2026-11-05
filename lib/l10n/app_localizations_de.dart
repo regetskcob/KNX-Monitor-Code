@@ -2382,9 +2382,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get boxPairTitle => 'Mit KNX-Box verbinden?';
 
   @override
-  String boxPairBody(String address) {
-    return 'Die App zeigt den Bus dann über die Box $address. Nur bestätigen, wenn du den QR-Code selbst gescannt hast.';
-  }
+  String get boxPairBody =>
+      'Die App zeigt den Bus dann über diese Box. Nur bestätigen, wenn du den QR-Code selbst gescannt hast und die Adresse zu deiner Box passt.';
 
   @override
   String boxVia(String name) {
@@ -3250,6 +3249,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get boxDeviceSelf => 'dieses Gerät';
 
   @override
+  String get boxDeviceViewOnly => 'nur ansehen';
+
+  @override
+  String get boxViewOnlyHint =>
+      'Dieses Gerät ist nur zum Ansehen mit der Box gekoppelt und schickt nichts auf den Bus. Zum Schalten neu koppeln, ohne „Nur ansehen“.';
+
+  @override
   String get boxDeviceAdmin => 'verwaltet die Box';
 
   @override
@@ -3257,6 +3263,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get boxPasswordChange => 'Box-Passwort ändern';
+
+  @override
+  String get boxPasswordCurrent => 'Aktuelles Passwort';
+
+  @override
+  String get boxPasswordCurrentWrong => 'Das aktuelle Passwort stimmt nicht.';
 
   @override
   String get boxPasswordHint =>
@@ -8581,15 +8593,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get boxForeignConfirm => 'Trotzdem verbinden';
 
   @override
-  String get boxKeyringTitle => 'Keyring auf diese Box geben?';
+  String get boxKeyringTitle => 'KNX-Secure-Schlüssel auf diese Box geben?';
 
   @override
   String boxKeyringBody(String address) {
-    return 'Die Box unter $address bekäme die Schlüssel deiner KNX-Secure-Anlage, damit sie gesicherte Telegramme lesbar aufzeichnet. Wer Zugriff auf die Box hat, kommt an diese Schlüssel. Stimme nur zu, wenn es deine Box ist.';
+    return 'Die Box unter $address bekäme die Schlüssel und Passwörter deiner KNX-Secure-Anlage (Keyring, IP-Secure-Zugang zum Gateway), damit sie sich verbindet und gesicherte Telegramme lesbar aufzeichnet. Wer Zugriff auf die Box hat, kommt an diese Schlüssel. Stimme nur zu, wenn es deine Box ist.';
   }
 
   @override
-  String get boxKeyringAllow => 'Keyring geben';
+  String get boxKeyringAllow => 'Schlüssel geben';
 
   @override
   String get boxKeyringDeny => 'Nicht geben';
@@ -9011,4 +9023,42 @@ class AppLocalizationsDe extends AppLocalizations {
   String learnForgotten(String name) {
     return 'Vergessen: $name';
   }
+
+  @override
+  String boxPairNamed(String name) {
+    return 'Name im Link: $name';
+  }
+
+  @override
+  String get boxPairUnencrypted =>
+      'Unverschlüsselt (HTTP): Wer im selben Netz mitliest, sieht alles, was die App an diese Box schickt. Verbinde dich nur in deinem eigenen Netz.';
+
+  @override
+  String get boxReplaceTitle => 'Gekoppelte Box ersetzen?';
+
+  @override
+  String boxReplaceBody(String current, String next) {
+    return 'Gekoppelt ist $current. Der Link würde sie durch $next ersetzen, die bisherige Kopplung geht dabei verloren.';
+  }
+
+  @override
+  String get boxReplaceConfirm => 'Ersetzen';
+
+  @override
+  String get boxProjectTitle => 'Projekt an diese Box geben?';
+
+  @override
+  String boxProjectBody(String box) {
+    return 'Die Box $box wurde über einen Link aus einer anderen App oder Webseite gekoppelt. Gibst du ihr dein Projekt, bekommt sie das ETS-Projekt mit allen Adressen und Namen, den Namen der Anlage und die Gateway-Adresse. Bis dahin bekommt sie nichts davon.';
+  }
+
+  @override
+  String get boxProjectAllow => 'Projekt geben';
+
+  @override
+  String get boxProjectDeny => 'Noch nicht';
+
+  @override
+  String get appLockRestart =>
+      'Zu viele Fehlversuche. Beende die App und öffne sie neu, dann kannst du es noch einmal versuchen.';
 }

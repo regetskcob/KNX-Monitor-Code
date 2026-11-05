@@ -294,6 +294,22 @@ void main() {
       expect(((jsonDecode(cleared) as Map)['settings'] as Map)['hasInfluxToken'], isFalse);
     });
 
+    test('neues InfluxDB-Ziel ohne neues Token: das alte Token geht nicht mit', () async {
+      bool hasToken(String text) => ((jsonDecode(text) as Map)['settings'] as Map)['hasInfluxToken'] == true;
+      final first = {
+        'influx': true,
+        'influxUrl': 'http://192.168.1.2:8086',
+        'influxOrg': 'o',
+        'influxBucket': 'b',
+        'influxToken': 'tk_secret',
+      };
+      expect(hasToken((await call('PUT', 'api/export', first)).$2), isTrue);
+      expect(hasToken((await call('PUT', 'api/export', {...first, 'influxToken': ''})).$2), isTrue);
+      final moved = {...first, 'influxUrl': 'http://192.168.1.3:8086', 'influxToken': ''};
+      expect(hasToken((await call('PUT', 'api/export', moved)).$2), isFalse);
+      expect(hasToken((await call('PUT', 'api/export', {...moved, 'influxToken': 'tk_new'})).$2), isTrue);
+    });
+
     test('nur Admin ändert; ungültiges Ziel 422', () async {
       admin = false;
       expect((await call('PUT', 'api/export', {'influx': true})).$1, HttpStatus.forbidden);

@@ -4292,11 +4292,11 @@ abstract class AppLocalizations {
   /// **'Mit KNX-Box verbinden?'**
   String get boxPairTitle;
 
-  /// Dialog body when a pairing link was opened.
+  /// Dialog body when a pairing link was opened; the box address is shown above it.
   ///
   /// In de, this message translates to:
-  /// **'Die App zeigt den Bus dann über die Box {address}. Nur bestätigen, wenn du den QR-Code selbst gescannt hast.'**
-  String boxPairBody(String address);
+  /// **'Die App zeigt den Bus dann über diese Box. Nur bestätigen, wenn du den QR-Code selbst gescannt hast und die Adresse zu deiner Box passt.'**
+  String get boxPairBody;
 
   /// Banner: app runs through a KNX box.
   ///
@@ -5738,6 +5738,18 @@ abstract class AppLocalizations {
   /// **'dieses Gerät'**
   String get boxDeviceSelf;
 
+  /// Gerät in der Liste: schickt nichts auf den Bus
+  ///
+  /// In de, this message translates to:
+  /// **'nur ansehen'**
+  String get boxDeviceViewOnly;
+
+  /// Hinweis beim Senden auf einem Betrachter-Gerät
+  ///
+  /// In de, this message translates to:
+  /// **'Dieses Gerät ist nur zum Ansehen mit der Box gekoppelt und schickt nichts auf den Bus. Zum Schalten neu koppeln, ohne „Nur ansehen“.'**
+  String get boxViewOnlyHint;
+
   /// Device list marker
   ///
   /// In de, this message translates to:
@@ -5755,6 +5767,18 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Box-Passwort ändern'**
   String get boxPasswordChange;
+
+  /// Feld: bisheriges Box-Passwort
+  ///
+  /// In de, this message translates to:
+  /// **'Aktuelles Passwort'**
+  String get boxPasswordCurrent;
+
+  /// Fehler: aktuelles Box-Passwort falsch oder leer
+  ///
+  /// In de, this message translates to:
+  /// **'Das aktuelle Passwort stimmt nicht.'**
+  String get boxPasswordCurrentWrong;
 
   /// Field hint
   ///
@@ -14471,19 +14495,19 @@ abstract class AppLocalizations {
   /// No description provided for @boxKeyringTitle.
   ///
   /// In de, this message translates to:
-  /// **'Keyring auf diese Box geben?'**
+  /// **'KNX-Secure-Schlüssel auf diese Box geben?'**
   String get boxKeyringTitle;
 
   /// No description provided for @boxKeyringBody.
   ///
   /// In de, this message translates to:
-  /// **'Die Box unter {address} bekäme die Schlüssel deiner KNX-Secure-Anlage, damit sie gesicherte Telegramme lesbar aufzeichnet. Wer Zugriff auf die Box hat, kommt an diese Schlüssel. Stimme nur zu, wenn es deine Box ist.'**
+  /// **'Die Box unter {address} bekäme die Schlüssel und Passwörter deiner KNX-Secure-Anlage (Keyring, IP-Secure-Zugang zum Gateway), damit sie sich verbindet und gesicherte Telegramme lesbar aufzeichnet. Wer Zugriff auf die Box hat, kommt an diese Schlüssel. Stimme nur zu, wenn es deine Box ist.'**
   String boxKeyringBody(String address);
 
   /// No description provided for @boxKeyringAllow.
   ///
   /// In de, this message translates to:
-  /// **'Keyring geben'**
+  /// **'Schlüssel geben'**
   String get boxKeyringAllow;
 
   /// No description provided for @boxKeyringDeny.
@@ -15187,6 +15211,66 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Vergessen: {name}'**
   String learnForgotten(String name);
+
+  /// Pairing dialog: the box name as the link states it (anyone can choose it).
+  ///
+  /// In de, this message translates to:
+  /// **'Name im Link: {name}'**
+  String boxPairNamed(String name);
+
+  /// Pairing dialog: warning for a box link without certificate fingerprint (plain HTTP).
+  ///
+  /// In de, this message translates to:
+  /// **'Unverschlüsselt (HTTP): Wer im selben Netz mitliest, sieht alles, was die App an diese Box schickt. Verbinde dich nur in deinem eigenen Netz.'**
+  String get boxPairUnencrypted;
+
+  /// Dialog title: a pairing link would replace the box that is already paired.
+  ///
+  /// In de, this message translates to:
+  /// **'Gekoppelte Box ersetzen?'**
+  String get boxReplaceTitle;
+
+  /// Dialog body before replacing the paired box; both as „name (address)“.
+  ///
+  /// In de, this message translates to:
+  /// **'Gekoppelt ist {current}. Der Link würde sie durch {next} ersetzen, die bisherige Kopplung geht dabei verloren.'**
+  String boxReplaceBody(String current, String next);
+
+  /// Button: replace the paired box.
+  ///
+  /// In de, this message translates to:
+  /// **'Ersetzen'**
+  String get boxReplaceConfirm;
+
+  /// Dialog title: a box paired via a link from outside asks for the project.
+  ///
+  /// In de, this message translates to:
+  /// **'Projekt an diese Box geben?'**
+  String get boxProjectTitle;
+
+  /// Dialog body before the project goes to a box paired via an external link; box as „name (address)“.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Box {box} wurde über einen Link aus einer anderen App oder Webseite gekoppelt. Gibst du ihr dein Projekt, bekommt sie das ETS-Projekt mit allen Adressen und Namen, den Namen der Anlage und die Gateway-Adresse. Bis dahin bekommt sie nichts davon.'**
+  String boxProjectBody(String box);
+
+  /// Button: give the project to the box.
+  ///
+  /// In de, this message translates to:
+  /// **'Projekt geben'**
+  String get boxProjectAllow;
+
+  /// Button: do not give the project to the box for now.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch nicht'**
+  String get boxProjectDeny;
+
+  /// App lock: after many failed attempts only a restart of the app allows further attempts.
+  ///
+  /// In de, this message translates to:
+  /// **'Zu viele Fehlversuche. Beende die App und öffne sie neu, dann kannst du es noch einmal versuchen.'**
+  String get appLockRestart;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -11,6 +11,17 @@ ConditionPathExists=|/boot/knx-box-reset.txt
 [Service]
 Type=oneshot
 ExecStart=/usr/local/lib/knx-box/secrets.sh --reset
+# Same helper as knx-box-secrets.service, same sandbox; CAP_CHOWN also creates
+# the data directory for the server user before its first start.
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE CAP_CHOWN CAP_FOWNER
 
 [Install]
 WantedBy=multi-user.target

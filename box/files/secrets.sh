@@ -86,12 +86,15 @@ if [ "${1:-}" = --reset ]; then
   rm -f "$reset_file"
   sync
   if valid_password "$box"; then
-    mkdir -p "$DATA"
-    umask 077
-    printf '%s\n' "$box" >"$DATA/password-reset.new"
-    chown knx-box:knx-box "$DATA/password-reset.new" 2>/dev/null || true
-    mv -f "$DATA/password-reset.new" "$DATA/password-reset"
-    log "neues Box-Passwort übernommen"
+    # Before the server's first start the directory may not exist yet
+    # (StateDirectory= creates it then); /var/lib itself belongs to root.
+    [ -d "$DATA" ] || install -d -m 0750 -o "$KNX_BOX_USER" -g "$KNX_BOX_USER" "$DATA"
+    # Written as the server user, never by root: see data_write in box-common.sh.
+    if printf '%s\n' "$box" | data_write "$DATA/password-reset"; then
+      log "neues Box-Passwort übernommen"
+    else
+      log "Box-Passwort nicht abgelegt"
+    fi
   elif [ -n "$box" ]; then
     log "Box-Passwort ungültig (8-63 Zeichen, ohne Leerzeichen und \" ' \\ \$ \`)"
   fi
@@ -109,12 +112,14 @@ if [ "${1:-}" = --reset ]; then
   exit 0
 fi
 
+# Requests are read as the server user (data_read): a link swapped in after the
+# check below still cannot make root read a file of its own.
 new_wlan=""
 request=$DATA/wifi-request
 if [ -L "$request" ]; then
   rm -f "$request"
 elif [ -f "$request" ]; then
-  candidate=$(head -n 1 "$request" | tr -d '\r')
+  candidate=$(data_read "$request" | head -n 1 | tr -d '\r') || candidate=""
   rm -f "$request"
   if valid_password "$candidate"; then new_wlan=$candidate; else log "ungültiges WLAN-Passwort, nichts geändert"; fi
 fi
@@ -125,9 +130,10 @@ request=$DATA/sticker-scrub
 if [ -L "$request" ]; then
   rm -f "$request"
 elif [ -f "$request" ]; then
-  if grep -qx box "$request"; then scrub_box=yes; fi
-  if grep -qx wifi "$request"; then scrub_wlan=yes; fi
+  wanted=$(data_read "$request") || wanted=""
   rm -f "$request"
+  if printf '%s\n' "$wanted" | grep -qx box; then scrub_box=yes; fi
+  if printf '%s\n' "$wanted" | grep -qx wifi; then scrub_wlan=yes; fi
 fi
 
 if [ -n "$new_wlan" ]; then

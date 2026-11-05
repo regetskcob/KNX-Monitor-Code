@@ -91,6 +91,9 @@ expect_state 1.0 v1
 [ -f "$root/etc/systemd/system/knx-box-secrets.path" ] || fail "Bitten werden nicht beobachtet"
 grep -q 'enable .*knx-box-secrets.path' "$tmp/calls" || fail "knx-box-secrets.path nicht eingeschaltet"
 grep -q 'enable .*knx-box-reset.service' "$tmp/calls" || fail "knx-box-reset.service nicht eingeschaltet"
+[ -f "$root/usr/local/lib/knx-box/lan.nft" ] || fail "lan.nft fehlt"
+[ -f "$root/etc/systemd/system/knx-box-lan-lock.service" ] || fail "Kabelsperre nicht installiert"
+grep -q 'enable .*knx-box-lan-lock.service' "$tmp/calls" || fail "Kabelsperre nicht eingeschaltet"
 grep -q '^SystemMaxUse=' "$root/etc/systemd/journald.conf.d/knx-box.conf" || fail "Journal nicht begrenzt"
 # No certificate before the first boot: every box needs its own key.
 [ ! -e "$root/etc/knx-box-tls/key.pem" ] || fail "Zertifikat schon vor dem ersten Start"
@@ -128,6 +131,10 @@ if command -v openssl >/dev/null; then
   key_before=$(cat "$root/etc/knx-box-tls/key.pem")
 fi
 grep -q 'restart .*knx-box-secrets.path' "$tmp/calls" || fail "knx-box-secrets.path nicht gestartet"
+# On a running box: closed table first, then the choice opens it again.
+lock_line=$(grep -n '^systemctl start knx-box-lan-lock.service$' "$tmp/calls" | tail -n 1 | cut -d: -f1)
+lan_line=$(grep -n '^systemctl restart knx-box-lan.service' "$tmp/calls" | tail -n 1 | cut -d: -f1)
+[ -n "$lock_line" ] && [ -n "$lan_line" ] && [ "$lock_line" -lt "$lan_line" ] || fail "Kabelsperre nicht vor der Wahl gestartet"
 [ "$(cat "$root/opt/knx-box/server.prev")" = v1 ] || fail "server.prev"
 [ "$(cat "$root/opt/knx-box/web.prev/index.html")" = 1.0 ] || fail "web.prev"
 [ "$(cat "$root/opt/knx-box/VERSION.prev")" = 1.0 ] || fail "VERSION.prev"

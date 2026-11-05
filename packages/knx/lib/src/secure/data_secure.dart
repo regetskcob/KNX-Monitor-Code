@@ -42,6 +42,13 @@ class DataSecure {
   final Map<int, int> _lastSeq;
   int _sendSeq;
 
+  /// Called after a received telegram advanced a sender's counter. Whoever keeps [lastSequences]
+  /// across restarts makes sure older recorded telegrams do not count as valid again.
+  void Function()? onSequence;
+
+  /// Highest accepted sequence number per sender (individual address).
+  Map<int, int> get lastSequences => Map.unmodifiable(_lastSeq);
+
   /// Milliseconds since 2018-01-05 – increases by itself, even without a stored counter.
   static int _initialSequence() => DateTime.now().toUtc().difference(DateTime.utc(2018, 1, 5)).inMilliseconds;
 
@@ -107,6 +114,7 @@ class DataSecure {
     }
     if (apdu.length < 2) return (SecureResult.invalid, cemi);
     _lastSeq[source] = seq;
+    onSequence?.call();
     return (
       SecureResult.decrypted,
       Uint8List.fromList([

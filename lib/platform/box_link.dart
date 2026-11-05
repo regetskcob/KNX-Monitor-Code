@@ -49,6 +49,10 @@ final class BoxLink {
   /// trusts only this certificate; the address in the link stays HTTP for older apps.
   final String fp;
 
+  /// Whether the app speaks TLS with the box. Without it (no fingerprint, plain HTTP) everything the
+  /// app sends there can be read in the network.
+  bool get encrypted => url.scheme == 'https';
+
   /// Setup link: no device access yet, but the password for pairing.
   bool get needsPairing => key.isEmpty && password.isNotEmpty;
 

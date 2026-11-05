@@ -256,6 +256,8 @@ class KnxIpTunnel implements BusLink {
               'IP Secure: Geräte-Authentifizierungscode passt nicht',
               problem: 'secureDevice',
             ),
+            // Low-order key from the "gateway": not a gateway we may talk to.
+            'key' => const LinkException('IP Secure: ungültiger Schlüssel vom Gateway', problem: 'secureDevice'),
             _ => const LinkException('IP Secure: Gateway antwortet nicht', problem: 'noResponse'),
           };
         }

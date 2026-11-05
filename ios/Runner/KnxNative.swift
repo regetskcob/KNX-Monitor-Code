@@ -144,6 +144,14 @@ final class KnxNative {
       default: AudioServicesPlaySystemSound(SystemSoundID(1104))
       }
       result(nil)
+    case "copySecret":
+      // Copied secret (token, password, code): only on this device, not via
+      // Universal Clipboard, and gone after the expiry the system enforces.
+      let seconds = (args["seconds"] as? NSNumber)?.doubleValue ?? 60
+      UIPasteboard.general.setItems(
+        [["public.utf8-plain-text": args["text"] as? String ?? ""]],
+        options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(seconds)])
+      result(true)
     case "keepAwake":
       // Wächter scharf: Display bleibt an, die App im Vordergrund hört weiter.
       UIApplication.shared.isIdleTimerDisabled = args["on"] as? Bool ?? false

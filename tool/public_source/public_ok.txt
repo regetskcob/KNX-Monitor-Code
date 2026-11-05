@@ -1,0 +1,32 @@
+# Files whose path names a private part (account, team, Betrieb, sync, home
+# planner, licence, Paddle, shop) but that are public on purpose. Checked by
+# tool/public_source/check_paths.py on every export: such a file must be either
+# here or in private.txt, so a new or renamed private file cannot slip into the
+# public source. One path, folder or pattern (fnmatch, * crosses folders) per
+# line; say why next to it.
+
+# Licence texts of the app and of vendored code
+LICENSE
+*/LICENSE
+test/resources/LICENSE-xknx.txt
+
+# Stubs: empty versions of the private interfaces, so the public app builds
+tool/public_source/stubs
+
+# Compile-time switch of the company edition; off without --dart-define, no
+# logic of the edition itself
+lib/model/betrieb_mode.dart
+
+# Purchase paths the open app needs to decide its plan: signature checks with
+# public keys, store SDK glue and the shop links. No secrets, no server logic
+# (the backend stays private).
+lib/platform/license_plan.dart
+lib/platform/store_plan.dart
+lib/platform/web_shop.dart
+test/license_plan_test.dart
+test/store_plan_test.dart
+
+# Public page of the website: how to have an earlier account deleted (store
+# requirement)
+site/content/konto-loeschen.de.md
+site/content/konto-loeschen.en.md

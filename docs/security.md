@@ -272,7 +272,10 @@ Where the keyring lives:
 `IpSecureSession` performs the handshake over TCP: X25519 key exchange,
 optional check of the gateway's response with the device authentication code
 (`IpSecureException('device')` on mismatch), authentication with the user
-password, then every frame inside a `SECURE_WRAPPER`. Received wrappers are
+password, then every frame inside a `SECURE_WRAPPER`. A gateway key that
+yields an all-zero X25519 shared secret (a low-order point, RFC 7748 section
+6.1) ends the handshake (`IpSecureException('key')`), since whoever sent it
+would know the session key. Received wrappers are
 checked for session ID, a strictly increasing sequence number (replay) and the
 MAC; anything else is dropped. MACs are compared in constant time
 (`bytesEqual`).
@@ -294,6 +297,18 @@ no system broadcast). It rejects a telegram if the sender is not in the keyring,
 if the sequence number is not higher than the last one seen from that sender,
 or if the 4-byte MAC does not match. Telegrams without a key are counted
 (`withoutKey`), invalid ones too (`rejected`), and shown as encrypted.
+
+The keyring only carries the sequence numbers from the time of its ETS export.
+The server therefore keeps the highest valid number per sender in
+`secure_sequence.json` next to `secure_keys.json` in the installation folder
+(`BusService._noteSequence`, `_saveSequences` in `server/lib/src/bus.dart`),
+written atomically at most every 30 seconds and on shutdown, and starts from
+the higher of both after a restart or a new keyring. A recorded telegram
+replayed after a restart is not recorded as valid. Only senders from the
+keyring count; the file is never served or accepted over `/api/files/`. Test:
+`server/test/robust_frames_test.dart` ("Folgenummern überstehen einen
+Neustart"). Up to 30 seconds of numbers can be lost in a power cut; a replay
+of telegrams from exactly that window would pass once.
 
 `DataSecure.send` (app only) encrypts group telegrams to addresses that have a
 key, with the tunnel address as source. The sending sequence number starts at
@@ -386,6 +401,12 @@ it over the WebSocket `/ws` (`ha-addon/knx_monitor/server/bin/server.dart`,
   WebSockets are closed (`onAccessChanged`).
 - When the browser tab closes, the server sends `DISCONNECT_REQUEST` for tunnels
   that are still open.
+- `/ws` and `/ws/bus` are upgraded without permessage-deflate
+  (`webSocketCompression`): 300 KiB of compressed data used to unpack into
+  almost 800 MiB. A client message larger than 64 KiB
+  (`BusService.maxClientMessage`) closes the connection with 1009. dart:io
+  assembles a message before handing it over, so one such message is still
+  held in memory, but no longer more than was actually sent.
 
 ## 6. Access to the add-on, Docker and the KNX Box
 
@@ -397,6 +418,11 @@ whose peer address is the Supervisor's Ingress proxy `172.30.32.2`; everything
 else gets 403. Home Assistant authenticates the user before Ingress forwards the
 request. Ingress users have the admin role.
 
+The peer address is trusted only when the server runs inside Home Assistant,
+recognised by `SUPERVISOR_TOKEN`. In a Docker network without `BOX=1`,
+`172.30.32.2` can be any container; there every request gets 403, and the
+server says so in the log at startup (use `BOX=1` with `BOX_PASSWORD`).
+
 Exceptions:
 
 - `/healthz` answers `ok` without authentication and without data
@@ -404,12 +430,30 @@ Exceptions:
 - `ALLOW_ALL=1` disables the check. It is meant for development and tests
   (`server/test/server_process_test.dart`, CI smoke test) and must not be set in
   production. With it the server listens on 127.0.0.1 only, unless `BIND`
-  names an address (the CI starts the container with `BIND=0.0.0.0`).
+  names an address (the CI starts the container with `BIND=0.0.0.0`). On
+  loopback it also answers only requests whose `Host` is `localhost`,
+  `127.0.0.1` or `[::1]` (with any port), so a web page cannot reach it through
+  DNS rebinding. With a non-loopback `BIND` the developer chose to expose it,
+  and the check is off.
 - The optional Prometheus endpoint uses its own port (see section 7).
 
 Every response carries `X-Content-Type-Options: nosniff` and
-`Referrer-Policy: no-referrer`. The `X-Ingress-Path` header is written into
+`Referrer-Policy: no-referrer`. In box mode (KNX Box, Docker) every response
+also carries `X-Frame-Options: DENY` and `Content-Security-Policy:
+frame-ancestors 'none'`, so no other page can show the box in a frame
+(clickjacking). The add-on cannot send them: Home Assistant shows it in a frame
+through Ingress. The `X-Ingress-Path` header is written into
 `index.html` only if it consists of path characters.
+
+
+The KNX Monitor integration reaches the add-on with its own token on
+`/api/ha/*` only. The add-on hands the token to Home Assistant through the
+Supervisor discovery (`POST /discovery`). Reading discovery messages
+(`GET /discovery`) is restricted by the Supervisor to Home Assistant Core
+(`@require_home_assistant` in `supervisor/api/discovery.py`), so other
+add-ons cannot read it, also not with the `admin` role. Afterwards the token
+lives in the integration's config entry like any other integration secret; the
+integration's diagnostics redact it.
 
 ### KNX Box and Docker: password, pairing, roles
 
@@ -422,6 +466,7 @@ Tests: `server/test/box_access_test.dart`, `server/test/box_security_test.dart`.
 | Box password | Browser (HTTP Basic, any user name), then a session cookie | PBKDF2-HMAC-SHA256, 40,000 rounds, 16-byte salt, in `access.json` | `admin` |
 | Device token (32 random bytes) from `/pair` in the browser | App, `Authorization: Bearer` | SHA-256 in `access.json` | `device` |
 | Device token from `POST /api/box/pair` (requires admin) | App paired with the box password | SHA-256 | `admin` |
+| Device token from `/pair` with "Nur ansehen" | App or browser that only looks | SHA-256, `viewOnly` | `viewer` |
 
 - The password hash is computed in a separate isolate. Hashes stored by older
   boxes with more rounds are re-hashed after the next successful login.
@@ -449,19 +494,60 @@ Tests: `server/test/box_access_test.dart`, `server/test/box_security_test.dart`.
   `Origin`.
 - Changing the password or revoking a device clears sessions and cached logins
   and closes open WebSockets.
+- Changing the password and locking out all devices need the current
+  password, also with an admin token or a session (a lost tablet must not lock
+  the owner out); a wrong one counts as a failed login. Only the required
+  first change of the sticker password goes without it.
 
 Error texts of unexpected restarts (`/api/restarts`) only go to `admin`; a
 paired device sees time and reason.
 
-What the `device` role cannot do: the relay `/ws`, `/pair`, the management API
-`/api/box/*` (devices, password, Wi-Fi, LAN access), changing the bus
-connection (`/api/bus`), reading or writing `secure_keys.json`, writing files
-other than `charts.json` and `watch_rules.json` (at most 1 MiB), forcing the box
-clock, changing report and export settings, and sending anything but group
-values (section 5). Server-owned files such as `access.json`, `server.json`
-(gateway and IP Secure credentials), `report_settings.json` and `export.json`
-are never served over `/api/files/` to anyone (`server/lib/src/files.dart`,
-`_private`).
+The `viewer` role (chosen when pairing on `/pair`) can do what `device` can,
+except that it sends nothing to the bus, not even read requests, cannot hand
+the connection to an own tunnel and writes no files at all. The server reports
+`readOnly` and `viewOnly` to it, so the app hides sending
+(`BusService.serve`, `maySend`).
+
+| | `admin` | `device` | `viewer` |
+|---|---|---|---|
+| Live view `/ws/bus`, history, statistics, ETS export, reports (read) | yes | yes | yes |
+| Send to the bus | any `L_Data.req` | group values only (section 5) | no |
+| Raw relay `/ws`, `/pair`, `/api/box/*` (devices, password, Wi-Fi, LAN access) | yes | no | no |
+| Change the bus connection (`/api/bus`), report, export and maintenance date (`/api/report/maintenance`), force the box clock, check the KNX HAT | yes | no | no |
+| Other installations (`/api/installations`, `?installation=`, `/api/installations/<id>/files/`) | all, and manage them | only the active one; others answer 403 | like `device` |
+| Read `secure_keys.json` | yes | no | no |
+| Write files over `/api/files/` | all except server-owned ones | own entries in `charts.json` and `watch_rules.json` (at most 1 MiB) | nothing |
+| Error texts of restarts (`/api/restarts`) | yes | time and reason | time and reason |
+
+Writes of a `device` to `charts.json` and `watch_rules.json` are merged by the
+server (`mergeDeviceEntries` in `server/lib/src/files.dart`): every entry the
+device sends is marked with its device id (`owner`); entries of other devices
+and of the admin (without `owner`) stay as they are, also when the device
+leaves them out or sends an entry with the same name or id. All other fields
+keep their stored value; in particular `allowed` in `charts.json` (whether the
+dashboard card shows values) cannot be changed by a device and is `false` while
+none is stored. Writes of the admin replace the whole file, as before: an admin
+app that shares its own list removes entries of devices.
+
+Server-owned files such as `access.json`, `server.json` (gateway and IP Secure
+credentials), `report_settings.json`, `export.json` and
+`secure_sequence.json` are never served or accepted over `/api/files/`, for
+any role (`server/lib/src/files.dart`, `_private`).
+
+Limits against overload, for all roles:
+
+- Request bodies: each endpoint has its own limit (64 MiB for a catalog of the
+  admin, 1 MiB for a device's file, a few KiB elsewhere). In addition, all
+  bodies being read at the same time may hold at most 32 MiB together
+  (`bodyBudget` in `server/lib/src/http.dart`); beyond that the server answers
+  503 with `Retry-After`. A single request may always use its own limit.
+- `/api/bus/availability` evaluates at most 400 days; a negative, reversed or
+  longer period answers 400, like the history queries.
+- The gateway search `/api/discover` sends to every address of every network:
+  only one runs at a time, and its result is reused for 10 seconds.
+- Files are written to a temporary file with a random name and renamed;
+  writes to the same file run one after another (`writeAtomic` in
+  `server/lib/src/atomic_file.dart`), so parallel requests cannot interleave.
 
 ### KNX Box specifics
 
@@ -471,7 +557,23 @@ are never served over `/api/files/` to anyone (`server/lib/src/files.dart`,
   interface (`box/files/lan-access.sh`, nftables); the server's check of the
   peer address is a second layer (`BoxAccess.wlanPeer`). The server cannot
   change the firewall itself; it writes a request file that a host service
-  applies.
+  applies. The closed table is loaded before the network and SSH start
+  (`knx-box-lan-lock.service`, `box/files/lan.nft`); the request only adds or
+  removes an exception, and a failing `nft` leaves the cable closed.
+- **Root helpers and the data directory:** `/var/lib/knx-box` belongs to the
+  server user. The root helpers that act on its request files (time, LAN,
+  Wi-Fi password, boot partition scrub, password reset) never open a file there
+  as root: they read and write as the server user (`setpriv`,
+  `box/files/box-common.sh`), so a symbolic link planted by a compromised
+  server cannot make root read or overwrite other files. The helper units run
+  with `NoNewPrivileges`, a reduced capability bounding set and further systemd
+  sandboxing; the server itself additionally cannot see the boot partition
+  with `knx-box.txt` (`TemporaryFileSystem=/boot:ro`, only `config.txt` bound in).
+- **Data drive:** a USB drive or SSD with an ext4 file system labelled
+  `KNXBOXDATA` is mounted as the data directory at boot
+  (`box/files/data-mount.sh`, with `nosuid,nodev,noexec`). Plugging in such a
+  drive is therefore equivalent to access to the SD card: whoever can do it
+  decides the server's data, including access tokens and the keyring.
 - **Sticker password:** a new box prints its first password on a sticker and
   on the SD card. Until the user sets an own password, only pairing and
   changing the password are possible (`changeRequired`). When the password is
@@ -496,7 +598,8 @@ are never served over `/api/files/` to anyone (`server/lib/src/files.dart`,
 
 The Docker template (`tool/public-repo/docker/compose.yaml`) runs the same
 server with `BOX=1`, requires `BOX_PASSWORD` (Compose refuses to start without
-it), and answers only on the host itself (loopback) unless `LAN_ACCESS=yes`;
+it, and so does the server on its first start, instead of inventing a password
+and printing it to the log), and answers only on the host itself (loopback) unless `LAN_ACCESS=yes`;
 the box Wi-Fi range `10.42.0.0/24` counts only on the real box, since in
 Docker it can be a home or k3s pod network. The data folder is a bind mount on
 the host: the server sets it to 0700 and creates files with umask 077, so the
@@ -504,6 +607,13 @@ keyring and IP Secure passwords are not readable by other host accounts
 (`server/lib/src/file_mode.dart`). HTTPS needs a
 certificate of the user's own (`TLS_CERT`, `TLS_KEY`, `TLS_PORT`); without it,
 password and data travel in plain HTTP.
+
+The template drops all capabilities except `DAC_OVERRIDE` and `FOWNER` (kept
+so a data folder created by a host user stays writable) and sets
+`no-new-privileges`. Despite the host network, the server can therefore not
+open raw sockets. It still runs as root inside the container: data folders of
+existing installations belong to root, and a `user:` setting would make them
+unreadable after an update.
 
 ## 7. Outbound connections and what leaves the device
 
@@ -537,7 +647,10 @@ Diagnostics packages (below) are files the user shares by hand.
 
 - Only `http` and `https`, with a host, without credentials in the URL
   (`parseOutboundTarget`). Tokens go in a separate field, are sent only as an
-  `Authorization` header and are not logged. The settings API returns only
+  `Authorization` header and are not logged. When the target URL of the
+  notification or the InfluxDB export changes and no new token comes with the
+  same request, the stored token is deleted, so it never goes to a target it
+  was not meant for. The settings API returns only
   whether a token is set (`hasNotifyToken`, `hasInfluxToken`,
   `hasPrometheusToken`); a newly generated Prometheus token is returned once.
 - Forbidden targets (`isForbiddenOutboundAddress`): link-local (including cloud
@@ -602,9 +715,24 @@ Collected from the sections above, and in `tool/public-repo/SECURITY.md`:
   unencrypted. Settings such as the gateway address are never encrypted.
 - Add-on, Docker and KNX Box store their data unencrypted, including the KNX
   Secure keyring (`secure_keys.json`) and IP Secure credentials (`server.json`).
-  Whoever holds the box's SD card can read everything on it.
+  Whoever holds the box's SD card can read everything on it, and whoever can
+  plug a drive labelled `KNXBOXDATA` into the box before a restart can replace
+  its data.
+- Home Assistant backups of the add-on (`backup: hot` in
+  `ha-addon/knx_monitor/config.yaml`) contain the add-on's data folder as it is:
+  `secure_keys.json`, `server.json`, the tokens for notifications, InfluxDB and
+  the KNX Monitor integration, in plain text. Whoever can read a backup can read
+  them; Home Assistant can encrypt backups with its own key.
+- The add-on maps the Home Assistant configuration writable
+  (`homeassistant_config`, `read_only: false`), because it places the
+  dashboard card in `/config/www`. A flaw in the server could therefore change
+  the Home Assistant configuration. Decided to keep it: without it the card
+  would have to be installed by hand. The option `dashboard_card` only stops
+  the copying, not the mapping.
 - A browser in the box's Wi-Fi uses plain HTTP; Docker uses plain HTTP unless a
   certificate is configured.
+- The box hotspot uses WPA2-PSK only; WPA3 (SAE) is not offered, since support
+  in access point mode on the Pi's Wi-Fi chip is unverified.
 - The write confirmation in the app is a safeguard against mistakes, not access
   control. Plain KNXnet/IP and KNX TP have no authentication; use KNX IP Secure
   and Data Secure where the installation supports them.

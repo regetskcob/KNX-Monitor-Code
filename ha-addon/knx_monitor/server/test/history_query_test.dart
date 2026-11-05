@@ -165,4 +165,25 @@ void main() {
     expect(again['total'], 5);
     expect((again['groups']! as List).first, [100, 5]);
   });
+
+  test('Verfügbarkeit: Zeitraum wie beim Verlauf geprüft, höchstens 400 Tage', () {
+    final at = DateTime(2026, 11, 5);
+    final day = const Duration(days: 1).inMilliseconds;
+    final ms = at.millisecondsSinceEpoch;
+    // Ohne Angaben: der letzte Tag.
+    final last = availabilityRange(const {}, at);
+    expect((last.error, last.from, last.to), (null, at.subtract(const Duration(days: 1)), at));
+    expect(availabilityRange({'from': '${ms - 400 * day}', 'to': '$ms'}, at).error, isNull);
+    for (final q in [
+      {'from': '-1', 'to': '$ms'},
+      {'from': '$ms', 'to': '$ms'},
+      {'from': '$ms', 'to': '${ms - 1}'},
+      {'from': 'x', 'to': '$ms'},
+      {'from': '0', 'to': '$ms'},
+      {'from': '${ms - 401 * day}', 'to': '$ms'},
+      {'from': '0', 'to': '8640000000000001'},
+    ]) {
+      expect(availabilityRange(q, at).error, isNotNull, reason: '$q');
+    }
+  });
 }

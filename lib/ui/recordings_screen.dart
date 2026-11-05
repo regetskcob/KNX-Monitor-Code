@@ -715,8 +715,12 @@ class _HistoryCardState extends State<_HistoryCard> {
     try {
       final days = await _days;
       if (days.isEmpty) return const {};
-      final from = days.last.date;
-      final list = await Addon.outages(from, DateTime.now(), installation: _installation);
+      // The server keeps outages for about three months and answers at most
+      // 400 days per request.
+      final now = DateTime.now();
+      final earliest = now.subtract(const Duration(days: 399));
+      final from = days.last.date.isBefore(earliest) ? earliest : days.last.date;
+      final list = await Addon.outages(from, now, installation: _installation);
       return outagesByDay([for (final o in list) Outage.fromJson((o! as Map).cast<String, Object?>())]);
     } on Object {
       return const {};

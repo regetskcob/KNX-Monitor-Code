@@ -39,3 +39,30 @@ abstract final class BoxKeyringConsent {
   /// Newly paired: ask again.
   static Future<void> forget(BoxLink box) async => (await SharedPreferences.getInstance()).remove(_key(box));
 }
+
+/// Whether the project may go to this box: the ETS project, the installation's name and gateway,
+/// and with it everything else the app shares with a box.
+///
+/// A box paired via a link from outside (another app, a web page, a QR code not scanned in the
+/// app) is [pending] until the user confirms once ([confirm]): such a link may lead to a box that
+/// someone else set up in the network. Pairing with the app's own scanner or by hand confirms
+/// right away. Boxes paired before this existed count as confirmed. Like the keyring consent, the
+/// state never comes from a backup (`FullBackup.keepsOut`).
+abstract final class BoxProjectConsent {
+  static const _prefix = 'box_project_pending:';
+
+  static String _key(BoxLink box) => '$_prefix${box.url}${box.fp.isEmpty ? '' : '#${box.fp}'}';
+
+  static Future<bool> pending(BoxLink box) async => (await SharedPreferences.getInstance()).getBool(_key(box)) ?? false;
+
+  /// Whether project data may go to [box] now.
+  static Future<bool> allowed(BoxLink box) async => !await pending(box);
+
+  /// Paired via a link from outside: nothing goes there until [confirm].
+  static Future<void> markPending(BoxLink box) async {
+    await (await SharedPreferences.getInstance()).setBool(_key(box), true);
+    debugPrint('Box: ${box.address} über fremden Link gekoppelt, Projekt erst nach Rückfrage');
+  }
+
+  static Future<void> confirm(BoxLink box) async => (await SharedPreferences.getInstance()).remove(_key(box));
+}

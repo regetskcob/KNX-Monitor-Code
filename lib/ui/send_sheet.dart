@@ -153,7 +153,12 @@ class _SendSheetState extends State<_SendSheet> {
                   spacing: HzSpace.s8,
                   children: [
                     Icon(HorizontStatus.info.icon, size: HzIconSize.row, color: hz.info),
-                    Expanded(child: Text(s.addonReadOnly, style: theme.textTheme.bodyMedium)),
+                    Expanded(
+                      child: Text(
+                        (widget.tunnel as SharedTunnel).viewOnly ? s.boxViewOnlyHint : s.addonReadOnly,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -223,95 +228,99 @@ class _SendSheetState extends State<_SendSheet> {
                 ],
               ),
             ),
-          const SizedBox(height: Gap.inner),
-          SegmentedButton<_Mode>(
-            showSelectedIcon: false,
-            segments: [
-              ButtonSegment(value: _Mode.write, label: Text(s.typeWrite)),
-              ButtonSegment(value: _Mode.read, label: Text(s.typeRead)),
-            ],
-            selected: {_mode},
-            onSelectionChanged: (v) => setState(() => _mode = v.first),
-          ),
-          const SizedBox(height: Gap.inner),
-          switch (_mode) {
-            _Mode.write => WriteValueControl(
-              // Rebuild when address/DPT changes so the format fits.
-              key: ValueKey('${_address}_$_dpt'),
-              dpt: _dpt,
-              onWrite: _write,
-            ),
-            _Mode.read => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                FilledButton.icon(
-                  onPressed: _reading ? null : _read,
-                  icon: const Icon(AppIcons.read),
-                  label: Text(s.sendReadValue),
-                ),
-                if (_readStatus != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: Gap.inner),
-                    child: Text(_readStatus!, style: TextStyle(color: hz.textMuted)),
-                  ),
+          // Read-only server or a device paired for viewing: nothing to send,
+          // so no controls that would only be rejected.
+          if (!(widget.tunnel is SharedTunnel && (widget.tunnel as SharedTunnel).readOnly)) ...[
+            const SizedBox(height: Gap.inner),
+            SegmentedButton<_Mode>(
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(value: _Mode.write, label: Text(s.typeWrite)),
+                ButtonSegment(value: _Mode.read, label: Text(s.typeRead)),
               ],
+              selected: {_mode},
+              onSelectionChanged: (v) => setState(() => _mode = v.first),
             ),
-          },
-          if (expert && _mode == _Mode.write && !Plan.instance.allows(Feature.scheduledSend)) ...[
-            const SizedBox(height: Gap.section),
-            // Delay and repeat belong to Pro: visible but locked.
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
-                icon: const Icon(AppIcons.locked),
-                label: Text('${s.sendDelay} · ${s.sendRepeat}'),
-                onPressed: () async {
-                  if (await unlock(context, Feature.scheduledSend) && mounted) setState(() {});
-                },
+            const SizedBox(height: Gap.inner),
+            switch (_mode) {
+              _Mode.write => WriteValueControl(
+                // Rebuild when address/DPT changes so the format fits.
+                key: ValueKey('${_address}_$_dpt'),
+                dpt: _dpt,
+                onWrite: _write,
               ),
-            ),
-          ] else if (expert && _mode == _Mode.write) ...[
-            const SizedBox(height: Gap.section),
-            Row(
-              spacing: Gap.inner,
-              children: [
-                Expanded(
-                  child: HorizontField(
-                    label: s.sendDelay,
-                    child: DropdownButtonFormField<int>(
-                      initialValue: _delay,
-                      isDense: true,
-                      decoration: InputDecoration(isDense: true),
-                      items: [
-                        for (final d in _delayChoices)
-                          DropdownMenuItem(value: d, child: Text(d == 0 ? s.sendNow : '$d s')),
-                      ],
-                      onChanged: (v) => setState(() => _delay = v ?? 0),
+              _Mode.read => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  FilledButton.icon(
+                    onPressed: _reading ? null : _read,
+                    icon: const Icon(AppIcons.read),
+                    label: Text(s.sendReadValue),
+                  ),
+                  if (_readStatus != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: Gap.inner),
+                      child: Text(_readStatus!, style: TextStyle(color: hz.textMuted)),
+                    ),
+                ],
+              ),
+            },
+            if (expert && _mode == _Mode.write && !Plan.instance.allows(Feature.scheduledSend)) ...[
+              const SizedBox(height: Gap.section),
+              // Delay and repeat belong to Pro: visible but locked.
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  icon: const Icon(AppIcons.locked),
+                  label: Text('${s.sendDelay} · ${s.sendRepeat}'),
+                  onPressed: () async {
+                    if (await unlock(context, Feature.scheduledSend) && mounted) setState(() {});
+                  },
+                ),
+              ),
+            ] else if (expert && _mode == _Mode.write) ...[
+              const SizedBox(height: Gap.section),
+              Row(
+                spacing: Gap.inner,
+                children: [
+                  Expanded(
+                    child: HorizontField(
+                      label: s.sendDelay,
+                      child: DropdownButtonFormField<int>(
+                        initialValue: _delay,
+                        isDense: true,
+                        decoration: InputDecoration(isDense: true),
+                        items: [
+                          for (final d in _delayChoices)
+                            DropdownMenuItem(value: d, child: Text(d == 0 ? s.sendNow : '$d s')),
+                        ],
+                        onChanged: (v) => setState(() => _delay = v ?? 0),
+                      ),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: HorizontField(
-                    label: s.sendRepeat,
-                    child: DropdownButtonFormField<int>(
-                      initialValue: _interval,
-                      isDense: true,
-                      decoration: InputDecoration(isDense: true),
-                      items: [
-                        for (final d in _intervalChoices)
-                          DropdownMenuItem(
-                            value: d,
-                            child: Text(
-                              d == 0 ? s.sendOnce : (d < 60 ? s.sendEverySeconds(d) : s.sendEveryMinutes(d ~/ 60)),
+                  Expanded(
+                    child: HorizontField(
+                      label: s.sendRepeat,
+                      child: DropdownButtonFormField<int>(
+                        initialValue: _interval,
+                        isDense: true,
+                        decoration: InputDecoration(isDense: true),
+                        items: [
+                          for (final d in _intervalChoices)
+                            DropdownMenuItem(
+                              value: d,
+                              child: Text(
+                                d == 0 ? s.sendOnce : (d < 60 ? s.sendEverySeconds(d) : s.sendEveryMinutes(d ~/ 60)),
+                              ),
                             ),
-                          ),
-                      ],
-                      onChanged: (v) => setState(() => _interval = v ?? 0),
+                        ],
+                        onChanged: (v) => setState(() => _interval = v ?? 0),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
           const _ScheduledJobs(),
         ],

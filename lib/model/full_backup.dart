@@ -61,8 +61,8 @@ class FullBackup {
   /// `inst:<id>:`); RevenueCat identifiers as well.
   static final _purchase = RegExp(r'(^|[.:_])(plan_|rc_|revenuecat|purchase|entitlement)', caseSensitive: false);
 
-  /// Stays on the device: sign-in, lock, device ID, purchase state, keyring consent
-  /// for a box. A file must not set any of these: otherwise it would grant Pro
+  /// Stays on the device: sign-in, lock, device ID, purchase state, keyring and
+  /// project consent for a box. A file must not set any of these: otherwise it would grant Pro
   /// permanently or release the keyring to a foreign box.
   @visibleForTesting
   static bool keepsOut(String key) =>
@@ -74,6 +74,7 @@ class FullBackup {
       key.startsWith('cloud_sync_') ||
       key.startsWith('flutter.cloud_sync_') ||
       key.contains('box_keyring_') ||
+      key.contains('box_project_') ||
       _purchase.hasMatch(key) ||
       key.startsWith('backup_') ||
       key.startsWith('flutter.backup_');

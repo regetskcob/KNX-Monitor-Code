@@ -34,6 +34,7 @@ import 'company_screen.dart';
 import 'customers_screen.dart';
 import 'figure_box.dart';
 import 'plan_screen.dart';
+import '../platform/secret_clipboard.dart';
 
 /// Share where a share menu exists, otherwise save or download.
 Future<void> _deliver(BuildContext context, Uint8List bytes, String name, {Rect? origin}) => kIsWeb
@@ -156,7 +157,7 @@ class _HandoverScreenState extends State<HandoverScreen> {
                           spacing: HzSpace.s8,
                           children: [
                             TextButton.icon(
-                              onPressed: () => Clipboard.setData(ClipboardData(text: _password)),
+                              onPressed: () => unawaited(copySecret(_password)),
                               icon: const Icon(AppIcons.copy, size: 18),
                               label: Text(s.handoverCopyPassword),
                             ),

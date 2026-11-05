@@ -510,6 +510,28 @@ void main() {
       expect(((jsonDecode(cleared) as Map)['settings'] as Map)['hasNotifyToken'], isFalse);
     });
 
+    test('neues Ziel ohne neues Token: das alte Token geht nicht mit', () async {
+      bool hasToken(String text) => ((jsonDecode(text) as Map)['settings'] as Map)['hasNotifyToken'] == true;
+      final first = {'notifyKind': 'webhook', 'notifyUrl': 'http://192.168.1.2/hook', 'notifyToken': 'tk_secret'};
+      expect(hasToken((await call('PUT', 'api/report', first)).$2), isTrue);
+      // Dasselbe Ziel noch einmal (die App schickt immer alles): Token bleibt.
+      expect(hasToken((await call('PUT', 'api/report', {...first, 'notifyToken': ''})).$2), isTrue);
+      final moved = {'notifyKind': 'webhook', 'notifyUrl': 'http://192.168.1.3/hook', 'notifyToken': ''};
+      expect(hasToken((await call('PUT', 'api/report', moved)).$2), isFalse);
+      expect(await File('${data.path}/report_settings.json').readAsString(), isNot(contains('tk_secret')));
+      // Mit neuem Token zusammen geht beides.
+      expect(
+        hasToken(
+          (await call('PUT', 'api/report', {
+            ...moved,
+            'notifyUrl': 'http://192.168.1.4/hook',
+            'notifyToken': 'tk_new',
+          })).$2,
+        ),
+        isTrue,
+      );
+    });
+
     test('Datei mit dem Token ist über die Ablage gesperrt', () async {
       await File('${data.path}/report_settings.json').writeAsString('{}');
       expect((await call('GET', 'api/files/report_settings.json')).$1, HttpStatus.forbidden);
@@ -525,11 +547,14 @@ void main() {
       expect(((jsonDecode(text) as Map)['settings'] as Map)['notifyKind'], 'off');
     });
 
-    test('nur Admin darf Ziel setzen und Test auslösen, Wartung darf jeder', () async {
+    test('nur Admin darf Ziel setzen, Test auslösen und den Wartungstermin setzen', () async {
       admin = false;
       expect((await call('PUT', 'api/report', {'enabled': true})).$1, HttpStatus.forbidden);
       expect((await call('POST', 'api/report/test', const {})).$1, HttpStatus.forbidden);
       expect((await call('POST', 'api/report/generate', const {})).$1, HttpStatus.forbidden);
+      expect((await call('POST', 'api/report/maintenance', {'due': 1000})).$1, HttpStatus.forbidden);
+      expect(await File('${data.path}/report_settings.json').exists(), isFalse);
+      admin = true;
       expect((await call('POST', 'api/report/maintenance', {'due': 1000})).$1, HttpStatus.noContent);
     });
 

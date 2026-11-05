@@ -5,6 +5,9 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -20,6 +23,9 @@ import android.media.AudioManager
 import android.media.RingtoneManager
 import android.media.ToneGenerator
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.PersistableBundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.view.WindowManager
@@ -238,6 +244,10 @@ class MainActivity : FlutterFragmentActivity() {
                     }
                     result.success(null)
                 }
+                "copySecret" -> {
+                    copySecret(call.argument<String>("text") ?: "", call.argument<Number>("seconds")?.toLong() ?: 60L)
+                    result.success(true)
+                }
                 "keepAwake" -> {
                     // Wächter scharf: Display bleibt an, solange der Monitor offen ist.
                     if (call.argument<Boolean>("on") == true) {
@@ -284,6 +294,23 @@ class MainActivity : FlutterFragmentActivity() {
         } else {
             Notification.Builder(this).setPriority(Notification.PRIORITY_HIGH)
         }
+        // On the lock screen only that something happened: names and values of the
+        // installation stay hidden until the device is unlocked.
+        @Suppress("DEPRECATION")
+        val publicBuilder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, channel)
+        } else {
+            Notification.Builder(this)
+        }
+        val publicVersion = publicBuilder
+            .setSmallIcon(R.drawable.ic_stat_knx)
+            .setContentTitle("KNX Monitor")
+            .setContentText(
+                if (silent) channelName("Wächter ausgelöst", "Watcher triggered")
+                else channelName("Alarm ausgelöst", "Alarm triggered")
+            )
+            .setContentIntent(open)
+            .build()
         val notification = builder
             .setSmallIcon(R.drawable.ic_stat_knx)
             .setContentTitle(title)
@@ -291,12 +318,72 @@ class MainActivity : FlutterFragmentActivity() {
             .setStyle(Notification.BigTextStyle().bigText(body))
             .setAutoCancel(true)
             .setContentIntent(open)
+            .setVisibility(Notification.VISIBILITY_PRIVATE)
+            .setPublicVersion(publicVersion)
             .build()
         try {
             manager.notify(id.hashCode(), notification)
         } catch (_: SecurityException) {
             // Mitteilungen nicht erlaubt.
         }
+    }
+
+    /// Copied secret (token, password, code): marked as sensitive so keyboard
+    /// suggestions and the clipboard preview (Android 13+) hide it, and removed
+    /// after [seconds] if the clipboard still holds this clip. Compared by the
+    /// clip's description, never by reading the content: reading would show the
+    /// system's "pasted from clipboard" notice.
+    private val clipboardHandler = Handler(Looper.getMainLooper())
+    private var secretClipStamp: Long? = null
+    private var secretClipDue = 0L
+
+    private fun copySecret(text: String, seconds: Long) {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText(SECRET_LABEL, text)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            clip.description.extras = PersistableBundle().apply {
+                putBoolean(
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) ClipDescription.EXTRA_IS_SENSITIVE
+                    else "android.content.extra.IS_SENSITIVE",
+                    true,
+                )
+            }
+        }
+        clipboard.setPrimaryClip(clip)
+        secretClipStamp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            clipboard.primaryClipDescription?.timestamp
+        } else {
+            null
+        }
+        secretClipDue = System.currentTimeMillis() + seconds * 1000
+        clipboardHandler.removeCallbacksAndMessages(null)
+        clipboardHandler.postDelayed({ clearSecretClip() }, seconds * 1000)
+    }
+
+    /// Removes the copied secret if it is still the current clip. Without input
+    /// focus Android does not reveal the clip; then once the app has it again.
+    private fun clearSecretClip() {
+        if (secretClipDue == 0L || System.currentTimeMillis() < secretClipDue) return
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val description = clipboard.primaryClipDescription ?: return
+        secretClipDue = 0L
+        val same = description.label == SECRET_LABEL &&
+            (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || description.timestamp == secretClipStamp)
+        if (!same) return
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                clipboard.clearPrimaryClip()
+            } else {
+                clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
+            }
+        } catch (_: SecurityException) {
+            // Not allowed right now; Android 13+ clears it by itself later.
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) clearSecretClip()
     }
 
     /// Wächter: Mitteilungston des Systems und ein kurzes Vibrieren.
@@ -427,6 +514,7 @@ class MainActivity : FlutterFragmentActivity() {
         private const val NOTIFY_REQUEST = 4203
         private const val ALERT_CHANNEL = "alerts"
         private const val WATCH_CHANNEL = "watch"
+        private const val SECRET_LABEL = "KNX Monitor secret"
     }
 
     override fun onDestroy() {

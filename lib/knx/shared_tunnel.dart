@@ -45,6 +45,9 @@ class SharedTunnel extends KnxTunnel {
   /// Whether the server runs read-only and sends nothing to the bus.
   bool get readOnly => status.value['readOnly'] == true;
 
+  /// This device is paired with the box for viewing only (implies [readOnly]).
+  bool get viewOnly => status.value['viewOnly'] == true;
+
   @override
   bool get supportsBusMonitor =>
       _config['mode'] == 'hat' ? serverBusMonitor : !const {'routing', 'ha', 'secure'}.contains(_config['mode']);

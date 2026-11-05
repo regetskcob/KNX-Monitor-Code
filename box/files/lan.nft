@@ -1,0 +1,23 @@
+# Loaded by knx-box-lan-lock.service before the network comes up (and again by
+# lan-access.sh if the table is missing): the cable is closed from the start.
+# lan-access.sh only adds or removes the exception in lan_open; if it fails,
+# the cable stays closed.
+#
+# Every new inbound TCP connection over the cable is rejected: web app,
+# pairing, SSH and the Prometheus exporter. Replies to connections the box
+# opens itself (gateway over TCP, MQTT, InfluxDB) stay allowed; KNXnet/IP over
+# UDP and gateway discovery are not affected. SSH stays reachable in the box Wi-Fi.
+table inet knx_box_lan
+flush table inet knx_box_lan
+table inet knx_box_lan {
+	chain lan_open {
+	}
+	chain input {
+		type filter hook input priority filter; policy accept;
+		iifname "lo" accept
+		iifname "wlan0" accept
+		ct state established,related accept
+		jump lan_open
+		meta l4proto tcp ct state new reject with tcp reset
+	}
+}

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
@@ -120,6 +121,44 @@ void main() {
     });
   });
 
+  test('Data Secure: gesehene Folgenummern überstehen einen Neustart', () async {
+    final data = await Directory.systemTemp.createTemp('robust_seq');
+    addTearDown(() => data.delete(recursive: true));
+    await File('${data.path}/secure_keys.json').writeAsString(
+      jsonEncode({
+        'groupKeys': {'${0x0A03}': base64.encode(Uint8List(16))},
+        'sequence': {'${0x1105}': 0},
+      }),
+    );
+    final sender = DataSecure(groupKeys: {0x0A03: Uint8List(16)}, sequenceNumbers: const {}, sequenceStart: 1000);
+    // As received from the bus: L_Data.ind (the message code is not part of the MAC).
+    Uint8List secured() => sender.send(_req(group: true, tpdu: [0x00, 0x81]), source: 0x1105)..[0] = 0x29;
+    late _Link link;
+    Future<BusService> run() async {
+      final bus = BusService(data, link: (_) => link = _Link(), describe: (_, _) async => null);
+      await bus.start();
+      if (bus.state != 'connected') await bus.update({'enabled': true, 'mode': 'ha'});
+      await _until(() => bus.state == 'connected');
+      return bus;
+    }
+
+    final recorded = secured();
+    var bus = await run();
+    link.receive(recorded);
+    await _until(() => bus.today == 1);
+    await bus.shutdown();
+    expect(jsonDecode(await File('${data.path}/${BusService.sequenceFileName}').readAsString()), {'${0x1105}': 1000});
+
+    // After the restart the keyring still says 0, but the recorded telegram stays a replay.
+    bus = await run();
+    link.receive(recorded);
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    expect(bus.today, 0);
+    link.receive(secured());
+    await _until(() => bus.today == 1);
+    await bus.shutdown();
+  });
+
   group('Absturzframes', () {
     late Directory data;
     late _Link link;
@@ -201,6 +240,15 @@ void main() {
       }
       await ws.close();
       await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(bus.state, 'connected');
+    });
+
+    test('zu große Nachricht über den WebSocket schließt die Verbindung (1009)', () async {
+      final ws = await WebSocket.connect('ws://127.0.0.1:${server.port}/device');
+      ws.listen((_) {}, onError: (Object _) {});
+      ws.add(Uint8List(BusService.maxClientMessage + 1));
+      await ws.done.timeout(const Duration(seconds: 5));
+      expect(ws.closeCode, WebSocketStatus.messageTooBig);
       expect(bus.state, 'connected');
     });
 

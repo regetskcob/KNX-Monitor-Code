@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'alarms.dart';
+import 'atomic_file.dart';
 import 'exporter.dart';
 import 'ft12_link.dart';
 import 'ha.dart';
@@ -382,6 +383,56 @@ class BusService {
   DataSecure? _dataSecure;
   DateTime? _keysTime;
 
+  /// Highest valid Data Secure sequence number per sender seen so far. The
+  /// keyring only knows the numbers from the time of its export; without this
+  /// a recorded telegram replayed after a restart would count as valid again.
+  /// Kept in [_sequenceFile], written at most every [_sequenceDelay] and on
+  /// [shutdown].
+  final _sequences = <int, int>{};
+  Timer? _sequenceSave;
+  static const _sequenceDelay = Duration(seconds: 30);
+
+  /// Next to `secure_keys.json`; owned by the server (`/api/files/` keeps it private).
+  File get _sequenceFile => File('${data.path}/$sequenceFileName');
+
+  /// See [_sequences].
+  static const sequenceFileName = 'secure_sequence.json';
+
+  Future<void> _loadSequences() async {
+    try {
+      if (!await _sequenceFile.exists()) return;
+      final json = jsonDecode(await _sequenceFile.readAsString()) as Map<String, Object?>;
+      for (final MapEntry(:key, :value) in json.entries) {
+        final source = int.tryParse(key);
+        if (source != null && value is int) _sequences[source] = value;
+      }
+    } on Object catch (e) {
+      stderr.writeln('$sequenceFileName: $e');
+    }
+  }
+
+  /// Notes the sequence number of a telegram that [DataSecure.receive] accepted.
+  void _noteSequence(Uint8List cemi) {
+    final i = 2 + cemi[1];
+    final source = (cemi[i + 2] << 8) | cemi[i + 3];
+    var seq = 0;
+    for (var b = i + 10; b < i + 16; b++) {
+      seq = (seq << 8) | cemi[b];
+    }
+    _sequences[source] = seq;
+    _sequenceSave ??= Timer(_sequenceDelay, () => unawaited(_saveSequences()));
+  }
+
+  Future<void> _saveSequences() async {
+    _sequenceSave?.cancel();
+    _sequenceSave = null;
+    try {
+      await writeAtomic(_sequenceFile, text: jsonEncode({for (final e in _sequences.entries) '${e.key}': e.value}));
+    } on Object catch (e) {
+      stderr.writeln('$sequenceFileName: $e');
+    }
+  }
+
   Future<void> _reloadKeys() async {
     final file = File('${data.path}/secure_keys.json');
     try {
@@ -393,7 +444,17 @@ class BusService {
       final modified = await file.lastModified();
       if (modified == _keysTime) return;
       _keysTime = modified;
-      final ds = DataSecure.fromJson(jsonDecode(await file.readAsString()) as Map<String, Object?>);
+      final json = jsonDecode(await file.readAsString()) as Map<String, Object?>;
+      // Only senders from the keyring count; for those, the higher of the
+      // keyring's number and the last one seen here.
+      final sequence = {
+        for (final MapEntry(:key, :value) in ((json['sequence'] as Map?) ?? const {}).entries)
+          '$key': switch (_sequences[int.tryParse('$key')]) {
+            final int seen when value is int && seen > value => seen,
+            _ => value,
+          },
+      };
+      final ds = DataSecure.fromJson({...json, 'sequence': sequence});
       _dataSecure = ds.groupKeys.isEmpty ? null : ds;
     } on Object catch (e) {
       stderr.writeln('secure_keys.json: $e');
@@ -422,6 +483,7 @@ class BusService {
       stdout.writeln('KNX-Box: Uhr ${clock.source.name}');
     }
     _applyStorage();
+    await _loadSequences();
     await _reloadKeys();
     await recorder.start();
     _beat = Timer.periodic(const Duration(minutes: 1), (_) => _heartbeat());
@@ -525,9 +587,9 @@ class BusService {
       final dir = Directory('${data.path}/status');
       await dir.create(recursive: true);
       final file = File('${dir.path}/busmon-$name.json');
-      final tmp = File('${file.path}.tmp');
-      await tmp.writeAsString(
-        jsonEncode({
+      await writeAtomic(
+        file,
+        text: jsonEncode({
           'data': busmon.data - base.data,
           'acks': busmon.acks - base.acks,
           'naks': busmon.naks - base.naks,
@@ -535,9 +597,7 @@ class BusService {
           'damaged': busmon.damaged - base.damaged,
           'orphanAcks': busmon.orphanAcks - base.orphanAcks,
         }),
-        flush: true,
       );
-      await tmp.rename(file.path);
     } on Object catch (e) {
       stderr.writeln('Busmonitor-Zähler: $e');
     }
@@ -578,11 +638,12 @@ class BusService {
     if (next.host != config.host || next.port != config.port || next.mode != config.mode) _description = null;
     config = next;
     _applyStorage();
-    // Back up the previous state in case the file gets corrupted later.
-    if (await _configFile.exists()) await _configFile.copy('${_configFile.path}.bak');
-    final tmp = File('${_configFile.path}.tmp');
-    await tmp.writeAsString(jsonEncode(config.toJson()), flush: true);
-    await tmp.rename(_configFile.path);
+    final json = jsonEncode(config.toJson());
+    await serialized(_configFile, () async {
+      // Back up the previous state in case the file gets corrupted later.
+      if (await _configFile.exists()) await _configFile.copy('${_configFile.path}.bak');
+      await writeAtomicNow(_configFile, text: json);
+    });
     if (changes.containsKey('retentionDays') || changes.containsKey('maxMegabytes')) await recorder.maintain();
     if (reconnect) _restart(ready: ready);
     _broadcastState();
@@ -806,7 +867,12 @@ class BusService {
     // Record secured telegrams decrypted; the views get the original frame
     // and decrypt it themselves.
     final ds = _dataSecure;
-    final plain = ds != null && DataSecure.isSecure(cemi) ? ds.receive(cemi).$2 : cemi;
+    var plain = cemi;
+    if (ds != null && DataSecure.isSecure(cemi)) {
+      final (result, decrypted) = ds.receive(cemi);
+      if (result == SecureResult.decrypted) _noteSequence(cemi);
+      plain = decrypted;
+    }
     final line = telegramJson(plain, now);
     if (line == null) return;
     _beatCount++;
@@ -898,11 +964,20 @@ class BusService {
   }
 
   void _broadcastState() {
-    final message = [0x02, ...utf8.encode(jsonEncode(status()))];
+    final current = status();
+    final message = [0x02, ...utf8.encode(jsonEncode(current))];
+    List<int>? viewing;
     for (final c in _clients) {
-      c.send(message);
+      c.send(c.maySend ? message : (viewing ??= _statusFor(c, current)));
     }
   }
+
+  /// A viewer sees read-only as on: the app then hides sending everywhere,
+  /// as with [readOnly].
+  static List<int> _statusFor(_Client client, Map<String, Object?> current) => [
+    0x02,
+    ...utf8.encode(jsonEncode(client.maySend ? current : {...current, 'readOnly': true, 'viewOnly': true})),
+  ];
 
   /// Serves a browser tab until it closes.
   ///
@@ -915,22 +990,41 @@ class BusService {
   /// Whether another live view fits (checked before the upgrade, see [serve]).
   bool get acceptsClient => _clients.length < maxClients;
 
-  Future<void> serve(WebSocket ws, {bool admin = true}) async {
+  /// Largest message a view may send: a frame to send is a few dozen bytes.
+  /// dart:io assembles a message completely before handing it over, so the
+  /// connection is closed on the first one that is larger (1009, message too
+  /// big) instead of collecting more of them. Compression is off at the
+  /// upgrade ([webSocketCompression]): a small compressed message used to
+  /// unpack into hundreds of megabytes.
+  static const maxClientMessage = 64 * 1024;
+
+  /// Whether [message] from a client exceeds [maxClientMessage].
+  static bool tooLarge(Object? message) =>
+      (message is List<int> && message.length > maxClientMessage) ||
+      (message is String && message.length > maxClientMessage);
+
+  /// [maySend] false: a device paired for viewing only ([BoxRole.viewer]).
+  Future<void> serve(WebSocket ws, {bool admin = true, bool maySend = true}) async {
     if (_clients.length >= maxClients) {
       // 1013: try again later.
       await ws.close(1013, 'busy');
       return;
     }
-    final client = _Client(ws, admin: admin);
+    final client = _Client(ws, admin: admin, maySend: maySend);
     _clients.add(client);
-    client.send([0x02, ...utf8.encode(jsonEncode(status()))]);
+    client.send(_statusFor(client, status()));
     try {
       await for (final message in ws) {
+        if (tooLarge(message)) {
+          await ws.close(WebSocketStatus.messageTooBig, 'too big');
+          break;
+        }
         if (message is List<int> && message.length >= 3 && message[0] == 0x10) {
           unawaited(_clientSend(client, (message[1] << 8) | message[2], Uint8List.fromList(message.sublist(3))));
         } else if (message is List<int> && message.length == 2 && message[0] == 0x12) {
           // Releasing disconnects continuous recording; that is reserved for admins.
-          if (admin || message[1] != 1) unawaited(_yieldSafely(client, release: message[1] == 1));
+          // Handing the connection over to the app's own tunnel lets it send: not for viewers.
+          if (maySend && (admin || message[1] != 1)) unawaited(_yieldSafely(client, release: message[1] == 1));
         }
       }
     } on Object {
@@ -953,13 +1047,15 @@ class BusService {
 
   /// Send results: 0 sent, 1 not connected, 2 connection error, 3 invalid
   /// frame, 4 device busy, 5 not allowed (only group values without admin
-  /// rights), 6 read-only is on. Never throws: an error here would end as an
+  /// rights, nothing at all for a viewer), 6 read-only is on. Never throws: an error here would end as an
   /// unhandled error in process exit (`exit(255)`), and any logged-in client
   /// could have sent recording into a restart loop that way.
   Future<void> _clientSend(_Client client, int id, Uint8List cemi) async {
     void reply(int result, [String text = '']) => client.send([0x11, id >> 8, id & 0xFF, result, ...utf8.encode(text)]);
 
     try {
+      // The role first: a viewer gets its own reason also on a read-only server.
+      if (!client.maySend) return reply(5, 'Dieses Gerät ist nur zum Ansehen gekoppelt.');
       if (readOnly) return reply(6, readOnlyMessage);
       if (!isLDataRequest(cemi)) return reply(3, 'Ungültiger Frame');
       if (!client.admin && !deviceMaySend(cemi)) {
@@ -1019,12 +1115,17 @@ class BusService {
     _beat?.cancel();
     _maintenance?.cancel();
     _reportSoon?.cancel();
+    if (_sequenceSave != null) await _saveSequences();
     await recorder.flush(durable: true);
     await hunt.close();
     await exporter.stop();
     await _link?.close();
   }
 }
+
+/// For every WebSocket upgrade of the server: without permessage-deflate (see
+/// [BusService.maxClientMessage]).
+const webSocketCompression = CompressionOptions.compressionOff;
 
 class _ExportSource implements ExportSource {
   _ExportSource(this.bus);
@@ -1047,9 +1148,10 @@ class _ExportSource implements ExportSource {
 }
 
 class _Client {
-  _Client(this.ws, {required this.admin});
+  _Client(this.ws, {required this.admin, this.maySend = true});
   final WebSocket ws;
   final bool admin;
+  final bool maySend;
   void send(List<int> bytes) {
     if (ws.readyState == WebSocket.open) ws.add(Uint8List.fromList(bytes));
   }

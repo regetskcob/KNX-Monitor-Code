@@ -10,6 +10,7 @@ import '../platform/addon.dart';
 import 'installation.dart';
 import 'plan.dart';
 import 'telegram_log.dart';
+import 'box_keyring_consent.dart';
 import 'trigger.dart';
 
 /// Watcher: alerts with a sound and notification as soon as a group address is
@@ -238,10 +239,13 @@ class WatchRules extends ValueNotifier<List<WatchRule>> {
     if (!Addon.available) return;
     final text = jsonEncode({'rules': rules});
     if (text == _shared) return;
-    _shared = text;
-    if (Addon.box != null) {
+    if (Addon.box case final box?) {
+      // A box paired through a foreign link gets nothing before the user agreed.
+      if (!await BoxProjectConsent.allowed(box)) return;
+      _shared = text;
       await Addon.putFile(serverPath, utf8.encode(text));
     } else {
+      _shared = text;
       await InstallationStore.instance.storage.write(serverPath, text);
     }
   }

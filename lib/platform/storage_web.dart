@@ -9,7 +9,7 @@ AppStorage createStorage() => _AddonStorage();
 
 /// Storage in the data folder of the Home Assistant add-on ("api/files/…").
 class _AddonStorage implements AppStorage {
-  Uri _url(String path) => Uri.parse(web.document.baseURI).removeFragment().resolve('api/files/$path');
+  Uri _url(String path) => Uri.parse(web.document.baseURI).removeFragment().resolve('api/files/${confinedPath(path)}');
 
   static void _check(http.Response r) {
     if (r.statusCode >= 300) throw http.ClientException('${r.statusCode} ${r.body}', r.request?.url);

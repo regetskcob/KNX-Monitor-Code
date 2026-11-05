@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'atomic_file.dart';
 import 'box_clock.dart';
 import 'bus.dart';
 import 'files.dart';
@@ -203,7 +204,7 @@ class Installations {
     }
   }
 
-  Future<void> _save() async {
+  Future<void> _save() => serialized(_index, () async {
     // Keep the last readable state as a backup.
     if (await _index.exists()) {
       try {
@@ -213,17 +214,15 @@ class Installations {
         // Do not take over unreadable data as a backup.
       }
     }
-    final tmp = File('${_index.path}.tmp');
-    await tmp.writeAsString(
-      jsonEncode({
+    await writeAtomicNow(
+      _index,
+      text: jsonEncode({
         'version': 1,
         'active': _active,
         'list': [for (final i in _list) i.toJson()],
       }),
-      flush: true,
     );
-    await tmp.rename(_index.path);
-  }
+  });
 
   static String _cleanName(Object? name) {
     final text = name is String ? name.trim() : '';
@@ -277,6 +276,14 @@ class Installations {
     final r = Random.secure();
     return List.generate(12, (_) => r.nextInt(16).toRadixString(16)).join();
   }
+
+  /// [toJson] with the active installation only (for devices without admin rights).
+  Map<String, Object?> activeJson() => {
+    'active': _active,
+    'list': [
+      {...active.toJson(), 'active': true},
+    ],
+  };
 
   Map<String, Object?> toJson() => {
     'active': _active,
@@ -373,10 +380,11 @@ class InstallationService {
 /// - `PATCH /api/installations/<id>` `{name}` → renamed
 /// - `DELETE /api/installations/<id>` → deleted (not the active one: 409)
 /// - `GET /api/installations/<id>/files/<rel>` → files of any installation,
-///   read-only (also for device access)
+///   read-only
 ///
-/// Managing requires [admin] (box password or Ingress); anyone who gets past
-/// the server's access check may read.
+/// Managing requires [admin] (box password or Ingress). Without it, a paired
+/// device sees only the active installation, in the list and its files; the
+/// others (earlier customers, other sites) answer 403.
 Future<bool> serveInstallations(HttpRequest request, InstallationService service, {required bool admin}) async {
   final path = request.uri.path;
   if (path != '/api/installations' && !path.startsWith('/api/installations/')) return false;
@@ -395,6 +403,10 @@ Future<bool> serveInstallations(HttpRequest request, InstallationService service
 
   // Files of any installation, read-only.
   if (rest.length >= 3 && rest[1] == 'files') {
+    if (!admin && rest[0] != installations.activeId) {
+      await deny(HttpStatus.forbidden, 'Nur die aktive Installation.');
+      return true;
+    }
     if (installations.byId(rest[0]) == null) {
       await deny(HttpStatus.notFound, 'Installation unbekannt.');
       return true;
@@ -411,7 +423,7 @@ Future<bool> serveInstallations(HttpRequest request, InstallationService service
   }
 
   if (method == 'GET' && rest.isEmpty) {
-    await sendJson(response, installations.toJson());
+    await sendJson(response, admin ? installations.toJson() : installations.activeJson());
     return true;
   }
   if (!admin) {

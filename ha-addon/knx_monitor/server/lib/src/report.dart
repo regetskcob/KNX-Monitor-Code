@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'alarms.dart';
+import 'atomic_file.dart';
 import 'http.dart';
 
 import 'package:knx/knx.dart';
@@ -743,19 +744,20 @@ class ReportService {
   }
 
   Future<void> _save() async {
-    final tmp = File('${_settingsFile.path}.tmp');
-    await tmp.writeAsString(jsonEncode(settings.toJson()), flush: true);
-    await tmp.rename(_settingsFile.path);
+    await writeAtomic(_settingsFile, text: jsonEncode(settings.toJson()));
   }
 
   /// Applies changes from the app; throws [FormatException] for an invalid
   /// target (then everything stays as it was). An empty token means
-  /// "unchanged", `clearToken` deletes it.
+  /// "unchanged", `clearToken` deletes it. A new target without a new token
+  /// deletes it too: the token belongs to the old target and must not be
+  /// sent to another one.
   Future<void> update(Map<String, Object?> changes) async {
     final merged = settings.toJson()..addAll(changes);
-    if (changes['notifyToken'] == '' || !changes.containsKey('notifyToken')) {
-      merged['notifyToken'] = settings.notifyToken;
-    }
+    final newToken = changes['notifyToken'] is String && (changes['notifyToken']! as String).isNotEmpty;
+    if (!newToken) merged['notifyToken'] = settings.notifyToken;
+    final url = changes['notifyUrl'];
+    if (!newToken && url is String && url != settings.notifyUrl) merged['notifyToken'] = '';
     if (changes['clearToken'] == true) merged['notifyToken'] = '';
     final next = ReportSettings.fromJson(merged);
     if (next.notifyKind == 'ntfy' || next.notifyKind == 'webhook') {
@@ -803,9 +805,7 @@ class ReportService {
       if (await file.exists()) continue;
       final rollup = await _rollupInIsolate(path, day);
       if (rollup == null) continue;
-      final tmp = File('${file.path}.tmp');
-      await tmp.writeAsString(jsonEncode(rollup), flush: true);
-      await tmp.rename(file.path);
+      await writeAtomic(file, text: jsonEncode(rollup));
     }
   }
 
@@ -882,9 +882,7 @@ class ReportService {
     );
     await _dir.create(recursive: true);
     final file = _reportFile(p.id);
-    final tmp = File('${file.path}.tmp');
-    await tmp.writeAsString(jsonEncode(report), flush: true);
-    await tmp.rename(file.path);
+    await writeAtomic(file, text: jsonEncode(report));
     return report;
   }
 
@@ -962,9 +960,7 @@ class ReportService {
       if (settings.notifyUrgent) await _notify('maintenance', _text('maintenance', const {}));
     }
     await _dir.create(recursive: true);
-    final tmp = File('${_stateFile.path}.tmp');
-    await tmp.writeAsString(jsonEncode(state), flush: true);
-    await tmp.rename(_stateFile.path);
+    await writeAtomic(_stateFile, text: jsonEncode(state));
   }
 
   Future<void> _prune(DateTime now) async {
@@ -1054,7 +1050,7 @@ class ReportService {
 /// - `GET /api/report/<id>` → one report
 /// - `POST /api/report/generate` → interim report of the current period ([admin] only)
 /// - `POST /api/report/test` → test notification ([admin] only)
-/// - `POST /api/report/maintenance` `{due}` → maintenance date from the customer record
+/// - `POST /api/report/maintenance` `{due}` → maintenance date from the customer record ([admin] only)
 Future<bool> serveReports(HttpRequest request, ReportService service, {required bool admin}) async {
   final path = request.uri.path;
   if (path != '/api/report' && !path.startsWith('/api/report/')) return false;
@@ -1106,6 +1102,11 @@ Future<bool> serveReports(HttpRequest request, ReportService service, {required 
     return true;
   }
   if (method == 'POST' && rest == 'maintenance') {
+    // The date triggers notifications to the admin's target.
+    if (!admin) {
+      await status(HttpStatus.forbidden);
+      return true;
+    }
     final changes = await body();
     if (changes == null) {
       await status(HttpStatus.badRequest);

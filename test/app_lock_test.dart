@@ -59,6 +59,7 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     AppLock.iterations = 10;
+    AppLock.failDelay = Duration.zero;
     vault = _Vault();
     auth = _Auth();
     now = DateTime(2026, 10, 30, 12);
@@ -119,6 +120,76 @@ void main() {
     await next.load();
     await next.unlockWithPassword('falsch');
     expect(next.waitUntil, isNotNull);
+  });
+
+  group('Uhr vorgestellt', () {
+    late Duration elapsed;
+    AppLock withClocks() => AppLock(authenticator: auth, vault: vault, clock: () => now, elapsed: () => elapsed);
+
+    setUp(() => elapsed = const Duration(minutes: 3));
+
+    test('Wartezeit läuft auf der monotonen Uhr weiter', () async {
+      lock = withClocks();
+      await lock.enablePassword('geheim1');
+      await lock.load();
+      for (var i = 0; i < 5; i++) {
+        await lock.unlockWithPassword('falsch');
+      }
+      now = now.add(const Duration(days: 1));
+      expect(await lock.unlockWithPassword('geheim1'), isFalse, reason: 'nur die Uhr wurde verstellt');
+      expect(lock.waitUntil, now.add(const Duration(seconds: 30)));
+      elapsed += const Duration(seconds: 31);
+      expect(await lock.unlockWithPassword('geheim1'), isTrue);
+      expect(lock.waitUntil, isNull);
+    });
+
+    test('nach dem Neustart gilt der Rest der gespeicherten Wartezeit auch monoton', () async {
+      lock = withClocks();
+      await lock.enablePassword('geheim1');
+      await lock.load();
+      for (var i = 0; i < 5; i++) {
+        await lock.unlockWithPassword('falsch');
+      }
+      elapsed = Duration.zero; // neuer Prozess
+      final next = withClocks();
+      await next.load();
+      now = now.add(const Duration(hours: 1));
+      expect(await next.unlockWithPassword('geheim1'), isFalse);
+      elapsed += const Duration(seconds: 31);
+      expect(await next.unlockWithPassword('geheim1'), isTrue);
+    });
+
+    test('nach zehn Fehlversuchen erst nach einem Neustart weiter', () async {
+      lock = withClocks();
+      await lock.enablePassword('geheim1');
+      await lock.load();
+      for (var i = 0; i < AppLock.maxFailsPerRun; i++) {
+        expect(lock.restartRequired, isFalse);
+        await lock.unlockWithPassword('falsch');
+        elapsed += const Duration(hours: 1);
+        now = now.add(const Duration(hours: 1));
+      }
+      expect(lock.restartRequired, isTrue);
+      expect(await lock.unlockWithPassword('geheim1'), isFalse);
+      expect(await lock.unlockWithRecovery('egal'), isFalse);
+      final next = withClocks();
+      await next.load();
+      expect(next.restartRequired, isFalse);
+      expect(await next.unlockWithPassword('geheim1'), isTrue);
+    });
+
+    test('jeder Fehlversuch dauert mindestens die feste Pause', () async {
+      AppLock.failDelay = const Duration(milliseconds: 200);
+      lock = withClocks();
+      await lock.enablePassword('geheim1');
+      await lock.load();
+      final watch = Stopwatch()..start();
+      await lock.unlockWithPassword('falsch');
+      expect(watch.elapsed, greaterThanOrEqualTo(const Duration(milliseconds: 200)));
+      watch.reset();
+      expect(await lock.unlockWithPassword('geheim1'), isTrue);
+      expect(watch.elapsed, lessThan(const Duration(milliseconds: 200)), reason: 'richtiges Passwort ohne Pause');
+    });
   });
 
   test('Wartezeit wächst und endet bei 15 Minuten', () {

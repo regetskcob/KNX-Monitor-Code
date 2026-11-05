@@ -143,4 +143,13 @@ void main() {
     );
     await expectLater(done, throwsA(isA<IpSecureException>().having((e) => e.reason, 'reason', 'device')));
   });
+
+  test('IP Secure: Gateway-Schlüssel mit Null-Geheimnis wird abgelehnt', () async {
+    final session = IpSecureSession(userId: 1, userPassword: 'secret');
+    final done = session.handshake((_) {});
+    // Public key 0 is a low-order point: the shared secret would be all zeros.
+    session.handle(Uint8List.fromList([...fromHex('06 10 09 52 00 38 00 01'), ...List.filled(32 + 16, 0)]));
+    await expectLater(done, throwsA(isA<IpSecureException>().having((e) => e.reason, 'reason', 'key')));
+    expect(session.established, isFalse);
+  });
 }

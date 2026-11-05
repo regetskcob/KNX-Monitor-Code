@@ -700,7 +700,7 @@
   "boxPairField": "Pairing link or IP address of the box",
   "boxLinkInvalid": "Not a valid pairing link.",
   "boxPairTitle": "Connect to KNX box?",
-  "boxPairBody": "The app then shows the bus through the box {address}. Only confirm if you scanned the QR code yourself.",
+  "boxPairBody": "The app then shows the bus through this box. Only confirm if you scanned the QR code yourself and the address matches your box.",
   "boxVia": "Via KNX box {name}",
   "boxGatewayHint": "The gateway below is set on the box, which stays connected to it.",
   "boxLeave": "Gateway directly",
@@ -941,9 +941,13 @@
   "boxTimeAskBody": "The box clock is {offset} off from this device. Set it from this device?",
   "boxDevices": "Paired devices",
   "boxDeviceSelf": "this device",
+  "boxDeviceViewOnly": "view only",
+  "boxViewOnlyHint": "This device is paired with the box for viewing only and sends nothing to the bus. To switch things, pair it again without “View only”.",
   "boxDeviceAdmin": "manages the box",
   "boxDeviceRevoke": "Revoke",
   "boxPasswordChange": "Change box password",
+  "boxPasswordCurrent": "Current password",
+  "boxPasswordCurrentWrong": "The current password is not correct.",
   "boxPasswordHint": "At least 8 characters. The label's QR code no longer pairs new devices afterwards.",
   "boxPasswordChanged": "Password changed.",
   "boxNotAdmin": "Managing needs the box password: scan the QR code on the label.",
@@ -2413,8 +2417,8 @@
     }
   },
   "boxForeignConfirm": "Connect anyway",
-  "boxKeyringTitle": "Give the keyring to this box?",
-  "boxKeyringBody": "The box at {address} would get the keys of your KNX Secure installation so it can record secured telegrams in readable form. Anyone with access to the box can reach these keys. Only agree if it is your box.",
+  "boxKeyringTitle": "Give the KNX Secure keys to this box?",
+  "boxKeyringBody": "The box at {address} would get the keys and passwords of your KNX Secure installation (keyring, IP Secure access to the gateway) so it can connect and record secured telegrams in readable form. Anyone with access to the box can reach these keys. Only agree if it is your box.",
   "@boxKeyringBody": {
     "placeholders": {
       "address": {
@@ -2422,7 +2426,7 @@
       }
     }
   },
-  "boxKeyringAllow": "Give keyring",
+  "boxKeyringAllow": "Give keys",
   "boxKeyringDeny": "Don't give",
   "historyPausedPlan": "History is paused: long-term history is part of Plus. New telegrams are not saved, existing days are kept.",
   "backupSideFiles": "Older and damaged versions take up another {size}.",
@@ -2553,5 +2557,15 @@
   "commonUndo": "Undo",
   "visitDeleteTitle": "Delete entry?",
   "watchRemoved": "Watcher removed: {what}",
-  "learnForgotten": "Forgotten: {name}"
+  "learnForgotten": "Forgotten: {name}",
+  "boxPairNamed": "Name in the link: {name}",
+  "boxPairUnencrypted": "Unencrypted (HTTP): anyone listening on the same network sees everything the app sends to this box. Only connect on your own network.",
+  "boxReplaceTitle": "Replace the paired box?",
+  "boxReplaceBody": "Currently paired: {current}. The link would replace it with {next}; the existing pairing is lost.",
+  "boxReplaceConfirm": "Replace",
+  "boxProjectTitle": "Give the project to this box?",
+  "boxProjectBody": "The box {box} was paired via a link from another app or web page. If you give it your project, it gets the ETS project with all addresses and names, the installation's name and the gateway address. Until then it gets none of this.",
+  "boxProjectAllow": "Give project",
+  "boxProjectDeny": "Not yet",
+  "appLockRestart": "Too many failed attempts. Close the app and open it again, then you can try once more."
 }

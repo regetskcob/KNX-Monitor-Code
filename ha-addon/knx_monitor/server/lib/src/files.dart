@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'atomic_file.dart';
 import 'http.dart';
 
 final _safePath = RegExp(r'^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*/?$');
@@ -25,6 +27,8 @@ const _private = {
   'wifi-request',
   'sticker-scrub',
   'password-reset',
+  // Data Secure sequence numbers (BusService): lowering them would let replays through.
+  'secure_sequence.json',
 };
 
 /// The installation's keyring (KNX Secure): only the server reads it and uses it
@@ -33,9 +37,18 @@ const _private = {
 /// and this file would give it all group keys.
 const _adminOnly = 'secure_keys.json';
 
-/// What a device without admin rights may store: its own charts and watchers.
-/// Everything else (project, fault hunt, history) changes the installation for everyone.
-const _deviceWritable = {'charts.json', 'watch_rules.json'};
+/// What a device without admin rights may store: its own charts and watchers,
+/// as a list under the given key whose entries are told apart by the given
+/// field. Everything else (project, fault hunt, history) changes the
+/// installation for everyone. See [mergeDeviceEntries].
+const _deviceWritable = {'charts.json': ('charts', 'name'), 'watch_rules.json': ('rules', 'id')};
+
+/// Field in which the server notes which paired device created an entry of a
+/// [_deviceWritable] file. Entries without it belong to the admin.
+const ownerField = 'owner';
+
+/// Upper limit of a merged file: each device brings at most [_maxDeviceUpload].
+const _maxMerged = 8 * 1024 * 1024;
 
 /// Upper limit per upload without admin rights.
 const _maxDeviceUpload = 1024 * 1024;
@@ -48,7 +61,7 @@ bool _isKeyring(String name) => name == _adminOnly || name.startsWith('$_adminOn
 bool _isPrivate(String name) => _private.any((p) => name == p || name.startsWith('$p.'));
 
 bool _deviceMayWrite(HttpRequest request, String relative) =>
-    request.method == 'PUT' && _deviceWritable.contains(relative);
+    request.method == 'PUT' && _deviceWritable.containsKey(relative);
 
 /// Upper limit per upload. Generous for catalogs of large projects, but prevents
 /// a single request from filling the add-on's memory.
@@ -57,13 +70,17 @@ const _maxUpload = 64 * 1024 * 1024;
 /// `/api/files/<relative>` in the data folder [data]: read (GET, with a trailing
 /// `/` the listing), write (PUT), append (POST), delete (DELETE). With
 /// [readOnly] read only (installations that are not currently active). Without
-/// [admin] (device from `/pair`) no keyring and hardly any write access.
+/// [admin] (device from `/pair`) no keyring and hardly any write access: a
+/// [viewOnly] device writes nothing, any other one only its own entries in
+/// `charts.json` and `watch_rules.json`, identified by [owner] (its device id).
 Future<void> serveFile(
   HttpRequest request,
   Directory data,
   String relative, {
   bool readOnly = false,
   bool admin = true,
+  bool viewOnly = false,
+  String? owner,
 }) async {
   final response = request.response;
   relative = Uri.decodeComponent(relative);
@@ -80,7 +97,8 @@ Future<void> serveFile(
     return response.close();
   }
   if (!admin &&
-      (relative.split('/').any(_isKeyring) || (request.method != 'GET' && !_deviceMayWrite(request, relative)))) {
+      (relative.split('/').any(_isKeyring) ||
+          (request.method != 'GET' && (viewOnly || owner == null || !_deviceMayWrite(request, relative))))) {
     response
       ..statusCode = HttpStatus.forbidden
       ..headers.contentType = ContentType.text
@@ -132,10 +150,28 @@ Future<void> serveFile(
         break;
       }
       await file.parent.create(recursive: true);
+      if (!admin) {
+        final (list, key) = _deviceWritable[relative]!;
+        final Object? incoming;
+        try {
+          incoming = jsonDecode(utf8.decode(bytes));
+        } on FormatException {
+          response.statusCode = HttpStatus.badRequest;
+          break;
+        }
+        // Read, merge and write without another request in between.
+        response.statusCode = await serialized(file, () async {
+          final merged = mergeDeviceEntries(await _readJson(file), incoming, list: list, key: key, owner: owner!);
+          if (merged == null) return HttpStatus.badRequest;
+          final encoded = utf8.encode(jsonEncode(merged));
+          if (encoded.length > _maxMerged) return HttpStatus.requestEntityTooLarge;
+          await writeAtomicNow(file, bytes: encoded);
+          return HttpStatus.noContent;
+        });
+        break;
+      }
       if (request.method == 'PUT') {
-        final tmp = File('${file.path}.tmp');
-        await tmp.writeAsBytes(bytes, flush: true);
-        await tmp.rename(file.path);
+        await writeAtomic(file, bytes: bytes);
       } else {
         await file.writeAsBytes(bytes, mode: FileMode.append, flush: true);
       }
@@ -153,4 +189,59 @@ Future<void> serveFile(
       response.statusCode = HttpStatus.methodNotAllowed;
   }
   await response.close();
+}
+
+Future<Object?> _readJson(File file) async {
+  try {
+    return await file.exists() ? jsonDecode(await file.readAsString()) : null;
+  } on Object {
+    // Unreadable: the device's entries replace it, like a write by the admin would.
+    return null;
+  }
+}
+
+/// What a device without admin rights ([owner]) may change in a file with a
+/// list of entries under [list] (`charts`, `rules`), told apart by [key]
+/// (`name`, `id`): its own entries. Entries of others, including the admin's
+/// (without [ownerField]), stay as they are, also when [incoming] leaves them
+/// out or brings an entry with the same key. The device's entries are marked
+/// with its id. All other fields (such as `allowed`, the unlock of the
+/// dashboard card) keep their stored value; `allowed` is `false` as long as
+/// none is stored, so a device cannot unlock the card.
+///
+/// `null` if [incoming] is not an object, or its list is not a list of
+/// objects with a text [key].
+Map<String, Object?>? mergeDeviceEntries(
+  Object? stored,
+  Object? incoming, {
+  required String list,
+  required String key,
+  required String owner,
+}) {
+  // Without the list: the device has no entries (any more).
+  if (incoming is! Map || (incoming[list] != null && incoming[list] is! List)) return null;
+  final entries = <Map<String, Object?>>[];
+  for (final e in incoming[list] as List? ?? const []) {
+    if (e is! Map || e[key] is! String) return null;
+    entries.add({...e.cast<String, Object?>(), ownerField: owner});
+  }
+  final before = stored is Map ? stored.cast<String, Object?>() : const <String, Object?>{};
+  final others = [
+    for (final e in before[list] is List ? before[list] as List : const [])
+      if (e is Map && e[ownerField] != owner) e.cast<String, Object?>(),
+  ];
+  final taken = {for (final e in others) e[key]};
+  return {
+    for (final MapEntry(key: field, :value) in incoming.cast<String, Object?>().entries)
+      if (field != list && field != 'allowed') field: value,
+    for (final MapEntry(key: field, :value) in before.entries)
+      if (field != list && field != 'allowed') field: value,
+    if (list == 'charts') 'allowed': before['allowed'] == true,
+    if (list != 'charts' && before.containsKey('allowed')) 'allowed': before['allowed'],
+    list: [
+      ...others,
+      for (final e in entries)
+        if (!taken.contains(e[key])) e,
+    ],
+  };
 }

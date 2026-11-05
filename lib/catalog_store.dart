@@ -13,6 +13,7 @@ import 'knx/knxproj_parser.dart';
 import 'knx/telegram.dart';
 import 'l10n/locale_controller.dart';
 import 'knx/demo_tunnel.dart';
+import 'model/box_keyring_consent.dart';
 import 'model/box_share.dart';
 import 'model/installation.dart';
 import 'model/teach_in.dart';
@@ -389,17 +390,24 @@ class CatalogStore extends ChangeNotifier {
     final id = installations.active.id;
     // If it is currently recording elsewhere, it ended up in that installation.
     if (Addon.box == null || (installations.boxActive != null && installations.boxActive != id)) return;
+    final box = Addon.box!;
     // If it fails, [syncWithBox] catches up as soon as the box is back.
-    unawaited(
-      Addon.putFile(
-        path,
-        utf8.encode(text),
-      ).then((_) => BoxShare.remember(id, path, text)).catchError((Object e) => debugPrint('Box: $e')),
-    );
+    unawaited(() async {
+      try {
+        // Paired via a link from outside and not confirmed yet: nothing goes there.
+        if (!await BoxProjectConsent.allowed(box)) return;
+        await Addon.putFile(path, utf8.encode(text));
+        await BoxShare.remember(id, path, text);
+      } on Object catch (e) {
+        debugPrint('Box: $e');
+      }
+    }());
   }
 
   /// Puts the project and user-chosen types on the box (after setup, when it has none yet).
   Future<void> shareWithBox() async {
+    final box = Addon.box;
+    if (box == null || !await BoxProjectConsent.allowed(box)) return;
     for (final path in [_path, _overridesPath]) {
       final text = await _storage.read(path);
       if (text != null && Addon.box != null) {
@@ -412,6 +420,8 @@ class CatalogStore extends ChangeNotifier {
   /// Syncs the project and user-chosen types ([BoxShare]); `true` if the box has a different
   /// version of either and it was therefore kept.
   Future<bool> syncWithBox() async {
+    final box = Addon.box;
+    if (box == null || !await BoxProjectConsent.allowed(box)) return false;
     var differs = false;
     for (final path in [_path, _overridesPath]) {
       final outcome = await BoxShare.sync(

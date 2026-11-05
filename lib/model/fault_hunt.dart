@@ -8,6 +8,7 @@ import '../platform/addon.dart';
 import 'annotation.dart';
 import 'installation.dart';
 import 'recording.dart';
+import 'box_keyring_consent.dart';
 import 'watch_rules.dart';
 
 /// A fault hunt: rules (from the watchers), duration and an optional time
@@ -174,7 +175,11 @@ class FaultHuntClient {
   }
 
   Future<void> _write(String file, String text) async {
-    if (Addon.box != null) return Addon.putFile(file, utf8.encode(text));
+    if (Addon.box case final box?) {
+      // A box paired through a foreign link gets nothing before the user agreed.
+      if (!await BoxProjectConsent.allowed(box)) return;
+      return Addon.putFile(file, utf8.encode(text));
+    }
     await InstallationStore.instance.storage.write(file, text);
   }
 

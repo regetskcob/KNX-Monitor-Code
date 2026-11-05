@@ -35,7 +35,8 @@ Workflows: `.github/workflows/addon.yml` (add-on and Docker images),
   by digest (`ha-addon/knx_monitor/Dockerfile`); the runtime image is built
   `FROM scratch` with only the compiled server, the Dart runtime files, time zone
   data and the web app. Dependencies are fetched with
-  `dart pub get --enforce-lockfile`. Dependabot raises the digest. The KNX Box
+  `dart pub get --enforce-lockfile`, and the Flutter builds in CI with
+  `flutter pub get --enforce-lockfile`. Dependabot raises the digest. The KNX Box
   image is built with pi-gen at a fixed tag and a verified commit
   (`box-image.yml`, `box/build-image.sh`, `PI_GEN_COMMIT`); a mismatch aborts
   the build. The pi-gen version is raised by hand.
@@ -58,7 +59,19 @@ are not signed.
 | KNX Box package and image | `*.sigstore.json` bundles | `SHA256SUMS.txt` |
 | Linux desktop release | – | `SHA256SUMS.txt` |
 
-If signing fails, the workflow run fails and `latest` is not moved.
+If signing fails, the workflow run fails and `latest` is not moved. `latest`
+is set to the digests the image jobs pushed and signed, not to whatever the
+version tag resolves to at that moment.
+
+Box artefacts are signed only when the workflow was started by pushing a
+`box-v*` tag; a manual run is never signed, even on a tag, and a tag build
+refuses any pi-gen revision other than the pinned one (`box-image.yml`).
+`tool/release.sh box <version>` publishes only a run that was triggered by the
+tag push and built exactly the tagged commit, and only after
+`cosign verify-blob` has checked every file against the identity
+`https://github.com/regetskcob/KNX-Monitor-Source/.github/workflows/box-image.yml@refs/tags/box-v<version>`,
+the trigger `push` and that commit. Without cosign, or if one check fails,
+nothing is published.
 
 ### Verifying
 
@@ -66,18 +79,20 @@ If signing fails, the workflow run fails and `latest` is not moved.
 # Add-on (<arch>-knx-monitor) and Docker (knx-monitor)
 cosign verify ghcr.io/regetskcob/knx-monitor:<version> \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-identity-regexp '^https://github.com/regetskcob/[^/]+/\.github/workflows/addon\.yml@refs/tags/addon-v'
+  --certificate-identity-regexp '^https://github.com/regetskcob/KNX-Monitor-Source/\.github/workflows/addon\.yml@refs/tags/addon-v'
 
 # KNX Box package and image
 cosign verify-blob knx-box-<version>.tar.gz --bundle knx-box-<version>.tar.gz.sigstore.json \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-identity-regexp '^https://github.com/regetskcob/[^/]+/\.github/workflows/box-image\.yml@refs/tags/box-v'
+  --certificate-identity-regexp '^https://github.com/regetskcob/KNX-Monitor-Source/\.github/workflows/box-image\.yml@refs/tags/box-v'
 
 # Checksums
 sha256sum -c SHA256SUMS.txt
 ```
 
-The identity pattern pins the owner, the workflow file and the tag prefix.
+The identity pattern pins the building repository (`regetskcob/KNX-Monitor-Source`),
+the workflow file and the tag prefix; another repository of the same account
+does not pass.
 Every signature is recorded in the public Rekor transparency log, including the
 repository, workflow and tag that produced it.
 

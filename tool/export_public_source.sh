@@ -6,7 +6,8 @@
 # and can only publish from the main repository with its permissions. Checks
 # the result for secrets and that it builds without the private parts. Pushes
 # nothing: publishing is a separate, deliberate step, see
-# tool/sync_public_source.sh.
+# tool/sync_public_source.sh. Which paths stay private is checked against HEAD
+# (tool/public_source/check_paths.py), so a renamed private file is noticed.
 #
 #   tool/export_public_source.sh <empty target directory> [--no-build]
 set -euo pipefail
@@ -30,6 +31,11 @@ while IFS= read -r line; do
   case "$line" in '' | '#'*) continue ;; esac
   PRIVATE+=("$line")
 done <"$target/$list"
+# A renamed private file, or a new file of a private part outside the list,
+# would silently become public: every entry must exist in HEAD, and every file
+# named after a private part must be private or in public_ok.txt.
+git ls-tree -r --name-only HEAD | python3 -I "$target/tool/public_source/check_paths.py" "$target/tool/public_source" ||
+  { echo "private.txt or public_ok.txt does not match HEAD – fix the lists first" >&2; exit 1; }
 for p in "${PRIVATE[@]}"; do rm -rf "${target:?}/${p:?}"; done
 # Asset folders that stay private leave the asset list too.
 for p in "${PRIVATE[@]}"; do

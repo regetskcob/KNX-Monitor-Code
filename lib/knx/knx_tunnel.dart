@@ -445,7 +445,8 @@ class KnxTunnel {
   }
 
   void _onTunnelRequest(Uint8List p) {
-    if (p.length < 10 || p[7] != _channel) return;
+    // The connection header length comes from the packet: it must not point past its end.
+    if (p.length < 10 || p[7] != _channel || 6 + p[6] > p.length) return;
     if (!tcp) {
       final seq = p[8];
       _send(_tunnelAck, [0x04, _channel, seq, 0x00]);

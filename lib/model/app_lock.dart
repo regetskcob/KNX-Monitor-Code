@@ -82,11 +82,18 @@ class AppLock extends ChangeNotifier with WidgetsBindingObserver {
     LockAuthenticator? authenticator,
     KeyVault? vault,
     DateTime Function()? clock,
+    Duration Function()? elapsed,
     Future<void> Function(bool hide)? secureScreen,
   }) : _authenticator = authenticator ?? SystemLockAuthenticator(),
        _vault = vault ?? SecureKeyVault(),
        _clock = clock ?? DateTime.now,
+       // A test that sets the wall clock moves the monotonic one along, unless it sets both.
+       _elapsed = elapsed ?? (clock == null ? (() => _uptime.elapsed) : () => clock().difference(_epoch)),
        _secureScreen = secureScreen ?? _androidSecureScreen;
+
+  /// Time since the app started; unlike [DateTime.now] it cannot be set forward.
+  static final _uptime = Stopwatch()..start();
+  static final _epoch = DateTime.utc(2000);
 
   static final instance = AppLock();
 
@@ -131,6 +138,13 @@ class AppLock extends ChangeNotifier with WidgetsBindingObserver {
   /// Longest wait time; anything above that would come from a misset clock.
   static const _maxWait = Duration(minutes: 15);
 
+  /// Each failed attempt takes at least this long, whatever the clocks say.
+  @visibleForTesting
+  static Duration failDelay = const Duration(seconds: 1);
+
+  /// After this many failed attempts in one run, only a restart of the app allows more.
+  static const maxFailsPerRun = 10;
+
   static Future<void> _androidSecureScreen(bool hide) async {
     if (kIsWeb || !Platform.isAndroid) return;
     try {
@@ -153,6 +167,7 @@ class AppLock extends ChangeNotifier with WidgetsBindingObserver {
   final LockAuthenticator _authenticator;
   final KeyVault _vault;
   final DateTime Function() _clock;
+  final Duration Function() _elapsed;
   final Future<void> Function(bool hide) _secureScreen;
 
   bool _enabled = false;
@@ -165,7 +180,14 @@ class AppLock extends ChangeNotifier with WidgetsBindingObserver {
   bool _prompting = false;
   DateTime? _leftAt;
   DateTime? _waitUntil;
+
+  /// The same wait on the monotonic clock ([_elapsed]), in memory only: setting the device clock
+  /// forward does not end it.
+  Duration? _waitUntilElapsed;
   int _fails = 0;
+
+  /// Failed attempts since the app started ([maxFailsPerRun]).
+  int _failsThisRun = 0;
   bool _observing = false;
   bool _hideScreen = false;
 
@@ -199,8 +221,26 @@ class AppLock extends ChangeNotifier with WidgetsBindingObserver {
   /// Show nothing in the Android app switcher and prevent screenshots.
   bool get hideScreen => _hideScreen;
 
-  /// Until when nothing may be tried after too many failed attempts.
-  DateTime? get waitUntil => _waitUntil;
+  /// Until when nothing may be tried after too many failed attempts: the stricter of the stored
+  /// deadline and the one on the monotonic clock.
+  DateTime? get waitUntil {
+    final wall = _waitUntil;
+    final mono = _waitUntilElapsed;
+    final now = _clock();
+    final byMono = mono == null ? null : now.add(mono - _elapsed());
+    if (wall == null) return byMono;
+    if (byMono == null) return wall;
+    return byMono.isAfter(wall) ? byMono : wall;
+  }
+
+  /// Too many failed attempts in this run: only after a restart of the app can it be tried again.
+  bool get restartRequired => _failsThisRun >= maxFailsPerRun;
+
+  bool get _waiting {
+    final wall = _waitUntil;
+    final mono = _waitUntilElapsed;
+    return (wall != null && _clock().isBefore(wall)) || (mono != null && _elapsed() < mono);
+  }
 
   Future<bool> systemSupported() => _authenticator.supported();
 
@@ -214,8 +254,12 @@ class AppLock extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
     await _loadState(prefs);
     final wait = _waitUntil;
-    final latest = _clock().add(_maxWait);
+    final now = _clock();
+    final latest = now.add(_maxWait);
     if (wait != null && wait.isAfter(latest)) _waitUntil = latest;
+    // The rest of a stored wait also runs on the monotonic clock from here on.
+    final rest = _waitUntil?.difference(now);
+    _waitUntilElapsed = rest == null || rest <= Duration.zero ? null : _elapsed() + rest;
     _locked = _enabled;
     unawaited(_applySecureScreen());
     if (!_observing) {
@@ -456,8 +500,7 @@ class AppLock extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<bool> _check(String secret, String key, String fallback) async {
-    final wait = _waitUntil;
-    if (wait != null && _clock().isBefore(wait)) return false;
+    if (restartRequired || _waiting) return false;
     final prefs = await SharedPreferences.getInstance();
     String? stored;
     try {
@@ -477,9 +520,13 @@ class AppLock extends ChangeNotifier with WidgetsBindingObserver {
       await _resetFails(prefs);
     } else {
       _fails++;
+      _failsThisRun++;
       final delay = waitAfter(_fails);
       _waitUntil = delay == Duration.zero ? null : _clock().add(delay);
+      _waitUntilElapsed = delay == Duration.zero ? null : _elapsed() + delay;
       await _persist(prefs);
+      // Slows down guessing even before the waits start, independent of both clocks.
+      await Future<void>.delayed(failDelay);
     }
     notifyListeners();
     return ok;
@@ -504,7 +551,9 @@ class AppLock extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> _resetFails(SharedPreferences prefs) async {
     _fails = 0;
+    _failsThisRun = 0;
     _waitUntil = null;
+    _waitUntilElapsed = null;
     await _persist(prefs);
   }
 

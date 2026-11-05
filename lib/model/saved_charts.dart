@@ -10,6 +10,7 @@ import '../knx/telegram.dart';
 import '../platform/addon.dart';
 import 'bus_metrics.dart';
 import 'installation.dart';
+import 'box_keyring_consent.dart';
 import 'plan.dart';
 
 /// Named charts (name → group addresses) per installation: stored under the ETS
@@ -177,7 +178,9 @@ class SavedCharts extends ChangeNotifier {
     if (!_loaded || !Addon.available) return;
     final text = jsonEncode(serverJson());
     if (text == _shared) return;
-    if (Addon.box != null) {
+    if (Addon.box case final box?) {
+      // A box paired through a foreign link gets nothing before the user agreed.
+      if (!await BoxProjectConsent.allowed(box)) return;
       await Addon.putFile(serverPath, utf8.encode(text));
     } else {
       await InstallationStore.instance.storage.write(serverPath, text);

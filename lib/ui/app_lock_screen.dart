@@ -111,6 +111,7 @@ class _LockViewState extends State<_LockView> {
   }
 
   String _wrongText() {
+    if (_lock.restartRequired) return s.appLockRestart;
     final wait = _lock.waitUntil;
     if (wait == null || !DateTime.now().isBefore(wait)) return s.appLockWrong;
     return s.appLockWait(wait.difference(DateTime.now()).inSeconds + 1);

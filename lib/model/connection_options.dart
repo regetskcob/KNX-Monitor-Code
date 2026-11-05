@@ -103,8 +103,9 @@ class ConnectionOptions extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Settings for the add-on server (`/api/bus`).
-  Map<String, Object?> toAddon({required String host, required int port, bool keyringAllowed = true}) => {
+  /// Settings for the add-on server (`/api/bus`). Without [secretsAllowed] no IP Secure credential
+  /// goes along – neither from the keyring nor typed in – and the box keeps what it has.
+  Map<String, Object?> toAddon({required String host, required int port, bool secretsAllowed = true}) => {
     'enabled': true,
     'mode': mode == ConnectionMode.homeAssistant ? 'ha' : mode.name,
     'host': host,
@@ -119,25 +120,26 @@ class ConnectionOptions extends ChangeNotifier {
     if (mode == ConnectionMode.secure)
       'secure': {
         // Without consent, no user ID either: the box keeps what it has.
-        if (keyringAllowed || secureUserPassword.isNotEmpty)
-          'userId': _addonCredentials(keyringAllowed)?.userId ?? secureUserId,
+        if (secretsAllowed) 'userId': _addonCredentials(secretsAllowed)?.userId ?? secureUserId,
         // Empty = keep the password stored on the server.
-        'userPassword': _addonCredentials(keyringAllowed)?.password ?? '',
-        'deviceAuthentication': _addonCredentials(keyringAllowed)?.deviceAuthentication ?? '',
+        'userPassword': _addonCredentials(secretsAllowed)?.password ?? '',
+        'deviceAuthentication': _addonCredentials(secretsAllowed)?.deviceAuthentication ?? '',
       },
   };
 
-  /// Like [toAddon], but on a box first asks whether anything from the keyring may go there.
+  /// Like [toAddon], but on a box first asks whether IP Secure credentials may go there. Typed-in
+  /// passwords need the same consent as the keyring ([BoxKeyringConsent]): a box paired via a
+  /// foreign link would otherwise receive them in plain HTTP.
   Future<Map<String, Object?>> toAddonAsked({required String host, required int port}) async {
     final box = Addon.box;
-    final fromKeyring = mode == ConnectionMode.secure && secureUserPassword.isEmpty;
-    final allowed = box == null || !fromKeyring || await BoxKeyringConsent.allowed(box);
-    return toAddon(host: host, port: port, keyringAllowed: allowed);
+    final sendsSecrets = mode == ConnectionMode.secure && secureCredentials() != null;
+    final allowed = box == null || !sendsSecrets || await BoxKeyringConsent.allowed(box);
+    return toAddon(host: host, port: port, secretsAllowed: allowed);
   }
 
-  /// Data entered by the user is always sent; data from the keyring only with consent.
-  ({int userId, String password, String? deviceAuthentication})? _addonCredentials(bool keyringAllowed) =>
-      keyringAllowed || secureUserPassword.isNotEmpty ? secureCredentials() : null;
+  /// Credentials for the box, only with consent.
+  ({int userId, String password, String? deviceAuthentication})? _addonCredentials(bool secretsAllowed) =>
+      secretsAllowed ? secureCredentials() : null;
 
   /// Credentials: entered or from the keyring (matching the tunnel address).
   ({int userId, String password, String? deviceAuthentication})? secureCredentials() {

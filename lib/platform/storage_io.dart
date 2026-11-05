@@ -132,10 +132,22 @@ class IoStorage implements AppStorage {
   Future<Uint8List?> _keyNow() => _key ??= keySource == null ? Future.value() : keySource!.load(_quarantine);
 
   Future<File> _file(String path) async {
-    final base = await _base;
-    final file = File('${base.path}/$path');
+    final file = File(await _resolve(path));
     await file.parent.create(recursive: true);
     return file;
+  }
+
+  /// Absolute path of [path] below the base folder. Throws [ArgumentError] for a path that would
+  /// leave it ([confinedPath]); the normalised comparison afterwards guards the join itself.
+  Future<String> _resolve(String path) async {
+    confinedPath(path);
+    final base = await _base;
+    final joined = '${base.path}/$path';
+    final windows = Platform.isWindows;
+    final root = Uri.directory(base.path, windows: windows).normalizePath().path;
+    final target = Uri.file(joined, windows: windows).normalizePath().path;
+    if (!target.startsWith(root)) throw ArgumentError.value(path, 'path', 'leaves the storage folder');
+    return joined;
   }
 
   /// Files that could not be read last time; see [write].
@@ -312,8 +324,7 @@ class IoStorage implements AppStorage {
 
   @override
   Future<List<StoredFile>> list(String dir) async {
-    final base = await _base;
-    final d = Directory('${base.path}/$dir');
+    final d = Directory(await _resolve(dir));
     if (!await d.exists()) return [];
     return [
       await for (final f in d.list())

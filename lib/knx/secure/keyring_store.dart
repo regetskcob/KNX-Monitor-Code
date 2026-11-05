@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -55,8 +57,21 @@ class KeyringStore extends ChangeNotifier {
   /// Data Secure telegrams with an invalid MAC/sequence number (since start).
   final rejected = ValueNotifier<int>(0);
 
+  /// Highest Data Secure sequence number seen per sender, per installation (encrypted storage like
+  /// the other files). Without it, a restart would accept older recorded telegrams as valid again.
+  static const sequencePath = 'secure_sequence.json';
+
+  /// Counters change with every secured telegram: written at most this often.
+  @visibleForTesting
+  static Duration sequenceDelay = const Duration(seconds: 2);
+
+  Timer? _sequenceTimer;
+  Future<void> Function()? _pendingSequence;
+
   /// Load the keyring of the (just switched) active installation.
   Future<void> reload() async {
+    // Counters still waiting belong to the previous installation.
+    await flushSequences();
     _reset();
     withoutKey.value = 0;
     rejected.value = 0;
@@ -99,19 +114,25 @@ class KeyringStore extends ChangeNotifier {
     try {
       final text = await _readStored();
       if (text == null) return;
-      _apply(jsonDecode(text) as Map<String, Object?>);
+      _apply(jsonDecode(text) as Map<String, Object?>, seen: await _storedSequences());
       notifyListeners();
     } on Object {
       // Unreadable: treat as not loaded.
     }
   }
 
-  void _apply(Map<String, Object?> j) {
+  /// [seen]: counters stored from earlier runs; the higher one of keyring and [seen] counts.
+  void _apply(Map<String, Object?> j, {Map<int, int> seen = const {}}) {
     final keyring = Keyring.fromJson(j);
     project = keyring.project;
     dataSecure = keyring.groupKeys.isEmpty
         ? null
-        : DataSecure(groupKeys: keyring.groupKeys, sequenceNumbers: keyring.sequenceNumbers);
+        : (DataSecure(
+            groupKeys: keyring.groupKeys,
+            sequenceNumbers: {
+              for (final MapEntry(:key, :value) in keyring.sequenceNumbers.entries) key: max(value, seen[key] ?? value),
+            },
+          )..onSequence = _sequenceChanged);
     tunnels = [
       for (final t in (j['tunnels'] as List? ?? const []).cast<Map<String, Object?>>())
         KeyringTunnel(
@@ -142,7 +163,7 @@ class KeyringStore extends ChangeNotifier {
     };
     await _writeStored(jsonEncode(json));
     await shareWithBox();
-    _apply(json);
+    _apply(json, seen: await _seenSoFar());
     withoutKey.value = 0;
     rejected.value = 0;
     notifyListeners();
@@ -185,7 +206,7 @@ class KeyringStore extends ChangeNotifier {
 
   /// Adopts the state from a handover package into the active installation.
   Future<void> adoptStored(Map<String, Object?> json) async {
-    _apply(json);
+    _apply(json, seen: await _seenSoFar());
     await _writeStored(jsonEncode(json));
     await shareWithBox();
     withoutKey.value = 0;
@@ -200,6 +221,10 @@ class KeyringStore extends ChangeNotifier {
       await AppStorage.instance.delete(_path);
     } else {
       await _vault.delete(key: _key);
+      _sequenceTimer?.cancel();
+      _sequenceTimer = null;
+      _pendingSequence = null;
+      await InstallationStore.instance.storage.delete(sequencePath);
     }
     _reset();
     notifyListeners();
@@ -210,7 +235,8 @@ class KeyringStore extends ChangeNotifier {
   Future<void> shareWithBox() async {
     if (kIsWeb || Addon.box == null) return;
     final text = await _readStored();
-    if (text == null || !await BoxKeyringConsent.allowed(Addon.box!)) return;
+    final box = Addon.box!;
+    if (text == null || !await BoxProjectConsent.allowed(box) || !await BoxKeyringConsent.allowed(box)) return;
     try {
       await Addon.putFile(_path, utf8.encode(text));
       await BoxShare.remember(InstallationStore.instance.active.id, _path, text);
@@ -223,8 +249,10 @@ class KeyringStore extends ChangeNotifier {
   /// kept.
   Future<bool> syncWithBox() async {
     if (kIsWeb || Addon.box == null) return false;
+    final box = Addon.box!;
+    if (!await BoxProjectConsent.allowed(box)) return false;
     final local = await _readStored();
-    if (local != null && !await BoxKeyringConsent.allowed(Addon.box!)) return false;
+    if (local != null && !await BoxKeyringConsent.allowed(box)) return false;
     final outcome = await BoxShare.sync(
       InstallationStore.instance.active.id,
       _path,
@@ -250,6 +278,57 @@ class KeyringStore extends ChangeNotifier {
       // No keychain (e.g. Linux without Secret Service): keep it in memory for this session only
       // instead of falling back to plain text.
       debugPrint('Keyring nicht dauerhaft gespeichert: $e');
+    }
+  }
+
+  /// Counters known now: in memory, otherwise stored.
+  Future<Map<int, int>> _seenSoFar() async => dataSecure?.lastSequences ?? await _storedSequences();
+
+  Future<Map<int, int>> _storedSequences() async {
+    // In the add-on the server keeps its own counters.
+    if (kIsWeb) return const {};
+    final stored = await readStored(
+      InstallationStore.instance.storage,
+      sequencePath,
+      (text) => (jsonDecode(text) as Map)['sequence'] as Map? ?? const {},
+    );
+    return {
+      for (final MapEntry(:key, :value) in (stored ?? const {}).entries)
+        if ((int.tryParse('$key'), value) case (final int sender, final int seq)) sender: seq,
+    };
+  }
+
+  /// A received telegram advanced a counter: store it shortly after, together with any that follow.
+  void _sequenceChanged() {
+    final ds = dataSecure;
+    if (kIsWeb || ds == null) return;
+    // The installation of now, even if the timer only fires after a switch.
+    final storage = InstallationStore.instance.storage;
+    _pendingSequence = () => storage.write(
+      sequencePath,
+      jsonEncode({
+        'version': 1,
+        'sequence': {for (final MapEntry(:key, :value) in ds.lastSequences.entries) '$key': value},
+      }),
+    );
+    _sequenceTimer ??= Timer(sequenceDelay, () => unawaited(flushSequences()));
+  }
+
+  /// Writes waiting counters right away (before switching installations, in tests).
+  Future<void> flushSequences() async {
+    _sequenceTimer?.cancel();
+    _sequenceTimer = null;
+    final write = _pendingSequence;
+    _pendingSequence = null;
+    if (write == null) return;
+    try {
+      await write();
+    } on Object catch (e) {
+      debugPrint('Data Secure: Zähler nicht gespeichert: $e');
+      // Keep it and try again, unless newer counters are already waiting: a
+      // lost write would let a recorded telegram count as new after a restart.
+      _pendingSequence ??= write;
+      _sequenceTimer ??= Timer(sequenceDelay, () => unawaited(flushSequences()));
     }
   }
 

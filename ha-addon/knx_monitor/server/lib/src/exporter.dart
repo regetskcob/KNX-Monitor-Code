@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'atomic_file.dart';
 import 'dpt_value.dart';
 import 'grafana.dart';
 import 'http.dart';
@@ -203,7 +204,9 @@ class DataExporter {
   }
 
   /// Applies changes. Empty tokens mean "unchanged", `clearInfluxToken`
-  /// deletes. Without a Prometheus token one is generated and returned once,
+  /// deletes, and so does a new InfluxDB target without a new token (the
+  /// token belongs to the old target). Without a Prometheus token one is
+  /// generated and returned once,
   /// because `/metrics` never answers without one. Throws [FormatException]
   /// for an invalid target; then everything stays as it was.
   Future<String?> update(Map<String, Object?> changes) async {
@@ -214,6 +217,9 @@ class DataExporter {
         merged[key] = key == 'prometheusToken' ? settings.prometheusToken : settings.influxToken;
       }
     }
+    final url = changes['influxUrl'];
+    final newToken = changes['influxToken'] is String && (changes['influxToken']! as String).isNotEmpty;
+    if (!newToken && url is String && url != settings.influxUrl) merged['influxToken'] = '';
     if (changes['clearInfluxToken'] == true) merged['influxToken'] = '';
     final next = ExportSettings.fromJson(merged);
     if (next.influx) {
@@ -228,9 +234,7 @@ class DataExporter {
       next.prometheusToken = generated;
     }
     settings = next;
-    final tmp = File('${_file.path}.tmp');
-    await tmp.writeAsString(jsonEncode(settings.toJson()), flush: true);
-    await tmp.rename(_file.path);
+    await writeAtomic(_file, text: jsonEncode(settings.toJson()));
     await _apply();
     return generated;
   }

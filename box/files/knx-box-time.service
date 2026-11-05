@@ -4,3 +4,17 @@ Description=KNX Monitor Box: Uhrzeit stellen
 [Service]
 Type=oneshot
 ExecStart=/usr/local/lib/knx-box/settime.sh /var/lib/knx-box/time-request.json
+# Root helper: hwclock (CAP_SYS_TIME); chronyc talks to chronyd through its
+# socket in /run/chrony, which belongs to _chrony (CAP_DAC_OVERRIDE, and
+# CAP_CHOWN/CAP_FOWNER in case chronyc adjusts its own client socket); reads
+# the request as the server user (CAP_SETUID, CAP_SETGID) and removes it from
+# the server's directory (CAP_DAC_READ_SEARCH, CAP_DAC_OVERRIDE).
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=CAP_SYS_TIME CAP_SETUID CAP_SETGID CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE CAP_CHOWN CAP_FOWNER

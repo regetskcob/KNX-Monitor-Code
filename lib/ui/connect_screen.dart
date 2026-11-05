@@ -210,31 +210,128 @@ class _ConnectScreenState extends State<ConnectScreen> {
 
   /// Pairing link from the QR code: ask, then connect via the box. If the
   /// monitor is currently running, the link waits until it is closed.
+  ///
+  /// Such a link can come from any app, web page or QR code: the box it leads
+  /// to gets no project before the user confirmed that separately
+  /// ([BoxProjectConsent]).
   Future<void> _onIncoming() async {
     final incoming = BoxConnection.instance.incoming;
     final link = incoming.value;
     if (link == null || !mounted || !(ModalRoute.of(context)?.isCurrent ?? true)) return;
     incoming.value = null;
     // Foreign address: the clear warning in [_setupBox] is enough.
-    if (!link.isLocal) return _setupBox(link);
-    // Plain confirmation: the platform's system dialog.
-    final ok = await showAdaptiveDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog.adaptive(
-        title: Text(s.boxPairTitle),
-        content: Text(s.boxPairBody(link.name.isEmpty ? link.address : '${link.name} (${link.address})')),
-        actions: [
-          horizontDialogAction(context, label: s.commonCancel, onPressed: () => Navigator.pop(context, false)),
-          horizontDialogAction(
-            context,
-            label: s.connectButton,
-            onPressed: () => Navigator.pop(context, true),
-            primary: true,
+    if (!link.isLocal) return _setupBox(link, external: true);
+    if (await _confirmBoxLink(link)) await _setupBox(link, external: true);
+  }
+
+  /// Plain confirmation (the platform's system dialog). The address comes first:
+  /// the name is whatever the link says. Without a certificate fingerprint a
+  /// clear warning that the connection is unencrypted.
+  Future<bool> _confirmBoxLink(BoxLink link) async =>
+      await showAdaptiveDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog.adaptive(
+          title: Text(s.boxPairTitle),
+          content: Material(
+            type: MaterialType.transparency,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: Gap.item,
+              children: [
+                Text(
+                  link.address,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                if (link.name.isNotEmpty) Text(s.boxPairNamed(link.name)),
+                Text(s.boxPairBody),
+                if (!link.encrypted) HorizontNotice(HorizontStatus.warning, child: Text(s.boxPairUnencrypted)),
+              ],
+            ),
           ),
-        ],
-      ),
-    );
-    if (ok == true) await _setupBox(link);
+          actions: [
+            horizontDialogAction(context, label: s.commonCancel, onPressed: () => Navigator.pop(context, false)),
+            horizontDialogAction(
+              context,
+              label: s.connectButton,
+              onPressed: () => Navigator.pop(context, true),
+              primary: true,
+            ),
+          ],
+        ),
+      ) ==
+      true;
+
+  static bool _sameBox(BoxLink saved, BoxLink link) {
+    if (saved.url.host != link.url.host) return false;
+    if (saved.fp.isNotEmpty && saved.fp != link.fp) return false;
+    final sameAddress = saved.url.scheme == link.url.scheme && saved.url.port == link.url.port;
+    final upgrade = saved.fp.isEmpty && link.fp.isNotEmpty && link.url.scheme == 'https';
+    return sameAddress || upgrade;
+  }
+
+  static String _boxLabel(BoxLink box) => box.name.isEmpty ? box.address : '${box.name} (${box.address})';
+
+  /// Another box is paired already: replacing it needs an explicit yes. The same
+  /// box (same address including scheme and port; a box that only gained HTTPS
+  /// with a fingerprint on the same host) does not ask.
+  Future<bool> _confirmReplaceBox(BoxLink link) async {
+    final saved = BoxConnection.instance.saved;
+    if (saved == null || _sameBox(saved, link)) return true;
+    return await showAdaptiveDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog.adaptive(
+            title: Text(s.boxReplaceTitle),
+            content: Text(s.boxReplaceBody(_boxLabel(saved), _boxLabel(link))),
+            actions: [
+              horizontDialogAction(
+                context,
+                label: s.commonCancel,
+                primary: true,
+                onPressed: () => Navigator.pop(context, false),
+              ),
+              horizontDialogAction(
+                context,
+                label: s.boxReplaceConfirm,
+                destructive: true,
+                onPressed: () => Navigator.pop(context, true),
+              ),
+            ],
+          ),
+        ) ==
+        true;
+  }
+
+  /// Boxes whose project question was answered in this run: "not yet" is asked
+  /// again only after the next start.
+  static final _projectAsked = <String>{};
+
+  /// Whether the project may go to [box]; asks once for a box paired via a link
+  /// from outside ([BoxProjectConsent]).
+  Future<bool> _projectAllowed(BoxLink box) async {
+    if (!await BoxProjectConsent.pending(box)) return true;
+    if (!mounted || !_projectAsked.add('${box.url}#${box.fp}')) return false;
+    final ok =
+        await showAdaptiveDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog.adaptive(
+            title: Text(s.boxProjectTitle),
+            content: Text(s.boxProjectBody(_boxLabel(box))),
+            actions: [
+              horizontDialogAction(context, label: s.boxProjectDeny, onPressed: () => Navigator.pop(context, false)),
+              horizontDialogAction(
+                context,
+                label: s.boxProjectAllow,
+                primary: true,
+                onPressed: () => Navigator.pop(context, true),
+              ),
+            ],
+          ),
+        ) ==
+        true;
+    if (ok) await BoxProjectConsent.confirm(box);
+    return ok;
   }
 
   /// Address not in the local network: connecting would send the project and
@@ -350,13 +447,26 @@ class _ConnectScreenState extends State<ConnectScreen> {
     );
   }
 
-  /// Setup from the sticker QR code: Wi-Fi, pairing, clock, gateway.
-  Future<void> _setupBox(BoxLink link) async {
+  /// Setup from the sticker QR code: Wi-Fi, pairing, clock, gateway. [external]:
+  /// the link came from outside the app ([_onIncoming]).
+  Future<void> _setupBox(BoxLink link, {bool external = false}) async {
     FocusManager.instance.primaryFocus?.unfocus();
     if (!link.isLocal && !await _confirmForeignBox(link)) return;
+    // Scanned or pasted without a certificate fingerprint: the same confirmation
+    // with the warning (a link from outside has shown it already).
+    if (!external && link.isLocal && !link.encrypted && (!mounted || !await _confirmBoxLink(link))) return;
+    if (!mounted || !await _confirmReplaceBox(link)) return;
     if (!mounted || !await unlock(context, Feature.box) || !mounted) return;
     // Newly paired: ask again before sending the keyring.
     await BoxKeyringConsent.forget(link);
+    // A link from outside may lead to a box someone else set up: the project
+    // waits for an explicit yes. The app's own scanner and the pairing dialog
+    // count as that yes.
+    if (external) {
+      await BoxProjectConsent.markPending(link);
+    } else {
+      await BoxProjectConsent.confirm(link);
+    }
     if (!mounted) return;
     final done = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -368,6 +478,12 @@ class _ConnectScreenState extends State<ConnectScreen> {
     // right away.
     await offerBoxPassword(context);
     if (!mounted) return;
+    if (Addon.box case final box? when !await _projectAllowed(box)) {
+      // Paired, but nothing of the project goes there yet.
+      await _modeChanged();
+      await _loadAddon(autoOpen: true, report: true);
+      return;
+    }
     // The box records for the active installation: same id, project, keyring
     // and gateway as this device. That way it knows names, types and timers,
     // records Secure readably, and the history is assigned.
@@ -450,7 +566,8 @@ class _ConnectScreenState extends State<ConnectScreen> {
   /// state, the user decides.
   Future<void> _shareWithBox() async {
     final installations = InstallationStore.instance;
-    if (Addon.box == null) return;
+    final box = Addon.box;
+    if (box == null || !await _projectAllowed(box)) return;
     if (installations.boxList.isEmpty) await installations.syncBox(adopt: false);
     if (!await installations.shareChangesWithBox() || !mounted) return;
     final replace = await showAdaptiveDialog<bool>(

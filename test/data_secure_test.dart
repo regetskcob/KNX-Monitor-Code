@@ -1,14 +1,20 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:knx/secure.dart';
 import 'package:knx_monitor/knx/secure/keyring.dart';
+import 'package:knx_monitor/knx/secure/keyring_store.dart';
 import 'package:knx_monitor/knx/telegram.dart';
+import 'package:knx_monitor/model/installation.dart';
+import 'package:knx_monitor/platform/storage.dart';
+import 'package:knx_monitor/platform/storage_io.dart';
 
 /// Keyring-Dateien und Beispiele aus den Tests von xknx (MIT). Data Secure selbst testet
 /// packages/knx (test/data_secure_test.dart); hier geht es um den Keyring der App.
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Keyring secureTest;
   setUpAll(() => secureTest = Keyring.parse(File('test/resources/SecureTest.knxkeys').readAsStringSync(), 'test'));
 
@@ -47,5 +53,29 @@ void main() {
     final (serverResult, serverPlain) = DataSecure.fromJson(json).receive(cemi);
     expect(serverResult, SecureResult.decrypted);
     expect(serverPlain, plain);
+  });
+
+  test('Zähler überstehen einen Neustart: ein mitgeschnittenes Telegramm gilt danach nicht wieder', () async {
+    final dir = await Directory.systemTemp.createTemp('data_secure_seq');
+    addTearDown(() => dir.delete(recursive: true));
+    AppStorage.instance = IoStorage(dir);
+    InstallationStore.instance.debugReset();
+    final id = InstallationStore.instance.active.id;
+    FlutterSecureStorage.setMockInitialValues({'knx_keyring:$id': jsonEncode(secureTest.toJson())});
+    final store = KeyringStore.instance;
+    final cemi = fromHex('29003ce0400904001103f110002446cfef4ac085e7092ab062b44d');
+
+    await store.reload();
+    expect(store.dataSecure!.receive(cemi).$1, SecureResult.decrypted);
+    expect(store.dataSecure!.receive(cemi).$1, SecureResult.invalid, reason: 'Wiederholung im selben Lauf');
+    await store.flushSequences();
+    final stored = await AppStorage.instance.read('installations/$id/${KeyringStore.sequencePath}');
+    expect(stored, contains('${0x4009}'));
+
+    await store.reload(); // wie ein Neustart
+    expect(store.dataSecure!.receive(cemi).$1, SecureResult.invalid, reason: 'älteres Telegramm nach dem Neustart');
+
+    await store.clear();
+    expect(await AppStorage.instance.read('installations/$id/${KeyringStore.sequencePath}'), isNull);
   });
 }

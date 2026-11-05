@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:horizont/horizont.dart';
 
 import '../l10n/locale_controller.dart';
@@ -12,6 +11,7 @@ import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'common.dart';
 import 'plant_report_screen.dart' show plantNotifyError;
+import '../platform/secret_clipboard.dart';
 
 /// Data export to InfluxDB and Prometheus with a Grafana template. Off by
 /// default; credentials only go to the server and never come back.
@@ -120,10 +120,7 @@ class _DataExportScreenState extends State<DataExportScreen> {
         ],
       ),
       actions: [
-        TextButton(
-          onPressed: () => unawaited(Clipboard.setData(ClipboardData(text: token))),
-          child: Text(s.dataExportCopy),
-        ),
+        TextButton(onPressed: () => unawaited(copySecret(token)), child: Text(s.dataExportCopy)),
         TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(s.dataExportClose)),
       ],
     ),

@@ -48,5 +48,7 @@ echo "$version" >"$dir/VERSION"
 
 mkdir -p "$(dirname "$out")"
 # macOS: no ._ files and extended attributes in the bundle.
-COPYFILE_DISABLE=1 tar -czf "$out" -C "$stage" knx-box
+# --no-xattrs: bsdtar on macOS otherwise writes com.apple.provenance as pax
+# headers, and GNU tar on the Pi warns about each of them.
+COPYFILE_DISABLE=1 tar --no-xattrs -czf "$out" -C "$stage" knx-box
 echo "Paket: $out ($(du -h "$out" | cut -f1))"

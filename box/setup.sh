@@ -125,10 +125,10 @@ install -d -m 0755 "$root/usr/local/lib/knx-box"
 install -m 0755 "$here/files/firstboot.sh" "$here/files/settime.sh" "$here/files/lan-access.sh" \
   "$here/files/data-mount.sh" "$here/files/secrets.sh" "$here/files/tls-cert.sh" "$root/usr/local/lib/knx-box/"
 install -m 0644 "$here/files/box-common.sh" "$root/usr/local/lib/knx-box/"
-install -m 0644 "$here/files/firewall.nft" "$root/usr/local/lib/knx-box/"
+install -m 0644 "$here/files/firewall.nft" "$here/files/lan.nft" "$root/usr/local/lib/knx-box/"
 install -d -m 0755 "$root/etc/systemd/system"
 for unit in knx-box.service knx-box-firstboot.service knx-box-firewall.service knx-box-data.service \
-  knx-box-time.path knx-box-time.service knx-box-lan.path knx-box-lan.service \
+  knx-box-time.path knx-box-time.service knx-box-lan.path knx-box-lan.service knx-box-lan-lock.service \
   knx-box-secrets.path knx-box-secrets.service knx-box-reset.service; do
   install -m 0644 "$here/files/$unit" "$root/etc/systemd/system/"
 done
@@ -198,7 +198,8 @@ usermod -aG dialout knx-box
 systemctl disable NetworkManager-wait-online.service 2>/dev/null || true
 systemctl enable NetworkManager.service avahi-daemon.service chrony.service \
   knx-box-firstboot.service knx-box-data.service knx-box.service \
-  knx-box-time.path knx-box-lan.path knx-box-lan.service knx-box-secrets.path knx-box-reset.service
+  knx-box-time.path knx-box-lan.path knx-box-lan.service knx-box-lan-lock.service knx-box-secrets.path \
+  knx-box-reset.service
 # A set-up box with the firewall disabled has chosen INTERNET_SHARING=yes:
 # the update leaves it that way.
 firewall=yes
@@ -213,6 +214,10 @@ if [ "$image" = no ]; then
   [ "$firewall" = no ] || systemctl start knx-box-firewall.service
   [ -f "$env_file" ] || systemctl start knx-box-firstboot.service
   systemctl start knx-box-data.service
+  # Load the closed table first (knx-box-lan-lock.service), then let
+  # knx-box-lan.service open it again if the cable is allowed. Established
+  # connections, such as this SSH session, are not affected.
+  systemctl start knx-box-lan-lock.service
   systemctl restart knx-box-lan.service knx-box-time.path knx-box-lan.path knx-box-secrets.path
   systemctl restart systemd-journald.service || true
   # If even the start fails, treat it like a silent server: roll back.

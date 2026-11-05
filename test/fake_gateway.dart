@@ -81,6 +81,9 @@ class FakeGateway {
 
   void close() => _socket.close();
 
+  /// Sends any TUNNELING_REQUEST body to the client (malformed packets in tests).
+  void sendTunnelRequest(List<int> body) => _send(0x0420, body);
+
   void _send(int service, List<int> body) {
     final len = 6 + body.length;
     _socket.send([0x06, 0x10, service >> 8, service & 0xFF, len >> 8, len & 0xFF, ...body], _client!, _clientPort);

@@ -85,8 +85,14 @@ host acts on it after validating the content:
 | `wifi-request` | `knx-box-secrets.path` | `secrets.sh` (hotspot password) |
 | `sticker-scrub` | `knx-box-secrets.path` | `secrets.sh` (remove passwords from the boot partition) |
 
-`secrets.sh` treats these files as untrusted input: it validates them, never
-executes them and deletes symbolic links instead of following them.
+The helpers treat these files as untrusted input: they validate them, never
+execute them and delete symbolic links instead of following them. Since the
+directory belongs to the server user, a compromised server could swap a file
+for a link between check and use; so root never opens a file there. The
+helpers read and write it as the server user (`setpriv`, `as_data_user` in
+`box/files/box-common.sh`), and a link reaches nothing the server could not
+reach anyway. Only removing a name stays with root, since `unlink` does not
+follow links.
 
 ## Building the image
 
@@ -143,8 +149,12 @@ match the version in `config.yaml`) and on manual dispatch:
    `box/build-image.sh` with pi-gen pinned to the tag
    `2026-10-06-raspios-trixie-arm64` and its commit.
 
-On tags, package and image are signed with cosign (keyless, through the run's
-OIDC token); the `.sigstore.json` bundles are uploaded next to the artifacts.
+When a `box-v*` tag is pushed, package and image are signed with cosign
+(keyless, through the run's OIDC token); the `.sigstore.json` bundles are
+uploaded next to the artifacts. Manual runs are never signed, and a tag build
+refuses a pi-gen revision other than the pinned one. `tool/release.sh box
+<version>` publishes only the run of the tag push for the tagged commit, after
+verifying every signature with cosign.
 Verification is described in [release-security.md](release-security.md).
 
 ### Supported Raspberry Pi models
@@ -311,7 +321,8 @@ WLAN_PASSWORD=new-wifi-password
 and restart the box. `knx-box-reset.service` (only started when the file exists)
 runs `secrets.sh --reset`: it deletes the file first, so no plain text stays on the
 card even if the content is invalid, then hands the box password to the server
-through `/var/lib/knx-box/password-reset` (0600) and writes the Wi-Fi password
+through `/var/lib/knx-box/password-reset` (0600, written as the server user,
+not as root) and writes the Wi-Fi password
 into the hotspot profile. The server consumes `password-reset` on start
 (`_consumeReset` in `box_access.dart`). Paired devices stay paired.
 
@@ -327,7 +338,7 @@ scrubbed), it generates a random password and prints it once to the journal
 | Path | Content |
 | --- | --- |
 | `/opt/knx-box/` | `server`, `web/`, `VERSION`, and after an update `server.prev`, `web.prev`, `VERSION.prev` |
-| `/usr/local/lib/knx-box/` | Helper scripts and `firewall.nft` |
+| `/usr/local/lib/knx-box/` | Helper scripts, `firewall.nft` and `lan.nft` |
 | `/etc/knx-box/env` | Server environment written by first boot (0600) |
 | `/etc/knx-box-tls/` | `cert.pem` (0644), `key.pem` (0640, group `knx-box`) |
 | `/boot/firmware/` | `knx-box.txt`, link, QR codes, PDFs, optional `knx-box-reset.txt` |
@@ -365,7 +376,12 @@ sudo mkfs.ext4 -L KNXBOXDATA /dev/sda1   # erases that partition
    `/dev/disk/by-label/KNXBOXDATA`, since USB drives can appear late.
 3. Run `fsck.ext4 -p`. Exit code 0 (clean) or 1 (repaired) continues; anything
    higher keeps the data on the SD card.
-4. Mount with `noatime,commit=5`. On failure, keep the data on the SD card.
+4. Mount with `noatime,commit=5,nosuid,nodev,noexec`. On failure, keep the data
+   on the SD card.
+
+Whoever plugs in a drive labelled `KNXBOXDATA` decides what the server reads
+at the next boot, just like whoever holds the SD card; the mount options only
+keep set-uid programs, device nodes and executables on it from taking effect.
 
 There is deliberately no `/etc/fstab` entry. `StateDirectory=` and the path units
 add `RequiresMountsFor=/var/lib/knx-box`, so a missing drive would have taken the
@@ -605,6 +621,13 @@ Written by first boot as a NetworkManager profile `knx-box-ap`: access point mod
 the fixed address `10.42.0.1/24` (NetworkManager runs DHCP and DNS through
 dnsmasq), IPv6 off. Phones report "no internet" and stay connected.
 
+WPA3 (SAE) or the WPA2/WPA3 transition mode is not used: NetworkManager's
+keyfile takes a single `key-mgmt` for an access point, and whether the Pi's
+Wi-Fi chip (brcmfmac) offers SAE in access point mode depends on firmware and
+model. That cannot be verified without hardware, and a hotspot older phones
+or tablets can no longer join would lock out the box. Open point for a test on
+real Pis.
+
 ### Ethernet (`eth0`)
 
 `box/files/knx-box-lan.nmconnection`: DHCP with a 20 s timeout, then link-local
@@ -623,7 +646,7 @@ Two nftables tables:
 | Table | Unit / script | Rule |
 | --- | --- | --- |
 | `inet knx_box` | `knx-box-firewall.service`, `firewall.nft` | Forward chain: drop everything from `wlan0` to another interface. Devices in the box Wi-Fi cannot reach the LAN or the internet through the box. Off with `INTERNET_SHARING=yes`; an update keeps that choice. |
-| `inet knx_box_lan` | `knx-box-lan.service`, `lan-access.sh` | Input chain: accept `lo`, `wlan0` and established connections, reject every new TCP connection from anywhere else. Deleted when LAN access is on. |
+| `inet knx_box_lan` | `knx-box-lan-lock.service`, `lan.nft`; `knx-box-lan.service`, `lan-access.sh` | Input chain: accept `lo`, `wlan0` and established connections, jump to `lan_open`, reject every new TCP connection from anywhere else. Loaded closed before the network and SSH come up; when LAN access is on, `lan-access.sh` adds an `accept` to `lan_open`. |
 
 LAN access is decided by interface, not by source address, because a customer
 network may itself use `10.42.0.0/24`. The server additionally answers requests from
@@ -632,6 +655,16 @@ as a second layer. The choice comes from the app (`POST /api/box/lan`, or the
 switch on `/pair`): the server writes `yes`/`no` to `/var/lib/knx-box/lan-access`,
 `knx-box-lan.path` re-runs `lan-access.sh`. Without that file the script uses
 `LAN_ACCESS` from `/etc/knx-box/env`, and otherwise blocks.
+
+The block does not depend on that script: `knx-box-lan-lock.service` loads the
+closed table (`box/files/lan.nft`) before `network-pre.target`, NetworkManager
+and SSH, so the cable is closed from the first packet. `knx-box-lan.service`
+cannot run that early (it waits for the data partition and for first boot,
+which runs after NetworkManager); it only changes the exception. If `nft`
+fails while opening, the cable stays closed; if it fails while closing, the
+script loads the whole table again and the unit fails if even that does not
+work. Left open: if loading `lan.nft` itself fails at boot, the cable is open
+until `knx-box-lan.service` runs and tries again.
 
 With LAN access off, every new inbound TCP connection over Ethernet is rejected:
 the web app on 80 and 443, SSH (only enabled with a key) and the Prometheus
@@ -682,6 +715,7 @@ All units are in `box/files/` and installed to `/etc/systemd/system/` by `setup.
 | `knx-box-firstboot.service` | oneshot | First boot, once (`firstboot.sh`) |
 | `knx-box-data.service` | oneshot | Mounts `KNXBOXDATA` (`data-mount.sh`), before `paths.target` and the server |
 | `knx-box-firewall.service` | oneshot | Loads `firewall.nft` before NetworkManager; `ExecStop` removes the table |
+| `knx-box-lan-lock.service` | oneshot | Loads `lan.nft` (cable closed) before `network-pre.target`, NetworkManager and SSH |
 | `knx-box-lan.service` + `.path` | oneshot | LAN access on boot and on every change of `lan-access` |
 | `knx-box-time.service` + `.path` | oneshot | Sets the clock on every change of `time-request.json` |
 | `knx-box-secrets.service` + `.path` | oneshot | New Wi-Fi password, boot partition scrub |
@@ -690,10 +724,25 @@ All units are in `box/files/` and installed to `/etc/systemd/system/` by `setup.
 Hardening of `knx-box.service`: only `CAP_NET_BIND_SERVICE` (ambient and bounding
 set), `NoNewPrivileges`, `ProtectSystem=strict` (writable only through
 `StateDirectory`), `ProtectHome`, `PrivateTmp`, `ProtectKernelTunables`,
-`ProtectControlGroups`, address families `AF_INET`, `AF_INET6`, `AF_UNIX`,
+`ProtectControlGroups`, `ProtectKernelModules`, `ProtectKernelLogs`,
+`ProtectHostname`, `RestrictSUIDSGID`, `LockPersonality`, `RestrictNamespaces`,
+`RestrictRealtime`, `UMask=0077`, address families `AF_INET`, `AF_INET6`, `AF_UNIX`,
 `AF_NETLINK`. Device access is closed except serial devices: `char-ttyAMA` (the HAT's UART)
 and USB serial adapters (`char-ttyUSB`, `char-ttyACM`), with the supplementary
-group `dialout`.
+group `dialout`. `/boot` is an empty read-only tmpfs for the server
+(`TemporaryFileSystem=/boot:ro`), so it cannot read `knx-box.txt` with the
+sticker and Wi-Fi passwords; only `config.txt` is bound in read-only for the HAT
+check. There is no `SystemCallFilter=` or `MemoryDenyWriteExecute=`: the Dart VM
+may need writable and executable memory, and that is untested.
+
+The root helpers (`knx-box-time`, `knx-box-lan`, `knx-box-secrets`,
+`knx-box-reset`) run with `NoNewPrivileges`, `ProtectHome`, `PrivateTmp`,
+`ProtectKernelModules`, `ProtectKernelLogs`, `ProtectControlGroups`,
+`RestrictSUIDSGID`, `LockPersonality` and a capability bounding set per unit:
+`CAP_SYS_TIME` for the clock, `CAP_NET_ADMIN` for the firewall, and for all of
+them `CAP_SETUID`/`CAP_SETGID` (`setpriv`) and the file capabilities they need
+for the server's directory, `/run/chrony`, `/etc` and the boot partition.
+`knx-box-firstboot` and `knx-box-data` (`mount`, `fsck`) are not restricted.
 
 Logs go to the journal:
 
@@ -712,7 +761,21 @@ off unless a key was configured.
 ## Updates and rollback
 
 The box does not update itself and needs no internet. An update is the same
-package as for a manual install:
+package as for a manual install. Check it before unpacking: download
+`knx-box-<version>.tar.gz`, `knx-box-<version>.tar.gz.sigstore.json` and
+`SHA256SUMS.txt` from the release, then
+
+```bash
+# Signature (cosign, https://docs.sigstore.dev/): built by box-image.yml for this tag
+cosign verify-blob knx-box-<version>.tar.gz --bundle knx-box-<version>.tar.gz.sigstore.json \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity "https://github.com/regetskcob/KNX-Monitor-Source/.github/workflows/box-image.yml@refs/tags/box-v<version>"
+# Checksums; --ignore-missing: only the files downloaded
+sha256sum -c --ignore-missing SHA256SUMS.txt
+```
+
+The same works for the image (`*.img.xz` with its `.sigstore.json`) before it
+is written to the card. See [release-security.md](release-security.md).
 
 ```bash
 tar -xzf knx-box-<version>.tar.gz && cd knx-box
@@ -772,7 +835,7 @@ as `knx-box-case-<version>.zip`.
 
 | Test | What it covers | Runs in |
 | --- | --- | --- |
-| `box/test-firstboot.sh` | `firstboot.sh` in a temp root with stubs for `systemctl`, `nmcli`, `raspi-config`, `rfkill`, `qrencode` and the server: generated and given values, invalid input, certificate and fingerprint, scrubbing, Wi-Fi change, reset file (including symlinks and invalid content), missing `qrencode`, `lan-access.sh`, SSH key handling, `data-mount.sh` with clean, repaired and failing `fsck`, ordering lines of the units | `box-image.yml`, `tool/release.sh verify` |
+| `box/test-firstboot.sh` | `firstboot.sh` in a temp root with stubs for `systemctl`, `nmcli`, `raspi-config`, `rfkill`, `qrencode` and the server: generated and given values, invalid input, certificate and fingerprint, scrubbing, Wi-Fi change, reset file (including symlinks and invalid content, written and read as the server user through a `setpriv` stub), `settime.sh` (range, links), missing `qrencode`, `lan-access.sh` (static closed table, exception only, fail closed, links), SSH key handling, `data-mount.sh` with clean, repaired and failing `fsck` and `nosuid,nodev,noexec`, ordering and hardening lines of the units | `box-image.yml`, `tool/release.sh verify` |
 | `box/test-setup.sh` | `setup.sh` in a temp root: first install, update with rollback copy, certificate kept, firewall choice kept, automatic rollback for a server that does not start or does not answer, manual `--rollback`, broken previous version, missing package | `box-image.yml`, `tool/release.sh verify` |
 | `server/test/box_access_test.dart`, `box_security_test.dart` | Login, tokens, roles, rate limit, origin checks, LAN check, sticker password flow | server tests |
 | `server/test/box_clock_test.dart` | Decision table, `now()` correction, DPT 19/10/11 parsing, retiming of `unsynced` lines, strict mode | server tests |

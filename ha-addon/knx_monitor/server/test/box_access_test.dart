@@ -198,6 +198,31 @@ void main() {
     expect((await send('/api/bus', auth: basic('sechs'))).$1, 429);
   });
 
+  test('nur ansehen: eigene Rolle, gespeichert, auf der Seite markiert', () async {
+    final (status, html, _) = await send(
+      '/pair',
+      method: 'POST',
+      auth: basic('richtig123'),
+      body: 'name=Flur&viewOnly=1',
+    );
+    expect(status, 200);
+    final key = Uri.parse(RegExp(r'href="(knxmonitor://[^"]+)"').firstMatch(html)!.group(1)!.replaceAll('&amp;', '&'))
+        .queryParameters['key']!;
+    expect((await send('/api/bus', auth: 'Bearer $key')).$2, 'ok viewer');
+    expect((await send('/ws', auth: 'Bearer $key')).$1, 403);
+    expect(access.devices.single.viewOnly, isTrue);
+    expect(BoxRole.viewer.maySend, isFalse);
+    expect(BoxRole.device.maySend, isTrue);
+    expect((await send('/pair', auth: basic('richtig123'))).$2, contains('nur ansehen'));
+    // Survives a restart of the box (access.json).
+    await access.flush();
+    final again = await BoxAccess.open(data, initialPassword: 'richtig123', clock: () => now);
+    expect(again.devices.single.viewOnly, isTrue);
+    // Pairing with the box password (app) is always full access.
+    final normal = await pairDevice('iPad');
+    expect((await send('/api/bus', auth: 'Bearer $normal')).$2, 'ok device');
+  });
+
   test('Gerätezugang: kein Roh-Relay, kein Koppeln', () async {
     final key = await pairDevice();
     expect((await send('/ws', auth: 'Bearer $key')).$1, 403);
@@ -257,7 +282,18 @@ void main() {
       body: 'password=kurz',
     );
     expect(short, contains('mindestens 8'));
-    await send('/pair/password', method: 'POST', auth: basic('richtig123'), body: 'password=neues-passwort');
+    // Without or with a wrong current password nothing changes.
+    for (final body in ['password=neues-passwort', 'current=falsch12&password=neues-passwort']) {
+      final (_, page, _) = await send('/pair/password', method: 'POST', auth: basic('richtig123'), body: body);
+      expect(page, contains('aktuelle Passwort stimmt nicht'));
+    }
+    expect(access.checkPassword('richtig123'), isTrue);
+    await send(
+      '/pair/password',
+      method: 'POST',
+      auth: basic('richtig123'),
+      body: 'current=richtig123&password=neues-passwort',
+    );
     expect((await send('/api/bus', auth: basic('richtig123'))).$1, 401);
     expect((await send('/api/bus', auth: basic('neues-passwort'))).$1, 200);
   });
@@ -380,7 +416,13 @@ void main() {
       final first = await login();
       final second = await login();
       expect(second, isNot(first));
-      await send('/pair/password', method: 'POST', cookie: first, origin: own(), body: 'password=neues-passwort');
+      await send(
+        '/pair/password',
+        method: 'POST',
+        cookie: first,
+        origin: own(),
+        body: 'current=richtig123&password=neues-passwort',
+      );
       expect(access.checkPassword('neues-passwort'), isTrue);
       expect((await send('/api/bus', cookie: first)).$1, 401);
       expect((await send('/api/bus', cookie: second)).$1, 401);
@@ -455,12 +497,20 @@ void main() {
         (await send('/api/box/password', method: 'POST', auth: 'Bearer ${j['key']}', body: '{"password":"kurz"}')).$1,
         400,
       );
+      // A token alone is not enough (lost tablet): the current password is needed.
+      for (final body in ['{"password":"neues-passwort"}', '{"password":"neues-passwort","current":"falsch12"}']) {
+        expect((await send('/api/box/password', method: 'POST', auth: 'Bearer ${j['key']}', body: body)).$1, 403);
+      }
+      expect(
+        (await send('/api/box/devices/revoke', method: 'POST', auth: 'Bearer ${j['key']}', body: '{"id":"*"}')).$1,
+        403,
+      );
       expect(
         (await send(
           '/api/box/password',
           method: 'POST',
           auth: 'Bearer ${j['key']}',
-          body: '{"password":"neues-passwort"}',
+          body: '{"password":"neues-passwort","current":"richtig123"}',
         )).$1,
         200,
       );

@@ -38,7 +38,10 @@ Ids: `^[A-Za-z0-9_-]{1,64}$` (12 Hex-Zeichen der App, UUIDs passen).
 ## Endpunkte
 
 Verwalten nur als Admin (Box-Passwort, mit dem Passwort gekoppeltes Gerät,
-im Add-on jeder Ingress-Zugriff). Lesen dürfen auch Gerätezugänge.
+im Add-on jeder Ingress-Zugriff). Gerätezugänge ohne Admin-Recht lesen nur die
+aktive Installation: `GET /api/installations` liefert ihnen nur sie, andere Ids
+(auch `?installation=<id>` bei Verlauf, Statistik, Verfügbarkeit und ETS-Export)
+antworten 403.
 Fehler kommen als Text mit Status 400 (Name/Id ungültig), 403 (kein Admin),
 404 (Installation unbekannt), 405, 409 (Id gibt es schon / aktive löschen).
 

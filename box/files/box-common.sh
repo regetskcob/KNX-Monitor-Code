@@ -1,5 +1,29 @@
-# Shared by firstboot.sh and secrets.sh (sourced, not executed).
+# Shared by firstboot.sh, secrets.sh, settime.sh and lan-access.sh (sourced, not
+# executed).
 # shellcheck shell=bash
+
+# The data directory /var/lib/knx-box belongs to the server user. Whoever takes
+# over the server can put symbolic links there, so root never opens a file in it:
+# reading and writing happen as the server user (setpriv), and a link can only
+# reach what the server could read or write anyway. Removing a name (rm -f)
+# stays with root: unlink never follows a link.
+KNX_BOX_USER=${KNX_BOX_USER:-knx-box}
+
+as_data_user() { # as_data_user <command> [args]
+  setpriv --reuid="$KNX_BOX_USER" --regid="$KNX_BOX_USER" --clear-groups -- "$@"
+}
+
+# Content of a file in the data directory, at most 4 KiB; fails if it is missing.
+data_read() { # data_read <file>
+  as_data_user head -c 4096 -- "$1"
+}
+
+# Replace a file in the data directory with stdin (0600, owner: server user).
+# noclobber: a link left at <file>.new is removed first, never written through.
+data_write() { # data_write <file> <stdin
+  # shellcheck disable=SC2016 # expanded by the inner shell
+  as_data_user sh -c 'umask 077; rm -f -- "$1.new"; set -C; cat >"$1.new" && mv -f -- "$1.new" "$1"' sh "$1"
+}
 
 # Printable characters without spaces and without " ' \ $ ` (env file, keyfile).
 valid_password() { [[ ${#1} -ge 8 && ${#1} -le 63 && "$1" =~ ^[[:graph:]]+$ && "$1" != *[\"\'\\\$\`]* ]]; }

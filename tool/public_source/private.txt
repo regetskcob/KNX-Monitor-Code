@@ -1,7 +1,10 @@
 # Paths that never go into the public source (tool/export_public_source.sh).
-# One path per line, folders included. Files listed under stubs/ replace the
-# removed code with an empty version of the same interface, so the public app
-# still builds; they are copied over the snapshot with ".stub" removed.
+# One path per line, folders included, no patterns. Every entry must exist
+# (renamed? list the new path), and every file whose path names a private part
+# must be here or in public_ok.txt: tool/public_source/check_paths.py.
+# Files listed under stubs/ replace the removed code with an empty version of
+# the same interface, so the public app still builds; they are copied over the
+# snapshot with ".stub" removed.
 
 # Account backend and everything that operates it
 supabase
@@ -37,9 +40,13 @@ test/session_vault_test.dart
 lib/model/cloud_sync.dart
 lib/model/cloud_sync_engine.dart
 lib/platform/cloud_folder.dart
+# iCloud container behind the channel knx/cloud (iOS and macOS); stub keeps the
+# Xcode projects building
+ios/Runner/KnxCloud.swift
 lib/ui/cloud_sync_screen.dart
 docs/cloud-sync.md
 test/cloud_sync_engine_test.dart
+test/cloud_sync_test.dart
 
 # Betriebslösung (team, encrypted storage, standards, GA assistant, site survey)
 lib/model/betrieb

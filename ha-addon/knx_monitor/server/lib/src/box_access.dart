@@ -16,6 +16,13 @@ enum BoxRole {
   /// Paired device (app, bearer device token): monitor, history, sending.
   /// Devices paired in the app with the box password are [admin].
   device,
+
+  /// Paired device that only looks: like [device], but sends nothing to the
+  /// bus, not even read requests (a tablet in the hallway, a customer's view).
+  viewer;
+
+  /// Whether this role may put telegrams on the bus.
+  bool get maySend => this != viewer;
 }
 
 /// A paired device; of its token only the hash is stored.
@@ -27,6 +34,7 @@ class BoxDevice {
     required this.created,
     this.lastUsed,
     this.admin = false,
+    this.viewOnly = false,
   });
 
   final String id;
@@ -38,6 +46,11 @@ class BoxDevice {
   /// May manage the box (devices, password): paired with the box password.
   final bool admin;
 
+  /// Sends nothing to the bus ([BoxRole.viewer]); chosen when pairing.
+  final bool viewOnly;
+
+  BoxRole get role => admin ? BoxRole.admin : (viewOnly ? BoxRole.viewer : BoxRole.device);
+
   Map<String, Object?> toJson() => {
     'id': id,
     'name': name,
@@ -45,6 +58,7 @@ class BoxDevice {
     'created': created.millisecondsSinceEpoch,
     if (lastUsed != null) 'lastUsed': lastUsed!.millisecondsSinceEpoch,
     if (admin) 'admin': true,
+    if (viewOnly) 'viewOnly': true,
   };
 
   static BoxDevice fromJson(Map<String, Object?> j) => BoxDevice(
@@ -54,6 +68,7 @@ class BoxDevice {
     created: DateTime.fromMillisecondsSinceEpoch(j['created'] as int? ?? 0),
     lastUsed: j['lastUsed'] == null ? null : DateTime.fromMillisecondsSinceEpoch(j['lastUsed'] as int),
     admin: j['admin'] == true,
+    viewOnly: j['viewOnly'] == true,
   );
 }
 
@@ -342,7 +357,7 @@ class BoxAccess {
     final BoxRole? role;
     if (auth.startsWith('Bearer ')) {
       final device = _deviceFor(auth.substring(7).trim());
-      role = device == null ? null : (device.admin ? BoxRole.admin : BoxRole.device);
+      role = device?.role;
     } else if (auth.startsWith('Basic ')) {
       final encoded = auth.substring(6).trim();
       final known = _acceptedBasic.contains(_sha256(utf8.encode(encoded)));
@@ -403,7 +418,7 @@ class BoxAccess {
     if (_mustChange && !_required && page && path == '/' && session == null) return _redirect(response, '/pair');
     // The raw relay can send arbitrary KNXnet/IP packets; pairing devices
     // requires the password.
-    if (role == BoxRole.device && (path == '/ws' || path == '/pair' || path.startsWith('/pair/'))) {
+    if (role != BoxRole.admin && (path == '/ws' || path == '/pair' || path.startsWith('/pair/'))) {
       return _deny(response, HttpStatus.forbidden, 'Nur mit dem Box-Passwort.');
     }
     return role;
@@ -481,6 +496,25 @@ class BoxAccess {
       '${secure ? '; Secure' : ''}',
     );
   }
+
+  /// Changing the password and locking out all devices need the current
+  /// password, also with an admin token or a session: a lost tablet or a
+  /// borrowed browser must not be able to lock the owner out. A wrong one
+  /// counts as a failed login. Not while the sticker password still has to be
+  /// replaced: that one is printed on the box anyway.
+  Future<bool> _confirmCurrent(HttpRequest request, Object? current) async {
+    if (_required) return true;
+    if (current is! String || current.isEmpty || current.length > 128) {
+      if (current is String && current.isNotEmpty) _fail(_peerAddress(request), _clock());
+      return false;
+    }
+    final ok = await verifyPassword(current);
+    if (!ok) _fail(_peerAddress(request), _clock());
+    return ok;
+  }
+
+  String _peerAddress(HttpRequest request) =>
+      _peerOf?.call(request) ?? request.connectionInfo?.remoteAddress.address ?? '';
 
   static bool _sameOrigin(String origin, String? host) {
     if (host == null) return false;
@@ -640,7 +674,7 @@ class BoxAccess {
   }
 
   /// Pairs a new device; returns the token in plain text (only this once).
-  Future<String> pair(String deviceName, {bool admin = false}) async {
+  Future<String> pair(String deviceName, {bool admin = false, bool viewOnly = false}) async {
     final key = base64Url.encode(_bytes(32)).replaceAll('=', '');
     final name = deviceName.trim().isEmpty ? 'Gerät ${_devices.length + 1}' : deviceName.trim();
     _devices.add(
@@ -650,6 +684,7 @@ class BoxAccess {
         hash: _sha256(utf8.encode(key)),
         created: _clock(),
         admin: admin,
+        viewOnly: viewOnly && !admin,
       ),
     );
     await _save();
@@ -812,14 +847,19 @@ class BoxAccess {
       }
       switch (path) {
         case '/pair':
-          key = await pair(form['name'] ?? '');
+          key = await pair(form['name'] ?? '', viewOnly: form['viewOnly'] == '1');
         case '/pair/revoke':
           if (form['id'] == '*') {
-            await revokeAll();
+            if (await _confirmCurrent(request, form['current'])) {
+              await revokeAll();
+              notice = 'Alle Geräte gesperrt.';
+            } else {
+              notice = 'Das aktuelle Passwort stimmt nicht.';
+            }
           } else {
             await revoke(form['id'] ?? '');
+            notice = 'Gerät gesperrt.';
           }
-          notice = 'Gerät gesperrt.';
         case '/pair/lan':
           await setLanAccess(form['enabled'] == '1');
           notice = lanAccess ? 'Zugriff über das Kabel ist frei.' : 'Zugriff über das Kabel ist aus.';
@@ -827,6 +867,8 @@ class BoxAccess {
           final next = form['password'] ?? '';
           if (next.length < 8) {
             notice = 'Das neue Passwort braucht mindestens 8 Zeichen.';
+          } else if (!await _confirmCurrent(request, form['current'])) {
+            notice = 'Das aktuelle Passwort stimmt nicht.';
           } else {
             try {
               await changePassword(next);
@@ -865,9 +907,11 @@ class BoxAccess {
   /// - `POST /api/box/pair` `{name}` → `{key, id, name}`: new device with
   ///   admin rights; this is how the app pairs with the sticker password.
   /// - `GET /api/box/devices` → devices (without hash), `self` on the requester.
-  /// - `POST /api/box/devices/revoke` `{id}` or `{id: "*"}`.
-  /// - `POST /api/box/password` `{password}` (at least 8 characters), not the
-  ///   one from the sticker.
+  /// - `POST /api/box/devices/revoke` `{id}` or `{id: "*", current}`.
+  /// - `POST /api/box/password` `{password, current}` (at least 8 characters),
+  ///   not the one from the sticker.
+  ///
+  /// [current] is the box password as it is now (see [_confirmCurrent]).
   /// - `POST /api/box/wifi` `{password}`: Wi-Fi password of the box (real box only).
   /// - `POST /api/box/lan` `{enabled}`: access over the cable.
   Future<void> _handleApi(HttpRequest request, BoxRole role) async {
@@ -915,6 +959,7 @@ class BoxAccess {
               'created': d.created.millisecondsSinceEpoch,
               if (d.lastUsed != null) 'lastUsed': d.lastUsed!.millisecondsSinceEpoch,
               'admin': d.admin,
+              if (d.viewOnly) 'viewOnly': true,
               if (d.id == self) 'self': true,
             },
         ];
@@ -925,6 +970,10 @@ class BoxAccess {
           return;
         }
         if (id == '*') {
+          if (!await _confirmCurrent(request, body['current'])) {
+            await _deny(response, HttpStatus.forbidden, 'Das aktuelle Passwort stimmt nicht.');
+            return;
+          }
           await revokeAll();
         } else {
           await revoke(id);
@@ -934,6 +983,10 @@ class BoxAccess {
         final next = body['password'] as String? ?? '';
         if (next.length < 8 || next.length > 128) {
           await _deny(response, HttpStatus.badRequest, 'Das Passwort braucht 8 bis 128 Zeichen.');
+          return;
+        }
+        if (!await _confirmCurrent(request, body['current'])) {
+          await _deny(response, HttpStatus.forbidden, 'Das aktuelle Passwort stimmt nicht.');
           return;
         }
         try {
@@ -973,6 +1026,11 @@ class BoxAccess {
     response.write(jsonEncode(result));
     await response.close();
   }
+
+  /// Id of the paired device that makes [request] (bearer token), otherwise
+  /// `null` (box password, session cookie). The server marks what a device
+  /// without admin rights stores with it (`charts.json`, `watch_rules.json`).
+  String? deviceIdOf(HttpRequest request) => _selfOf(request);
 
   /// Id of the requesting device (bearer), otherwise `null`.
   String? _selfOf(HttpRequest request) {
@@ -1040,6 +1098,8 @@ class BoxAccess {
     out
       ..write('<section><h2>Neues Gerät koppeln</h2><form method="post" action="/pair">')
       ..write('<input name="name" maxlength="40" placeholder="z. B. iPad Bauleitung" autocomplete="off">')
+      ..write('<label class="check"><input type="checkbox" name="viewOnly" value="1"> Nur ansehen: ')
+      ..write('schaltet nichts und schickt nichts auf den Bus</label>')
       ..write('<button>QR-Code erzeugen</button></form></section>')
       ..write('<section><h2>Gekoppelte Geräte</h2>');
     if (devices.isEmpty) {
@@ -1048,7 +1108,8 @@ class BoxAccess {
       out.write('<ul>');
       for (final d in devices) {
         out
-          ..write('<li><span><b>${e.convert(d.name)}</b><br><small>gekoppelt ${_date(d.created)}')
+          ..write('<li><span><b>${e.convert(d.name)}</b>${d.viewOnly ? ' <small>· nur ansehen</small>' : ''}')
+          ..write('<br><small>gekoppelt ${_date(d.created)}')
           ..write(d.lastUsed == null ? '' : ' · zuletzt ${_date(d.lastUsed!)}')
           ..write('</small></span><form method="post" action="/pair/revoke">')
           ..write('<input type="hidden" name="id" value="${e.convert(d.id)}"><button class="quiet">Sperren</button>')
@@ -1056,10 +1117,13 @@ class BoxAccess {
       }
       out
         ..write('</ul><form method="post" action="/pair/revoke"><input type="hidden" name="id" value="*">')
-        ..write('<button class="quiet">Alle sperren</button></form>');
+        ..write('<input type="password" name="current" autocomplete="current-password" required ')
+        ..write('placeholder="Aktuelles Passwort"><button class="quiet">Alle sperren</button></form>');
     }
     out
       ..write('</section><section><h2>Box-Passwort ändern</h2><form method="post" action="/pair/password">')
+      ..write('<input type="password" name="current" autocomplete="current-password" required ')
+      ..write('placeholder="Aktuelles Passwort">')
       ..write('<input type="password" name="password" minlength="8" autocomplete="new-password" ')
       ..write('placeholder="Neues Passwort"><button>Ändern</button></form></section>')
       ..write('<section><h2>Zugriff über das Kabel</h2><p class="hint">')

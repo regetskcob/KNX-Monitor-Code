@@ -38,6 +38,23 @@ abstract class AppStorage {
   Future<void> delete(String path);
 }
 
+/// Returns [path] if it stays inside the storage folder; throws [ArgumentError] otherwise.
+///
+/// Paths are relative with "/" as separator. Refused: absolute paths, drive letters, backslashes
+/// (a separator on Windows), NUL and any ".." segment. Every backend checks this before joining, so
+/// a foreign name (installation id from a box, file name from a backup) can never reach files
+/// outside the app's data folder.
+String confinedPath(String path) {
+  if (path.startsWith('/') ||
+      path.contains(r'\') ||
+      path.contains('\u0000') ||
+      RegExp(r'^[A-Za-z]:').hasMatch(path) ||
+      path.split('/').contains('..')) {
+    throw ArgumentError.value(path, 'path', 'leaves the storage folder');
+  }
+  return path;
+}
+
 /// Storage in a subfolder of [base], e.g. "installations/abc/" – each installation has its own
 /// files under the same relative paths.
 class ScopedStorage implements AppStorage {
@@ -48,20 +65,23 @@ class ScopedStorage implements AppStorage {
   /// With a trailing "/".
   final String prefix;
 
-  @override
-  Future<String?> read(String path) => base.read('$prefix$path');
+  /// Checked here as well: [base] may be a backend that does not check itself.
+  String _join(String path) => confinedPath('$prefix$path');
 
   @override
-  Future<void> write(String path, String text) => base.write('$prefix$path', text);
+  Future<String?> read(String path) => Future.sync(() => base.read(_join(path)));
 
   @override
-  Future<void> append(String path, String text) => base.append('$prefix$path', text);
+  Future<void> write(String path, String text) => Future.sync(() => base.write(_join(path), text));
 
   @override
-  Future<List<StoredFile>> list(String dir) => base.list('$prefix$dir');
+  Future<void> append(String path, String text) => Future.sync(() => base.append(_join(path), text));
 
   @override
-  Future<void> delete(String path) => base.delete('$prefix$path');
+  Future<List<StoredFile>> list(String dir) => Future.sync(() => base.list(_join(dir)));
+
+  @override
+  Future<void> delete(String path) => Future.sync(() => base.delete(_join(path)));
 }
 
 /// Moves readable but unintelligible content of [path] aside before the store continues with an

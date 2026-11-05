@@ -66,7 +66,8 @@ String? etsImportCsv(List<EtsImportEntry> entries, GroupStyle style) {
   if (style != GroupStyle.threeLevel || entries.isEmpty) return null;
   final sorted = [...entries]..sort((a, b) => a.address.compareTo(b.address));
   final out = StringBuffer();
-  void row(List<String> cells) => out.write('${cells.map((c) => '"${c.replaceAll('"', '""')}"').join(',')}\r\n');
+  void row(List<String> cells) =>
+      out.write('${cells.map((c) => '"${_inert(c).replaceAll('"', '""')}"').join(',')}\r\n');
   row(const ['Main', 'Middle', 'Sub', 'Address', 'Central', 'Unfiltered', 'Description', 'DatapointType', 'Security']);
   int? openMain;
   int? openMiddle;
@@ -97,6 +98,22 @@ String? etsImportCsv(List<EtsImportEntry> entries, GroupStyle style) {
   }
   return out.toString();
 }
+
+/// Keeps a spreadsheet from running a cell as a formula (the file also opens in Excel or Numbers,
+/// and names come from foreign ETS projects). "=" and "@" at the start get a leading apostrophe,
+/// as do tab and carriage return: no group address name begins with those. "+" and "-" only when
+/// the rest looks like a formula ("+SUM(A1)", "-1+1"): names like "-1 Keller" or "+ Zentral" are
+/// common and the ETS would take the apostrophe into the name.
+String _inert(String cell) {
+  if (cell.isEmpty) return cell;
+  final first = cell[0];
+  if (const {'=', '@', '\t', '\r'}.contains(first)) return "'$cell";
+  if ((first == '+' || first == '-') && _formulaTail.hasMatch(cell.substring(1))) return "'$cell";
+  return cell;
+}
+
+/// After a leading + or -: operators, parentheses or references make it a formula.
+final _formulaTail = RegExp(r'[=+\-*/^&(),;:!]');
 
 /// CSV as a file: UTF-8 with BOM so umlauts are correct in the ETS and in Excel.
 Uint8List etsCsvBytes(String csv) => Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(csv)]);

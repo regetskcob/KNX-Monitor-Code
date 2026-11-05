@@ -2375,9 +2375,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boxPairTitle => 'Connect to KNX box?';
 
   @override
-  String boxPairBody(String address) {
-    return 'The app then shows the bus through the box $address. Only confirm if you scanned the QR code yourself.';
-  }
+  String get boxPairBody =>
+      'The app then shows the bus through this box. Only confirm if you scanned the QR code yourself and the address matches your box.';
 
   @override
   String boxVia(String name) {
@@ -3241,6 +3240,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boxDeviceSelf => 'this device';
 
   @override
+  String get boxDeviceViewOnly => 'view only';
+
+  @override
+  String get boxViewOnlyHint =>
+      'This device is paired with the box for viewing only and sends nothing to the bus. To switch things, pair it again without “View only”.';
+
+  @override
   String get boxDeviceAdmin => 'manages the box';
 
   @override
@@ -3248,6 +3254,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get boxPasswordChange => 'Change box password';
+
+  @override
+  String get boxPasswordCurrent => 'Current password';
+
+  @override
+  String get boxPasswordCurrentWrong => 'The current password is not correct.';
 
   @override
   String get boxPasswordHint => 'At least 8 characters. The label\'s QR code no longer pairs new devices afterwards.';
@@ -8539,15 +8551,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boxForeignConfirm => 'Connect anyway';
 
   @override
-  String get boxKeyringTitle => 'Give the keyring to this box?';
+  String get boxKeyringTitle => 'Give the KNX Secure keys to this box?';
 
   @override
   String boxKeyringBody(String address) {
-    return 'The box at $address would get the keys of your KNX Secure installation so it can record secured telegrams in readable form. Anyone with access to the box can reach these keys. Only agree if it is your box.';
+    return 'The box at $address would get the keys and passwords of your KNX Secure installation (keyring, IP Secure access to the gateway) so it can connect and record secured telegrams in readable form. Anyone with access to the box can reach these keys. Only agree if it is your box.';
   }
 
   @override
-  String get boxKeyringAllow => 'Give keyring';
+  String get boxKeyringAllow => 'Give keys';
 
   @override
   String get boxKeyringDeny => 'Don\'t give';
@@ -8968,4 +8980,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String learnForgotten(String name) {
     return 'Forgotten: $name';
   }
+
+  @override
+  String boxPairNamed(String name) {
+    return 'Name in the link: $name';
+  }
+
+  @override
+  String get boxPairUnencrypted =>
+      'Unencrypted (HTTP): anyone listening on the same network sees everything the app sends to this box. Only connect on your own network.';
+
+  @override
+  String get boxReplaceTitle => 'Replace the paired box?';
+
+  @override
+  String boxReplaceBody(String current, String next) {
+    return 'Currently paired: $current. The link would replace it with $next; the existing pairing is lost.';
+  }
+
+  @override
+  String get boxReplaceConfirm => 'Replace';
+
+  @override
+  String get boxProjectTitle => 'Give the project to this box?';
+
+  @override
+  String boxProjectBody(String box) {
+    return 'The box $box was paired via a link from another app or web page. If you give it your project, it gets the ETS project with all addresses and names, the installation\'s name and the gateway address. Until then it gets none of this.';
+  }
+
+  @override
+  String get boxProjectAllow => 'Give project';
+
+  @override
+  String get boxProjectDeny => 'Not yet';
+
+  @override
+  String get appLockRestart => 'Too many failed attempts. Close the app and open it again, then you can try once more.';
 }

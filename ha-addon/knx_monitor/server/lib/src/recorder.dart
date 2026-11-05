@@ -628,6 +628,28 @@ class Recorder {
   }
 }
 
+/// Longest period `/api/bus/availability` evaluates: availability is kept for
+/// a few months, and every month in the period is read line by line.
+const availabilityMaxRange = Duration(days: 400);
+
+/// Period of `/api/bus/availability` from the query (`from`, `to` in
+/// milliseconds; without them the last day before [now]), or an [error] text
+/// for the 400 response: negative, reversed or longer than
+/// [availabilityMaxRange] used to cost minutes of CPU.
+({String? error, DateTime? from, DateTime? to}) availabilityRange(Map<String, String> q, DateTime now) {
+  final from = q.containsKey('from')
+      ? int.tryParse(q['from']!)
+      : now.subtract(const Duration(days: 1)).millisecondsSinceEpoch;
+  final to = q.containsKey('to') ? int.tryParse(q['to']!) : now.millisecondsSinceEpoch;
+  if (from == null || to == null || from < 0 || to <= from || to > 8640000000000000) {
+    return (error: 'from und to (Millisekunden) fehlen oder sind verdreht.', from: null, to: null);
+  }
+  if (to - from > availabilityMaxRange.inMilliseconds) {
+    return (error: 'Höchstens ${availabilityMaxRange.inDays} Tage.', from: null, to: null);
+  }
+  return (error: null, from: DateTime.fromMillisecondsSinceEpoch(from), to: DateTime.fromMillisecondsSinceEpoch(to));
+}
+
 /// Availability: once per minute a line with the connection state and the
 /// number of telegrams since the previous line. This explains every gap in
 /// the history – bus quiet (connected, 0 telegrams), connection lost

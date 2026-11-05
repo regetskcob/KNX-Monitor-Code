@@ -1085,12 +1085,20 @@ class _SparklinePainter extends CustomPainter {
 
     // Average first, dashed 2/2; the line lies on top.
     if (avg != null) {
-      final dash = Paint()
-        ..color = averageColor
-        ..strokeWidth = Lines.hairline;
+      // One path instead of a draw call per dash (about 60 per card).
+      final dashes = Path();
       for (var dx = 0.0; dx < size.width; dx += 4) {
-        canvas.drawLine(Offset(dx, y(avg)), Offset((dx + 2).clamp(0, size.width), y(avg)), dash);
+        dashes
+          ..moveTo(dx, y(avg))
+          ..lineTo((dx + 2).clamp(0, size.width), y(avg));
       }
+      canvas.drawPath(
+        dashes,
+        Paint()
+          ..color = averageColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = Lines.hairline,
+      );
     }
     // Switching state on the card: only the "on" stretches, as filled blocks
     // with an edge on top (like the rows in the charts); "off" stays empty.

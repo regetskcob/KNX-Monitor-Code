@@ -79,10 +79,35 @@ Future<void> main(List<String> args) async {
 
 Future<void> _serve(Map<String, String> env, int port, Directory web, Directory data, CrashWatch crash) async {
   final allowAll = env['ALLOW_ALL'] == '1';
+  // Ingress requests come from the Supervisor's proxy; only inside Home
+  // Assistant (with SUPERVISOR_TOKEN) is that address really the proxy. In a
+  // Docker network it could be any container.
+  _inHomeAssistant = (env['SUPERVISOR_TOKEN'] ?? '').isNotEmpty;
+  if (env['BOX'] != '1' && !allowAll && !_inHomeAssistant) {
+    stderr.writeln(
+      'KNX Monitor: weder Home Assistant (SUPERVISOR_TOKEN) noch BOX=1 noch ALLOW_ALL=1 – '
+      'der Server lehnt alle Anfragen ab. Für Docker BOX=1 und BOX_PASSWORD setzen.',
+    );
+  }
   // Read-only (read_only.dart): in the add-on the option `read_only`, on by default;
   // Docker, Linux and box with READ_ONLY=1, off by default.
   _readOnly = HomeAssistant.instance.available ? await _flag('read_only') : env['READ_ONLY'] == '1';
   if (_readOnly) stdout.writeln('KNX Monitor: Nur-Lesen, es geht nichts auf den Bus');
+  // Docker without BOX_PASSWORD: the server would invent a password and could
+  // only tell it through the log, which other tools collect. Refuse instead
+  // (only on the very first start; later the stored password counts).
+  final sticker = env['BOX_STICKER'] == '1';
+  if (env['BOX'] == '1' &&
+      !sticker &&
+      (env['BOX_PASSWORD'] ?? '').isEmpty &&
+      !await File('${data.path}/access.json').exists() &&
+      !await File('${data.path}/access.json.bak').exists()) {
+    stderr.writeln(
+      'KNX-Box: BOX_PASSWORD fehlt. Bitte ein eigenes Passwort setzen (mindestens 8 Zeichen), '
+      'z. B. in .env neben compose.yaml: BOX_PASSWORD=...',
+    );
+    exit(78); // EX_CONFIG
+  }
   final box = env['BOX'] == '1'
       ? await BoxAccess.open(
           data,
@@ -96,11 +121,6 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
           fromWlan: env['BOX_STICKER'] == '1' ? BoxAccess.wlanPeer : (peer) => peer.isLoopback,
         )
       : null;
-  // Without BOX_PASSWORD (development only) the first password is logged once;
-  // on the box, firstboot.sh sets it from knx-box.txt.
-  if (box?.firstPassword != null && (env['BOX_PASSWORD'] ?? '').isEmpty) {
-    stdout.writeln('KNX-Box: erstes Passwort ${box!.firstPassword}');
-  }
 
   // Box: set the clock without internet (iPhone, KNX time sender); the request is
   // carried out on the host by knx-box-time.path (DATA_DIR is /var/lib/knx-box there).
@@ -171,6 +191,7 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
     unawaited(_installCard(env['ADDON_VERSION'] ?? 'dev', Directory(env['CARD_DIR'] ?? '/app/card')));
   }
   final hat = box == null ? null : KberryService();
+  final discovery = box == null ? null : _Discovery();
   // Supervisor stops with SIGTERM: write history, disconnect the tunnel.
   for (final signal in [ProcessSignal.sigterm, ProcessSignal.sigint]) {
     signal.watch().listen((_) async {
@@ -202,6 +223,7 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
         hat: hat,
         crash: crash,
         ha: ha,
+        discovery: discovery,
       ),
     ),
     onError: (Object e) => stderr.writeln('Verbindung: $e'),
@@ -214,6 +236,10 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
       : allowAll
       ? InternetAddress.loopbackIPv4
       : InternetAddress.anyIPv4;
+  // On loopback a web page could still reach the open server through DNS
+  // rebinding (its own name resolving to 127.0.0.1): only local host names.
+  // With another BIND the developer chose to expose it.
+  _localHostOnly = allowAll && bind.isLoopback;
   accept(await HttpServer.bind(bind, port));
   stdout.writeln('KNX Monitor: Port $port, Web ${web.path}, Daten ${data.path}');
   // Box: HTTPS with its own certificate (see box_tls.dart); HTTP stays for the
@@ -257,6 +283,17 @@ Future<void> _writeSheets(String dir, Map<String, String> env) async {
 /// Supervisor address that Ingress requests come from.
 const _ingressPeer = '172.30.32.2';
 
+/// Running inside Home Assistant (set in [_serve]); only then is
+/// [_ingressPeer] the Ingress proxy.
+var _inHomeAssistant = false;
+
+/// `ALLOW_ALL=1` on loopback: only requests to a local host name (set in [_serve]).
+var _localHostOnly = false;
+
+/// `Host` header of a request to this machine itself: localhost, 127.0.0.1 or
+/// [::1], with or without port.
+final _localHost = RegExp(r'^(localhost|127\.0\.0\.1|\[::1\])(:\d{1,5})?$', caseSensitive: false);
+
 const _methods = {'GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'};
 
 Future<void> _handle(
@@ -268,17 +305,31 @@ Future<void> _handle(
   KberryService? hat,
   CrashWatch? crash,
   HaIntegration? ha,
+  _Discovery? discovery,
 }) async {
   final response = request.response;
   response.headers
     ..set('X-Content-Type-Options', 'nosniff')
     ..set('Referrer-Policy', 'no-referrer');
+  // The box is opened directly in the browser (in Home Assistant, Ingress
+  // shows it in a frame): no foreign page may frame it (clickjacking).
+  if (box != null) {
+    response.headers
+      ..set('X-Frame-Options', 'DENY')
+      ..set('Content-Security-Policy', "frame-ancestors 'none'");
+  }
   try {
     final peer = request.connectionInfo?.remoteAddress.address;
     // Supervisor watchdog (does not come via Ingress) and the startup check of
     // setup.sh on the box: a response below 300 without login, but without data,
     // so that it reveals nothing on the network either.
     if (request.uri.path == healthPath) return await answerHealth(response);
+    if (_localHostOnly && !_localHost.hasMatch(request.headers.value(HttpHeaders.hostHeader) ?? '')) {
+      response
+        ..statusCode = HttpStatus.forbidden
+        ..write('Nur über localhost erreichbar.');
+      return await response.close();
+    }
     // Only the methods the API uses; TRACE, CONNECT, PROPFIND and the like
     // used to reach the GET handlers.
     if (!_methods.contains(request.method)) {
@@ -294,11 +345,16 @@ Future<void> _handle(
     }
     // Without the box only Ingress gets through (Home Assistant users): may administer.
     var admin = true;
+    var maySend = true;
+    String? owner;
     if (box != null) {
       final role = await box.guard(request);
       if (role == null || await box.handle(request, role)) return;
       admin = role == BoxRole.admin;
-    } else if (!allowAll && peer != _ingressPeer) {
+      maySend = role.maySend;
+      // What a device without admin rights stores is marked with its id.
+      if (!admin) owner = box.deviceIdOf(request);
+    } else if (!allowAll && (!_inHomeAssistant || peer != _ingressPeer)) {
       response.statusCode = HttpStatus.forbidden;
       response.write('Nur über Home Assistant (Ingress) erreichbar.');
       await response.close();
@@ -320,15 +376,27 @@ Future<void> _handle(
           ..headers.set(HttpHeaders.retryAfterHeader, '10');
         return await response.close();
       }
-      return await bus.serve(await WebSocketTransformer.upgrade(request), admin: admin);
+      return await bus.serve(
+        await WebSocketTransformer.upgrade(request, compression: webSocketCompression),
+        admin: admin,
+        maySend: maySend,
+      );
     }
-    if (path == '/api/bus') return await _bus(request, bus, admin: admin);
+    if (path == '/api/bus') return await _bus(request, bus, admin: admin, maySend: maySend);
     if (path == '/api/bus/availability' ||
         path == '/api/bus/stats' ||
         path == etsXmlPath ||
         path == historyTelegramsPath) {
       // `?installation=<id>`: history of another installation (read-only).
+      // Without admin rights only the active one: a paired device must not
+      // read the customers and sites the box recorded before.
       final id = request.uri.queryParameters['installation'] ?? installations.installations.activeId;
+      if (!admin && id != installations.installations.activeId) {
+        response
+          ..statusCode = HttpStatus.forbidden
+          ..write('Nur die aktive Installation.');
+        return await response.close();
+      }
       if (installations.installations.byId(id) == null) {
         response.statusCode = HttpStatus.notFound;
         return await response.close();
@@ -348,18 +416,22 @@ Future<void> _handle(
         installations.installations.root,
         path.substring('/api/files/'.length),
         admin: admin,
+        viewOnly: !maySend,
+        owner: owner,
       );
     }
     if (path == '/api/network') return await sendJson(response, {'ip': await _lanAddress()});
-    if (path == '/api/discover' && box != null) {
-      return await sendJson(response, [
-        for (final g in await discoverGateways()) {'host': g.host, 'port': g.port, 'dibs': hexOf(g.dibs)},
-      ]);
-    }
+    if (path == '/api/discover' && discovery != null) return await sendJson(response, await discovery.run());
     if (path == '/api/box/hat' && hat != null) return await _hat(request, hat, bus, admin: admin);
     if (path == '/api/resolve') return await _resolve(request);
     if (path == '/api/notify' && request.method == 'POST') return await _notify(request);
     await _static(request, web);
+  } on BodyBudgetException {
+    try {
+      await answerBusy(response);
+    } on Object {
+      // Response already sent.
+    }
   } on Object catch (e) {
     stderr.writeln('${request.method} ${request.uri}: $e');
     try {
@@ -391,7 +463,7 @@ Future<void> _relay(HttpRequest request) async {
     await request.response.close();
     return;
   }
-  final ws = await WebSocketTransformer.upgrade(request);
+  final ws = await WebSocketTransformer.upgrade(request, compression: webSocketCompression);
   _relays.add(ws);
   unawaited(ws.done.whenComplete(() => _relays.remove(ws)));
   final udp = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
@@ -414,6 +486,11 @@ Future<void> _relay(HttpRequest request) async {
   }, onError: (Object _) {}); // E.g. "Send failed": without a listener the process would die.
   await ws
       .listen((message) {
+        // A packet is at most a few hundred bytes (see BusService.maxClientMessage).
+        if (BusService.tooLarge(message)) {
+          unawaited(ws.close(WebSocketStatus.messageTooBig, 'too big'));
+          return;
+        }
         if (message is! List<int> || message.length < 6) return;
         final address = InternetAddress.fromRawAddress(Uint8List.fromList(message.sublist(0, 4)));
         final port = (message[4] << 8) | message[5];
@@ -626,7 +703,7 @@ Future<void> _installCard(String version, Directory dir) async {
 ///
 /// Changes require [admin]: gateway, mode and credentials determine where the
 /// box connects to. Unchanged settings pass (see [BusService.wouldChange]).
-Future<void> _bus(HttpRequest request, BusService bus, {required bool admin}) async {
+Future<void> _bus(HttpRequest request, BusService bus, {required bool admin, bool maySend = true}) async {
   final response = request.response;
   if (request.method == 'PUT' || request.method == 'POST') {
     final raw = await readBody(request, 64 * 1024);
@@ -668,18 +745,26 @@ Future<void> _bus(HttpRequest request, BusService bus, {required bool admin}) as
       return sendJson(response, {'error': e.message, 'problem': ?e.problem});
     }
   }
-  return sendJson(response, {...bus.status(), 'storage': await bus.recorder.usage()});
+  return sendJson(response, {
+    ...bus.status(),
+    // A viewer sees read-only as on, like over the WebSocket.
+    if (!maySend) ...{'readOnly': true, 'viewOnly': true},
+    'storage': await bus.recorder.usage(),
+  });
 }
 
-/// Recording outages in the period `from`–`to` (milliseconds).
+/// Recording outages in the period `from`–`to` (milliseconds), at most
+/// [availabilityMaxRange]; without them the last day.
 Future<void> _availability(HttpRequest request, Availability availability) async {
-  final q = request.uri.queryParameters;
-  final now = DateTime.now();
-  final from = DateTime.fromMillisecondsSinceEpoch(
-    int.tryParse(q['from'] ?? '') ?? now.subtract(const Duration(days: 1)).millisecondsSinceEpoch,
-  );
-  final to = DateTime.fromMillisecondsSinceEpoch(int.tryParse(q['to'] ?? '') ?? now.millisecondsSinceEpoch);
-  return sendJson(request.response, await availability.outages(from, to));
+  final range = availabilityRange(request.uri.queryParameters, DateTime.now());
+  if (range case (error: final String error, from: _, to: _)) {
+    request.response
+      ..statusCode = HttpStatus.badRequest
+      ..headers.contentType = ContentType.text
+      ..write(error);
+    return request.response.close();
+  }
+  return sendJson(request.response, await availability.outages(range.from!, range.to!));
 }
 
 /// Value from the add-on options (/data/options.json).
@@ -717,6 +802,31 @@ Future<String?> _lanAddress() async {
   // Prefer typical home networks.
   candidates.sort((a, b) => (a.startsWith('192.168.') ? 0 : 1).compareTo(b.startsWith('192.168.') ? 0 : 1));
   return candidates.firstOrNull;
+}
+
+/// Gateway search of the box (`/api/discover`, any role): it sends to every
+/// address of every network, so only one runs at a time and its result is
+/// reused for a few seconds.
+class _Discovery {
+  static const _fresh = Duration(seconds: 10);
+  Future<List<Map<String, Object?>>>? _running;
+  ({DateTime at, List<Map<String, Object?>> result})? _last;
+
+  Future<List<Map<String, Object?>>> run() async {
+    final last = _last;
+    if (last != null && DateTime.now().difference(last.at) < _fresh) return last.result;
+    return _running ??= () async {
+      try {
+        final result = [
+          for (final g in await discoverGateways()) {'host': g.host, 'port': g.port, 'dibs': hexOf(g.dibs)},
+        ];
+        _last = (at: DateTime.now(), result: result);
+        return result;
+      } finally {
+        _running = null;
+      }
+    }();
+  }
 }
 
 Future<void> _resolve(HttpRequest request) async {

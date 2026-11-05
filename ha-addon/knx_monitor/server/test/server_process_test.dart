@@ -165,7 +165,9 @@ void main() {
       final (status, xml) = await call('GET', 'api/export/ets-xml?from=$from&to=$to', device);
       expect(status, 200);
       expect(xml, contains('RawData="2900BCE011321000010081"'));
-      expect((await call('GET', 'api/export/ets-xml?from=$from&to=$to&installation=gibts-nicht', device)).$1, 404);
+      // Without admin rights only the active installation; whether another one exists stays open.
+      expect((await call('GET', 'api/export/ets-xml?from=$from&to=$to&installation=gibts-nicht', device)).$1, 403);
+      expect((await call('GET', 'api/export/ets-xml?from=$from&to=$to&installation=gibts-nicht', admin)).$1, 404);
       expect((await call('GET', 'api/export/ets-xml?from=$to&to=$from', device)).$1, 400);
       // The browser asks with check=1 before the download link: same checks, no body.
       expect(await call('GET', 'api/export/ets-xml?from=$from&to=$to&check=1', device), (204, ''));
@@ -178,7 +180,102 @@ void main() {
     test('Roh-Relay nur mit Admin-Recht', () async {
       expect((await call('GET', 'ws', device)).$1, HttpStatus.forbidden);
     }, timeout: const Timeout(Duration(minutes: 2)));
+
+    test('WebSockets: ohne Kompression, zu große Nachricht beendet die Verbindung', () async {
+      for (final (path, auth) in [('ws', admin), ('ws/bus', device)]) {
+        final ws = await WebSocket.connect(
+          'ws://127.0.0.1:$port/$path',
+          headers: {HttpHeaders.authorizationHeader: auth},
+          compression: CompressionOptions.compressionDefault,
+        );
+        ws.listen((_) {}, onError: (Object _) {});
+        // The server did not agree to permessage-deflate.
+        expect(ws.extensions, isNot(contains('permessage-deflate')), reason: path);
+        ws.add(List.filled(70 * 1024, 0));
+        await ws.done.timeout(const Duration(seconds: 10));
+        expect(ws.closeCode, WebSocketStatus.messageTooBig, reason: path);
+      }
+    }, timeout: const Timeout(Duration(minutes: 2)));
+
+    test('Installationen: ohne Admin-Recht nur die aktive', () async {
+      final (status, created) = await call('POST', 'api/installations', admin, body: '{"name":"Kunde Alt"}');
+      expect(status, HttpStatus.created);
+      final other = (jsonDecode(created) as Map)['id'];
+      final list = jsonDecode((await call('GET', 'api/installations', device)).$2) as Map;
+      expect((list['list'] as List).map((i) => (i as Map)['id']), [list['active']]);
+      expect(((jsonDecode((await call('GET', 'api/installations', admin)).$2) as Map)['list'] as List), hasLength(2));
+      for (final path in [
+        'api/bus/availability?installation=$other',
+        'api/bus/stats?installation=$other',
+        'api/export/ets-xml?all=1&installation=$other',
+        'api/installations/$other/files/catalog.json',
+      ]) {
+        expect((await call('GET', path, device)).$1, HttpStatus.forbidden, reason: path);
+      }
+      expect((await call('GET', 'api/bus/availability?installation=$other', admin)).$1, 200);
+      expect((await call('GET', 'api/bus/availability?installation=${list['active']}', device)).$1, 200);
+    }, timeout: const Timeout(Duration(minutes: 2)));
+
+    test('Verfügbarkeit: unsinniger Zeitraum 400', () async {
+      for (final q in ['from=0&to=8640000000000000', 'from=-5&to=10', 'from=10&to=5']) {
+        expect((await call('GET', 'api/bus/availability?$q', device)).$1, HttpStatus.badRequest, reason: q);
+      }
+    }, timeout: const Timeout(Duration(minutes: 2)));
+
+    test('Wächter eines Geräts: mit seiner Id markiert, die des Admins bleiben', () async {
+      await call('PUT', 'api/files/watch_rules.json', admin, body: '{"rules":[{"id":"a","address":1}]}');
+      expect((await call('PUT', 'api/files/watch_rules.json', device, body: '{"rules":[]}')).$1, HttpStatus.noContent);
+      expect(
+        (await call('PUT', 'api/files/watch_rules.json', device, body: '{"rules":[{"id":"d","address":2}]}')).$1,
+        HttpStatus.noContent,
+      );
+      final rules = (jsonDecode((await call('GET', 'api/files/watch_rules.json', admin)).$2) as Map)['rules'] as List;
+      expect(rules.map((r) => (r as Map)['id']), ['a', 'd']);
+      expect((rules.last as Map)['owner'], isA<String>());
+      expect((rules.first as Map).containsKey('owner'), isFalse);
+      // Nur ansehen: schreibt gar nichts.
+      final page = (await call('POST', 'pair', password, body: 'name=Flur&viewOnly=1')).$2;
+      final viewer = 'Bearer ${RegExp(r'key=([A-Za-z0-9_-]+)').firstMatch(page)![1]}';
+      expect((await call('PUT', 'api/files/watch_rules.json', viewer, body: '{"rules":[]}')).$1, HttpStatus.forbidden);
+      expect((await call('PUT', 'api/files/charts.json', viewer, body: '{}')).$1, HttpStatus.forbidden);
+      // Wartungstermin nur mit Admin-Recht.
+      expect((await call('POST', 'api/report/maintenance', device, body: '{"due":1}')).$1, HttpStatus.forbidden);
+    }, timeout: const Timeout(Duration(minutes: 2)));
+
+    test('Box darf in keinem fremden Rahmen erscheinen', () async {
+      final client = HttpClient();
+      addTearDown(client.close);
+      for (final path in ['', 'api/bus', 'healthz']) {
+        final request = await client.getUrl(Uri.parse('http://127.0.0.1:$port/$path'));
+        request.headers.set(HttpHeaders.authorizationHeader, device);
+        final response = await request.close();
+        await response.drain<void>();
+        expect(response.headers.value('x-frame-options'), 'DENY', reason: path);
+        expect(response.headers.value('content-security-policy'), "frame-ancestors 'none'", reason: path);
+      }
+    }, timeout: const Timeout(Duration(minutes: 2)));
   });
+
+  test('ALLOW_ALL: nur Anfragen an localhost (gegen DNS-Rebinding)', () async {
+    await start(env: {'ALLOW_ALL': '1'});
+    final client = HttpClient();
+    addTearDown(client.close);
+    Future<int> withHost(String host) async {
+      final request = await client.getUrl(Uri.parse('http://127.0.0.1:$port/api/bus'));
+      request.headers.host = host;
+      request.headers.port = port;
+      final response = await request.close();
+      await response.drain<void>();
+      return response.statusCode;
+    }
+
+    expect(await withHost('angreifer.example'), HttpStatus.forbidden);
+    expect(await withHost('127.0.0.1.nip.io'), HttpStatus.forbidden);
+    expect(await withHost('localhost'), 200);
+    expect(await withHost('127.0.0.1'), 200);
+    // Das Lebenszeichen bleibt für den Watchdog offen.
+    expect((await get('healthz')).$1, 200);
+  }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('Box: HTTPS mit eigenem Zertifikat, Cookie nur dort „Secure“', () async {
     final dir = await Directory.systemTemp.createTemp('knx_tls');
@@ -306,6 +403,18 @@ void main() {
       expect(r.statusCode, code, reason: '$method $path');
       await r.drain<void>();
     }
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('Docker ohne BOX_PASSWORD startet nicht und loggt kein Passwort', () async {
+    final result = await Process.run(
+      'dart',
+      ['run', 'bin/server.dart'],
+      environment: {'PORT': '$port', 'DATA_DIR': data.path, 'WEB_DIR': web.path, 'BOX': '1'},
+    );
+    expect(result.exitCode, 78);
+    expect('${result.stderr}', contains('BOX_PASSWORD fehlt'));
+    expect('${result.stdout}', isNot(contains('Passwort')));
+    expect(File('${data.path}/access.json').existsSync(), isFalse);
   }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('config.yaml zeigt den Watchdog auf das Lebenszeichen', () async {

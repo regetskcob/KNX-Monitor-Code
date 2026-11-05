@@ -288,12 +288,6 @@ cmd_app() {
   say "Tagged app-v$v"
 }
 
-# Run id of the latest successful run of a workflow for a tag or commit.
-run_for() {
-  gh run list -R "$REPO" --workflow "$1" --status success -L 20 --json databaseId,headBranch,headSha \
-    --jq "[.[] | select(.headBranch == \"$2\" or .headSha == \"$2\")][0].databaseId // empty"
-}
-
 # Run of ci.yml for a tag whose linux job succeeded, newest first. Only that job
 # counts: A failed windows job (not published anyway) must not block the release.
 desktop_run() {
@@ -333,27 +327,63 @@ cmd_desktop() {
 
 # KNX Box: .github/workflows/box-image.yml builds image and package on a
 # box-v<version> tag; this publishes its artifacts in the public repository.
+#
+# Only a run started by pushing the tag (not a manual run on a branch of the
+# same name) of exactly the tagged commit counts, and every file must carry a
+# cosign signature of that run: identity, trigger and commit are checked
+# with cosign verify-blob. Without cosign or with a failed check nothing is
+# published.
+box_identity() { echo "https://github.com/$REPO/.github/workflows/box-image.yml@refs/tags/$1"; }
+
+box_run() { # box_run <tag> <commit>
+  gh run list -R "$REPO" --workflow box-image.yml --event push --status success -L 50 \
+    --json databaseId,headBranch,headSha,event \
+    --jq "[.[] | select(.event == \"push\" and .headBranch == \"$1\" and .headSha == \"$2\")][0].databaseId // empty"
+}
+
+box_verify() { # box_verify <file> <tag> <commit>
+  [ -f "$1.sigstore.json" ] || die "no signature for ${1##*/} – box releases are only published signed"
+  cosign verify-blob "$1" --bundle "$1.sigstore.json" \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+    --certificate-identity "$(box_identity "$2")" \
+    --certificate-github-workflow-trigger push \
+    --certificate-github-workflow-sha "$3" >/dev/null 2>&1 ||
+    die "signature of ${1##*/} does not verify for $(box_identity "$2") at $3"
+}
+
 cmd_box() {
   local v=${1:?usage: tool/release.sh box <version>}
-  local run; run=$(run_for box-image.yml "box-v$v")
-  [ -n "$run" ] || die "no successful box-image run for box-v$v – push the tag and wait for the workflow"
+  local tag=box-v$v
+  command -v cosign >/dev/null || die "cosign missing (brew install cosign) – box releases are only published with a verified signature"
+  # From GitHub, overwriting a local tag of the same name: a stale one would
+  # pick the run of another commit. Without the remote tag nothing is published.
+  git fetch -q --force origin "refs/tags/$tag:refs/tags/$tag" || die "could not fetch tag $tag from origin"
+  local sha; sha=$(git rev-parse -q --verify "refs/tags/$tag^{commit}") || die "tag $tag not found"
+  local run; run=$(box_run "$tag" "$sha")
+  [ -n "$run" ] || die "no successful box-image run for the push of $tag ($sha) – push the tag and wait for the workflow"
   local tmp; tmp=$(mktemp -d)
   say "Downloading box image of run $run"
   gh run download "$run" -R "$REPO" -n knx-box-bundle -D "$tmp"
   gh run download "$run" -R "$REPO" -n knx-box-image -D "$tmp"
+  local image images=()
+  for image in "$tmp"/*.img.xz; do
+    [ ! -f "$image" ] || images+=("$image")
+  done
+  [ "${#images[@]}" -gt 0 ] || die "run $run has no image"
+  say "Verifying signatures (cosign)"
+  for image in "$tmp/knx-box.tar.gz" "${images[@]}"; do
+    box_verify "$image" "$tag" "$sha"
+  done
   mv "$tmp/knx-box.tar.gz" "$tmp/knx-box-$v.tar.gz"
-  # Signatures from the run (cosign, tags only); older runs have none.
-  [ ! -f "$tmp/knx-box.tar.gz.sigstore.json" ] || mv "$tmp/knx-box.tar.gz.sigstore.json" "$tmp/knx-box-$v.tar.gz.sigstore.json"
-  local files=("$tmp"/*.img.xz "$tmp/knx-box-$v.tar.gz")
-  local notes="Image mit dem Raspberry Pi Imager (Eigenes Image) auf SD-Karte oder SSD schreiben. Vor dem ersten Start optional knx-box.txt auf der Boot-Partition ausfüllen. Paket für einen schon laufenden Pi: entpacken, sudo ./setup.sh. Prüfsummen: SHA256SUMS.txt (sha256sum -c), Signaturen (cosign): *.sigstore.json."
-  # Case for printing (STLs and description) from the state of the tag;
-  # fetch the tag first in case it only exists on GitHub.
-  git fetch -q origin "refs/tags/box-v$v:refs/tags/box-v$v" 2>/dev/null || true
+  mv "$tmp/knx-box.tar.gz.sigstore.json" "$tmp/knx-box-$v.tar.gz.sigstore.json"
+  local files=("${images[@]}" "$tmp/knx-box-$v.tar.gz")
+  local notes="Image mit dem Raspberry Pi Imager (Eigenes Image) auf SD-Karte oder SSD schreiben. Vor dem ersten Start optional knx-box.txt auf der Boot-Partition ausfüllen. Paket für einen schon laufenden Pi: entpacken, sudo ./setup.sh. Prüfsummen: SHA256SUMS.txt (sha256sum -c), Signaturen (cosign verify-blob, siehe docs/release-security.md): *.sigstore.json."
+  # Case for printing (STLs and description) from the state of the tag.
   # Up to box-v1.8.4 the box lived in tool/knx-box/.
   local case=box/case
-  git cat-file -e "box-v$v:$case" 2>/dev/null || case=tool/knx-box/case
-  if git cat-file -e "box-v$v:$case" 2>/dev/null; then
-    git archive --format=zip --prefix="knx-box-case-$v/" -o "$tmp/knx-box-case-$v.zip" "box-v$v:$case"
+  git cat-file -e "$tag:$case" 2>/dev/null || case=tool/knx-box/case
+  if git cat-file -e "$tag:$case" 2>/dev/null; then
+    git archive --format=zip --prefix="knx-box-case-$v/" -o "$tmp/knx-box-case-$v.zip" "$tag:$case"
     files+=("$tmp/knx-box-case-$v.zip")
     notes+=" Gehäuse zum Drucken (Vorschau, Pi 3B bis 5 mit kBerry): knx-box-case-$v.zip, Beschreibung im README.md darin."
   fi
@@ -364,7 +394,7 @@ cmd_box() {
   for bundle in "$tmp"/*.sigstore.json; do
     [ ! -f "$bundle" ] || files+=("$bundle")
   done
-  gh release create "box-v$v" -R "$PUBLIC_REPO" --latest=false --title "KNX Monitor Box $v" --notes "$notes" "${files[@]}"
+  gh release create "$tag" -R "$PUBLIC_REPO" --latest=false --title "KNX Monitor Box $v" --notes "$notes" "${files[@]}"
   rm -rf "$tmp"
 }
 

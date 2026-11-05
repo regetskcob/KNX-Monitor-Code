@@ -27,6 +27,16 @@ void main() {
     tunnel.dispose();
   });
 
+  test('Tunneling-Request mit zu großer Kopflänge wird verworfen, ohne Absturz', () async {
+    final tunnel = KnxTunnel('127.0.0.1', port: gateway.port);
+    await tunnel.connect();
+    // Connection header claims 240 bytes, the packet has 4: before, sublistView threw.
+    gateway.sendTunnelRequest([0xF0, 0x01, 0x00, 0x00]);
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    expect(tunnel.state.value, TunnelState.connected);
+    tunnel.dispose();
+  });
+
   test('feste Tunneladresse per Extended CRI', () async {
     final tunnel = KnxTunnel('127.0.0.1', port: gateway.port, requestedAddress: 0x11F0);
     await tunnel.connect();

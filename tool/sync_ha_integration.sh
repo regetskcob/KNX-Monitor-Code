@@ -38,6 +38,13 @@ fi
 # Replace everything except .git with the committed state of ha-integration/.
 find "$DIR" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
 git archive HEAD ha-integration | tar -x --strip-components=1 -C "$DIR"
+# Same secret scan as the public source (tool/export_public_source.sh), before
+# anything is committed there; publishing needs gitleaks.
+command -v gitleaks >/dev/null || { echo "gitleaks not installed (brew install gitleaks); required for publishing" >&2; exit 1; }
+gitleaks dir --no-banner --redact --config tool/public_source/gitleaks.toml "$DIR" || {
+  echo "gitleaks found secrets in ha-integration/ – remove them (and rotate) first; nothing was committed in $DIR" >&2
+  exit 1
+}
 
 head=$(git rev-parse --short=8 HEAD)
 version=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' \

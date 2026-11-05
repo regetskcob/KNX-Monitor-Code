@@ -148,9 +148,9 @@ void main() {
       await data.delete(recursive: true);
     });
 
-    Future<_WsClient> client() async {
+    Future<_WsClient> client({bool maySend = true}) async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-      server.listen((r) async => bus.serve(await WebSocketTransformer.upgrade(r)));
+      server.listen((r) async => bus.serve(await WebSocketTransformer.upgrade(r), maySend: maySend));
       final ws = await WebSocket.connect('ws://127.0.0.1:${server.port}');
       return _WsClient(ws, server);
     }
@@ -182,6 +182,25 @@ void main() {
       expect(lines.last['o'], true);
       await a.close();
       await b.close();
+    });
+
+    test('nur ansehen: sieht alles, sendet nichts', () async {
+      final viewer = await client(maySend: false);
+      await bus.update({'enabled': true, 'host': '127.0.0.1', 'port': gw.port});
+      await until(() => bus.state == 'connected');
+      await until(() => viewer.states.any((s) => s['state'] == 'connected'));
+      expect(viewer.states.last['readOnly'], isTrue, reason: 'the app hides sending');
+      gw.indicate(writeOn);
+      await until(() => viewer.frames.isNotEmpty);
+      viewer.send(9, requestOff);
+      await until(() => viewer.results.containsKey(9));
+      expect(viewer.results[9], 5);
+      expect(gw.requests, isEmpty);
+      // Nor hand the connection to an own tunnel.
+      viewer.release(true);
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(viewer.states.any((s) => s['state'] == 'yielded'), isFalse);
+      await viewer.close();
     });
 
     test('verbindet nach Trennung sofort neu', () async {

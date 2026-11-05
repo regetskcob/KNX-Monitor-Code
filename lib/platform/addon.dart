@@ -167,7 +167,10 @@ abstract final class Addon {
   /// Blocks a device, `*` for all.
   static Future<void> revokeDevice(String id) => impl.addonPost('api/box/devices/revoke', {'id': id});
 
-  static Future<void> changeBoxPassword(String password) => impl.addonPost('api/box/password', {'password': password});
+  /// [current]: the box password as it is now; the box asks for it except
+  /// while the sticker password must be replaced.
+  static Future<void> changeBoxPassword(String password, {String? current}) =>
+      impl.addonPost('api/box/password', {'password': password, 'current': ?current});
 
   /// Change the box's Wi-Fi password; the box then disconnects everyone from its Wi-Fi.
   static Future<void> changeBoxWifi(String password) => impl.addonPost('api/box/wifi', {'password': password});
