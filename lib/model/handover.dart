@@ -105,6 +105,7 @@ Future<HandoverPackage> buildHandover({required bool includeKeys, DateTime? now}
     origin: active.id,
     catalog: handoverCatalog(catalog.catalog),
     overrides: Map.of(catalog.overrides),
+    projectNames: catalog.projectNames,
     gateway: active.gateway,
     connection: {
       'mode': options.mode.name,
@@ -184,6 +185,7 @@ Future<Installation> applyHandover(HandoverPackage p) async {
       p.catalog,
       name: '${p.installationName}.$handoverExtension',
       overrides: p.overrides,
+      projectNames: p.projectNames,
     );
     if (p.keyring case final keys?) {
       await KeyringStore.instance.adoptStored(keys);

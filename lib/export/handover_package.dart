@@ -125,6 +125,7 @@ class HandoverPackage {
     required this.origin,
     required this.catalog,
     this.overrides = const {},
+    this.projectNames = const {},
     this.gateway,
     this.connection = const {},
     this.keyring,
@@ -140,6 +141,10 @@ class HandoverPackage {
   final String origin;
   final GroupCatalog catalog;
   final Map<int, Dpt> overrides;
+
+  /// Project names of addresses whose name was corrected in the app; [catalog] has the corrected
+  /// ones (`CatalogStore.projectNames`).
+  final Map<int, String> projectNames;
   final GatewayRef? gateway;
 
   /// Connection type, tunnel address, routing source (no passwords).
@@ -176,6 +181,8 @@ class HandoverPackage {
     'overrides': {
       for (final MapEntry(:key, :value) in overrides.entries) '$key': [value.main, value.sub],
     },
+    if (projectNames.isNotEmpty)
+      'projectNames': {for (final MapEntry(:key, :value) in projectNames.entries) '$key': value},
     'gateway': ?gateway?.toJson(),
     'connection': connection,
     'keyring': ?keyring,
@@ -263,6 +270,10 @@ class HandoverPackage {
         overrides: {
           for (final MapEntry(:key, :value) in ((payload['overrides'] as Map?) ?? const {}).entries)
             int.parse(key as String): Dpt((value as List)[0] as int, value[1] as int?),
+        },
+        projectNames: {
+          for (final MapEntry(:key, :value) in ((payload['projectNames'] as Map?) ?? const {}).entries)
+            int.parse(key as String): value as String,
         },
         gateway: payload['gateway'] == null ? null : GatewayRef.fromJson((payload['gateway']! as Map).cast()),
         connection: ((payload['connection'] as Map?) ?? const {}).cast(),

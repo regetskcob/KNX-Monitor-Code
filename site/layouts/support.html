@@ -1,27 +1,33 @@
-{{ define "main" }}
-{{- /* Support: contact via GitHub Issues, what to include, the FAQ. */}}
+{{- /* Support: contact via GitHub Issues, what to include, the FAQ (from the landing page's data). */ -}}
 {{- $d := index site.Data.home site.Language.Lang -}}
 {{- $s := index site.Data.support site.Language.Lang -}}
-<article class="knx-page">
+{{- $faq := slice }}
+{{- range $d.faq.items }}{{ if or site.Params.commerce (not .commerce) }}{{ $faq = $faq | append . }}{{ end }}{{ end -}}
+{{- $body := printf `<article class="knx-page">
   <header class="knx-page-head">
-    {{ partial "horizont/kennung.html" (dict "text" (printf "%s · %s" site.Title .Title) "tag" "p") }}
-    <h1 class="t-display">{{ .Title }}</h1>
-    <p class="knx-lead">{{ $s.lead }}</p>
+    %s
+    <h1 class="t-display">%s</h1>
+    <p class="knx-lead">%s</p>
     <div class="hz-feld-actions">
-      <a class="hz-button hz-button--primary" href="{{ site.Params.githubUrl }}/issues" rel="noopener">GitHub Issues{{ partial "horizont/symbol.html" "open_in_new" }}</a>
+      <a class="hz-button hz-button--primary" href="%s/issues" rel="noopener">GitHub Issues%s</a>
     </div>
   </header>
   <hr class="hz-feld-horizon">
   <div class="knx-prose t-reading">
-    <h2>{{ $s.contact_title }}</h2>
-    <p>{{ $s.contact_text }} <a href="{{ site.Params.githubUrl }}/issues" rel="noopener">GitHub Issues</a></p>
-    <h2>{{ $s.checklist_title }}</h2>
-    <ul>{{ range $s.checklist }}<li>{{ . }}</li>{{ end }}</ul>
-    <h2>{{ $d.faq.title }}</h2>
-    {{- $faq := slice }}
-    {{- range $d.faq.items }}{{ if or site.Params.commerce (not .commerce) }}{{ $faq = $faq | append . }}{{ end }}{{ end }}
-    {{ partial "faq.html" ($faq | append $s.faq) }}
-    {{ .Content }}
+    <h2>%s</h2>
+    <p>%s <a href="%s/issues" rel="noopener">GitHub Issues</a></p>
+    <p>%s <a href="mailto:%s">%s</a></p>
+    <h2>%s</h2>
+    <ul>%s</ul>
+    <h2>%s</h2>
+    %s
+    %s
   </div>
-</article>
-{{ end }}
+</article>`
+  (partial "horizont/kennung.html" (dict "text" (printf "%s · %s" site.Title .Title) "tag" "p"))
+  .Title $s.lead site.Params.githubUrl (partial "horizont/symbol.html" "open_in_new")
+  $s.contact_title $s.contact_text site.Params.githubUrl
+  $s.contact_mail site.Params.supportMail site.Params.supportMail
+  $s.checklist_title (delimit (apply $s.checklist "printf" "<li>%s</li>" ".") "")
+  $d.faq.title (partial "faq.html" ($faq | append $s.faq)) .Content -}}
+{{ partial "textpage.html" (dict "page" . "body" ($body | safeHTML)) }}

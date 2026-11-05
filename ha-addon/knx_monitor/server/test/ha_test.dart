@@ -163,5 +163,29 @@ void main() {
       expect(changes.first.name, 'Rauchmelder Flur');
       expect(changes.first.kind, 'alarm');
     });
+
+    test('Alarm: in der App korrigierter Name ersetzt den aus dem Projekt', () async {
+      await File('${data.path}/catalog.json').writeAsString(
+        jsonEncode({
+          'style': 'threeLevel',
+          'groups': [
+            {
+              'a': 0x0801,
+              'n': 'Rauchmeldr Flur',
+              'd': [1, 5],
+            },
+          ],
+        }),
+      );
+      final alarms = AlarmWatch(data, notify: ({required id, required title, required message}) async {});
+      await alarms.loadCatalog();
+      expect(alarms.nameOf(0x0801), 'Rauchmeldr Flur');
+      await File('${data.path}/name_overrides.json').writeAsString(jsonEncode({'${0x0801}': 'Rauchmelder Flur'}));
+      await alarms.loadCatalog();
+      expect(alarms.nameOf(0x0801), 'Rauchmelder Flur');
+      await File('${data.path}/name_overrides.json').delete();
+      await alarms.loadCatalog();
+      expect(alarms.nameOf(0x0801), 'Rauchmeldr Flur');
+    });
   });
 }

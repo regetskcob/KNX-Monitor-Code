@@ -114,13 +114,15 @@ jobs:
           for i in $(seq 1 30); do [ "$(code http://localhost:8767/)" = 403 ] && break; sleep 1; done
           test "$(code http://localhost:8767/)" = 403
           test "$(code -u x:ci-box-pass http://localhost:8767/api/bus)" = 403
-          grep -qx no "$RUNNER_TEMP/box-closed/app/lan-access"
+          sudo grep -qx no "$RUNNER_TEMP/box-closed/app/lan-access"
           docker stop -t 10 box-closed && docker rm box-closed
           wait_up() { for i in $(seq 1 30); do [ "$(code http://localhost:8766/)" = 401 ] && return 0; sleep 1; done; docker logs box; return 1; }
           ws=(-H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==')
           run; wait_up
           pw=ci-box-pass
-          test ! -e "$RUNNER_TEMP/box/app/box-password.txt"
+          sudo test ! -e "$RUNNER_TEMP/box/app/box-password.txt"
+          # Box mode keeps its data folder to itself (keyring, passwords).
+          test "$(sudo stat -c %a "$RUNNER_TEMP/box/app")" = 700
           test "$(code http://localhost:8766/api/bus)" = 401
           test "$(code "${ws[@]}" http://localhost:8766/ws/bus)" = 401
           test "$(code -u "x:$pw" http://localhost:8766/api/bus)" = 200
@@ -147,14 +149,14 @@ jobs:
           res=$(curl -sf -H "Authorization: Bearer $key" -H 'Content-Type: application/json' \
             -d "{\"epochMs\": $(date +%s)000}" http://localhost:8766/api/box/time)
           echo "$res" | grep -qE '"result":"(set|ok)"'
-          if echo "$res" | grep -q '"result":"set"'; then test -f "$RUNNER_TEMP/box/app/time-request.json"; fi
+          if echo "$res" | grep -q '"result":"set"'; then sudo test -f "$RUNNER_TEMP/box/app/time-request.json"; fi
           # /api/files/ hands out the server's own files to nobody.
           for f in access.json server.json box-password.txt lan-access; do
             test "$(code -H "Authorization: Bearer $key" http://localhost:8766/api/files/$f)" = 403
             test "$(code -u "x:$pw" http://localhost:8766/api/files/$f)" = 403
           done
           test "$(code -u "x:$pw" -H 'Origin: http://evil.example' -X PUT http://localhost:8766/api/bus)" = 403
-          ! grep -q "$key" "$RUNNER_TEMP/box/app/access.json"
+          ! sudo grep -q "$key" "$RUNNER_TEMP/box/app/access.json"
           docker stop -t 10 box && docker rm box
           run; wait_up
           test "$(code -H "Authorization: Bearer $key" http://localhost:8766/api/bus)" = 200

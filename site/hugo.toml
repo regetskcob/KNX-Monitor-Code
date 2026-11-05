@@ -1,36 +1,52 @@
-# KNX Monitor – landing page ("Feldseite" on the design system Horizont)
+# KNX Monitor – website https://knx-monitor.de (Hugo, design system Horizont)
 #
-# Published at https://www.regetskcob.de/knx/ (the Hugo output is copied into the
-# website repo under static/knx/). All links/assets go through
-# relURL/absURL and therefore work in the subfolder /knx/.
-baseURL = "https://www.regetskcob.de/knx/"
+# One full-screen page, plus the KNX Box page (/box/): title, mark, the small distribution board with the
+# app's generic actuators as an animated drawing; support, privacy policy, account
+# deletion and the legal drafts. Draft pages (layouts baseof, store, header,
+# appheader, kaufen; partials in _partials/drafts/) render only with `hugo server -D`
+# and make the store graphics and headers. regetskcob.de/knx/ redirects here.
+#
+# Served via GitHub Pages from the public repo (branch gh-pages),
+# see tool/release.sh site (werkbank, WB_SITES). Included: /.well-known/ for the
+# passkeys; /socials/ is built from store/social/ on deploy (tool/social/preview.py).
+baseURL = "https://knx-monitor.de/"
 title = "KNX Monitor"
 
 defaultContentLanguage = "de"
 defaultContentLanguageInSubdir = false
-# robots.txt belongs at the domain root (main site); point to knx/sitemap.xml there.
-enableRobotsTXT = false
-disableKinds = ["taxonomy", "term", "rss"]
+enableRobotsTXT = true
+# Last change per page from Git (lastmod in the sitemap).
+enableGitInfo = true
+disableKinds = ["taxonomy", "term", "rss", "section"]
 
 [params]
-  # Tiers, prices and purchases on the page. Off as long as no business is
-  # registered; the preview (tool/deploy_site.sh --preview) turns them on.
+  # Ways to buy and texts that require a sale. Off as long as no business is
+  # registered; the prices in the roadmap are shown as a preview regardless.
   commerce = false
-  # Store links – "#" as long as the app is not yet published.
-  appStoreUrl = "#"
-  playStoreUrl = "#"
-  desktopUrl = "https://github.com/regetskcob/KNX-Monitor/releases/latest"
-  boxUrl = "https://github.com/regetskcob/KNX-Monitor/releases/tag/box-v1.9.6"
-  # Home Assistant add-on repository (Settings → Add-ons → Add-on Store → ⋮ → Repositories)
-  haRepoUrl = "https://github.com/regetskcob/KNX-Monitor"
-  # Legal notice lives on the main site (applies to DE and EN)
-  legalUrl = "https://www.regetskcob.de/legal/"
+  # Not in search engines (preview only).
+  noindex = false
+  # "Add repository" in Home Assistant (my.home-assistant.io).
+  haUrl = "https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fregetskcob%2FKNX-Monitor"
+  # Public betas, on per platform only once a build is approved
+  # (TestFlight: Beta App Review, Google Play: closed test live).
+  # They switch the button, the beta line in the roadmap and the texts that are
+  # stored per state (none, ios, android, both) in data/site/<lang>.yaml.
+  betaIos = false
+  # Public source code (GPLv3), hero button and FAQ.
+  codeUrl = "https://github.com/regetskcob/KNX-Monitor-Code"
+  betaAndroid = false
   githubUrl = "https://github.com/regetskcob/KNX-Monitor"
+  instagramUrl = "https://www.instagram.com/knxmonitor/"
+  legalUrl = "https://www.regetskcob.de/legal/"
+  supportMail = "support@knx-monitor.de"
+  # KNX Box image (as on the landing page).
+  boxUrl = "https://github.com/regetskcob/KNX-Monitor/releases/tag/box-v1.9.6"
+  # For the draft pages (store graphics, headers, buy page; layouts baseof, store,
+  # header, appheader, kaufen with partials in _partials/drafts/).
   ogImage = "images/og.png"
   # Buy page for Windows (Paddle, merchant of record). Empty = not yet
   # available; price IDs are in static/kaufen/angebote.json (the app reads
-  # them too). customDataKey: field under which RevenueCat expects the account ID
-  # (check in RevenueCat's Paddle guide).
+  # them too). customDataKey: field under which RevenueCat expects the account ID.
   [params.paddle]
     environment = "sandbox"
     clientToken = ""
@@ -42,34 +58,25 @@ disableKinds = ["taxonomy", "term", "rss"]
     languageCode = "de-DE"
     weight = 1
     [languages.de.params]
-      description = "KNX Monitor: moderner KNX-Busmonitor und Diagnose für iPhone, iPad, Android und Home Assistant. Liest ETS-Projekte, prüft die Anlage, deine Daten bleiben lokal. Kostenlos, mit Plus und Pro."
-      description_live = "KNX Monitor: moderner KNX-Busmonitor und Diagnose für iPhone, iPad, Android und Home Assistant. Liest ETS-Projekte, prüft die Anlage, deine Daten bleiben lokal."
+      privacyUrl = "/datenschutz/"
+      supportUrl = "/support/"
   [languages.en]
     languageName = "English"
     languageCode = "en-US"
     weight = 2
     [languages.en.params]
-      description = "KNX Monitor: a modern KNX bus monitor and diagnostics tool for iPhone, iPad, Android and Home Assistant. Reads ETS projects, checks your installation, your data stays local. Free, with Plus and Pro."
-      description_live = "KNX Monitor: a modern KNX bus monitor and diagnostics tool for iPhone, iPad, Android and Home Assistant. Reads ETS projects, checks your installation, your data stays local."
+      privacyUrl = "/en/privacy/"
+      supportUrl = "/en/support/"
 
-[sitemap]
-  changeFreq = "monthly"
-
+# HTML in the data (values in the ETS section, badges), as on the landing page.
 [markup.goldmark.renderer]
-  unsafe = true  # allows <span class="todo"> in Markdown (own content)
+  unsafe = true
 
 [minify]
   [minify.tdewolff.html]
     keepWhitespace = false
 
-# Horizont (github.com/regetskcob/horizont) as a Hugo module, pinned to a tag.
-# The mounts are the ones from the module's docs/web.md: tokens, CSS, partials,
-# shortcodes and the fonts (served locally, never from Google Fonts).
-# Update: hugo mod get github.com/regetskcob/horizont@vX.Y.Z
 [module]
-  # Own folders as usual, plus the screenshots from static/images/screens
-  # (generated by tool/launch_graphics.py) also as assets, so that the
-  # device frame can crop them and serve them as WebP.
   [[module.mounts]]
     source = 'content'
     target = 'content'
@@ -88,13 +95,10 @@ disableKinds = ["taxonomy", "term", "rss"]
   [[module.mounts]]
     source = 'static'
     target = 'static'
-    files = ['! images/screens/**', '! images/highlights/**', '! images/banner.png']
+  # Screenshots (static/images/screens/) also as resources for image processing.
   [[module.mounts]]
     source = 'static/images/screens'
     target = 'assets/images/screens'
-  [[module.mounts]]
-    source = 'static/images/highlights'
-    target = 'assets/images/highlights'
   [[module.imports]]
     path = 'github.com/regetskcob/horizont'
     [[module.imports.mounts]]
@@ -110,9 +114,6 @@ disableKinds = ["taxonomy", "term", "rss"]
     [[module.imports.mounts]]
       source = 'web/partials'
       target = 'layouts/_partials/horizont'
-    [[module.imports.mounts]]
-      source = 'web/shortcodes'
-      target = 'layouts/_shortcodes'
     [[module.imports.mounts]]
       source = 'web/js'
       target = 'assets/js/horizont'

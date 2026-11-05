@@ -5,7 +5,7 @@
 	<!-- WLAN der KNX-Box aus der App beitreten (NEHotspotConfiguration). -->
 	<key>com.apple.developer.networking.HotspotConfiguration</key>
 	<true/>
-	<!-- Konto: Passkeys für knx-monitor.de (teaser/static/.well-known/). -->
+	<!-- Konto: Passkeys für knx-monitor.de (site/static/.well-known/). -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>webcredentials:knx-monitor.de</string>

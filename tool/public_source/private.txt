@@ -6,6 +6,9 @@
 # the same interface, so the public app still builds; they are copied over the
 # snapshot with ".stub" removed.
 
+# Internal build sources (partner PDFs, MDT device art, canvas); texts are in Notion
+intern
+
 # Account backend and everything that operates it
 supabase
 docs/betrieb-runbook.md

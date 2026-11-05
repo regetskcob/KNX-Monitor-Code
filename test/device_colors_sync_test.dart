@@ -7,7 +7,7 @@ import 'package:knx_monitor/theme/palette.dart';
 /// Die Gerätegrafiken der Webseite tragen dieselben Farben wie die App.
 void main() {
   test('teaser.css und Palette nennen dieselben Gerätefarben', () {
-    final css = File('teaser/assets/css/teaser.css').readAsStringSync().toUpperCase();
+    final css = File('site/assets/css/teaser.css').readAsStringSync().toUpperCase();
     String hex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
     for (final (selector, color) in [
       ('.DV-HOUSING { FILL: ', Palette.deviceHousing),

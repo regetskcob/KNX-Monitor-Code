@@ -74,7 +74,7 @@ The app creates notifications about alarms and watchers locally on the device; y
 
 ### Export and sharing
 
-Reports (PDF), CSV and ETS exports are only created when you trigger them. Where they go is up to you, via your operating system's share sheet. Recently created exports, including diagnostics packages, stay in the app as a copy so that you can share them again; you can delete them there. A fault report to your electrician includes names and the screenshots on your comments along with the bus recording, without a switch. It only goes to the recipient you choose.
+Reports (PDF), CSV and ETS exports are only created when you trigger them. Where they go is up to you, via your operating system's share sheet. Recently created exports, including diagnostics packages, stay in the app as a copy so that you can share them again; you can delete them there. A fault report to your electrician includes the names of addresses and devices along with the bus recording while the switch for them is on; screenshots on your comments only if you explicitly include them. It only goes to the recipient you choose.
 
 ### In-app purchases (Plus and Pro)
 

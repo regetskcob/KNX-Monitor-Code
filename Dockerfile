@@ -17,7 +17,7 @@ ARG FLUTTER_COMMIT=5fc346839b5d0eef006ed8404392afb4dfae428d
 
 # The web app is the same on every architecture, so it is built on the build
 # machine (no emulation for an arm64 image on amd64 and vice versa).
-FROM --platform=$BUILDPLATFORM dart:3.13.6@sha256:bf07cd831c34d7cef047bcd50803fa38e3af59664a276440893ca9db77014ca0 AS web
+FROM --platform=$BUILDPLATFORM dart:3.13.7@sha256:517cbeb4612c4dff11c983edea521d5aef3f47a674c23684fad5e89803ca5b1c AS web
 ARG FLUTTER_VERSION
 ARG FLUTTER_COMMIT
 RUN apt-get update && apt-get install -y --no-install-recommends git unzip xz-utils && rm -rf /var/lib/apt/lists/*
@@ -37,7 +37,7 @@ RUN flutter gen-l10n && flutter build web --release --no-web-resources-cdn \
   && find build/web \( -name '*.symbols' -o -name 'skwasm*' \) -delete
 
 # The server, as in ha-addon/knx_monitor/Dockerfile but from the repository root.
-FROM dart:3.13.6@sha256:bf07cd831c34d7cef047bcd50803fa38e3af59664a276440893ca9db77014ca0 AS server
+FROM dart:3.13.7@sha256:517cbeb4612c4dff11c983edea521d5aef3f47a674c23684fad5e89803ca5b1c AS server
 # Time zones: the history's day change should be local (TZ).
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata && rm -rf /var/lib/apt/lists/*
 WORKDIR /src/ha-addon/knx_monitor/server

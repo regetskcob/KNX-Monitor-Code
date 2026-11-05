@@ -130,8 +130,8 @@ void main() {
     }
   }
 
-  // Box-Seite (teaser/, 03 Einrichten): die Einrichtung der KNX-Box auf dem
-  // iPhone, alle Schritte abgehakt, je Sprache nach teaser/assets/images/:
+  // Box-Seite (site/, 03 Einrichten): die Einrichtung der KNX-Box auf dem
+  // iPhone, alle Schritte abgehakt, je Sprache nach site/assets/images/:
   //   BOX_SHOTS=1 flutter test --tags golden --update-goldens test/layout_shots_test.dart
   final skipBox = Platform.environment['BOX_SHOTS'] == null;
   for (final lang in LocaleController.supported) {
@@ -164,7 +164,7 @@ void main() {
         ),
       );
       await tester.pump(const Duration(seconds: 1));
-      await expectLater(find.byType(MaterialApp), matchesGoldenFile('../teaser/assets/images/box-setup-$lang.png'));
+      await expectLater(find.byType(MaterialApp), matchesGoldenFile('../site/assets/images/box-setup-$lang.png'));
       debugDefaultTargetPlatformOverride = null;
     });
   }

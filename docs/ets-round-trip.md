@@ -10,7 +10,7 @@ ETS yet; the ETS test procedure is at the end.
 | --- | --- | --- | --- |
 | **Datapoint type of a group address** | can be set ("Set datapoint type", `CatalogStore.overrides`) | **ETS group address import (XML)**, official, no signature | built (`lib/export/ets_ga_export.dart`), not yet tested in ETS |
 | Names of unnamed addresses, new addresses | learned without a project (`CatalogStore.learned`) | same XML import | built, not yet tested in ETS |
-| **Corrected names** (typos) | per address in the details sheet ("Correct name") or for all project names at once in the project check ("Find and replace in names"), `CatalogStore.names` | same XML import | built, not yet tested in ETS |
+| **Corrected names** (typos) | per address in the details sheet ("Correct name") or for all project names at once in the project check ("Find and replace in names"), `CatalogStore.names`; they travel with diagnostics and handover packages and to the box | same XML import | built, not yet tested in ETS |
 | **Flags of an object** (C R W T U) | read and checked only (project check) | no official file import; only in ETS itself (by hand or via an ETS app) | task list ("Tasks for ETS") |
 | **Links** object ↔ group address | read and checked only | as for flags | task list |
 | Descriptions of group addresses | cannot be changed | would work with the same XML import | not built |

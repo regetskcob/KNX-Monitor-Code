@@ -300,6 +300,22 @@ void main() {
       expect(installs.list.length, 2);
     });
 
+    test('Korrigierte Namen kommen als Korrektur an, nicht als Projektname', () async {
+      final store = CatalogStore.instance;
+      await store.adopt(_catalog, name: 'eigen.csv');
+      await store.setName(0x0801, 'Licht Küche Insel');
+      final p = await openHandover((await buildHandover(includeKeys: false)).toFile());
+      expect(p.catalog[0x0801]?.name, 'Licht Küche Insel');
+      expect(p.projectNames, {0x0801: 'Licht Küche'});
+      await applyHandover(p);
+      expect(store.project[0x0801]?.name, 'Licht Küche');
+      expect(store.names, {0x0801: 'Licht Küche Insel'});
+      expect(store.catalog[0x0801]?.name, 'Licht Küche Insel');
+      // Älteres Paket ohne Projektnamen: keine Korrekturen übrig.
+      await store.adopt(_catalog, name: 'alt.knxhandover', projectNames: const {});
+      expect(store.names, isEmpty);
+    });
+
     test('Kaputte Herkunft-Datei: keine Meldung, kein Absturz', () async {
       await installs.storage.write(HandoverStore.file, '{kaputt');
       await HandoverStore.instance.load();

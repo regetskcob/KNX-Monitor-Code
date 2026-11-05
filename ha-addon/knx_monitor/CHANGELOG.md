@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.9.8
+
+Security and load release, from an audit, a pen test and a load test with 30 days
+of 100,000 telegrams each.
+
+- History: the retention setting only accepts valid values. A negative value used
+  to become 0 ("off"), which deleted the whole history.
+- Faster with a long history: charts over 7 or 30 days and the statistics answer
+  from a cache of completed days (20 viewers at once: 0.8 s instead of 9.6 s per
+  chart; 30-day statistics: 0.07 s instead of 4.3 s). The web app is sent
+  compressed and cached by the browser (2.3 MB instead of 7.9 MB, then nothing).
+- KNX Box and Docker: changing the box password and locking out all devices need
+  the current password. New device level "view only" when pairing: it sees
+  everything and sends nothing to the bus. Paired devices only see the active
+  installation and change only their own charts and watchers.
+- Docker: the data folder is only readable by the container (keys and passwords
+  were readable by every account on the host); "no LAN access" means the host
+  itself; without BOX_PASSWORD the first start stops instead of inventing a
+  password. The compose file drops capabilities.
+- Robustness: limits for WebSocket messages, request bodies, logins and
+  connections; unknown API paths answer 404, other methods 405; frames and
+  ranges are checked before use. KNX IP Secure rejects an all-zero key exchange;
+  Data Secure sequence numbers survive a restart.
+- Integration (KNX-Monitor-HA 1.0.2): its services are for administrators only,
+  the history export is streamed with a size limit, and only this add-on can
+  announce itself.
+- CSV exports open correctly in Excel (umlauts, negative numbers, times with
+  offset). Group address names can be corrected in the app and returned to the
+  ETS as an import file.
+
 ## 1.9.7
 
 - New: the KNX Monitor integration for Home Assistant, installed through HACS

@@ -60,6 +60,7 @@ class DiagnosticsPackage {
     this.problem = '',
     this.expected,
     this.overrides = const {},
+    this.projectNames = const {},
     this.technical = const {},
     this.log = const [],
     this.secureTelegrams = const [],
@@ -81,6 +82,10 @@ class DiagnosticsPackage {
   final Recording recording;
   final GroupCatalog catalog;
   final Map<int, Dpt> overrides;
+
+  /// Project names of addresses whose name was corrected in the app; [catalog] has the corrected
+  /// ones (`CatalogStore.projectNames`).
+  final Map<int, String> projectNames;
 
   /// Version, platform, connection, plan, settings …
   final Map<String, Object?> technical;
@@ -122,6 +127,7 @@ class DiagnosticsPackage {
       'groupAddresses': catalog.length,
       'devices': catalog.devices.length,
       'dptOverrides': overrides.length,
+      'nameCorrections': projectNames.length,
       'logLines': log.length,
       'annotations': recording.annotations.length,
       'screenshots': shots.length,
@@ -141,6 +147,8 @@ class DiagnosticsPackage {
         'overrides': {
           for (final MapEntry(:key, :value) in overrides.entries) '$key': [value.main, value.sub],
         },
+        if (projectNames.isNotEmpty)
+          'projectNames': {for (final MapEntry(:key, :value) in projectNames.entries) '$key': value},
       }),
       if (secureTelegrams.isNotEmpty)
         _secure: jsonEncode([
@@ -196,6 +204,10 @@ class DiagnosticsPackage {
         for (final MapEntry(:key, :value) in ((project['overrides'] as Map?) ?? const {}).entries)
           int.parse(key as String): Dpt((value as List)[0] as int, value[1] as int?),
       };
+      final projectNames = {
+        for (final MapEntry(:key, :value) in ((project['projectNames'] as Map?) ?? const {}).entries)
+          int.parse(key as String): value as String,
+      };
       final secure = [
         for (final e in (jsonDecode(read(_secure) ?? '[]') as List).cast<Map<String, Object?>>())
           (
@@ -214,6 +226,7 @@ class DiagnosticsPackage {
         recording: recording,
         catalog: catalog,
         overrides: overrides,
+        projectNames: projectNames,
         secureTelegrams: secure,
         log: [...?read(_log)?.split('\n').where((l) => l.isNotEmpty)],
         shots: {
@@ -351,6 +364,7 @@ DiagnosticsPackage buildDiagnosticsPackage({
   required GroupCatalog catalog,
   required DateTime occurred,
   Map<int, Dpt> overrides = const {},
+  Map<int, String> projectNames = const {},
   Set<int> secureAddresses = const {},
   DateTime? from,
   DateTime? to,
@@ -445,6 +459,8 @@ DiagnosticsPackage buildDiagnosticsPackage({
     recording: recording,
     catalog: anonymizeCatalog(catalog, keepNames: keepNames, scrub: scrub),
     overrides: overrides,
+    // Without names the catalog only has addresses: nothing left to correct.
+    projectNames: keepNames ? {for (final MapEntry(:key, :value) in projectNames.entries) key: scrub(value)} : const {},
     technical: scrubNote.tree(technical)! as Map<String, Object?>,
     log: [for (final l in log) scrubNote(l)],
     secureTelegrams: secure,

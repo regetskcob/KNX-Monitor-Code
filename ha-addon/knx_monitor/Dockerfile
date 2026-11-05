@@ -1,7 +1,7 @@
 # Compile the server (the web app is prebuilt in ./web, see tool/build_ha_addon.sh).
 # Fixed Dart version (like the app's Flutter), pinned by digest: a moved tag
 # changes nothing. Dependabot bumps both monthly.
-FROM dart:3.13.6@sha256:bf07cd831c34d7cef047bcd50803fa38e3af59664a276440893ca9db77014ca0 AS build
+FROM dart:3.13.7@sha256:517cbeb4612c4dff11c983edea521d5aef3f47a674c23684fad5e89803ca5b1c AS build
 # Time zones: Supervisor sets TZ, the history's day change should be local.
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata && rm -rf /var/lib/apt/lists/*
 # The server depends on packages/knx by the path ../../../packages/knx. The

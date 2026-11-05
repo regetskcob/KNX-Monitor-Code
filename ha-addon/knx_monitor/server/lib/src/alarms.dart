@@ -26,6 +26,7 @@ class AlarmWatch {
   Map<int, _Group> _groups = const {};
   String _style = 'threeLevel';
   DateTime? _catalogTime;
+  DateTime? _namesTime;
   final _active = <int, bool>{};
 
   /// Kind of the last active state per address: the reset reports the same
@@ -48,19 +49,24 @@ class AlarmWatch {
     r'störung|stoerung|defekt|fehler|fault|error|failure|ausfall|malfunction|broken|trouble',
   );
 
-  /// Rereads the catalog when the app has changed it.
+  /// Rereads the catalog when the app has changed it, together with the names
+  /// corrected in the app (`name_overrides.json`), which replace the project's.
   Future<void> _reloadCatalog() async {
     final file = File('${data.path}/catalog.json');
+    final namesFile = File('${data.path}/name_overrides.json');
     try {
       final modified = await file.lastModified();
-      if (modified == _catalogTime) return;
+      final namesModified = await namesFile.exists() ? await namesFile.lastModified() : null;
+      if (modified == _catalogTime && namesModified == _namesTime) return;
       _catalogTime = modified;
+      _namesTime = namesModified;
       final json = jsonDecode(await file.readAsString()) as Map<String, Object?>;
+      final names = await _readNames(namesFile);
       _style = json['style'] as String? ?? 'threeLevel';
       _groups = {
         for (final g in (json['groups'] as List? ?? const []).cast<Map<String, Object?>>())
           g['a']! as int: _Group(
-            name: g['n'] as String? ?? '',
+            name: names[g['a']! as int] ?? g['n'] as String? ?? '',
             path: g['p'] as String?,
             main: (g['d'] as List?)?[0] as int?,
             sub: (g['d'] as List?)?[1] as int?,
@@ -69,6 +75,20 @@ class AlarmWatch {
     } on Object {
       _groups = const {};
       _catalogTime = null;
+      _namesTime = null;
+    }
+  }
+
+  /// Corrected names by address; a missing or unreadable file corrects nothing.
+  static Future<Map<int, String>> _readNames(File file) async {
+    try {
+      if (!await file.exists()) return const {};
+      return {
+        for (final MapEntry(:key, :value) in (jsonDecode(await file.readAsString()) as Map<String, Object?>).entries)
+          if (int.tryParse(key) case final a? when value is String) a: value,
+      };
+    } on Object {
+      return const {};
     }
   }
 
@@ -81,7 +101,7 @@ class AlarmWatch {
   /// Group addresses of the project.
   Iterable<int> get groups => _groups.keys;
 
-  /// Name of the group address from the project, otherwise `null`.
+  /// Name of the group address (corrected in the app or from the project), otherwise `null`.
   String? nameOf(int group) => switch (_groups[group]?.name) {
     final String n when n.isNotEmpty => n,
     _ => null,

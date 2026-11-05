@@ -104,7 +104,7 @@ bridge under the front end of the module, keeps about 11 mm between Pi and kBerr
 the bus terminal reachable through the lid. The Pi 5 Active Cooler sits directly under the
 module; whether it fits has not been checked. An illustrated mounting guide is built from
 `docs/pdf/knx-hat/` with `docs/pdf/knx-hat/build.sh` and published as
-`teaser/static/box/knx-box-kberry.pdf`.
+`site/static/box/knx-box-kberry.pdf`.
 
 ## 3. Raspberry Pi configuration
 

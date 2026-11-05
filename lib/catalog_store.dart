@@ -179,8 +179,21 @@ class CatalogStore extends ChangeNotifier {
     notifyListeners();
     // Demo: persist nothing.
     if (_beforeDemo != null || DemoTunnel.active) return;
-    await _storage.write(_namesPath, jsonEncode({for (final MapEntry(:key, :value) in names.entries) '$key': value}));
+    await _saveNames();
   }
+
+  Future<void> _saveNames() async {
+    final text = jsonEncode({for (final MapEntry(:key, :value) in names.entries) '$key': value});
+    await _storage.write(_namesPath, text);
+    _shareWithBox(_namesPath, text);
+  }
+
+  /// Project names of the corrected addresses: packages carry the corrected names in their catalog
+  /// (older apps show them too) and these alongside, so the recipient keeps them as corrections.
+  Map<int, String> get projectNames => {
+    for (final a in names.keys)
+      if (_project[a] case final g?) a: g.name,
+  };
 
   Future<void> _loadNames() async {
     names =
@@ -360,10 +373,25 @@ class CatalogStore extends ChangeNotifier {
   }
 
   /// Adopts a finished project (e.g. from a diagnostics package) including user-chosen datapoint
-  /// types into the active installation.
-  Future<void> adopt(GroupCatalog c, {required String name, Map<int, Dpt> overrides = const {}}) async {
-    catalog = c;
-    await _save(c, name);
+  /// types into the active installation. [projectNames] comes with a package: [c] carries corrected
+  /// names, these are the project's own (the sender's [projectNames]), and the corrected ones
+  /// become [names] again. `null` keeps the corrections as a project import does.
+  Future<void> adopt(
+    GroupCatalog c, {
+    required String name,
+    Map<int, Dpt> overrides = const {},
+    Map<int, String>? projectNames,
+  }) async {
+    final project = withNames(c, projectNames ?? const {});
+    if (projectNames != null) {
+      names = {
+        for (final a in projectNames.keys)
+          if (c[a] case final g? when g.name != project[a]!.name) a: g.name,
+      };
+    }
+    catalog = project;
+    await _save(project, name);
+    if (projectNames != null) await _saveNames();
     this.overrides = Map.of(overrides);
     final text = jsonEncode({
       for (final MapEntry(:key, :value) in this.overrides.entries) '$key': [value.main, value.sub],
@@ -404,11 +432,12 @@ class CatalogStore extends ChangeNotifier {
     }());
   }
 
-  /// Puts the project and user-chosen types on the box (after setup, when it has none yet).
+  /// Puts the project, user-chosen types and corrected names on the box (after setup, when it has
+  /// none yet).
   Future<void> shareWithBox() async {
     final box = Addon.box;
     if (box == null || !await BoxProjectConsent.allowed(box)) return;
-    for (final path in [_path, _overridesPath]) {
+    for (final path in [_path, _overridesPath, _namesPath]) {
       final text = await _storage.read(path);
       if (text != null && Addon.box != null) {
         await Addon.putFile(path, utf8.encode(text));
@@ -417,13 +446,13 @@ class CatalogStore extends ChangeNotifier {
     }
   }
 
-  /// Syncs the project and user-chosen types ([BoxShare]); `true` if the box has a different
-  /// version of either and it was therefore kept.
+  /// Syncs the project, user-chosen types and corrected names ([BoxShare]); `true` if the box has a
+  /// different version of one of them and it was therefore kept.
   Future<bool> syncWithBox() async {
     final box = Addon.box;
     if (box == null || !await BoxProjectConsent.allowed(box)) return false;
     var differs = false;
-    for (final path in [_path, _overridesPath]) {
+    for (final path in [_path, _overridesPath, _namesPath]) {
       final outcome = await BoxShare.sync(
         InstallationStore.instance.active.id,
         path,

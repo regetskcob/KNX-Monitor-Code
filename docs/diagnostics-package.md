@@ -28,7 +28,7 @@ Home Assistant add-on.
 | --- | --- |
 | `diagnostics.json` | format version, problem description (what happened, what was expected), time, period, counters, technical details (in the add-on and on the box also unexpected server restarts) |
 | `recording.json` | telegrams in recording format (`Recording.toJson`), without raw cEMI data |
-| `project.json` | catalog (`GroupCatalog.toJson`) and custom datapoint types |
+| `project.json` | catalog (`GroupCatalog.toJson`, with names corrected in the app), custom datapoint types and `projectNames`: the project's own names of the corrected addresses, so that opening the package keeps them as corrections (left out without names) |
 | `secure.json` | Data Secure telegrams with time, source and destination only (as seen on the bus without a keyring) |
 | `log.txt` | recent app messages and errors (`AppLog`), scrubbed |
 | `shots/<id>.jpg` | screenshots for the problem description and for comments (at most 15, longest edge 1920 px, JPEG) |

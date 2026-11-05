@@ -86,10 +86,16 @@ void main() {
     'Gateway Seriennummer 0083:1A2B3C4D',
   ];
 
-  DiagnosticsPackage build({bool keepNames = true, DateTime? from, DateTime? to}) => buildDiagnosticsPackage(
+  DiagnosticsPackage build({
+    bool keepNames = true,
+    DateTime? from,
+    DateTime? to,
+    Map<int, String> projectNames = const {},
+  }) => buildDiagnosticsPackage(
     telegrams: telegrams,
     catalog: catalog(),
     overrides: {heating: const Dpt(9, 1)},
+    projectNames: projectNames,
     secureAddresses: {secured},
     occurred: start.add(const Duration(minutes: 1)),
     from: from,
@@ -349,6 +355,19 @@ void main() {
       expect(BusReplay.writesOf(r.telegrams), hasLength(3));
       player.dispose();
       log.dispose();
+    });
+
+    test('Korrigierte Namen: Projektnamen reisen mit, bereinigt; ohne Namen keine', () {
+      final names = {light: 'Licht Kueche Haus Müller'};
+      final back = DiagnosticsPackage.fromZip(build(projectNames: names).toZip());
+      expect(back.catalog[light]!.name, 'Licht Küche');
+      expect(back.projectNames.keys, [light]);
+      expect(back.projectNames[light], startsWith('Licht Kueche'));
+      expect(back.projectNames[light], isNot(contains('Müller')));
+      expect(back.manifest['contents'], containsPair('nameCorrections', 1));
+      expect(DiagnosticsPackage.fromZip(build(projectNames: names, keepNames: false).toZip()).projectNames, isEmpty);
+      // Ältere Pakete ohne das Feld.
+      expect(DiagnosticsPackage.fromZip(build().toZip()).projectNames, isEmpty);
     });
 
     test('Zeitraum um den Fehler begrenzt die Aufzeichnung', () {

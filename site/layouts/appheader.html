@@ -10,7 +10,7 @@
 {{- $css := slice
   (resources.Get "css/horizont/tokens.css" | resources.ExecuteAsTemplate "css/horizont-tokens.css" $hz)
   (resources.Get "css/horizont/components.css")
-  (resources.Get "css/site.css")
+  (resources.Get "css/drafts.css")
   | resources.Concat "css/knx-appheader.css" }}
 {{- $raw := .Params.raw -}}
 {{- $lang := site.Language.Lang -}}
@@ -28,8 +28,8 @@
 </head>
 <body class="hz">
 <div class="knx-appheader" id="canvas">
-  <div class="knx-appheader-scene" data-set="all">{{ partial "knx-devices.html" (dict "shots" $shots "alt" $d.hero.screen_alt) }}</div>
-  <div class="knx-appheader-scene" data-set="search">{{ partial "knx-devices.html" (dict "shots" $shots "alt" $d.hero.screen_alt "set" "search") }}</div>
+  <div class="knx-appheader-scene" data-set="all">{{ partial "drafts/knx-devices.html" (dict "shots" $shots "alt" $d.hero.screen_alt) }}</div>
+  <div class="knx-appheader-scene" data-set="search">{{ partial "drafts/knx-devices.html" (dict "shots" $shots "alt" $d.hero.screen_alt "set" "search") }}</div>
   <hr class="hz-feld-horizon knx-appheader-horizon">
 </div>
 <script>

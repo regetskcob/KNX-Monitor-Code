@@ -10,6 +10,8 @@ on:
       - .dockerignore
       - ha-addon/knx_monitor/Dockerfile
       - .github/workflows/docker.yml
+      # The compose template is started with the built image below.
+      - tool/public-repo/docker/compose.yaml
       # Flutter version check below.
       - .github/workflows/ci.yml
   workflow_dispatch:
@@ -37,3 +39,24 @@ jobs:
           curl -sf http://localhost:8765/ | grep -q '<base href'
           curl -sf -o /dev/null http://localhost:8765/main.dart.js
           docker stop -t 10 local
+      # The published compose template with its hardening (cap_drop, no
+      # privileges) against a data folder the host user created, like a user
+      # following the README would: the server must start, answer only with the
+      # password and keep its data folder to itself.
+      - name: Compose template
+        run: |
+          set -ex
+          dir=$RUNNER_TEMP/compose
+          mkdir -p "$dir/data"
+          sed -E 's#^( *image:).*#\1 knx-monitor-local#' tool/public-repo/docker/compose.yaml >"$dir/compose.yaml"
+          pw=ci-compose-pass
+          printf 'BOX_PASSWORD=%s\n' "$pw" >"$dir/.env"
+          docker compose --project-directory "$dir" -f "$dir/compose.yaml" up -d
+          code() { curl -s -o /dev/null -m 5 -w '%{http_code}' "$@"; }
+          for i in $(seq 1 30); do [ "$(code -u "x:$pw" http://localhost:8765/api/bus)" = 200 ] && break; sleep 1; done
+          trap 'docker compose --project-directory "$dir" -f "$dir/compose.yaml" logs' ERR
+          test "$(code -u "x:$pw" http://localhost:8765/api/bus)" = 200
+          test "$(code http://localhost:8765/api/bus)" = 401
+          test "$(sudo stat -c %a "$dir/data/app")" = 700
+          test -z "$(sudo find "$dir/data/app" -type f -perm /077)"
+          docker compose --project-directory "$dir" -f "$dir/compose.yaml" down

@@ -45,10 +45,10 @@ packages:
     dependency: "direct main"
     description:
       name: archive
-      sha256: "0d58d1fa1fddf6588251ccf2819f3fb3b6d0452c1b2813ac7413a05592bfbefe"
+      sha256: de5ac590b8155e4e676088d714bd41ea620449a6adc0f7950c5073874b287ddb
       url: "https://pub.dev"
     source: hosted
-    version: "4.5.2"
+    version: "4.6.0"
   args:
     dependency: transitive
     description:
@@ -687,10 +687,10 @@ packages:
     dependency: "direct main"
     description:
       name: mobile_scanner
-      sha256: "5a51ea79f0cf8293f616a5d08baae185b59b5e6bb24df01f2a63037ade0bade0"
+      sha256: "175c62fc813c2bd762757359a2088f8cbdb72020cf85d4cd27fc4d3fe59be058"
       url: "https://pub.dev"
     source: hosted
-    version: "7.4.2"
+    version: "7.5.0"
   objective_c:
     dependency: transitive
     description:
@@ -935,10 +935,10 @@ packages:
     dependency: "direct main"
     description:
       name: purchases_flutter
-      sha256: "8b651a2ecabc5459a05e989ea28b356758fcc83860b517ceceb42d712d67e10b"
+      sha256: dd94bbf6890b87afd6571366531f4b92199f38c40c66818653bb3cee3e5f0891
       url: "https://pub.dev"
     source: hosted
-    version: "10.17.0"
+    version: "11.0.0"
   qr:
     dependency: transitive
     description:

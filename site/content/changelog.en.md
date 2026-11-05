@@ -6,6 +6,17 @@ slug: "changelog"
 ---
 What the latest versions of KNX Monitor brought, newest first. App, Home Assistant add-on and KNX box share one version number. Every version is on [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant the add-on shows the same notes before an update.
 
+## 1.9.8 – 5 Nov 2026
+
+- Security and speed: this version follows a thorough review of all parts, a penetration test and a load test with 30 days of 100,000 telegrams each.
+- Charts over 7 and 30 days and the statistics answer much faster, also with several viewers at once. The web app loads smaller and comes from the cache the second time.
+- Setting the history to "Off" deletes it: the app now asks first.
+- KNX Box and Docker: the box password can only be changed with the current one. Pairing offers the level "View only", which sends nothing to the bus. Paired devices only see the active installation.
+- Pairing links from outside show the address and warn about unencrypted connections. A box that is already paired is only replaced after asking.
+- Group address names can be corrected in the app and returned to the ETS as an import file.
+- CSV exports open cleanly in Excel, with umlauts, negative numbers and times with time zone. Error messages are clearer, deleting asks first or can be undone.
+- Home Assistant integration 1.0.2: its services are available to administrators only.
+
 ## 1.9.7 – 4 Nov 2026
 
 - New for Home Assistant: the "KNX Monitor" integration through HACS ([KNX-Monitor-HA](https://github.com/regetskcob/KNX-Monitor-HA)). With the add-on running, Home Assistant shows "New device found". You then get sensors and the recording switch as on the MQTT device, device triggers for watchers, alarms and the bus connection, the services "Create report" and "Export history", a diagnostics download and repairs when the bus has been gone for a while or the disk is full. No MQTT broker needed.

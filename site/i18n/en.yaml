@@ -1,18 +1,24 @@
-skip: "Skip to content"
-nav_features: "Features"
-nav_expert: "Expert"
-nav_addon: "Add-on"
-nav_faq: "FAQ"
-faq_more: "More help under Support"
-nav_support: "Support"
-lang_switch: "Deutsch"
-lang_switch_label: "Auf Deutsch wechseln"
 privacy: "Privacy"
-imprint: "Legal notice"
 terms: "Terms of use"
-support: "Support"
+imprint: "Legal notice"
 github: "GitHub"
+instagram: "Instagram"
+feedback: "Feedback"
+addon: "Add-on"
 footer_sender: "a project by regetskcob"
 footer_note: "KNX is a registered trademark of the KNX Association. KNX Monitor is not a product of the KNX Association."
-menu: "Menu"
-soon: "soon"
+faq_more: "More help under Support"
+changelog: "Changelog"
+
+# Draft pages (store graphics, headers, buy page): their own texts.
+skip: Skip to content
+nav_features: Features
+nav_expert: Expert
+nav_addon: Add-on
+nav_faq: FAQ
+nav_support: Support
+lang_switch: Deutsch
+lang_switch_label: Auf Deutsch wechseln
+support: Support
+menu: Menu
+soon: soon

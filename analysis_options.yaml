@@ -10,6 +10,8 @@ analyzer:
     - macos/**
     - linux/**
     - test_live/**
+    # Interne Bauquellen (intern/README.md), nicht Teil der App.
+    - intern/**
     - web/**
     # Eigenes Paket mit eigener Analyse (CI-Job addon-server).
     - ha-addon/**

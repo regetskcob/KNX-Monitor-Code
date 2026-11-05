@@ -4,7 +4,7 @@
   "<key>_live" replaces "<key>" where it exists – texts without tiers,
   prices or purchases.
 
-    partial "live.html" (dict "ctx" . "key" "text")
+    partial "drafts/live.html" (dict "ctx" . "key" "text")
 */ -}}
 {{- $v := index .ctx .key -}}
 {{- if not site.Params.commerce }}{{ with index .ctx (printf "%s_live" .key) }}{{ $v = . }}{{ end }}{{ end -}}

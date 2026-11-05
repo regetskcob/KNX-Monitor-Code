@@ -131,6 +131,8 @@ class InstallationStore extends ChangeNotifier {
   static const files = [
     'catalog.json',
     'dpt_overrides.json',
+    'name_overrides.json',
+    'learned.json',
     'health.json',
     'commissioning.json',
     'customer.json',
@@ -588,8 +590,10 @@ class InstallationStore extends ChangeNotifier {
           if (project == null && id != boxActive) continue;
           final target = ScopedStorage(AppStorage.instance, 'installations/$id/');
           if (project != null) await target.write('catalog.json', utf8.decode(project));
-          final overrides = await Addon.getInstallationFile(id, 'dpt_overrides.json');
-          if (overrides != null) await target.write('dpt_overrides.json', utf8.decode(overrides));
+          for (final file in const ['dpt_overrides.json', 'name_overrides.json']) {
+            final bytes = await Addon.getInstallationFile(id, file);
+            if (bytes != null) await target.write(file, utf8.decode(bytes));
+          }
           await create(name.isEmpty ? defaultName : name, id: id);
         }
       }

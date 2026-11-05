@@ -73,7 +73,7 @@ Mitteilungen zu Alarmen und Wächtern erzeugt die App lokal auf dem Gerät; dein
 
 ### Export und Teilen
 
-Berichte (PDF), CSV- und ETS-Exporte werden nur erzeugt, wenn du das auslöst. Wohin sie gehen, bestimmst du über das Teilen-Menü deines Betriebssystems. Zuletzt erzeugte Exporte, auch Diagnosepakete, bleiben als Kopie in der App, damit du sie erneut teilen kannst; du kannst sie dort löschen. Eine Störungsmeldung an deinen Elektriker enthält neben der Busaufzeichnung auch Namen und die Bildschirmfotos an deinen Kommentaren, ohne Schalter. Sie geht nur an den Empfänger, den du wählst.
+Berichte (PDF), CSV- und ETS-Exporte werden nur erzeugt, wenn du das auslöst. Wohin sie gehen, bestimmst du über das Teilen-Menü deines Betriebssystems. Zuletzt erzeugte Exporte, auch Diagnosepakete, bleiben als Kopie in der App, damit du sie erneut teilen kannst; du kannst sie dort löschen. Eine Störungsmeldung an deinen Elektriker enthält neben der Busaufzeichnung die Namen der Adressen und Geräte, solange der Schalter dafür an ist; Bildschirmfotos an deinen Kommentaren nur, wenn du sie ausdrücklich einschließt. Sie geht nur an den Empfänger, den du wählst.
 
 ### Käufe in der App (Plus und Pro)
 

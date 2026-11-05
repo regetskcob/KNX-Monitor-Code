@@ -5,7 +5,7 @@
 #   tool/release.sh layout           # folder structure only (part of verify, tool/werkbank/STANDARD.md)
 #   tool/release.sh check            # preflight: clean main, verify, versions
 #   tool/release.sh addon            # tag addon-v<version>, wait for both images, then merge main via PR + GitHub release
-#   tool/release.sh site             # build landing page and push it to the website repo
+#   tool/release.sh site [knx] [--live] # knx-monitor.de with /socials/: preview build, --live to gh-pages
 #   tool/release.sh android          # build signed AAB (needs android/key.properties)
 #   tool/release.sh ios              # build IPA, archive for the Organizer, upload to App Store Connect if API key is set
 #   tool/release.sh macos            # build and archive for the Organizer (upload there), symbols kept
@@ -13,6 +13,14 @@
 #   tool/release.sh desktop          # Linux from CI of tag app-v<version> → public release (latest)
 #   tool/release.sh box <version>    # KNX Box image from the box-v<version> workflow, plus the case (box/case) → public release
 #   tool/release.sh status           # show versions, tags and open release steps
+#   tool/release.sh notes [--draft]  # release texts of this build (TestFlight, Play) complete? drafts from the PRs
+#   tool/release.sh devicetest [--device <id>] [test …]
+#                                    # integration tests on every connected device, app data backed up first
+#
+# UPLOAD=1 sends the store builds on: iOS and macOS archives to App Store Connect
+# with the Apple account signed in to Xcode (no API key), the AAB with its release
+# notes to the Play track of WB_PLAY_TRACK (service account ~/keys/knx-monitor-play.json).
+# The release texts must be complete first (tool/release.sh notes).
 #
 # Versions:
 #   add-on: ha-addon/knx_monitor/config.yaml  (version: "1.2.0"), tag addon-v1.2.0
@@ -170,10 +178,12 @@ cmd_verify_images() {
   [ $ok = 1 ]
 }
 
+# knx-monitor.de (site/ with the socials page) through the werkbank deploy:
+# preview by default, --live from a clean main (tool/werkbank.conf, WB_SITES).
 cmd_site() {
-  require_clean_main
   command -v hugo >/dev/null || die "hugo not installed (brew install hugo)"
-  tool/deploy_site.sh --push
+  case " $* " in *" --live "*) require_clean_main ;; esac
+  wb_site_deploy "${1:-knx}" "${@:2}"
 }
 
 # --dart-define for the purchase path of a store build ($1: RC_APPLE_KEY or
@@ -221,7 +231,11 @@ cmd_android() {
   fi
   # shellcheck disable=SC2086
   wb_android -- --obfuscate --split-debug-info=build/symbols/android $rc $sb $beta
-  say "Upload it in the Play Console (Release → Create new release)"
+  if [ "${UPLOAD:-}" = 1 ]; then
+    wb_upload_play
+  else
+    say "Not uploaded – UPLOAD=1, or the Play Console (Release → Create new release)"
+  fi
 }
 
 # Uploads to App Store Connect when ASC_KEY_ID and ASC_ISSUER_ID are set.
@@ -234,10 +248,13 @@ cmd_ios() {
     say "TestFlight-only build (BETA): do not submit it for App Review"
   fi
   local upload=()
-  if [ -n "${ASC_KEY_ID:-}" ] && [ -n "${ASC_ISSUER_ID:-}" ]; then upload=(--upload); fi
+  # UPLOAD=1 sends the archive with the Xcode account below; the API key path (altool)
+  # only without it, as before.
+  if [ "${UPLOAD:-}" != 1 ] && [ -n "${ASC_KEY_ID:-}" ] && [ -n "${ASC_ISSUER_ID:-}" ]; then upload=(--upload); fi
   # shellcheck disable=SC2086
   wb_ios ${upload[@]+"${upload[@]}"} -- --obfuscate --split-debug-info=build/symbols/ios $rc $sb $beta
   organizer_copy build/ios/archive/Runner.xcarchive iOS
+  if [ "${UPLOAD:-}" = 1 ]; then wb_upload_apple build/ios/archive/Runner.xcarchive; fi
 }
 
 # Path of a new archive in the folder the Xcode Organizer reads ($1: platform).
@@ -275,12 +292,15 @@ cmd_macos() {
   xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner -configuration Release -archivePath "$archive" archive
   [ -d "$archive" ] || die "no archive at $archive"
   say "Archive in the Organizer: $archive"
+  if [ "${UPLOAD:-}" = 1 ]; then wb_upload_apple "$archive"; fi
 }
 
 cmd_app() {
   require_clean_main
   local v; v=$(app_version)
   tag_exists "app-v$v" && die "app-v$v already exists – bump the build number in pubspec.yaml"
+  # Texts first: an upload without them leaves testers with nothing to look at.
+  if [ "${UPLOAD:-}" = 1 ]; then WB_NO_CLIPBOARD=1 wb_store_notes >/dev/null; fi
   cmd_android
   cmd_ios
   git tag -a "app-v$v" -m "App store build $v"
@@ -412,7 +432,7 @@ case "${1:-}" in
   layout) wb_layout ;;
   check) cmd_check ;;
   addon) cmd_addon ;;
-  site) cmd_site ;;
+  site) shift; cmd_site "$@" ;;
   android) cmd_android ;;
   ios) cmd_ios ;;
   macos) cmd_macos ;;
@@ -420,9 +440,11 @@ case "${1:-}" in
   desktop) cmd_desktop ;;
   box) cmd_box "${2:-}" ;;
   status) cmd_status ;;
+  notes) shift; wb_store_notes "$@" ;;
+  devicetest) shift; wb_devicetest "$@" ;;
   verify-images) cmd_verify_images "${2:-}" ;;
   # For tests and for checking what a build would get, without building.
   rc-define) rc_define "${2:?RC_APPLE_KEY or RC_GOOGLE_KEY}" ;;
   desktop-run) desktop_run "${2:?tag}" ;;
-  *) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

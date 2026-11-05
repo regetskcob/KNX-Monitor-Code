@@ -1,6 +1,6 @@
-# ENTWURF (RFC 9116). Vor dem Livegang: siehe Ablage knx-monitor/docs/recht/README.md. Policy zeigt auf
+# ENTWURF (RFC 9116). Vor dem Livegang: siehe Notion Dokumente: „Recht & Datenschutz: Übersicht“. Policy zeigt auf
 # eine Seite, die noch Entwurf ist. Nur unter https://knx-monitor.de/.well-known/ wirksam,
-# dafür nach teaser/static/.well-known/ kopieren und Canonical beibehalten.
+# dafür nach site/static/.well-known/ kopieren und Canonical beibehalten.
 Contact: mailto:support@knx-monitor.de
 Contact: https://github.com/regetskcob/KNX-Monitor/security/advisories/new
 Expires: 2027-09-30T22:00:00Z

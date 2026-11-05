@@ -273,6 +273,7 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
       telegrams: _telegrams,
       catalog: store.catalog,
       overrides: store.overrides,
+      projectNames: store.projectNames,
       secureAddresses: secureGroupAddresses(),
       occurred: _occurred,
       from: _from,
@@ -633,7 +634,12 @@ Future<void> openSupportPackage(BuildContext context, Uint8List bytes) async {
   if (installations.switchable) {
     final i = await installations.create(s.diagInstallationName(_dateTime(package.occurred)));
     await installations.switchTo(i.id);
-    await CatalogStore.instance.adopt(package.catalog, name: 'diagnostics.zip', overrides: package.overrides);
+    await CatalogStore.instance.adopt(
+      package.catalog,
+      name: 'diagnostics.zip',
+      overrides: package.overrides,
+      projectNames: package.projectNames,
+    );
     installation = i.id;
     messenger.showSnackBar(horizontMessageSnackBar(colors, s.diagImported(i.name), status: HorizontStatus.positive));
   } else {

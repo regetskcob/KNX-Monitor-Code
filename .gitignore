@@ -51,5 +51,5 @@ test/failures/
 .DS_Store
 
 # Instagram-Entwürfe (tool/social/): erzeugte Seiten und Bilder
-teaser/content/social/
-teaser/assets/images/social/
+site/content/social/
+site/assets/images/social/

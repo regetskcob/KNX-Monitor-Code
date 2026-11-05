@@ -352,7 +352,7 @@ Everything that belongs to an installation lives in `installations/<id>/`:
 | Path in `installations/<id>/` | Content |
 | --- | --- |
 | `server.json` (+ `.bak`) | Bus connection and recording settings |
-| `catalog.json`, `dpt_overrides.json` | Group address catalog from the ETS project |
+| `catalog.json`, `dpt_overrides.json`, `name_overrides.json` | Group address catalog from the ETS project, datapoint types and names corrected in the app (alarm notifications use the corrected names) |
 | `secure_keys.json` | Keys from the ETS keyring, readable only by the server (and admins) |
 | `history/YYYY-MM-DD.ndjson[.gz]`, `history/unsynced-*.ndjson` | The recording (below) |
 | `status/availability-YYYY-MM.ndjson` | Heartbeat once a minute: `{"t", "c" (connected), "n" (telegrams)}`, kept 3 months |

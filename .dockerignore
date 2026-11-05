@@ -16,7 +16,7 @@ integration_test
 site
 store
 supabase
-teaser
+site
 test
 test_driver
 ha-addon/knx_monitor/web

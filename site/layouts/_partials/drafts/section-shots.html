@@ -3,14 +3,14 @@
   screenshots under the headline in the middle column, instead of a strip
   below the whole section that left the middle column empty.
 
-    partial "section-shots.html" (dict "id" … "kennung" … "title" … "text" … "facts" … "group" "everyday")
+    partial "drafts/section-shots.html" (dict "id" … "kennung" … "title" … "text" … "facts" … "group" "everyday")
 */ -}}
 <section class="hz-feld-section knx-section-shots"{{ with .id }} id="{{ . }}"{{ end }}>
   {{ partial "horizont/kennung.html" .kennung }}
   <div>
     <h2>{{ .title }}</h2>
     {{ with .text }}<p>{{ . | markdownify }}</p>{{ end }}
-    {{ partial "shots.html" .group }}
+    {{ partial "drafts/shots.html" .group }}
   </div>
   {{ partial "horizont/facts.html" (dict "items" .facts) }}
 </section>

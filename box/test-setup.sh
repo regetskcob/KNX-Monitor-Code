@@ -134,7 +134,9 @@ grep -q 'restart .*knx-box-secrets.path' "$tmp/calls" || fail "knx-box-secrets.p
 # On a running box: closed table first, then the choice opens it again.
 lock_line=$(grep -n '^systemctl start knx-box-lan-lock.service$' "$tmp/calls" | tail -n 1 | cut -d: -f1)
 lan_line=$(grep -n '^systemctl restart knx-box-lan.service' "$tmp/calls" | tail -n 1 | cut -d: -f1)
-[ -n "$lock_line" ] && [ -n "$lan_line" ] && [ "$lock_line" -lt "$lan_line" ] || fail "Kabelsperre nicht vor der Wahl gestartet"
+if [ -z "$lock_line" ] || [ -z "$lan_line" ] || [ "$lock_line" -ge "$lan_line" ]; then
+  fail "Kabelsperre nicht vor der Wahl gestartet"
+fi
 [ "$(cat "$root/opt/knx-box/server.prev")" = v1 ] || fail "server.prev"
 [ "$(cat "$root/opt/knx-box/web.prev/index.html")" = 1.0 ] || fail "web.prev"
 [ "$(cat "$root/opt/knx-box/VERSION.prev")" = 1.0 ] || fail "VERSION.prev"

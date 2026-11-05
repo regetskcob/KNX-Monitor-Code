@@ -9,7 +9,7 @@
 {{- $css := slice
   (resources.Get "css/horizont/tokens.css" | resources.ExecuteAsTemplate "css/horizont-tokens.css" $hz)
   (resources.Get "css/horizont/components.css")
-  (resources.Get "css/site.css")
+  (resources.Get "css/drafts.css")
   | resources.Concat "css/knx-header.css" }}
 <!doctype html>
 <html lang="{{ site.Language.LanguageCode }}" data-product="knx" data-theme="light">
@@ -33,7 +33,7 @@
     {{- range $key, $file := dict "ipad" "hero-ipad" "iphone" "overview-phone" "mac" "desktop-mac" "android" "android-phone" }}
       {{- with resources.Get (printf "images/screens/%s.png" $file) }}{{ $shots = merge $shots (dict $key .) }}{{ end }}
     {{- end }}
-    {{ partial "knx-devices.html" (dict "shots" $shots "alt" $d.hero.screen_alt) }}
+    {{ partial "drafts/knx-devices.html" (dict "shots" $shots "alt" $d.hero.screen_alt) }}
   </div>
   <hr class="hz-feld-horizon knx-header-horizon">
 </div>

@@ -7,7 +7,7 @@ Everything that speaks KNX is written here in plain Dart: KNXnet/IP tunnelling
 and routing, cEMI, KNX IP Secure, KNX Data Secure, the ETS project parser and
 an FT1.2 link to the kBerry module. German and English.
 
-![KNX Monitor on the iPad: overview with values per group address](teaser/assets/images/ipad-overview-en.png)
+![KNX Monitor on the iPad: overview with values per group address](site/assets/images/ipad-overview-en.png)
 
 - **Website:** <https://knx-monitor.de>
 - **Releases, Home Assistant add-on repository, issues:**
@@ -112,7 +112,7 @@ websites).
 | `ha-addon/knx_monitor/` | Home Assistant add-on: Dockerfile, Dart server in `server/`, dashboard card |
 | `box/` | KNX Box: setup, systemd units, pi-gen image, printable case (`box/case/`) |
 | `third_party/` | Patched plugins, each with `README.vendored.md` |
-| `site/`, `teaser/` | Websites (Hugo) |
+| `site/` | Website knx-monitor.de (Hugo) |
 | `docs/` | Technical documentation, index in [docs/README.md](docs/README.md) |
 | `tool/` | Release, deployment and build scripts; `werkbank/` is shared tooling (MIT), `public_source/` builds this public tree |
 

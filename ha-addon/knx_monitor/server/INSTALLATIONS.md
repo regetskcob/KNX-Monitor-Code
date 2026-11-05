@@ -17,7 +17,7 @@ DATA_DIR/
   installations.json     {version: 1, active: "<id>", list: [{id, name, created}]}
   installations/<id>/
     server.json          Busverbindung (privat, nur über /api/bus)
-    catalog.json, dpt_overrides.json, secure_keys.json, health.json, …
+    catalog.json, dpt_overrides.json, name_overrides.json, secure_keys.json, health.json, …
     history/             Tagesverlauf (JJJJ-MM-TT.ndjson[.gz], unsynced-*.ndjson)
     status/              Verfügbarkeit (availability-JJJJ-MM.ndjson)
 ```

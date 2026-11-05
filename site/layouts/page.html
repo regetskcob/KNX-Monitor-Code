@@ -1,13 +1,10 @@
-{{ define "main" }}
-{{- /* A text page (Datenschutz): Kennung and title, then the text column. */}}
-<article class="knx-page">
+{{- /* A text page (Datenschutz, Konto löschen): Kennung and title, the horizon, the text column. */ -}}
+{{- $body := printf `<article class="knx-page">
   <header class="knx-page-head">
-    {{ partial "horizont/kennung.html" (dict "text" (printf "%s · %s" site.Title .Title) "tag" "p") }}
-    <h1 class="t-display">{{ .Title }}</h1>
+    %s
+    <h1 class="t-display">%s</h1>
   </header>
   <hr class="hz-feld-horizon">
-  <div class="knx-prose t-reading">
-    {{ .Content }}
-  </div>
-</article>
-{{ end }}
+  <div class="knx-prose t-reading">%s</div>
+</article>` (partial "horizont/kennung.html" (dict "text" (printf "%s · %s" site.Title .Title) "tag" "p")) .Title .Content -}}
+{{ partial "textpage.html" (dict "page" . "body" ($body | safeHTML)) }}

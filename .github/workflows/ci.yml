@@ -11,9 +11,9 @@ name: CI
 on:
   push:
     tags: ['app-v*']
-    paths-ignore: ['site/**', 'teaser/**', 'docs/**', '**.md']
+    paths-ignore: ['site/**', 'docs/**', '**.md']
   pull_request:
-    paths-ignore: ['site/**', 'teaser/**', 'docs/**', '**.md']
+    paths-ignore: ['site/**', 'docs/**', '**.md']
   workflow_dispatch:
 
 permissions:

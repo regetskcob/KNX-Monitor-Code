@@ -6,6 +6,17 @@ slug: "changelog"
 ---
 Was die letzten Versionen von KNX Monitor gebracht haben, neueste zuerst. App, Home-Assistant-Add-on und KNX-Box haben eine gemeinsame Versionsnummer. Jede Version liegt auf [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant zeigt das Add-on dieselben Hinweise vor einem Update (auf Englisch).
 
+## 1.9.8 – 5.11.2026
+
+- Sicherheit und Tempo: Dieser Version gingen eine gründliche Prüfung aller Teile, ein Angriffstest und ein Lasttest mit 30 Tagen zu je 100.000 Telegrammen voraus.
+- Diagramme über 7 und 30 Tage und die Statistik antworten deutlich schneller, auch wenn mehrere gleichzeitig zuschauen. Die Web-App lädt kleiner und beim zweiten Mal aus dem Zwischenspeicher.
+- Den Verlauf auf „Aus“ zu stellen löscht ihn: Die App fragt jetzt vorher nach.
+- KNX-Box und Docker: Das Box-Passwort lässt sich nur noch mit dem aktuellen Passwort ändern. Beim Koppeln gibt es die Stufe „Nur ansehen“, die nichts auf den Bus schickt. Gekoppelte Geräte sehen nur die aktive Anlage.
+- Kopplungslinks von außen zeigen die Adresse und warnen bei unverschlüsselter Verbindung. Eine schon gekoppelte Box wird nur nach Rückfrage ersetzt.
+- Namen von Gruppenadressen lassen sich in der App korrigieren und als Importdatei an die ETS zurückgeben.
+- CSV-Exporte öffnen sauber in Excel, mit Umlauten, negativen Zahlen und Zeiten mit Zeitzone. Fehlermeldungen sind verständlicher, Löschen fragt nach oder lässt sich rückgängig machen.
+- Home-Assistant-Integration 1.0.2: Ihre Dienste stehen nur Administratoren zur Verfügung.
+
 ## 1.9.7 – 4.11.2026
 
 - Neu für Home Assistant: die Integration „KNX Monitor“ über HACS ([KNX-Monitor-HA](https://github.com/regetskcob/KNX-Monitor-HA)). Läuft das Add-on, meldet Home Assistant „Neues Gerät gefunden“. Danach gibt es Sensoren und den Schalter für die Aufzeichnung wie beim MQTT-Gerät, Geräte-Auslöser für Wächter, Alarme und die Busverbindung, die Dienste „Bericht erstellen“ und „Verlauf exportieren“, eine Diagnose zum Herunterladen und Reparaturhinweise, wenn der Bus länger weg ist oder der Speicher voll. Ein MQTT-Broker ist dafür nicht nötig.
