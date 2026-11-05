@@ -280,6 +280,34 @@ void main() {
     }, timeout: const Timeout(Duration(minutes: 2)));
   });
 
+  test('Web-App: ETag und gzip, unbekannte API 404, fremde Methoden 405', () async {
+    await File('${web.path}/main.dart.js').writeAsString('console.log("x");\n' * 2000);
+    await start(env: {'ALLOW_ALL': '1'});
+    final client = HttpClient()..autoUncompress = false;
+    addTearDown(client.close);
+    Future<HttpClientResponse> send(String method, String path, [Map<String, String> headers = const {}]) async {
+      final request = await client.openUrl(method, Uri.parse('http://127.0.0.1:$port/$path'));
+      headers.forEach(request.headers.set);
+      return request.close();
+    }
+
+    final first = await send('GET', 'main.dart.js', {'Accept-Encoding': 'gzip'});
+    final packed = await first.fold<List<int>>([], (a, b) => a..addAll(b));
+    expect(first.statusCode, 200);
+    expect(first.headers.value(HttpHeaders.contentEncodingHeader), 'gzip');
+    expect(utf8.decode(gzip.decode(packed)), startsWith('console.log'));
+    expect(packed.length, lessThan(36000 ~/ 10));
+    final tag = first.headers.value(HttpHeaders.etagHeader)!;
+    final again = await send('GET', 'main.dart.js', {'If-None-Match': tag});
+    expect(again.statusCode, 304);
+    await again.drain<void>();
+    for (final (method, path, code) in [('GET', 'api/gibt-es-nicht', 404), ('TRACE', 'api/bus', 405)]) {
+      final r = await send(method, path);
+      expect(r.statusCode, code, reason: '$method $path');
+      await r.drain<void>();
+    }
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
   test('config.yaml zeigt den Watchdog auf das Lebenszeichen', () async {
     final config = await File('../config.yaml').readAsString();
     expect(config, contains('watchdog: http://[HOST]:[PORT:8765]/healthz'));

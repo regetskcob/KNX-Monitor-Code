@@ -311,7 +311,8 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
         await saveBytes(context, bytes, name, mimeType: 'application/zip');
       }
     } on Exception catch (e) {
-      if (mounted) showHorizontMessage(context, s.exportFailed('$e'), status: HorizontStatus.critical);
+      debugPrint('Diagnosepaket: $e');
+      if (mounted) showHorizontMessage(context, s.exportFailedGeneric, status: HorizontStatus.critical);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

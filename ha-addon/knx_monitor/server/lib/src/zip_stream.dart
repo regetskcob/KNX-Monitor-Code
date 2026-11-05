@@ -72,6 +72,12 @@ class ZipStream {
     deflater.close();
     await drain();
 
+    // Without Zip64 sizes and offsets have 32 bits; beyond that the archive
+    // would look whole but point to wrong places. Better a recognisably
+    // aborted download than a quietly broken one.
+    if (size > _max32 || compressed > _max32 || start > _max32 || _entries >= 0xFFFF) {
+      throw StateError('Zip zu groß (über 4 GB oder 65535 Dateien), bitte kürzere Zeiträume exportieren.');
+    }
     await _write(
       (_Le()
             ..u32(0x08074b50)
@@ -105,10 +111,13 @@ class ZipStream {
     _entries++;
   }
 
+  static const _max32 = 0xFFFFFFFF;
+
   /// Central directory and end of the archive.
   Future<void> close() async {
     final directory = _central.takeBytes();
     final at = _offset;
+    if (at > _max32) throw StateError('Zip zu groß (über 4 GB), bitte kürzere Zeiträume exportieren.');
     await _write(directory);
     await _write(
       (_Le()

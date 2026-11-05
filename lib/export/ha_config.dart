@@ -478,9 +478,10 @@ abstract final class HaConfig {
     final out = <HaDevice>[];
     final ids = <String>{};
     String unique(String base) {
-      var id = base.isEmpty ? 'knx_device' : base;
+      final stem = base.isEmpty ? 'knx_device' : base;
+      var id = stem;
       for (var n = 2; !ids.add(id); n++) {
-        id = '${base}_$n';
+        id = '${stem}_$n';
       }
       return id;
     }
@@ -606,9 +607,10 @@ abstract final class HaConfig {
     return b.toString();
   }
 
-  /// Double quotes with escapes (YAML 1.2, like JSON).
+  /// Double quotes with escapes (YAML 1.2, like JSON); control characters
+  /// (line breaks, tabs, CR from Windows ETS texts) become spaces.
   static String _quote(String v) =>
-      '"${v.replaceAll(r'\', r'\\').replaceAll('"', r'\"').replaceAll('\n', ' ').replaceAll('\t', ' ')}"';
+      '"${v.replaceAll(r'\', r'\\').replaceAll('"', r'\"').replaceAll(RegExp(r'[\x00-\x1F\x7F]'), ' ')}"';
 
   /// Comments must not contain a line break.
   static String _comment(String v) => v.replaceAll(RegExp(r'[\r\n]+'), ' ');

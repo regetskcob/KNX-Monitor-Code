@@ -116,5 +116,13 @@ String? etsGroupAddressXml(GroupCatalog catalog, Map<int, Dpt> overrides) =>
 /// Identifier as in the ETS: "DPST-9-1" with subtype, otherwise "DPT-9".
 String etsDptId(Dpt dpt) => dpt.sub == null ? 'DPT-${dpt.main}' : 'DPST-${dpt.main}-${dpt.sub}';
 
-String _attr(String s) =>
-    s.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+/// Attribute value; line breaks and tabs as character references, because an
+/// XML parser turns literal ones into spaces (multi-line descriptions).
+String _attr(String s) => s
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('\r', '&#xD;')
+    .replaceAll('\n', '&#xA;')
+    .replaceAll('\t', '&#x9;');

@@ -80,7 +80,8 @@ class _FaultHuntScreenState extends State<FaultHuntScreen> {
         _error = null;
       });
     } on Object catch (e) {
-      if (mounted) setState(() => _error = '$e');
+      debugPrint('Fehlerjagd laden: $e');
+      if (mounted) setState(() => _error = s.huntLoadFailed);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -123,7 +124,8 @@ class _FaultHuntScreenState extends State<FaultHuntScreen> {
       if (!mounted) return;
       await openRecording(context, recording.id);
     } on Object catch (e) {
-      if (mounted) showHorizontMessage(context, s.huntSaveFailed('$e'), status: HorizontStatus.critical);
+      debugPrint('Treffer laden: $e');
+      if (mounted) showHorizontMessage(context, s.huntSaveFailed, status: HorizontStatus.critical);
     }
   }
 

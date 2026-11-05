@@ -596,10 +596,10 @@ class _ChartsScreenState extends State<ChartsScreen> {
     );
     for (final sr in series) {
       for (final p in sr.points) {
-        rows.write('${[p.time.toIso8601String(), sr.label, sr.name, p.value].map(csvCell).join(',')}\r\n');
+        rows.write('${[isoWithOffset(p.time), sr.label, sr.name, p.value].map(csvCell).join(',')}\r\n');
       }
     }
-    await saveBytes(context, utf8Bytes(rows.toString()), fileName(s.chartsTitle, 'csv'), mimeType: 'text/csv');
+    await saveBytes(context, csvBytes(rows.toString()), fileName(s.chartsTitle, 'csv'), mimeType: 'text/csv');
   }
 
   Widget _removeButton(int address) => IconButton(

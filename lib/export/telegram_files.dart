@@ -42,11 +42,28 @@ Uint8List cemiOf(Telegram t) {
 
 /// CSV cell in quotes with protection against formula injection: =, +, -, @ at the start would be
 /// executed as a formula by Excel/Numbers (names come from the ETS project and are therefore
-/// foreign input).
+/// foreign input). Plain numbers stay numbers: a negative value is no formula, and the
+/// apostrophe would turn -3.5 into text in the spreadsheet.
 String csvCell(Object? v) {
   var text = '${v ?? ''}';
-  if (text.isNotEmpty && '=+-@\t\r'.contains(text[0])) text = "'$text";
+  final number = v is num || double.tryParse(text) != null;
+  if (!number && text.isNotEmpty && '=+-@\t\r'.contains(text[0])) text = "'$text";
   return '"${text.replaceAll('"', '""')}"';
+}
+
+/// CSV as UTF-8 with byte order mark: without it Excel reads the file as ANSI
+/// and "Küche" becomes "KÃ¼che".
+Uint8List csvBytes(String csv) => Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(csv)]);
+
+/// Local time with its UTC offset (2026-10-25T02:30:00.000+02:00): without the
+/// offset the hour that repeats when the clocks go back cannot be told apart.
+String isoWithOffset(DateTime time) {
+  final local = time.toLocal();
+  final offset = local.timeZoneOffset;
+  final minutes = offset.inMinutes.abs();
+  final sign = offset.isNegative ? '-' : '+';
+  final zone = '$sign${(minutes ~/ 60).toString().padLeft(2, '0')}:${(minutes % 60).toString().padLeft(2, '0')}';
+  return '${local.toIso8601String()}$zone';
 }
 
 /// CSV according to RFC 4180 (comma, quotes, CRLF).
@@ -73,7 +90,7 @@ String buildCsv(List<Telegram> telegrams) {
     ],
     for (final t in [...telegrams]..sort((a, b) => a.time.compareTo(b.time)))
       [
-        t.time.toIso8601String(),
+        isoWithOffset(t.time),
         t.type.name,
         t.sourceText,
         store.device(t.source)?.name,

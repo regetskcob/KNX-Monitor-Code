@@ -159,7 +159,7 @@ class _ServiceReportScreenState extends State<ServiceReportScreen> {
       if (buttonContext.mounted) await _share(buttonContext, report);
     } on Object catch (e) {
       debugPrint('Servicebericht: $e');
-      if (mounted) showHorizontMessage(context, s.pdfExportFailed('$e'), status: HorizontStatus.critical);
+      if (mounted) showHorizontMessage(context, s.pdfExportFailedGeneric, status: HorizontStatus.critical);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

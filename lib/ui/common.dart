@@ -159,6 +159,7 @@ Future<T> withProgress<T>(BuildContext context, String label, Future<T> Function
 /// temp folder there and opens it), so they get the save dialog instead.
 Future<void> sharePdf(BuildContext context, Future<PdfJob> Function() job, String filename, {Rect? origin}) async {
   final messenger = ScaffoldMessenger.of(context);
+  final colors = context.hz;
   try {
     final bytes = await withProgress(context, s.pdfBuilding, () async => buildPdfInBackground(await job()));
     if (!kIsWeb && const {TargetPlatform.linux, TargetPlatform.windows}.contains(defaultTargetPlatform)) {
@@ -171,7 +172,7 @@ Future<void> sharePdf(BuildContext context, Future<PdfJob> Function() job, Strin
     // Also report programming errors (Error), not just exceptions: otherwise
     // the button would give no feedback at all.
     debugPrint('PDF fehlgeschlagen: $e\n$stack');
-    messenger.showSnackBar(SnackBar(content: Text(s.pdfExportFailed('$e'))));
+    messenger.showSnackBar(horizontMessageSnackBar(colors, s.pdfExportFailedGeneric, status: HorizontStatus.critical));
   }
 }
 
@@ -192,6 +193,7 @@ String pdfName(String prefix) {
 /// Saves [bytes] via the system dialog (Files app, iCloud …).
 Future<void> saveBytes(BuildContext context, Uint8List bytes, String fileName, {String mimeType = 'text/plain'}) async {
   final messenger = ScaffoldMessenger.of(context);
+  final colors = context.hz;
   try {
     final uri = await FilePicker.saveFile(fileName: fileName, bytes: bytes, mimeType: mimeType);
     if (uri != null) {
@@ -199,7 +201,8 @@ Future<void> saveBytes(BuildContext context, Uint8List bytes, String fileName, {
       unawaited(ExportHistory.instance.add(fileName, bytes, mimeType));
     }
   } on Exception catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text(s.exportFailed('$e'))));
+    debugPrint('Speichern fehlgeschlagen: $e');
+    messenger.showSnackBar(horizontMessageSnackBar(colors, s.exportFailedGeneric, status: HorizontStatus.critical));
   }
 }
 
@@ -208,6 +211,7 @@ Future<void> saveBytes(BuildContext context, Uint8List bytes, String fileName, {
 /// save instead of sharing.
 Future<void> shareFile(BuildContext context, Uint8List bytes, String name, String mimeType, {Rect? origin}) async {
   final messenger = ScaffoldMessenger.of(context);
+  final colors = context.hz;
   try {
     if (!kIsWeb && const {TargetPlatform.linux, TargetPlatform.windows}.contains(defaultTargetPlatform)) {
       final uri = await FilePicker.saveFile(fileName: name, bytes: bytes, mimeType: mimeType);
@@ -226,7 +230,8 @@ Future<void> shareFile(BuildContext context, Uint8List bytes, String name, Strin
       ),
     );
   } on Object catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text(s.exportFailed('$e'))));
+    debugPrint('Teilen fehlgeschlagen: $e');
+    messenger.showSnackBar(horizontMessageSnackBar(colors, s.exportFailedGeneric, status: HorizontStatus.critical));
   }
 }
 

@@ -42,6 +42,30 @@ void main() {
     return (response.statusCode, await utf8.decodeStream(response));
   }
 
+  test('fertige Tage: gepackt an gzip-Clients, sonst entpackt', () async {
+    await Directory('${data.path}/history').create();
+    const line = '{"t":1,"s":1,"d":1,"y":2,"x":"01"}\n';
+    await File('${data.path}/history/2026-11-03.ndjson.gz').writeAsBytes(gzip.encode(utf8.encode(line * 100)));
+    // dart:io asks for gzip and unpacks by itself: the content is the same.
+    final (status, text) = await send('history/2026-11-03.ndjson');
+    expect(status, 200);
+    expect(text, line * 100);
+    final raw = HttpClient()..autoUncompress = false;
+    addTearDown(raw.close);
+    Future<HttpClientResponse> get(String encoding) async {
+      final request = await raw.getUrl(Uri.parse('http://127.0.0.1:${server.port}/history/2026-11-03.ndjson'));
+      request.headers.set(HttpHeaders.acceptEncodingHeader, encoding);
+      return request.close();
+    }
+
+    final packed = await get('gzip');
+    expect(packed.headers.value(HttpHeaders.contentEncodingHeader), 'gzip');
+    expect(utf8.decode(gzip.decode(await packed.fold<List<int>>([], (a, b) => a..addAll(b)))), line * 100);
+    final plain = await get('identity');
+    expect(plain.headers.value(HttpHeaders.contentEncodingHeader), isNull);
+    expect(await utf8.decodeStream(plain), line * 100);
+  });
+
   test('Daten der App: lesen und schreiben', () async {
     expect((await send('catalog.json')).$1, 200);
     expect((await send('catalog.json', method: 'PUT', body: '{}')).$1, 204);

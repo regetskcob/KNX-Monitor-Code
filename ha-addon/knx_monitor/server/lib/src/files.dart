@@ -113,7 +113,17 @@ Future<void> serveFile(
       response.headers
         ..contentType = ContentType('application', 'octet-stream')
         ..set(HttpHeaders.cacheControlHeader, 'no-store');
-      await response.addStream(exists ? file.openRead() : packed.openRead().transform(gzip.decoder));
+      // A client that takes gzip (browsers, dart:io) gets the packed day as it
+      // is: a quarter of the transfer, and the Pi does not unpack it.
+      final gzipOk = (request.headers.value(HttpHeaders.acceptEncodingHeader) ?? '').contains('gzip');
+      if (!exists && gzipOk) {
+        response.headers
+          ..set(HttpHeaders.contentEncodingHeader, 'gzip')
+          ..set(HttpHeaders.varyHeader, 'Accept-Encoding');
+        await response.addStream(packed.openRead());
+      } else {
+        await response.addStream(exists ? file.openRead() : packed.openRead().transform(gzip.decoder));
+      }
     case 'PUT' || 'POST':
       // Receive completely first, then write (no half catalog on abort).
       final bytes = await readBody(request, admin ? _maxUpload : _maxDeviceUpload);

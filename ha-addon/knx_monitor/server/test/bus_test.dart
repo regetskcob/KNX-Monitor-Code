@@ -491,6 +491,26 @@ void main() {
     expect(outages.first['from'], t0.add(const Duration(minutes: 4)).millisecondsSinceEpoch);
     expect(outages.first['to'], t0.add(const Duration(minutes: 7)).millisecondsSinceEpoch);
   });
+
+  test('requests with invalid settings are rejected instead of clamped', () {
+    expect(BusConfig.invalidChange({'retentionDays': 30, 'port': 3671, 'host': 'gw'}), isNull);
+    expect(BusConfig.invalidChange({'retentionDays': 0}), isNull, reason: 'off is a valid choice');
+    for (final bad in <Map<String, Object?>>[
+      {'retentionDays': -5},
+      {'retentionDays': '7'},
+      {'retentionDays': 1e309},
+      {'retentionDays': 99999999999},
+      {'port': 0},
+      {'maxMegabytes': 1},
+      {'flushSeconds': 601},
+      {'host': 42},
+      {'secure': 'x'},
+      {'enabled': 'false'},
+      {'fallback': 0},
+    ]) {
+      expect(BusConfig.invalidChange(bad), isNotNull, reason: '$bad');
+    }
+  });
 }
 
 class _WsClient {

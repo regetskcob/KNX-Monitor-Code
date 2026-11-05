@@ -231,6 +231,12 @@ zone (counted as UTC, like knx-telegram-store), the Gira comment, busmonitor
 frames (checksum checked), `L_Data.req`, and telegrams without `RawData`
 (skipped).
 
+Checked by running, not only by reading (4.11.2026, SpectrumKNX `main`,
+knx-telegram-store 0.15.2, xknx 4.0.0): a file written by SpectrumKNX's export
+code is a test case in `test/telegram_files_test.dart`, and SpectrumKNX's
+reader (`iter_communication_log` plus xknx `CEMIFrame.from_knx`, as in its
+import) decodes every telegram of our `history.xml` fixture.
+
 ## Availability
 
 Once a minute the server appends a line to

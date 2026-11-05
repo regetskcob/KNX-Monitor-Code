@@ -290,6 +290,10 @@ class BoxAccess {
   final _verifying = <String, int>{};
   static const _maxVerifying = 3;
 
+  /// The same over all senders: many addresses at once would otherwise still
+  /// occupy every core of the Pi.
+  static const _maxVerifyingTotal = 4;
+
   /// Name of the session cookie for the browser.
   static const sessionCookie = 'knx_box_session';
 
@@ -343,7 +347,8 @@ class BoxAccess {
       final encoded = auth.substring(6).trim();
       final known = _acceptedBasic.contains(_sha256(utf8.encode(encoded)));
       final running = _verifying[peer] ?? 0;
-      if (!known && running >= _maxVerifying) {
+      final total = _verifying.values.fold(0, (a, b) => a + b);
+      if (!known && (running >= _maxVerifying || total >= _maxVerifyingTotal)) {
         response.headers.set(HttpHeaders.retryAfterHeader, '5');
         return _deny(response, HttpStatus.tooManyRequests, 'Zu viele Anmeldungen auf einmal, bitte warten.');
       }
@@ -488,10 +493,17 @@ class BoxAccess {
     final wait = count < 5 ? Duration.zero : Duration(seconds: min(30 * (1 << min(count - 5, 10)), 15 * 60));
     _strikes[peer] = (count: count, until: now.add(wait));
     // There are only so many senders in a LAN; still, the list must not grow.
+    // Expired entries go first; a running lockout only when the list is far
+    // beyond that (many addresses), and then the one ending soonest, so that
+    // a flood of new addresses cannot lift the lockout of the main attacker.
     if (_strikes.length > 1024) {
       _strikes.removeWhere((key, s) => key != peer && !s.until.isAfter(now));
-      while (_strikes.length > 1024) {
-        _strikes.remove(_strikes.keys.firstWhere((key) => key != peer));
+      while (_strikes.length > 8192) {
+        final soonest = _strikes.entries
+            .where((e) => e.key != peer)
+            .reduce((a, b) => a.value.until.isBefore(b.value.until) ? a : b)
+            .key;
+        _strikes.remove(soonest);
       }
     }
     stderr.writeln('KNX-Box: Fehlversuch $count von $peer');

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:horizont/horizont.dart';
@@ -115,8 +116,18 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
         if (mounted) await openSupportPackage(context, bytes);
         return;
       }
+      // A month of a busy bus as ETS file is several hundred MB: as a recording in
+      // memory that would freeze or end the app (iPad, A14).
+      if (bytes.length > _importMaxBytes) {
+        if (mounted) {
+          final mb = (bytes.length / (1024 * 1024)).round();
+          showHorizontMessage(context, s.recordingsImportTooLarge(mb), status: HorizontStatus.critical);
+        }
+        return;
+      }
       final name = file.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
-      final recording = parseEtsXml(utf8.decode(bytes, allowMalformed: true), name: name);
+      // Parsing in the background, the UI keeps running.
+      final recording = await compute(_parseRecording, (bytes: bytes, name: name));
       await _store.save(recording);
       if (!mounted) return;
       showHorizontMessage(
@@ -126,8 +137,14 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
       );
     } on FormatException catch (e) {
       if (mounted) showHorizontMessage(context, s.recordingsImportFailed(e.message), status: HorizontStatus.critical);
+    } on Object catch (e) {
+      debugPrint('Import: $e');
+      if (mounted) showHorizontMessage(context, s.actionFailed, status: HorizontStatus.critical);
     }
   }
+
+  /// Largest ETS file to import as a recording (about 400,000 telegrams).
+  static const _importMaxBytes = 100 * 1024 * 1024;
 
   @override
   Widget build(BuildContext context) {
@@ -706,6 +723,26 @@ class _HistoryCardState extends State<_HistoryCard> {
     }
   }
 
+  Future<bool> _confirmOff() async =>
+      await showAdaptiveDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog.adaptive(
+          title: Text(s.historyOffConfirmTitle),
+          content: Text(s.historyOffHint),
+          actions: [
+            horizontDialogAction(context, label: s.commonCancel, onPressed: () => Navigator.pop(context, false)),
+            horizontDialogAction(
+              context,
+              label: s.historyOffConfirm,
+              primary: true,
+              destructive: true,
+              onPressed: () => Navigator.pop(context, true),
+            ),
+          ],
+        ),
+      ) ==
+      true;
+
   Future<void> _deleteDay(HistoryDay day) async {
     final ok = await showAdaptiveDialog<bool>(
       context: context,
@@ -808,6 +845,8 @@ class _HistoryCardState extends State<_HistoryCard> {
                       await showPlanScreen(context, reason: s.planLongHistory);
                       if (d > plan.maxHistoryDays) return;
                     }
+                    // Off deletes everything recorded: one tap on a chip must not do that.
+                    if (d == 0 && _history.enabled && !await _confirmOff()) return;
                     await _history.setRetention(d);
                     _reload();
                   },
@@ -1004,3 +1043,6 @@ class _HistoryCardState extends State<_HistoryCard> {
     );
   }
 }
+
+Recording _parseRecording(({Uint8List bytes, String name}) input) =>
+    parseEtsXml(utf8.decode(input.bytes, allowMalformed: true), name: input.name);

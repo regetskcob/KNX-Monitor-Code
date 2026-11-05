@@ -31,7 +31,7 @@ jobs:
       - name: Start and answer
         run: |
           set -e
-          docker run -d --name local -e ALLOW_ALL=1 -e TZ=Europe/Berlin -p 8765:8765 knx-monitor-local
+          docker run -d --name local -e ALLOW_ALL=1 -e BIND=0.0.0.0 -e TZ=Europe/Berlin -p 8765:8765 knx-monitor-local
           for i in $(seq 1 30); do curl -sf http://localhost:8765/api/bus >/dev/null && break; sleep 1; done
           curl -sf http://localhost:8765/api/bus >/dev/null || { docker logs local; exit 1; }
           curl -sf http://localhost:8765/ | grep -q '<base href'

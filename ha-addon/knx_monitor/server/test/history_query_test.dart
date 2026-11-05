@@ -107,4 +107,62 @@ void main() {
     expect(historyQuery({'a': '1', 'from': '0', 'to': '${const Duration(days: 40).inMilliseconds}'}), isNull);
     expect(historyQuery({'from': '0', 'to': '1'}), isNull);
   });
+
+  test('packed days are cached per address and read again after a rewrite', () async {
+    final day = today.subtract(const Duration(days: 3));
+    final name = Recorder.dayName(day);
+    void pack(List<Map<String, Object?>> lines) {
+      final text = lines.map(jsonEncode).join('\n');
+      File('${data.path}/history/$name.ndjson.gz').writeAsBytesSync(gzip.encode(utf8.encode('$text\n')));
+    }
+
+    pack([
+      line(day.add(const Duration(hours: 1)), 100, '01', small: true),
+      line(day.add(const Duration(hours: 2)), 200, '0C1A'),
+    ]);
+    final cache = DayLinesCache();
+    expect((await cache.lines(recorder, name, {100}))![100], hasLength(1));
+    // Another address of the same day is read on demand, the first stays.
+    final both = (await cache.lines(recorder, name, {100, 200}))!;
+    expect([both[100]!.length, both[200]!.length], [1, 1]);
+    // Concurrent requests share one read and see the same lines.
+    final results = await Future.wait([
+      for (var i = 0; i < 5; i++) cache.lines(recorder, name, {100, 200}),
+    ]);
+    expect(results.map((r) => r![200]!.length), everyElement(1));
+    // Rewritten (e.g. a correction): the stamp changes, the day is read anew.
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    pack([
+      line(day.add(const Duration(hours: 1)), 100, '01', small: true),
+      line(day.add(const Duration(hours: 3)), 100, '00', small: true),
+      line(day.add(const Duration(hours: 4)), 100, '01', small: true),
+    ]);
+    expect((await cache.lines(recorder, name, {100}))![100], hasLength(3));
+    // An open day is never cached.
+    write([line(today.add(const Duration(minutes: 1)), 100, '01', small: true)]);
+    final open = Recorder.dayName(today);
+    expect((await cache.lines(recorder, open, {100}))![100], hasLength(1));
+    write([line(today.add(const Duration(minutes: 2)), 100, '00', small: true)]);
+    expect((await cache.lines(recorder, open, {100}))![100], hasLength(2));
+  });
+
+  test('statistics of packed days are counted once and again after a rewrite', () async {
+    final day = today.subtract(const Duration(days: 2));
+    final name = Recorder.dayName(day);
+    void pack(int n) {
+      final text = [for (var i = 0; i < n; i++) jsonEncode(line(day.add(Duration(minutes: i)), 100, '01', small: true))]
+          .join('\n');
+      File('${data.path}/history/$name.ndjson.gz').writeAsBytesSync(gzip.encode(utf8.encode('$text\n')));
+    }
+
+    pack(3);
+    final runs = await Future.wait([for (var i = 0; i < 3; i++) recorder.stats(5)]);
+    expect(runs.map((r) => (r['perDay']! as Map)[name]), everyElement(3));
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    pack(5);
+    final again = await recorder.stats(5);
+    expect((again['perDay']! as Map)[name], 5);
+    expect(again['total'], 5);
+    expect((again['groups']! as List).first, [100, 5]);
+  });
 }

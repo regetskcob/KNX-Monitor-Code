@@ -30,7 +30,7 @@ class TemplateGalleryScreen extends StatefulWidget {
 }
 
 class _TemplateGalleryScreenState extends State<TemplateGalleryScreen> {
-  late final Future<List<GalleryTemplate>> _gallery = loadTemplateGallery(bundle: widget.bundle);
+  late Future<List<GalleryTemplate>> _gallery = loadTemplateGallery(bundle: widget.bundle);
   final _search = TextEditingController();
 
   String get _language => s.localeName.startsWith('de') ? 'de' : 'en';
@@ -100,6 +100,20 @@ class _TemplateGalleryScreenState extends State<TemplateGalleryScreen> {
         child: FutureBuilder(
           future: _gallery,
           builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              // Otherwise the spinner would turn forever.
+              return Padding(
+                padding: Gap.page,
+                child: HorizontNotice(
+                  HorizontStatus.critical,
+                  action: TextButton(
+                    onPressed: () => setState(() => _gallery = loadTemplateGallery(bundle: widget.bundle)),
+                    child: Text(s.boxSetupRetry),
+                  ),
+                  child: Text(s.actionFailed),
+                ),
+              );
+            }
             if (!snapshot.hasData) return const Center(child: CircularProgressIndicator.adaptive());
             return ListenableBuilder(
               listenable: Listenable.merge([_search, CustomTemplates.instance, CatalogStore.instance]),

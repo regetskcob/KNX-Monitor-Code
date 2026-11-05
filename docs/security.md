@@ -403,7 +403,8 @@ Exceptions:
   (`server/lib/src/http.dart`), for the Supervisor watchdog.
 - `ALLOW_ALL=1` disables the check. It is meant for development and tests
   (`server/test/server_process_test.dart`, CI smoke test) and must not be set in
-  production.
+  production. With it the server listens on 127.0.0.1 only, unless `BIND`
+  names an address (the CI starts the container with `BIND=0.0.0.0`).
 - The optional Prometheus endpoint uses its own port (see section 7).
 
 Every response carries `X-Content-Type-Options: nosniff` and
@@ -427,8 +428,18 @@ Tests: `server/test/box_access_test.dart`, `server/test/box_security_test.dart`.
 - Comparisons of hashes and tokens run in constant time (`_equal`).
 - Failed logins per peer address: four are free, from the fifth on 30 seconds,
   doubling up to 15 minutes. At most three password checks run at the same time
-  per peer, so parallel requests cannot exhaust the Pi. A valid device token
-  does not reset the counter; only the correct password does.
+  per peer and four over all peers, so parallel requests, also from many
+  addresses, cannot exhaust the Pi. A valid device token does not reset the
+  counter; only the correct password does. A flood of new peer addresses does
+  not lift a running lockout: expired entries go first, running ones only
+  beyond 8,192 peers.
+- Connections: at most 64 live views (`/ws/bus`) and 16 UDP relays (`/ws`) at
+  once; beyond that the server answers 503 before the WebSocket upgrade.
+- Requests: only `GET`, `HEAD`, `POST`, `PUT`, `PATCH` and `DELETE` (405
+  otherwise); API paths without a handler answer 404. Settings in `PUT
+  /api/bus` are checked for type and range and rejected with 400 instead of
+  being clamped (a negative retention used to become 0, which deletes the
+  history).
 - Session cookie `knx_box_session`: 32 random bytes, stored as SHA-256, valid
   12 hours, at most 32 sessions, kept in memory only. Flags `HttpOnly;
   SameSite=Strict`, plus `Secure` over HTTPS.
@@ -438,6 +449,9 @@ Tests: `server/test/box_access_test.dart`, `server/test/box_security_test.dart`.
   `Origin`.
 - Changing the password or revoking a device clears sessions and cached logins
   and closes open WebSockets.
+
+Error texts of unexpected restarts (`/api/restarts`) only go to `admin`; a
+paired device sees time and reason.
 
 What the `device` role cannot do: the relay `/ws`, `/pair`, the management API
 `/api/box/*` (devices, password, Wi-Fi, LAN access), changing the bus
@@ -482,7 +496,12 @@ are never served over `/api/files/` to anyone (`server/lib/src/files.dart`,
 
 The Docker template (`tool/public-repo/docker/compose.yaml`) runs the same
 server with `BOX=1`, requires `BOX_PASSWORD` (Compose refuses to start without
-it), and answers only on the host itself unless `LAN_ACCESS=yes`. HTTPS needs a
+it), and answers only on the host itself (loopback) unless `LAN_ACCESS=yes`;
+the box Wi-Fi range `10.42.0.0/24` counts only on the real box, since in
+Docker it can be a home or k3s pod network. The data folder is a bind mount on
+the host: the server sets it to 0700 and creates files with umask 077, so the
+keyring and IP Secure passwords are not readable by other host accounts
+(`server/lib/src/file_mode.dart`). HTTPS needs a
 certificate of the user's own (`TLS_CERT`, `TLS_KEY`, `TLS_PORT`); without it,
 password and data travel in plain HTTP.
 

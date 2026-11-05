@@ -219,7 +219,12 @@ class HistoryStore extends ChangeNotifier {
     final text = Addon.box != null
         ? utf8.decode(await _boxFile(day) ?? const [], allowMalformed: true)
         : await _storageOf(day.installation).read(day.path) ?? '';
-    for (final line in const LineSplitter().convert(text)) {
+    final lines = const LineSplitter().convert(text);
+    for (var i = 0; i < lines.length; i++) {
+      // A busy day has 100,000 lines and more: in blocks, so the UI keeps
+      // drawing (the web has no isolates; a whole day froze it for a second).
+      if (i > 0 && i % 4000 == 0) await Future<void>.delayed(Duration.zero);
+      final line = lines[i];
       if (line.trim().isEmpty) continue;
       try {
         final json = jsonDecode(line) as Map<String, Object?>;

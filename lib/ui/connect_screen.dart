@@ -474,7 +474,8 @@ class _ConnectScreenState extends State<ConnectScreen> {
       await CatalogStore.instance.shareWithBox();
       await KeyringStore.instance.shareWithBox();
     } on Object catch (e) {
-      if (mounted) setState(() => _error = '$e');
+      debugPrint('An die Box geben: $e');
+      if (mounted) setState(() => _error = s.boxShareFailed);
     }
   }
 

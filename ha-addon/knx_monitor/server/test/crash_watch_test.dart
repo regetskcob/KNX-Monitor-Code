@@ -65,6 +65,10 @@ void main() {
       next.between(now.subtract(const Duration(days: 1)), now.add(const Duration(days: 1))).single.containsKey('error'),
       isFalse,
     );
+    // Paired devices without admin rights get no error text.
+    expect(next.recent().single['error'], contains('kaputt'));
+    expect(next.recent(withError: false).single.containsKey('error'), isFalse);
+    expect(next.recent(withError: false).single['reason'], 'error');
     await next.cleanExit();
     final third = watch();
     await third.start();

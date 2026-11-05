@@ -382,7 +382,7 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _saveCsv(List<Telegram> telegrams) async {
-    await saveBytes(context, utf8Bytes(buildCsv(telegrams)), fileName(widget.exportTitle, 'csv'), mimeType: 'text/csv');
+    await saveBytes(context, csvBytes(buildCsv(telegrams)), fileName(widget.exportTitle, 'csv'), mimeType: 'text/csv');
   }
 
   Future<void> _saveEts(List<Telegram> telegrams) async {

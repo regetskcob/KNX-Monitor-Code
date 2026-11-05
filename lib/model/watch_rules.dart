@@ -256,6 +256,14 @@ class WatchRules extends ValueNotifier<List<WatchRule>> {
     await _save();
   }
 
+  /// Puts [rule] back at [index] (clamped), e.g. to undo [remove]. A rule that
+  /// is already there stays once (Undo tapped twice).
+  Future<void> insert(int index, WatchRule rule) async {
+    if (value.any((r) => r.id == rule.id)) return;
+    value = [...value]..insert(index.clamp(0, value.length), rule);
+    await _save();
+  }
+
   Future<void> remove(String id) async {
     value = [
       for (final r in value)

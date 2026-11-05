@@ -86,7 +86,7 @@ jobs:
         run: |
           set -e
           mkdir -p "$RUNNER_TEMP/data"
-          run() { docker run -d --name smoke -e ALLOW_ALL=1 -e TZ=Europe/Berlin -p 8765:8765 -v "$RUNNER_TEMP/data:/data" knx-monitor-smoke; }
+          run() { docker run -d --name smoke -e ALLOW_ALL=1 -e BIND=0.0.0.0 -e TZ=Europe/Berlin -p 8765:8765 -v "$RUNNER_TEMP/data:/data" knx-monitor-smoke; }
           wait_up() { for i in $(seq 1 30); do curl -sf http://localhost:8765/api/bus >/dev/null && return 0; sleep 1; done; docker logs smoke; return 1; }
           run; wait_up
           curl -sf -X PUT -H 'Content-Type: application/json' -d '{"retentionDays": 30}' http://localhost:8765/api/bus | grep -q '"retentionDays":30'

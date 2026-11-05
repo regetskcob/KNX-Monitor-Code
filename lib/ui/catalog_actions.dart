@@ -67,10 +67,10 @@ Future<void> importCatalog(BuildContext context) async {
       horizontMessageSnackBar(colors, s.catalogImportFailed(e.message), status: HorizontStatus.critical),
     );
   } on Object catch (e) {
-    // Unexpectedly structured file: better a message than a silent abort.
-    messenger.showSnackBar(
-      horizontMessageSnackBar(colors, s.catalogImportFailed('$e'), status: HorizontStatus.critical),
-    );
+    // Unexpectedly structured file: better a message than a silent abort. The
+    // FormatExceptions above carry a sentence for the user, this one does not.
+    debugPrint('Import fehlgeschlagen: $e');
+    messenger.showSnackBar(horizontMessageSnackBar(colors, s.actionFailed, status: HorizontStatus.critical));
   }
 }
 

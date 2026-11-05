@@ -6,6 +6,7 @@ import 'package:horizont/horizont.dart';
 import '../catalog_store.dart';
 import '../knx/demo_tunnel.dart';
 import '../knx/dpt_guess.dart';
+import '../knx/group_catalog.dart';
 import '../knx/knx_tunnel.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
@@ -207,6 +208,22 @@ class _TeachInScreenState extends State<TeachInScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.learnSaved(name))));
   }
 
+  /// Forgets one learned address at once and offers to bring it back.
+  Future<void> _forget(GroupInfo group) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final colors = context.hz;
+    await _store.forget(group.address);
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(
+        horizontMessageSnackBar(
+          colors,
+          s.learnForgotten(group.name),
+          action: SnackBarAction(label: s.commonUndo, onPressed: () => unawaited(_store.learn([group]))),
+        ),
+      );
+  }
+
   Future<void> _clearAll() async {
     final ok = await showAdaptiveDialog<bool>(
       context: context,
@@ -357,7 +374,7 @@ class _TeachInScreenState extends State<TeachInScreen> {
                   metaAddress: true,
                   trailing: IconButton(
                     tooltip: s.learnForget,
-                    onPressed: () => _store.forget(g.address),
+                    onPressed: () => _forget(g),
                     icon: const Icon(AppIcons.delete, size: HzIconSize.row),
                   ),
                 ),

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
+import 'package:horizont/horizont.dart';
 
 import '../catalog_store.dart';
 import '../export/ets_ga_export.dart';
@@ -20,6 +21,7 @@ import '../model/installation.dart';
 import '../model/telegram_log.dart';
 import '../platform/addon.dart';
 import '../theme/app_theme.dart';
+import '../theme/palette.dart';
 import 'actuator_view.dart';
 import 'common.dart';
 import 'filter_observations.dart';
@@ -35,6 +37,7 @@ const _drawingWidth = 900.0;
 /// other exports.
 Future<void> exportEtsTasks(BuildContext context, {Rect? origin, TelegramLog? log}) async {
   final messenger = ScaffoldMessenger.of(context);
+  final colors = context.hz;
   final store = CatalogStore.instance;
   final deviations = await standardDeviations(store);
   final observations = await loadFilterObservations(log);
@@ -71,7 +74,7 @@ Future<void> exportEtsTasks(BuildContext context, {Rect? origin, TelegramLog? lo
     await shareFile(context, bytes, name, mime, origin: origin);
   } on Object catch (e, stack) {
     debugPrint('Aufgaben für die ETS fehlgeschlagen: $e\n$stack');
-    messenger.showSnackBar(SnackBar(content: Text(s.exportFailed('$e'))));
+    messenger.showSnackBar(horizontMessageSnackBar(colors, s.exportFailedGeneric, status: HorizontStatus.critical));
   }
 }
 

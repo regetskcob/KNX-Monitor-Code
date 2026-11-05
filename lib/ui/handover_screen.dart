@@ -74,7 +74,7 @@ class _HandoverScreenState extends State<HandoverScreen> {
       );
     } on Object catch (e) {
       debugPrint('Übergabepaket: $e');
-      if (mounted) showHorizontMessage(context, s.exportFailed('$e'), status: HorizontStatus.critical);
+      if (mounted) showHorizontMessage(context, s.exportFailedGeneric, status: HorizontStatus.critical);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -349,7 +349,8 @@ Future<void> pickPackageFile(BuildContext context) async {
   try {
     bytes = await file.readAsBytes();
   } on Object catch (e) {
-    messenger.showSnackBar(horizontMessageSnackBar(colors, s.exportFailed('$e'), status: HorizontStatus.critical));
+    debugPrint('Datei nicht gelesen: $e');
+    messenger.showSnackBar(horizontMessageSnackBar(colors, s.actionFailed, status: HorizontStatus.critical));
     return;
   }
   if (!context.mounted) return;
@@ -643,7 +644,7 @@ class _FaultReportSendScreenState extends State<FaultReportSendScreen> {
       if (mounted) setState(() => _sent = true);
     } on Object catch (e) {
       debugPrint('Störungsmeldung: $e');
-      if (mounted) showHorizontMessage(context, s.exportFailed('$e'), status: HorizontStatus.critical);
+      if (mounted) showHorizontMessage(context, s.exportFailedGeneric, status: HorizontStatus.critical);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

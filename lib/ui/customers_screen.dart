@@ -490,6 +490,23 @@ class _VisitDialogState extends State<_VisitDialog> {
 
   Future<void> _delete() async {
     final navigator = Navigator.of(context);
+    final ok = await showAdaptiveDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog.adaptive(
+        title: Text(s.visitDeleteTitle),
+        actions: [
+          horizontDialogAction(dialog, label: s.commonCancel, onPressed: () => Navigator.pop(dialog, false)),
+          horizontDialogAction(
+            dialog,
+            label: s.commonDelete,
+            primary: true,
+            destructive: true,
+            onPressed: () => Navigator.pop(dialog, true),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
     await CustomerStore.instance.deleteVisit(widget.installationId, widget.visit!.id);
     navigator.pop();
   }
@@ -523,9 +540,10 @@ class _VisitDialogState extends State<_VisitDialog> {
       ),
     ),
     actions: [
-      if (widget.visit != null) TextButton(onPressed: _delete, child: Text(s.commonDelete)),
-      TextButton(onPressed: () => Navigator.pop(context), child: Text(s.commonCancel)),
-      TextButton(onPressed: _save, child: Text(s.commonSave)),
+      horizontDialogAction(context, label: s.commonCancel, onPressed: () => Navigator.pop(context)),
+      if (widget.visit != null)
+        horizontDialogAction(context, label: s.commonDelete, destructive: true, onPressed: _delete),
+      horizontDialogAction(context, label: s.commonSave, primary: true, onPressed: _save),
     ],
   );
 }

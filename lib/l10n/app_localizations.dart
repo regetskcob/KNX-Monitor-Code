@@ -980,12 +980,6 @@ abstract class AppLocalizations {
   /// **'1/2/3 oder Name'**
   String get sendGroupAddressHint;
 
-  /// Snackbar when creating/sharing the PDF failed.
-  ///
-  /// In de, this message translates to:
-  /// **'PDF-Export fehlgeschlagen: {error}'**
-  String pdfExportFailed(String error);
-
   /// Screen reader label of the activity bars; period e.g. "last 60 s".
   ///
   /// In de, this message translates to:
@@ -1973,7 +1967,7 @@ abstract class AppLocalizations {
   /// Tooltip: gespeicherten Filter löschen
   ///
   /// In de, this message translates to:
-  /// **'Filter löschen'**
+  /// **'Gespeicherten Filter löschen'**
   String get deleteFilter;
 
   /// Tooltip/Titel: Hilfe zur Filtersyntax
@@ -2677,6 +2671,36 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Noch keine Tage gespeichert.'**
   String get historyEmpty;
+
+  /// Rückfrage vor Aus: Titel
+  ///
+  /// In de, this message translates to:
+  /// **'Verlauf ausschalten?'**
+  String get historyOffConfirmTitle;
+
+  /// Rückfrage vor Aus: Knopf
+  ///
+  /// In de, this message translates to:
+  /// **'Ausschalten und löschen'**
+  String get historyOffConfirm;
+
+  /// Import: Datei zu groß
+  ///
+  /// In de, this message translates to:
+  /// **'Die Datei ist mit {mb} MB zu groß für eine Aufnahme. Exportiere einen kürzeren Zeitraum (höchstens 100 MB).'**
+  String recordingsImportTooLarge(int mb);
+
+  /// Wiederherstellung abgebrochen: Titel
+  ///
+  /// In de, this message translates to:
+  /// **'Sicherung nur teilweise zurückgespielt'**
+  String get backupRestorePartialTitle;
+
+  /// Wiederherstellung abgebrochen: Text
+  ///
+  /// In de, this message translates to:
+  /// **'{count} Dateien sind schon aus der Sicherung, danach ist ein Fehler aufgetreten (zum Beispiel voller Speicher). Die App startet jetzt neu. Spiel die Sicherung danach noch einmal ein.'**
+  String backupRestorePartial(int count);
 
   /// Hinweis: Aus löscht
   ///
@@ -6338,12 +6362,6 @@ abstract class AppLocalizations {
   /// **'Angemeldet als {email}'**
   String accountSignedInAs(String email);
 
-  /// Fehler
-  ///
-  /// In de, this message translates to:
-  /// **'Anmelden hat nicht geklappt: {error}'**
-  String accountFailed(String error);
-
   /// Windows: nach dem Öffnen der Kaufseite
   ///
   /// In de, this message translates to:
@@ -9077,8 +9095,8 @@ abstract class AppLocalizations {
   /// Fehlerjagd: Fehler
   ///
   /// In de, this message translates to:
-  /// **'Treffer nicht geladen: {error}'**
-  String huntSaveFailed(String error);
+  /// **'Treffer nicht geladen. Ist die Box erreichbar?'**
+  String get huntSaveFailed;
 
   /// Plain sentence: sender when the telegram was sent from this app.
   ///
@@ -15115,6 +15133,60 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Namen in „{name}“ ändern – erledigt der Gruppenadress-Import.'**
   String etsTodoRename(String name);
+
+  /// Snackbar: Export failed (details only in the log)
+  ///
+  /// In de, this message translates to:
+  /// **'Export hat nicht geklappt. Versuch es noch einmal.'**
+  String get exportFailedGeneric;
+
+  /// Snackbar: PDF could not be created or shared (details only in the log)
+  ///
+  /// In de, this message translates to:
+  /// **'PDF hat nicht geklappt. Versuch es noch einmal.'**
+  String get pdfExportFailedGeneric;
+
+  /// Snackbar: sending data to the box failed
+  ///
+  /// In de, this message translates to:
+  /// **'Die Box hat die Daten nicht angenommen.'**
+  String get boxShareFailed;
+
+  /// Snackbar: fault hunt could not be loaded from the box
+  ///
+  /// In de, this message translates to:
+  /// **'Fehlerjagd nicht geladen. Ist die Box erreichbar?'**
+  String get huntLoadFailed;
+
+  /// Generic error message for an action that failed (details only in the log)
+  ///
+  /// In de, this message translates to:
+  /// **'Das hat nicht geklappt. Versuch es noch einmal.'**
+  String get actionFailed;
+
+  /// Generic undo action, e.g. in a snackbar after removing something
+  ///
+  /// In de, this message translates to:
+  /// **'Rückgängig'**
+  String get commonUndo;
+
+  /// Customer visits: confirmation before deleting a manual entry
+  ///
+  /// In de, this message translates to:
+  /// **'Eintrag löschen?'**
+  String get visitDeleteTitle;
+
+  /// Snackbar after removing a watcher, with an undo action
+  ///
+  /// In de, this message translates to:
+  /// **'Wächter entfernt: {what}'**
+  String watchRemoved(String what);
+
+  /// Teach-in: snackbar after forgetting a learned group address, with an undo action
+  ///
+  /// In de, this message translates to:
+  /// **'Vergessen: {name}'**
+  String learnForgotten(String name);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

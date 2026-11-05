@@ -93,25 +93,24 @@ Future<Map<int, List<Map<String, Object?>>>> historyTelegrams(
     !d.isAfter(to);
     d = DateTime(d.year, d.month, d.day + 1)
   ) {
-    final lines = await recorder.dayLines(Recorder.dayName(d));
-    if (lines == null) continue;
-    await for (final line in lines) {
-      // Cheap filters first: most lines belong to other addresses.
-      final a = int.tryParse(Recorder.field(line, 'd') ?? '');
-      if (a == null || !inRange.containsKey(a)) continue;
-      final t = int.tryParse(Recorder.field(line, 't') ?? '');
-      if (t == null || t > end || Recorder.field(line, 'y') == '0') continue;
-      final Map<String, Object?> j;
-      try {
-        j = jsonDecode(line) as Map<String, Object?>;
-      } on FormatException {
-        continue; // truncated line
-      }
-      if (t < start) {
-        final previous = before[a];
-        if (previous == null || (previous['t']! as int) < t) before[a] = j;
-      } else {
-        inRange[a]!.add(j);
+    final day = await _dayCache(recorder).lines(recorder, Recorder.dayName(d), inRange.keys.toSet());
+    if (day == null) continue;
+    for (final MapEntry(key: a, value: lines) in day.entries) {
+      for (final line in lines) {
+        final t = int.tryParse(Recorder.field(line, 't') ?? '');
+        if (t == null || t > end) continue;
+        final Map<String, Object?> j;
+        try {
+          j = jsonDecode(line) as Map<String, Object?>;
+        } on FormatException {
+          continue; // truncated line
+        }
+        if (t < start) {
+          final previous = before[a];
+          if (previous == null || (previous['t']! as int) < t) before[a] = j;
+        } else {
+          inRange[a]!.add(j);
+        }
       }
     }
   }
@@ -129,18 +128,18 @@ Future<Map<int, List<Map<String, Object?>>>> historyTelegrams(
       missing.isNotEmpty && !d.isBefore(oldest);
       d = DateTime(d.year, d.month, d.day - 1)
     ) {
-      final lines = await recorder.dayLines(Recorder.dayName(d));
-      if (lines == null) continue;
+      final day = await _dayCache(recorder).lines(recorder, Recorder.dayName(d), missing);
+      if (day == null) continue;
       final found = <int, Map<String, Object?>>{};
-      await for (final line in lines) {
-        final a = int.tryParse(Recorder.field(line, 'd') ?? '');
-        if (a == null || !missing.contains(a) || Recorder.field(line, 'y') == '0') continue;
-        final t = int.tryParse(Recorder.field(line, 't') ?? '');
-        if (t == null || (found[a] != null && (found[a]!['t']! as int) >= t)) continue;
-        try {
-          found[a] = jsonDecode(line) as Map<String, Object?>;
-        } on FormatException {
-          // truncated line
+      for (final MapEntry(key: a, value: lines) in day.entries) {
+        for (final line in lines) {
+          final t = int.tryParse(Recorder.field(line, 't') ?? '');
+          if (t == null || (found[a] != null && (found[a]!['t']! as int) >= t)) continue;
+          try {
+            found[a] = jsonDecode(line) as Map<String, Object?>;
+          } on FormatException {
+            // truncated line
+          }
         }
       }
       before.addAll(found);
@@ -234,4 +233,94 @@ Future<void> serveHistoryTelegrams(HttpRequest request, Recorder recorder) async
     }),
   );
   await response.close();
+}
+
+/// One cache per recorder (installation).
+final _caches = Expando<DayLinesCache>();
+DayLinesCache _dayCache(Recorder recorder) => _caches[recorder] ??= DayLinesCache();
+
+/// Lines of completed days per address. A chart that asks again (period
+/// switch, refresh, several viewers) would otherwise unpack the same days
+/// every time; 20 viewers at once waited ten seconds each in a load test
+/// with 100,000 telegrams a day. Only packed days count (they no longer
+/// change; the stamp notices a rewrite), only the addresses asked for, and at
+/// most [budget] lines, least recently used day out first. Concurrent
+/// requests for the same day share one read.
+class DayLinesCache {
+  DayLinesCache({this.budget = 200000});
+
+  /// About 150 bytes each in memory: 30 MB, fine next to the recording on a Pi.
+  final int budget;
+  final _days = <String, _CachedDay>{};
+  final _reading = <String, Future<void>>{};
+  int _lines = 0;
+
+  /// Lines (no read requests) of [day] for [addresses]; `null` without the day.
+  Future<Map<int, List<String>>?> lines(Recorder recorder, String day, Set<int> addresses) async {
+    final stamp = await recorder.packedDayStamp(day);
+    if (stamp == null) return _scan(recorder, day, addresses);
+    while (true) {
+      final pending = _reading[day];
+      if (pending != null) {
+        await pending;
+        continue;
+      }
+      var cached = _days.remove(day);
+      if (cached != null && cached.stamp != stamp) {
+        _lines -= cached.count;
+        cached = null;
+      }
+      cached ??= _CachedDay(stamp);
+      _days[day] = cached; // most recently used last
+      final missing = addresses.difference(cached.scanned);
+      if (missing.isEmpty) return {for (final a in addresses) a: cached.byAddress[a] ?? const []};
+      final read = _fill(recorder, day, cached, missing);
+      _reading[day] = read;
+      try {
+        await read;
+      } finally {
+        _reading.remove(day);
+      }
+    }
+  }
+
+  Future<void> _fill(Recorder recorder, String day, _CachedDay cached, Set<int> missing) async {
+    final found = await _scan(recorder, day, missing) ?? const {};
+    var added = 0;
+    for (final a in missing) {
+      final list = found[a] ?? const <String>[];
+      cached.byAddress[a] = list;
+      added += list.length;
+    }
+    cached
+      ..scanned.addAll(missing)
+      ..count += added;
+    _lines += added;
+    while (_lines > budget && _days.length > 1) {
+      final oldest = _days.keys.first;
+      if (oldest == day) break;
+      _lines -= _days.remove(oldest)!.count;
+    }
+  }
+
+  static Future<Map<int, List<String>>?> _scan(Recorder recorder, String day, Set<int> addresses) async {
+    final lines = await recorder.dayLines(day);
+    if (lines == null) return null;
+    final out = <int, List<String>>{};
+    await for (final line in lines) {
+      // Cheap filters first: most lines belong to other addresses.
+      final a = int.tryParse(Recorder.field(line, 'd') ?? '');
+      if (a == null || !addresses.contains(a) || Recorder.field(line, 'y') == '0') continue;
+      (out[a] ??= []).add(line);
+    }
+    return out;
+  }
+}
+
+class _CachedDay {
+  _CachedDay(this.stamp);
+  final String stamp;
+  final scanned = <int>{};
+  final byAddress = <int, List<String>>{};
+  int count = 0;
 }

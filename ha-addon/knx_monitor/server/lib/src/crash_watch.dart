@@ -178,11 +178,19 @@ class CrashWatch {
   }
 
   /// Complete, for the diagnostics package; the app sanitizes the texts.
-  List<Map<String, Object?>> recent({int days = 30}) {
+  /// Without [withError] (a paired device that is not admin) without error
+  /// text and stack: they can name paths, hosts and request addresses.
+  List<Map<String, Object?>> recent({int days = 30, bool withError = true}) {
     final since = _now().subtract(Duration(days: days)).millisecondsSinceEpoch;
     return [
       for (final e in _entries)
-        if ((e['t']! as int) >= since) e,
+        if ((e['t']! as int) >= since)
+          withError
+              ? e
+              : {
+                  for (final k in e.keys)
+                    if (k != 'error') k: e[k],
+                },
     ];
   }
 }

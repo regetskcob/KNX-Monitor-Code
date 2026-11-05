@@ -446,25 +446,17 @@ class Recorder {
     final now = DateTime.now();
     for (var back = days - 1; back >= 0; back--) {
       final day = dayName(DateTime(now.year, now.month, now.day - back));
-      final lines = await dayLines(day);
-      if (lines == null) continue;
-      var count = 0;
-      await for (final line in lines) {
-        // Only the needed fields, without fully decoding each line.
-        final t = int.tryParse(field(line, 't') ?? '');
-        final d = int.tryParse(field(line, 'd') ?? '');
-        if (t == null || d == null) continue;
-        final time = DateTime.fromMicrosecondsSinceEpoch(t);
-        heatmap[time.weekday - 1][time.hour]++;
-        groups[d] = (groups[d] ?? 0) + 1;
-        if (!line.contains('"o":true')) {
-          final src = int.tryParse(field(line, 's') ?? '');
-          if (src != null) senders[src] = (senders[src] ?? 0) + 1;
+      final d = await _dayStats(day);
+      if (d == null) continue;
+      for (var w = 0; w < 7; w++) {
+        for (var h = 0; h < 24; h++) {
+          heatmap[w][h] += d.heatmap[w][h];
         }
-        count++;
       }
-      perDay[day] = count;
-      total += count;
+      d.groups.forEach((k, v) => groups[k] = (groups[k] ?? 0) + v);
+      d.senders.forEach((k, v) => senders[k] = (senders[k] ?? 0) + v);
+      perDay[day] = d.count;
+      total += d.count;
     }
     List<List<int>> topOf(Map<int, int> m) => ([
       for (final e in m.entries) [e.key, e.value],
@@ -477,6 +469,69 @@ class Recorder {
       'groups': topOf(groups),
       'senders': topOf(senders),
     };
+  }
+
+  /// Counts of completed days: they no longer change, and a 30-day view would
+  /// otherwise unpack every day again (4 s on a Mac with 100,000 telegrams a
+  /// day, during which the server answers nothing else). Checked against the
+  /// stamp of the `.gz`; concurrent requests for a day share one count.
+  final _statsCache = <String, ({String stamp, _DayStats stats})>{};
+  final _statsCounting = <String, Future<_DayStats?>>{};
+
+  Future<_DayStats?> _dayStats(String day) async {
+    final stamp = await packedDayStamp(day);
+    if (stamp == null) return _countDay(day);
+    final cached = _statsCache[day];
+    if (cached != null && cached.stamp == stamp) return cached.stats;
+    final running = _statsCounting[day];
+    if (running != null) return running;
+    final counting = _countDay(day);
+    _statsCounting[day] = counting;
+    try {
+      final stats = await counting;
+      if (stats != null) {
+        _statsCache[day] = (stamp: stamp, stats: stats);
+        // A year and a bit; older entries belong to deleted days.
+        while (_statsCache.length > 400) {
+          _statsCache.remove(_statsCache.keys.first);
+        }
+      }
+      return stats;
+    } finally {
+      _statsCounting.remove(day);
+    }
+  }
+
+  Future<_DayStats?> _countDay(String day) async {
+    final lines = await dayLines(day);
+    if (lines == null) return null;
+    final stats = _DayStats();
+    await for (final line in lines) {
+      // Only the needed fields, without fully decoding each line.
+      final t = int.tryParse(field(line, 't') ?? '');
+      final d = int.tryParse(field(line, 'd') ?? '');
+      if (t == null || d == null) continue;
+      final time = DateTime.fromMicrosecondsSinceEpoch(t);
+      stats.heatmap[time.weekday - 1][time.hour]++;
+      stats.groups[d] = (stats.groups[d] ?? 0) + 1;
+      if (!line.contains('"o":true')) {
+        final src = int.tryParse(field(line, 's') ?? '');
+        if (src != null) stats.senders[src] = (stats.senders[src] ?? 0) + 1;
+      }
+      stats.count++;
+    }
+    return stats;
+  }
+
+  /// Version of a completed day (only packed, size and time of the `.gz`), for
+  /// caches; `null` if the day is still open (plain file) or does not exist.
+  Future<String?> packedDayStamp(String day) async {
+    final plain = File('${_dir.path}/$day.ndjson');
+    final packed = File('${plain.path}.gz');
+    if (await plain.exists()) return null;
+    final stat = await packed.stat();
+    if (stat.type == FileSystemEntityType.notFound) return null;
+    return '${stat.size}:${stat.modified.microsecondsSinceEpoch}';
   }
 
   /// Lines of the day [day] (`YYYY-MM-DD`, open or packed); `null` if the day
@@ -674,4 +729,12 @@ class Availability {
     }
     return result;
   }
+}
+
+/// Counts of one day for [Recorder.stats].
+class _DayStats {
+  final heatmap = List.generate(7, (_) => List.filled(24, 0));
+  final groups = <int, int>{};
+  final senders = <int, int>{};
+  var count = 0;
 }

@@ -73,7 +73,8 @@ class _FullBackupScreenState extends State<FullBackupScreen> {
         );
       }
     } on Object catch (e) {
-      if (mounted) setState(() => _error = s.accountFailed('$e'));
+      debugPrint('Komplettsicherung: $e');
+      if (mounted) setState(() => _error = s.actionFailed);
     }
     if (mounted) setState(() => _busy = false);
   }
@@ -124,7 +125,30 @@ class _FullBackupScreenState extends State<FullBackupScreen> {
         true;
     if (!sure) return;
     await _run(() async {
-      await FullBackup().restore(await file.readAsBytes(), _first.text);
+      try {
+        await FullBackup().restore(await file.readAsBytes(), _first.text);
+      } on BackupException catch (e) {
+        if (e.message != 'partial') rethrow;
+        // Part of the files is new already: continuing would save the old state
+        // over them. Say so, then restart like after a complete restore.
+        if (mounted) {
+          await showAdaptiveDialog<void>(
+            context: context,
+            builder: (context) => AlertDialog.adaptive(
+              title: Text(s.backupRestorePartialTitle),
+              content: Text(s.backupRestorePartial(e.bytes)),
+              actions: [
+                horizontDialogAction(
+                  context,
+                  label: s.commonClose,
+                  primary: true,
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          );
+        }
+      }
       exit(0);
     });
   }

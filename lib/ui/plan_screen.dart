@@ -232,6 +232,7 @@ class _PlanScreenState extends State<PlanScreen> {
 
   Future<void> _run(Future<void> Function() action, String Function() done) async {
     final messenger = ScaffoldMessenger.of(context);
+    final colors = context.hz;
     setState(() => _busy = true);
     try {
       await action();
@@ -248,10 +249,14 @@ class _PlanScreenState extends State<PlanScreen> {
       messenger.showSnackBar(SnackBar(content: Text(s.planLicenseInvalid)));
     } on PlanAwaitingApproval {
       messenger.showSnackBar(SnackBar(content: Text(s.planPendingApproval)));
-    } on Object catch (e) {
+    } on PlatformException catch (e) {
+      // The store's own reason (e.g. payment declined) helps the user.
       messenger.showSnackBar(
-        SnackBar(content: Text(s.planBuyFailed(e is PlatformException ? e.message ?? e.code : '$e'))),
+        horizontMessageSnackBar(colors, s.planBuyFailed(e.message ?? e.code), status: HorizontStatus.critical),
       );
+    } on Object catch (e) {
+      debugPrint('Kauf: $e');
+      messenger.showSnackBar(horizontMessageSnackBar(colors, s.actionFailed, status: HorizontStatus.critical));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

@@ -294,7 +294,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dpt1Open => 'Open';
 
   @override
-  String get dpt1Close => 'Close';
+  String get dpt1Close => 'Closed';
 
   @override
   String get dpt1Stop => 'Stop';
@@ -490,11 +490,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sendGroupAddressHint => '1/2/3 or name';
-
-  @override
-  String pdfExportFailed(String error) {
-    return 'PDF export failed: $error';
-  }
 
   @override
   String activitySemantics(String period) {
@@ -1051,7 +1046,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noSavedFilters => 'No saved filters yet';
 
   @override
-  String get deleteFilter => 'Delete filter';
+  String get deleteFilter => 'Delete saved filter';
 
   @override
   String get filterHelp => 'Filter help';
@@ -1463,6 +1458,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyEmpty => 'No days stored yet.';
 
   @override
+  String get historyOffConfirmTitle => 'Turn off the history?';
+
+  @override
+  String get historyOffConfirm => 'Turn off and delete';
+
+  @override
+  String recordingsImportTooLarge(int mb) {
+    return 'At $mb MB the file is too large for a recording. Export a shorter period (100 MB at most).';
+  }
+
+  @override
+  String get backupRestorePartialTitle => 'Backup only partly restored';
+
+  @override
+  String backupRestorePartial(int count) {
+    return '$count files already come from the backup, then an error occurred (for example, storage full). The app restarts now. Restore the backup again afterwards.';
+  }
+
+  @override
   String get historyOffHint => 'Turning it off deletes the stored history.';
 
   @override
@@ -1625,7 +1639,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get busmonRetry => 'Retry';
+  String get busmonRetry => 'Try again';
 
   @override
   String get busmonFrames => 'Frames';
@@ -3004,7 +3018,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chartTemplateAdopted => 'Adopted';
 
   @override
-  String get chartTemplatesAdoptAll => 'Adopt all';
+  String get chartTemplatesAdoptAll => 'Accept all';
 
   @override
   String chartTemplateAdoptedSnack(String name) {
@@ -3630,11 +3644,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String accountSignedInAs(String email) {
     return 'Signed in as $email';
-  }
-
-  @override
-  String accountFailed(String error) {
-    return 'Sign-in failed: $error';
   }
 
   @override
@@ -4748,7 +4757,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boxHatModeLinkLayer => 'link layer';
 
   @override
-  String get boxHatModeBusmonitor => 'bus monitor';
+  String get boxHatModeBusmonitor => 'Bus monitor';
 
   @override
   String get boxHatModeTransportLayer => 'transport layer';
@@ -5308,9 +5317,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get huntOpen => 'Open';
 
   @override
-  String huntSaveFailed(String error) {
-    return 'Hit not loaded: $error';
-  }
+  String get huntSaveFailed => 'Hit not loaded. Is the box reachable?';
 
   @override
   String get plainThisApp => 'This app';
@@ -5446,7 +5453,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get learnStatusSuffix => 'status';
 
   @override
-  String get learnSave => 'Save';
+  String get learnSave => 'Teach in';
 
   @override
   String get learnSkip => 'Discard';
@@ -8929,5 +8936,36 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String etsTodoRename(String name) {
     return 'Change the name to “$name” – the group address import does this.';
+  }
+
+  @override
+  String get exportFailedGeneric => 'Export didn\'t work. Please try again.';
+
+  @override
+  String get pdfExportFailedGeneric => 'The PDF didn\'t work. Please try again.';
+
+  @override
+  String get boxShareFailed => 'The box did not accept the data.';
+
+  @override
+  String get huntLoadFailed => 'Fault hunt not loaded. Is the box reachable?';
+
+  @override
+  String get actionFailed => 'That didn\'t work. Please try again.';
+
+  @override
+  String get commonUndo => 'Undo';
+
+  @override
+  String get visitDeleteTitle => 'Delete entry?';
+
+  @override
+  String watchRemoved(String what) {
+    return 'Watcher removed: $what';
+  }
+
+  @override
+  String learnForgotten(String name) {
+    return 'Forgotten: $name';
   }
 }

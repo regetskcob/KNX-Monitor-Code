@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:horizont/horizont.dart';
 
@@ -122,6 +124,24 @@ class _RuleRow extends StatelessWidget {
 
   final WatchRule rule;
 
+  /// Removes the watcher at once and offers to bring it back.
+  Future<void> _remove(BuildContext context) async {
+    final rules = WatchRules.instance;
+    final messenger = ScaffoldMessenger.of(context);
+    final colors = context.hz;
+    final index = rules.value.indexWhere((r) => r.id == rule.id);
+    await rules.remove(rule.id);
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(
+        horizontMessageSnackBar(
+          colors,
+          s.watchRemoved(rule.describe()),
+          action: SnackBarAction(label: s.commonUndo, onPressed: () => unawaited(rules.insert(index, rule))),
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -175,7 +195,7 @@ class _RuleRow extends StatelessWidget {
           ),
           IconButton(
             tooltip: s.watchRemove,
-            onPressed: () => rules.remove(rule.id),
+            onPressed: () => _remove(context),
             icon: Icon(AppIcons.clear, color: hz.textMuted),
           ),
         ],

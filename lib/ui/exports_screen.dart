@@ -139,7 +139,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
 
   /// Content of an entry: PDFs in the background, texts directly.
   Future<Uint8List> _bytes(_Item item) async => switch (item) {
-    _Item.telegramsCsv => utf8Bytes(buildCsv(_telegrams)),
+    _Item.telegramsCsv => csvBytes(buildCsv(_telegrams)),
     _Item.telegramsEts => utf8Bytes(buildEtsXml(_telegrams, host: widget.gateway)),
     _ => buildPdfInBackground(_job(item)!),
   };
@@ -180,7 +180,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
       await shareFile(context, zip, name, 'application/zip', origin: origin);
     } on Object catch (e, stack) {
       debugPrint('Gesamtexport fehlgeschlagen: $e\n$stack');
-      if (mounted) showHorizontMessage(context, s.exportFailed('$e'), status: HorizontStatus.critical);
+      if (mounted) showHorizontMessage(context, s.exportFailedGeneric, status: HorizontStatus.critical);
     }
   }
 

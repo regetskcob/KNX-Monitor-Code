@@ -17,10 +17,12 @@ import 'package:knx_monitor_server/files.dart';
 ///   the frames to all open views ("/ws/bus", "/api/bus").
 ///
 /// Environment: PORT (8765), WEB_DIR (/app/web), DATA_DIR (/data/app),
-/// ALLOW_ALL=1 allows access outside of Ingress (development only).
+/// ALLOW_ALL=1 allows access outside of Ingress (development only; listens on
+/// 127.0.0.1 unless BIND sets the address, e.g. BIND=0.0.0.0 in a container).
 /// BOX=1: KNX box without Home Assistant – access with the box password or
 /// device access instead of Ingress (BOX_PASSWORD for the first password, BOX_NAME;
-/// LAN_ACCESS=yes allows access over the cable, otherwise only from the box Wi-Fi).
+/// LAN_ACCESS=yes allows access over the cable, otherwise only from the box
+/// Wi-Fi, or in Docker only from the host itself).
 /// MQTT_HOST (+ MQTT_PORT, MQTT_USER, MQTT_PASSWORD, MQTT_SSL): MQTT device
 /// without Supervisor, e.g. in a Docker container next to ioBroker.
 ///
@@ -60,6 +62,10 @@ Future<void> main(List<String> args) async {
   final web = Directory(env['WEB_DIR'] ?? '/app/web');
   final data = Directory(env['DATA_DIR'] ?? '/data/app');
   await data.create(recursive: true);
+  // Docker (box mode without the real box's sticker): the data folder is a
+  // bind mount on the host, keys must not be readable there for everyone.
+  // The real box (systemd StateDirectory) and the add-on set their own modes.
+  if (env['BOX'] == '1' && env['BOX_STICKER'] != '1') restrictDataFolder(data);
   final crash = CrashWatch(data, version: BusService.version);
   await crash.start();
   // As before, the process exits on an unhandled error (systemd or the
@@ -84,6 +90,10 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
           name: env['BOX_NAME'],
           initialLanAccess: env['LAN_ACCESS'] == 'yes',
           sticker: env['BOX_STICKER'] == '1',
+          // Only the real box has its own Wi-Fi (10.42.0.0/24). In Docker,
+          // "no LAN access" means the host itself: 10.42.x can be a home
+          // network or a k3s pod network there.
+          fromWlan: env['BOX_STICKER'] == '1' ? BoxAccess.wlanPeer : (peer) => peer.isLoopback,
         )
       : null;
   // Without BOX_PASSWORD (development only) the first password is logged once;
@@ -197,7 +207,14 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
     onError: (Object e) => stderr.writeln('Verbindung: $e'),
   );
 
-  accept(await HttpServer.bind(InternetAddress.anyIPv4, port));
+  // ALLOW_ALL turns off every access check, so only this machine may connect,
+  // unless BIND names an address (BIND=0.0.0.0 in a container behind -p).
+  final bind = env['BIND'] != null
+      ? InternetAddress(env['BIND']!)
+      : allowAll
+      ? InternetAddress.loopbackIPv4
+      : InternetAddress.anyIPv4;
+  accept(await HttpServer.bind(bind, port));
   stdout.writeln('KNX Monitor: Port $port, Web ${web.path}, Daten ${data.path}');
   // Box: HTTPS with its own certificate (see box_tls.dart); HTTP stays for the
   // browser in the box Wi-Fi. Without a certificate or if the port is taken, HTTP only.
@@ -240,6 +257,8 @@ Future<void> _writeSheets(String dir, Map<String, String> env) async {
 /// Supervisor address that Ingress requests come from.
 const _ingressPeer = '172.30.32.2';
 
+const _methods = {'GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'};
+
 Future<void> _handle(
   HttpRequest request, {
   required Directory web,
@@ -260,6 +279,14 @@ Future<void> _handle(
     // setup.sh on the box: a response below 300 without login, but without data,
     // so that it reveals nothing on the network either.
     if (request.uri.path == healthPath) return await answerHealth(response);
+    // Only the methods the API uses; TRACE, CONNECT, PROPFIND and the like
+    // used to reach the GET handlers.
+    if (!_methods.contains(request.method)) {
+      response
+        ..statusCode = HttpStatus.methodNotAllowed
+        ..headers.set(HttpHeaders.allowHeader, _methods.join(', '));
+      return await response.close();
+    }
     // The KNX Monitor integration with its token: only the endpoints below /api/ha/.
     if (ha != null && HaIntegration.handles(request.uri.path) && ha.authorized(request)) {
       await ha.serve(request);
@@ -286,7 +313,15 @@ Future<void> _handle(
     if (path != etsXmlPath && await serveExport(request, bus.exporter, admin: admin)) return;
     if (path == '/api/box/time' && bus.clock != null) return await _boxTime(request, bus.clock!, admin: admin);
     if (path == '/ws') return await _relay(request);
-    if (path == '/ws/bus') return await bus.serve(await WebSocketTransformer.upgrade(request), admin: admin);
+    if (path == '/ws/bus') {
+      if (!bus.acceptsClient) {
+        response
+          ..statusCode = HttpStatus.serviceUnavailable
+          ..headers.set(HttpHeaders.retryAfterHeader, '10');
+        return await response.close();
+      }
+      return await bus.serve(await WebSocketTransformer.upgrade(request), admin: admin);
+    }
     if (path == '/api/bus') return await _bus(request, bus, admin: admin);
     if (path == '/api/bus/availability' ||
         path == '/api/bus/stats' ||
@@ -304,7 +339,7 @@ Future<void> _handle(
       final days = (int.tryParse(request.uri.queryParameters['days'] ?? '') ?? 7).clamp(1, 366);
       return await sendJson(response, await installations.recorderOf(id).stats(days));
     }
-    if (path == '/api/restarts' && crash != null) return await sendJson(response, crash.recent());
+    if (path == '/api/restarts' && crash != null) return await sendJson(response, crash.recent(withError: admin));
     if (path == '/api/charts') return await sendJson(response, await _charts.list(installations.installations.root));
     if (path == '/api/charts/series') return await _chartSeries(request, installations);
     if (path.startsWith('/api/files/')) {
@@ -345,7 +380,17 @@ final _relays = <WebSocket>{};
 /// Read-only, set at startup in [_serve].
 var _readOnly = false;
 
+/// Each relay holds a UDP socket; a gateway has only a few tunnels anyway.
+const _maxRelays = 16;
+
 Future<void> _relay(HttpRequest request) async {
+  if (_relays.length >= _maxRelays) {
+    request.response
+      ..statusCode = HttpStatus.serviceUnavailable
+      ..headers.set(HttpHeaders.retryAfterHeader, '10');
+    await request.response.close();
+    return;
+  }
   final ws = await WebSocketTransformer.upgrade(request);
   _relays.add(ws);
   unawaited(ws.done.whenComplete(() => _relays.remove(ws)));
@@ -600,6 +645,13 @@ Future<void> _bus(HttpRequest request, BusService bus, {required bool admin}) as
       response.statusCode = HttpStatus.badRequest;
       return response.close();
     }
+    if (BusConfig.invalidChange(body) case final error?) {
+      response
+        ..statusCode = HttpStatus.badRequest
+        ..headers.contentType = ContentType.text
+        ..write(error);
+      return response.close();
+    }
     // Credentials do not count here: a comparison would reveal whether a guessed password is right.
     if (!admin && bus.wouldChange({...body}..remove('secure'))) {
       response
@@ -697,14 +749,27 @@ const _types = {
   'frag': 'application/octet-stream',
 };
 
+/// Compressible assets, gzipped once per file version (main.dart.js: several
+/// MB, about a third packed). Kept in memory: the web folder is small and only
+/// changes with an update.
+const _compressible = {'js', 'mjs', 'json', 'css', 'svg', 'wasm', 'otf', 'ttf', 'frag', 'bin'};
+final _gzipCache = <String, ({String tag, List<int> bytes})>{};
+
 Future<void> _static(HttpRequest request, Directory web) async {
   final response = request.response;
+  // An API path that no handler took does not exist: 404 instead of the web
+  // app with 200, which looked like success to clients and scanners.
+  if (request.uri.path.startsWith('/api/') || request.uri.path.startsWith('/ws')) {
+    response.statusCode = HttpStatus.notFound;
+    return response.close();
+  }
   var relative = request.uri.path == '/' ? 'index.html' : request.uri.path.substring(1);
   if (relative.split('/').contains('..')) relative = 'index.html';
   var file = File('${web.path}/$relative');
   if (!await file.exists()) file = File('${web.path}/index.html');
   final extension = file.path.split('.').last;
   response.headers.set(HttpHeaders.contentTypeHeader, _types[extension] ?? 'application/octet-stream');
+  response.headers.set(HttpHeaders.cacheControlHeader, 'no-cache');
   if (file.path.endsWith('index.html')) {
     // Ingress path as <base href>, so that all relative URLs end up under Ingress.
     // The header comes from the Supervisor; still, only accept path characters, since
@@ -712,11 +777,32 @@ Future<void> _static(HttpRequest request, Directory web) async {
     final header = request.headers.value('X-Ingress-Path') ?? '';
     final ingress = RegExp(r'^[A-Za-z0-9/_-]*$').hasMatch(header) ? header : '';
     final html = (await file.readAsString()).replaceFirst('<base href="/">', '<base href="$ingress/">');
-    response.headers.set(HttpHeaders.cacheControlHeader, 'no-cache');
     response.write(html);
-  } else {
-    response.headers.set(HttpHeaders.cacheControlHeader, 'no-cache');
-    await response.addStream(file.openRead());
+    return response.close();
   }
+  // no-cache means "ask first": with the tag an unchanged file costs a 304
+  // instead of the whole download on every page load.
+  final stat = await file.stat();
+  final tag = '"${stat.size.toRadixString(36)}-${stat.modified.microsecondsSinceEpoch.toRadixString(36)}"';
+  response.headers.set(HttpHeaders.etagHeader, tag);
+  if (request.headers.value(HttpHeaders.ifNoneMatchHeader) == tag) {
+    response.statusCode = HttpStatus.notModified;
+    return response.close();
+  }
+  final gzipOk = (request.headers.value(HttpHeaders.acceptEncodingHeader) ?? '').contains('gzip');
+  if (gzipOk && _compressible.contains(extension) && stat.size > 1024) {
+    var packed = _gzipCache[file.path];
+    if (packed == null || packed.tag != tag) {
+      packed = (tag: tag, bytes: gzip.encode(await file.readAsBytes()));
+      _gzipCache[file.path] = packed;
+    }
+    response.headers
+      ..set(HttpHeaders.contentEncodingHeader, 'gzip')
+      ..set(HttpHeaders.varyHeader, 'Accept-Encoding')
+      ..contentLength = packed.bytes.length;
+    if (request.method != 'HEAD') response.add(packed.bytes);
+    return response.close();
+  }
+  if (request.method != 'HEAD') await response.addStream(file.openRead());
   await response.close();
 }

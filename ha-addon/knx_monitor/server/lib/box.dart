@@ -3,6 +3,7 @@ library;
 
 export 'src/box_access.dart';
 export 'src/box_clock.dart';
+export 'src/file_mode.dart';
 export 'src/box_sheet.dart';
 export 'src/box_tls.dart';
 export 'src/ft12.dart';

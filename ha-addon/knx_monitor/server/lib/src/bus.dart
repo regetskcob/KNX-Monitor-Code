@@ -107,6 +107,34 @@ class BusConfig {
   /// Whether [mode] works without a host.
   static bool needsNoHost(String mode) => _withoutHost.contains(mode);
 
+  /// Why [changes] from a request cannot be applied; `null` if they can.
+  /// [BusConfig.fromJson] clamps numbers and casts types, which is right for
+  /// the stored file but not for a request: `"retentionDays": -5` became 0,
+  /// and 0 means recording off, which deletes the whole history.
+  static String? invalidChange(Map<String, Object?> changes) {
+    const ranges = {
+      'port': (1, 65535),
+      'retentionDays': (0, 3650),
+      'maxMegabytes': (10, 1000000),
+      'flushSeconds': (0, 600),
+    };
+    const strings = {'mode', 'host', 'tunnelAddress', 'routingAddress', 'language', 'device', 'hatAddress'};
+    const switches = {'enabled', 'fallback', 'alarms', 'clockFromKnx', 'recordOnlyWithTime', 'hatBusmonitor', 'probe'};
+    for (final MapEntry(:key, :value) in changes.entries) {
+      if (ranges[key] case (final min, final max)) {
+        if (value is! int || value < min || value > max) return '$key: ganze Zahl von $min bis $max erwartet.';
+      } else if (switches.contains(key)) {
+        // "false" as text would count as off, anything else for fallback as on.
+        if (value is! bool) return '$key: true oder false erwartet.';
+      } else if (strings.contains(key)) {
+        if (value != null && value is! String) return '$key: Text erwartet.';
+      } else if (key == 'secure' && value != null && value is! Map) {
+        return 'secure: Objekt erwartet.';
+      }
+    }
+    return null;
+  }
+
   factory BusConfig.fromJson(Map<String, Object?> j) => BusConfig(
     enabled: j['enabled'] == true,
     mode: const {'udp', 'tcp', 'routing', 'secure', 'ha', 'hat'}.contains(j['mode']) ? j['mode']! as String : 'udp',
@@ -880,7 +908,19 @@ class BusService {
   ///
   /// [admin]: device with full rights (add-on, box password). Otherwise it may
   /// only send group values ([deviceMaySend]) and not release the tunnel.
+  /// Live views at once: each one gets every frame, and on a Pi memory and
+  /// CPU belong to the recording first.
+  static const maxClients = 64;
+
+  /// Whether another live view fits (checked before the upgrade, see [serve]).
+  bool get acceptsClient => _clients.length < maxClients;
+
   Future<void> serve(WebSocket ws, {bool admin = true}) async {
+    if (_clients.length >= maxClients) {
+      // 1013: try again later.
+      await ws.close(1013, 'busy');
+      return;
+    }
     final client = _Client(ws, admin: admin);
     _clients.add(client);
     client.send([0x02, ...utf8.encode(jsonEncode(status()))]);

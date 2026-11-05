@@ -47,7 +47,13 @@ git archive "$tag" "${ADDON_FILES[@]/#/ha-addon/knx_monitor/}" | tar -x -C "$DIR
 
 git -C "$DIR" add -A
 if git -C "$DIR" diff --cached --quiet; then
-  echo "public repository already up to date ($tag)"
+  # Nothing new, but a commit of an earlier run without --push may be waiting.
+  if [ $push = 1 ] && [ "$(git -C "$DIR" rev-list --count '@{u}..HEAD' 2>/dev/null || echo 0)" -gt 0 ]; then
+    git -C "$DIR" push -q origin HEAD
+    echo "pushed the waiting commit to $PUBLIC_REPO ($tag)"
+  else
+    echo "public repository already up to date ($tag)"
+  fi
   exit 0
 fi
 git -C "$DIR" commit -q -m "Home Assistant add-on ${tag#addon-v}"

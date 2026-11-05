@@ -14,7 +14,8 @@ class BackupException implements Exception {
   const BackupException(this.message, {this.bytes = 0});
   final String message;
 
-  /// For `tooLarge`: size of the data.
+  /// For `tooLarge`: size of the data; for `partial`: files already written
+  /// (the app has to restart, see [FullBackup.restore]).
   final int bytes;
   @override
   String toString() => message;
@@ -165,33 +166,59 @@ class FullBackup {
     for (final path in unpacked.files.keys) {
       if (!safePath(path)) throw const BackupException('open');
     }
-    var count = 0;
-    for (final MapEntry(key: path, value: text) in unpacked.files.entries) {
-      // Company data stays out, as when creating.
-      if (_isTeam(path)) continue;
-      await _storage.write(path, text);
-      count++;
+    // Settings and keyrings are parsed before anything is written: a broken
+    // backup must not leave half the files restored and the rest old.
+    final Map<String, Object?> prefsMap;
+    final Map<String, String>? rings;
+    try {
+      prefsMap = unpacked.prefs == null ? const {} : jsonDecode(unpacked.prefs!) as Map<String, Object?>;
+      for (final value in prefsMap.values) {
+        if (value is List && value.any((e) => e is! String)) throw const FormatException('prefs list');
+      }
+      rings = unpacked.keyrings == null ? null : (jsonDecode(unpacked.keyrings!) as Map).cast<String, String>();
+      // cast is lazy: touch every value now.
+      rings?.values.toList();
+    } on Object catch (e) {
+      debugPrint('Sicherung: $e');
+      throw const BackupException('open');
     }
-    if (unpacked.prefs case final prefsText?) {
-      final prefs = await SharedPreferences.getInstance();
-      for (final MapEntry(:key, :value) in (jsonDecode(prefsText) as Map<String, Object?>).entries) {
-        if (keepsOut(key)) continue;
-        switch (value) {
-          case final bool v:
-            await prefs.setBool(key, v);
-          case final int v:
-            await prefs.setInt(key, v);
-          case final double v:
-            await prefs.setDouble(key, v);
-          case final String v:
-            await prefs.setString(key, v);
-          case final List<Object?> v:
-            await prefs.setStringList(key, v.cast<String>());
-        }
+    var count = 0;
+    try {
+      for (final MapEntry(key: path, value: text) in unpacked.files.entries) {
+        // Company data stays out, as when creating.
+        if (_isTeam(path)) continue;
+        await _storage.write(path, text);
+        count++;
+      }
+      await _restorePrefs(prefsMap);
+      if (rings != null) await _keyrings.write(rings);
+    } on Object catch (e) {
+      // Some files are already new: the app must restart instead of saving its
+      // old in-memory state over them.
+      debugPrint('Sicherung teilweise zurückgespielt ($count Dateien): $e');
+      throw BackupException('partial', bytes: count);
+    }
+    return count;
+  }
+
+  Future<void> _restorePrefs(Map<String, Object?> values) async {
+    if (values.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    for (final MapEntry(:key, :value) in values.entries) {
+      if (keepsOut(key)) continue;
+      switch (value) {
+        case final bool v:
+          await prefs.setBool(key, v);
+        case final int v:
+          await prefs.setInt(key, v);
+        case final double v:
+          await prefs.setDouble(key, v);
+        case final String v:
+          await prefs.setString(key, v);
+        case final List<Object?> v:
+          await prefs.setStringList(key, v.cast<String>());
       }
     }
-    if (unpacked.keyrings case final rings?) await _keyrings.write((jsonDecode(rings) as Map).cast<String, String>());
-    return count;
   }
 }
 

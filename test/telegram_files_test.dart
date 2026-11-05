@@ -40,6 +40,19 @@ void main() {
     expect(lines[2], contains('"1"')); // sent
   });
 
+  test('CSV: Zahlen bleiben Zahlen, Zeit mit Offset, BOM', () {
+    expect(csvCell(-3.5), '"-3.5"');
+    expect(csvCell('-12'), '"-12"');
+    expect(csvCell('-3,5 °C'), '"\'-3,5 °C"');
+    expect(csvCell('+SUM(A1)'), '"\'+SUM(A1)"');
+    expect(
+      isoWithOffset(DateTime.utc(2026, 1, 1)),
+      matches(RegExp(r'^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}[+-]\d\d:\d\d$')),
+    );
+    expect(buildCsv([ind]).split('\r\n')[1], startsWith('"${isoWithOffset(ind.time)}"'));
+    expect(csvBytes('Küche').take(3), [0xEF, 0xBB, 0xBF]);
+  });
+
   test('ETS-XML: Export und Import ergeben dieselben Telegramme', () {
     final xml = buildEtsXml([ind, read], host: '192.168.1.22');
     expect(xml, contains('<CommunicationLog xmlns="http://knx.org/xml/telegrams/01">'));
@@ -95,6 +108,66 @@ void main() {
       expect(r.telegrams.first.data, [0x0C, 0x24]);
       expect(r.telegrams.last.destinationText, '0/5/4');
       expect(r.telegrams.last.data, [0x01]);
+    });
+
+    // Written by SpectrumKNX's own export (backend/telegram_export.py,
+    // stored_to_record, xknx 4.0, knx-telegram-store 0.15.2), not by hand.
+    // The other way round, its reader decodes our history.xml fixture.
+    test('SpectrumKNX-Export (mit deren Code erzeugt)', () {
+      const xml = '''<?xml version="1.0" encoding="utf-8"?>
+<CommunicationLog xmlns="http://knx.org/xml/telegrams/01">
+  <Telegram Timestamp="2026-11-04T18:30:00.123000Z" ConnectionName="SpectrumKNX" Service="L_Data.ind" FrameFormat="CommonEmi" RawData="2900BCE0110A0A03010081" />
+  <Telegram Timestamp="2026-11-04T18:30:01.123000Z" ConnectionName="SpectrumKNX" Service="L_Data.ind" FrameFormat="CommonEmi" RawData="2900BCE0110A0A03010080" />
+  <Telegram Timestamp="2026-11-04T18:30:02.123000Z" ConnectionName="SpectrumKNX" Service="L_Data.ind" FrameFormat="CommonEmi" RawData="2900BCE01114100102008080" />
+  <Telegram Timestamp="2026-11-04T18:30:03.123000Z" ConnectionName="SpectrumKNX" Service="L_Data.ind" FrameFormat="CommonEmi" RawData="2900BCE0111E19070300800C1A" />
+  <Telegram Timestamp="2026-11-04T18:30:04.123000Z" ConnectionName="SpectrumKNX" Service="L_Data.ind" FrameFormat="CommonEmi" RawData="2900BCE011011907010000" />
+  <Telegram Timestamp="2026-11-04T18:30:05.123000Z" ConnectionName="SpectrumKNX" Service="L_Data.ind" FrameFormat="CommonEmi" RawData="2900BCE0111E19070300400C1A" />
+  <Telegram Timestamp="2026-11-04T18:30:06.123000Z" ConnectionName="SpectrumKNX" Service="L_Data.ind" FrameFormat="CommonEmi" RawData="2900BCE0FFFAFFFF05008041C80000" />
+</CommunicationLog>
+''';
+      final t = parseEtsXml(xml, name: 'SpectrumKNX').telegrams;
+      expect(t, hasLength(7));
+      expect(t.first.time.toUtc(), DateTime.utc(2026, 11, 4, 18, 30, 0, 123));
+      expect(
+        [t[0].sourceText, t[0].destinationText, t[0].type, t[0].data],
+        [
+          '1.1.10',
+          '1/2/3',
+          TelegramType.write,
+          [1],
+        ],
+      );
+      expect(t[1].data, [0]);
+      expect(
+        [t[2].destinationText, t[2].data],
+        [
+          '2/0/1',
+          [0x80],
+        ],
+      );
+      expect(
+        [t[3].destinationText, t[3].data],
+        [
+          '3/1/7',
+          [0x0C, 0x1A],
+        ],
+      );
+      expect([t[4].sourceText, t[4].type], ['1.1.1', TelegramType.read]);
+      expect(
+        [t[5].type, t[5].data],
+        [
+          TelegramType.response,
+          [0x0C, 0x1A],
+        ],
+      );
+      expect(
+        [t[6].sourceText, t[6].destinationText, t[6].data],
+        [
+          '15.15.250',
+          '31/7/255',
+          [0x41, 0xC8, 0x00, 0x00],
+        ],
+      );
     });
 
     // ETS 6 sample from knx-telegram-store's tests (tests/test_formats_ets_xml.py):

@@ -493,11 +493,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sendGroupAddressHint => '1/2/3 oder Name';
 
   @override
-  String pdfExportFailed(String error) {
-    return 'PDF-Export fehlgeschlagen: $error';
-  }
-
-  @override
   String activitySemantics(String period) {
     return 'Busaktivität $period';
   }
@@ -1053,7 +1048,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noSavedFilters => 'Noch keine gespeicherten Filter';
 
   @override
-  String get deleteFilter => 'Filter löschen';
+  String get deleteFilter => 'Gespeicherten Filter löschen';
 
   @override
   String get filterHelp => 'Filter-Hilfe';
@@ -1466,6 +1461,25 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get historyEmpty => 'Noch keine Tage gespeichert.';
+
+  @override
+  String get historyOffConfirmTitle => 'Verlauf ausschalten?';
+
+  @override
+  String get historyOffConfirm => 'Ausschalten und löschen';
+
+  @override
+  String recordingsImportTooLarge(int mb) {
+    return 'Die Datei ist mit $mb MB zu groß für eine Aufnahme. Exportiere einen kürzeren Zeitraum (höchstens 100 MB).';
+  }
+
+  @override
+  String get backupRestorePartialTitle => 'Sicherung nur teilweise zurückgespielt';
+
+  @override
+  String backupRestorePartial(int count) {
+    return '$count Dateien sind schon aus der Sicherung, danach ist ein Fehler aufgetreten (zum Beispiel voller Speicher). Die App startet jetzt neu. Spiel die Sicherung danach noch einmal ein.';
+  }
 
   @override
   String get historyOffHint => 'Ausschalten löscht den gespeicherten Verlauf.';
@@ -3649,11 +3663,6 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String accountFailed(String error) {
-    return 'Anmelden hat nicht geklappt: $error';
-  }
-
-  @override
   String get planCheckoutOpened =>
       'Die Kaufseite ist im Browser offen. Nach dem Kauf hier „Käufe wiederherstellen“ tippen.';
 
@@ -5344,9 +5353,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get huntOpen => 'Öffnen';
 
   @override
-  String huntSaveFailed(String error) {
-    return 'Treffer nicht geladen: $error';
-  }
+  String get huntSaveFailed => 'Treffer nicht geladen. Ist die Box erreichbar?';
 
   @override
   String get plainThisApp => 'Diese App';
@@ -8972,5 +8979,36 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String etsTodoRename(String name) {
     return 'Namen in „$name“ ändern – erledigt der Gruppenadress-Import.';
+  }
+
+  @override
+  String get exportFailedGeneric => 'Export hat nicht geklappt. Versuch es noch einmal.';
+
+  @override
+  String get pdfExportFailedGeneric => 'PDF hat nicht geklappt. Versuch es noch einmal.';
+
+  @override
+  String get boxShareFailed => 'Die Box hat die Daten nicht angenommen.';
+
+  @override
+  String get huntLoadFailed => 'Fehlerjagd nicht geladen. Ist die Box erreichbar?';
+
+  @override
+  String get actionFailed => 'Das hat nicht geklappt. Versuch es noch einmal.';
+
+  @override
+  String get commonUndo => 'Rückgängig';
+
+  @override
+  String get visitDeleteTitle => 'Eintrag löschen?';
+
+  @override
+  String watchRemoved(String what) {
+    return 'Wächter entfernt: $what';
+  }
+
+  @override
+  String learnForgotten(String name) {
+    return 'Vergessen: $name';
   }
 }

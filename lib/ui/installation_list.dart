@@ -63,8 +63,8 @@ class _NameDialogState extends State<_NameDialog> {
       ),
     ),
     actions: [
-      TextButton(onPressed: () => Navigator.pop(context), child: Text(s.commonCancel)),
-      TextButton(onPressed: _done, child: Text(s.commonSave)),
+      horizontDialogAction(context, label: s.commonCancel, onPressed: () => Navigator.pop(context)),
+      horizontDialogAction(context, label: s.commonSave, primary: true, onPressed: _done),
     ],
   );
 }
@@ -114,7 +114,14 @@ class _InstallationCardState extends State<InstallationCard> {
         builder: (dialog) => AlertDialog.adaptive(
           title: Text(s.planOneInstallationTitle),
           content: Text(s.planOneInstallationHere),
-          actions: [TextButton(onPressed: () => Navigator.of(dialog).pop(), child: Text(s.commonClose))],
+          actions: [
+            horizontDialogAction(
+              dialog,
+              label: s.commonClose,
+              primary: true,
+              onPressed: () => Navigator.of(dialog).pop(),
+            ),
+          ],
         ),
       );
       return;

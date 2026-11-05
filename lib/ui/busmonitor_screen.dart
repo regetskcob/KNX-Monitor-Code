@@ -229,7 +229,7 @@ class _BusMonitorScreenState extends State<BusMonitorScreen> {
       'Zeit;Art;Quelle;Ziel;Name;Wert;Wiederholt;Prüfsumme ok;Status;Ohne ACK;Rohdaten',
       for (final f in _frames.reversed)
         [
-          f.time.toIso8601String(),
+          isoWithOffset(f.time),
           f.kind.name,
           f.source == null ? '' : formatIndividual(f.source!),
           f.destination == null
@@ -244,7 +244,7 @@ class _BusMonitorScreenState extends State<BusMonitorScreen> {
           hex(f.raw),
         ].map(csvCell).join(';'),
     ];
-    saveBytes(context, utf8Bytes('${rows.join('\n')}\n'), fileName(s.busmonTitle, 'csv'), mimeType: 'text/csv');
+    saveBytes(context, csvBytes('${rows.join('\n')}\n'), fileName(s.busmonTitle, 'csv'), mimeType: 'text/csv');
   }
 
   @override

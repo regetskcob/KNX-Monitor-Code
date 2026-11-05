@@ -248,6 +248,9 @@ class Scrubber {
   final List<String> _known;
 
   static final _patterns = <(RegExp, String)>[
+    // Home folders in file paths (logged paths, FileSystemException texts):
+    // the account name is often the real name.
+    (RegExp(r'(/Users/|/home/|[A-Za-z]:\\Users\\|[A-Za-z]:/Users/)[^/\\\s"]+', caseSensitive: false), r'$1<home>'),
     (RegExp(r'[\w.+-]+@[\w-]+(\.[\w-]+)+'), '<email>'),
     (RegExp(r'\b[a-z][a-z0-9+.-]*://\S+', caseSensitive: false), '<url>'),
     (RegExp(r'\b[0-9a-f]{2}(?:[:-][0-9a-f]{2}){5}\b', caseSensitive: false), '<mac>'),
@@ -435,13 +438,15 @@ DiagnosticsPackage buildDiagnosticsPackage({
   return DiagnosticsPackage(
     created: created,
     occurred: occurred,
-    problem: scrub(problem.trim()),
-    expected: emptyExpected ? null : scrub(expected.trim()),
+    // Description, technical data and log are free text as well: without names
+    // they also lose room and device names (log lines name group addresses).
+    problem: scrubNote(problem.trim()),
+    expected: emptyExpected ? null : scrubNote(expected.trim()),
     recording: recording,
     catalog: anonymizeCatalog(catalog, keepNames: keepNames, scrub: scrub),
     overrides: overrides,
-    technical: scrub.tree(technical)! as Map<String, Object?>,
-    log: [for (final l in log) scrub(l)],
+    technical: scrubNote.tree(technical)! as Map<String, Object?>,
+    log: [for (final l in log) scrubNote(l)],
     secureTelegrams: secure,
     namesIncluded: keepNames,
     shots: {
@@ -468,7 +473,7 @@ Telegram _withoutRaw(Telegram t) => Telegram(
   confirmError: t.confirmError,
 );
 
-/// Names that never belong in the package (project, installations, gateway host, account,
+/// Names that never belong in the package (project, installations, gateway host and name, account,
 /// customers, business and its members). The [Scrubber] replaces them in free text.
 List<String> knownPrivateNames({KnxTunnel? tunnel}) => [
   ...InstallationStore.instance.list.map((i) => i.name).where((n) => n != InstallationStore.defaultName),
@@ -478,6 +483,9 @@ List<String> knownPrivateNames({KnxTunnel? tunnel}) => [
   ?KeyringStore.instance.project,
   ?Account.instance.email,
   ?tunnel?.host,
+  // The gateway's ETS name ("IP-Router Fam. Schmidt").
+  ?tunnel?.deviceName.value,
+  ?tunnel?.gatewayInfo.value?.name,
   ...CustomerStore.instance.privateNames,
   ...Team.instance.privateNames,
 ];

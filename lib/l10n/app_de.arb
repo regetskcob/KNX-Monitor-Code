@@ -667,15 +667,6 @@
   "@sendGroupAddressHint": {
     "description": "Hint of the group address field with a project loaded."
   },
-  "pdfExportFailed": "PDF-Export fehlgeschlagen: {error}",
-  "@pdfExportFailed": {
-    "description": "Snackbar when creating/sharing the PDF failed.",
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
   "activitySemantics": "Busaktivität {period}",
   "@activitySemantics": {
     "description": "Screen reader label of the activity bars; period e.g. \"last 60 s\".",
@@ -1462,7 +1453,7 @@
   "@noSavedFilters": {
     "description": "Hinweis: keine gespeicherten Filter"
   },
-  "deleteFilter": "Filter löschen",
+  "deleteFilter": "Gespeicherten Filter löschen",
   "@deleteFilter": {
     "description": "Tooltip: gespeicherten Filter löschen"
   },
@@ -2045,6 +2036,36 @@
   "historyEmpty": "Noch keine Tage gespeichert.",
   "@historyEmpty": {
     "description": "Hinweis: Verlauf leer"
+  },
+  "historyOffConfirmTitle": "Verlauf ausschalten?",
+  "@historyOffConfirmTitle": {
+    "description": "Rückfrage vor Aus: Titel"
+  },
+  "historyOffConfirm": "Ausschalten und löschen",
+  "@historyOffConfirm": {
+    "description": "Rückfrage vor Aus: Knopf"
+  },
+  "recordingsImportTooLarge": "Die Datei ist mit {mb} MB zu groß für eine Aufnahme. Exportiere einen kürzeren Zeitraum (höchstens 100 MB).",
+  "@recordingsImportTooLarge": {
+    "description": "Import: Datei zu groß",
+    "placeholders": {
+      "mb": {
+        "type": "int"
+      }
+    }
+  },
+  "backupRestorePartialTitle": "Sicherung nur teilweise zurückgespielt",
+  "@backupRestorePartialTitle": {
+    "description": "Wiederherstellung abgebrochen: Titel"
+  },
+  "backupRestorePartial": "{count} Dateien sind schon aus der Sicherung, danach ist ein Fehler aufgetreten (zum Beispiel voller Speicher). Die App startet jetzt neu. Spiel die Sicherung danach noch einmal ein.",
+  "@backupRestorePartial": {
+    "description": "Wiederherstellung abgebrochen: Text",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "historyOffHint": "Ausschalten löscht den gespeicherten Verlauf.",
   "@historyOffHint": {
@@ -5214,15 +5235,6 @@
       }
     }
   },
-  "accountFailed": "Anmelden hat nicht geklappt: {error}",
-  "@accountFailed": {
-    "description": "Fehler",
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
   "planCheckoutOpened": "Die Kaufseite ist im Browser offen. Nach dem Kauf hier „Käufe wiederherstellen“ tippen.",
   "@planCheckoutOpened": {
     "description": "Windows: nach dem Öffnen der Kaufseite"
@@ -7528,14 +7540,9 @@
   "@huntOpen": {
     "description": "Fehlerjagd: Treffer als Aufnahme öffnen"
   },
-  "huntSaveFailed": "Treffer nicht geladen: {error}",
+  "huntSaveFailed": "Treffer nicht geladen. Ist die Box erreichbar?",
   "@huntSaveFailed": {
-    "description": "Fehlerjagd: Fehler",
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
+    "description": "Fehlerjagd: Fehler"
   },
   "plainThisApp": "Diese App",
   "@plainThisApp": {
@@ -12272,6 +12279,52 @@
   "etsTodoRename": "Namen in „{name}“ ändern – erledigt der Gruppenadress-Import.",
   "@etsTodoRename": {
     "description": "ETS-Aufgabe: korrigierten Namen übernehmen",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "exportFailedGeneric": "Export hat nicht geklappt. Versuch es noch einmal.",
+  "@exportFailedGeneric": {
+    "description": "Snackbar: Export failed (details only in the log)"
+  },
+  "pdfExportFailedGeneric": "PDF hat nicht geklappt. Versuch es noch einmal.",
+  "@pdfExportFailedGeneric": {
+    "description": "Snackbar: PDF could not be created or shared (details only in the log)"
+  },
+  "boxShareFailed": "Die Box hat die Daten nicht angenommen.",
+  "@boxShareFailed": {
+    "description": "Snackbar: sending data to the box failed"
+  },
+  "huntLoadFailed": "Fehlerjagd nicht geladen. Ist die Box erreichbar?",
+  "@huntLoadFailed": {
+    "description": "Snackbar: fault hunt could not be loaded from the box"
+  },
+  "actionFailed": "Das hat nicht geklappt. Versuch es noch einmal.",
+  "@actionFailed": {
+    "description": "Generic error message for an action that failed (details only in the log)"
+  },
+  "commonUndo": "Rückgängig",
+  "@commonUndo": {
+    "description": "Generic undo action, e.g. in a snackbar after removing something"
+  },
+  "visitDeleteTitle": "Eintrag löschen?",
+  "@visitDeleteTitle": {
+    "description": "Customer visits: confirmation before deleting a manual entry"
+  },
+  "watchRemoved": "Wächter entfernt: {what}",
+  "@watchRemoved": {
+    "description": "Snackbar after removing a watcher, with an undo action",
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
+  "learnForgotten": "Vergessen: {name}",
+  "@learnForgotten": {
+    "description": "Teach-in: snackbar after forgetting a learned group address, with an undo action",
     "placeholders": {
       "name": {
         "type": "String"
