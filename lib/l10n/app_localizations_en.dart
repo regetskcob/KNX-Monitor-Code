@@ -28,7 +28,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String deviceCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count devices', one: '1 device');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count devices',
+      one: '1 device',
+    );
     return '$_temp0';
   }
 
@@ -66,7 +71,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogImported => 'imported';
 
   @override
-  String get catalogHint => 'ETS project (.knxproj) or group address CSV for names, datapoint types & devices';
+  String get catalogHint =>
+      'ETS project (.knxproj) or group address CSV for names, datapoint types & devices';
 
   @override
   String get catalogReplace => 'Replace';
@@ -94,7 +100,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get passwordWrong => 'The password was wrong. Please try again.';
 
   @override
-  String get passwordPrompt => 'The ETS project is protected. The password is only used to open it and is not stored.';
+  String get passwordPrompt =>
+      'The ETS project is protected. The password is only used to open it and is not stored.';
 
   @override
   String get passwordLabel => 'Password';
@@ -127,7 +134,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issueRepeatedLabel => 'Repeated';
 
   @override
-  String get issueRepeatedHint => 'First attempt not acknowledged – device missing or line disturbed.';
+  String get issueRepeatedHint =>
+      'First attempt not acknowledged – device missing or line disturbed.';
 
   @override
   String get issueNotConfirmedLabel => 'Not acknowledged';
@@ -139,31 +147,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issueUnansweredLabel => 'No response';
 
   @override
-  String get issueUnansweredHint => 'No device responded – read flag or status sender missing?';
+  String get issueUnansweredHint =>
+      'No device responded – read flag or status sender missing?';
 
   @override
   String get issueSizeMismatchLabel => 'Length ≠ DPT';
 
   @override
-  String get issueSizeMismatchHint => 'The data length does not match the datapoint type from the project.';
+  String get issueSizeMismatchHint =>
+      'The data length does not match the datapoint type from the project.';
 
   @override
   String get issueUnknownAddressLabel => 'Not in project';
 
   @override
-  String get issueUnknownAddressHint => 'This group address does not exist in the ETS project.';
+  String get issueUnknownAddressHint =>
+      'This group address does not exist in the ETS project.';
 
   @override
   String get issueUnknownDeviceLabel => 'Unknown device';
 
   @override
-  String get issueUnknownDeviceHint => 'The individual address is not assigned to any device in the ETS project.';
+  String get issueUnknownDeviceHint =>
+      'The individual address is not assigned to any device in the ETS project.';
 
   @override
   String get issueUnusualHopLabel => 'Hop';
 
   @override
-  String get issueUnusualHopHint => 'Hop count ≠ 6: telegram passed a coupler (or 7 = unlimited).';
+  String get issueUnusualHopHint =>
+      'Hop count ≠ 6: telegram passed a coupler (or 7 = unlimited).';
 
   @override
   String get issueCentralOffOnLabel => 'Central off with on';
@@ -209,7 +222,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorTunnelUnsupported => 'Gateway does not support tunneling.';
 
   @override
-  String get errorOptionUnsupported => 'Gateway does not support the connection option.';
+  String get errorOptionUnsupported =>
+      'Gateway does not support the connection option.';
 
   @override
   String errorConnectionRejected(String status) {
@@ -506,13 +520,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get healthRepeated => 'Repeated';
 
   @override
-  String get healthRepeatedTooltip => 'Repeated telegrams – indicate missing acknowledgements';
+  String get healthRepeatedTooltip =>
+      'Repeated telegrams – indicate missing acknowledgements';
 
   @override
   String get healthUnanswered => 'No response';
 
   @override
-  String get healthUnansweredTooltip => 'Read requests without a response within 3 s';
+  String get healthUnansweredTooltip =>
+      'Read requests without a response within 3 s';
 
   @override
   String get rowSent => 'Sent';
@@ -603,7 +619,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String recordingSaved(String name, int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count telegrams', one: '1 telegram');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count telegrams',
+      one: '1 telegram',
+    );
     return '“$name” saved · $_temp0';
   }
 
@@ -653,7 +674,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String telegramCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count telegrams', one: '1 telegram');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count telegrams',
+      one: '1 telegram',
+    );
     return '$_temp0';
   }
 
@@ -661,7 +687,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recordingsTitle => 'Recordings';
 
   @override
-  String get recordingsEmpty => 'No recordings yet – tap “Record” in the monitor.';
+  String get recordingsEmpty =>
+      'No recordings yet – tap “Record” in the monitor.';
 
   @override
   String get recordingsStart => 'Start';
@@ -852,7 +879,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get detailsConfirmation => 'Confirmation';
 
   @override
-  String get detailsAcknowledged => 'Acknowledged by the bus – received; the status shows whether it was carried out';
+  String get detailsAcknowledged =>
+      'Acknowledged by the bus – received; the status shows whether it was carried out';
 
   @override
   String get detailsData => 'Data';
@@ -905,7 +933,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String boardSectionSemantics(String title, int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count addresses', one: '1 address');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count addresses',
+      one: '1 address',
+    );
     return '$title, $_temp0';
   }
 
@@ -935,13 +968,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get diagProgNone => 'No device in programming mode.';
 
   @override
-  String get diagAddressInvalid => 'Please enter an individual address such as 1.1.18.';
+  String get diagAddressInvalid =>
+      'Please enter an individual address such as 1.1.18.';
 
   @override
   String get diagAddressTitle => 'Check individual address';
 
   @override
-  String get diagAddressText => 'Checks like ETS whether an address is in use and reads the device mask version.';
+  String get diagAddressText =>
+      'Checks like ETS whether an address is in use and reads the device mask version.';
 
   @override
   String get diagCheck => 'Check';
@@ -1059,7 +1094,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkTitle => 'Project check';
 
   @override
-  String get checkNoProject => 'Import an ETS project or a group address CSV to compare the bus traffic with it.';
+  String get checkNoProject =>
+      'Import an ETS project or a group address CSV to compare the bus traffic with it.';
 
   @override
   String get checkUnknownAddresses => 'Group addresses not in project';
@@ -1078,7 +1114,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String checkSenders(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count senders', one: '1 sender');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count senders',
+      one: '1 sender',
+    );
     return '$_temp0';
   }
 
@@ -1112,7 +1153,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get checkNeverSeenHint => 'Depends on the observation period – rarely used addresses appear later.';
+  String get checkNeverSeenHint =>
+      'Depends on the observation period – rarely used addresses appear later.';
 
   @override
   String get gatewayTitle => 'Gateway';
@@ -1159,7 +1201,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gatewaySlotBusy => 'in use';
 
   @override
-  String get gatewayUnknown => 'The gateway has not sent a self-description yet.';
+  String get gatewayUnknown =>
+      'The gateway has not sent a self-description yet.';
 
   @override
   String get yes => 'Yes';
@@ -1210,7 +1253,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statsFlappers => 'Sends unusually often';
 
   @override
-  String get statsFlappersHint => 'On average more often than every 10 s – cycle too short or no hysteresis?';
+  String get statsFlappersHint =>
+      'On average more often than every 10 s – cycle too short or no hysteresis?';
 
   @override
   String get statsPeaks => 'Load peaks';
@@ -1305,7 +1349,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get triggerInvalidAddress => 'Please enter a group address like 1/2/3.';
+  String get triggerInvalidAddress =>
+      'Please enter a group address like 1/2/3.';
 
   @override
   String get exportAllCsv => 'All as CSV';
@@ -1379,7 +1424,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapGraphSelected => 'Connections';
 
   @override
-  String get mapGraphHint => 'Zoom in for more detail. Tap a device to see its connections.';
+  String get mapGraphHint =>
+      'Zoom in for more detail. Tap a device to see its connections.';
 
   @override
   String get mapGraphAll => 'All devices';
@@ -1423,7 +1469,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapEmpty => 'No bus traffic for a map yet.';
 
   @override
-  String get mapHint => 'Tap to center a node. Lines: solid = observed, dashed = project only.';
+  String get mapHint =>
+      'Tap to center a node. Lines: solid = observed, dashed = project only.';
 
   @override
   String get historyTitle => 'Long-term history';
@@ -1437,7 +1484,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String historyDays(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count days', one: '1 day');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '1 day',
+    );
     return '$_temp0';
   }
 
@@ -1499,11 +1551,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get objectFilter => 'Filter monitor to this object';
 
   @override
-  String get objectHint => 'Recognized by the shared name prefix. Solid = value received, dashed = no telegram yet.';
+  String get objectHint =>
+      'Recognized by the shared name prefix. Solid = value received, dashed = no telegram yet.';
 
   @override
   String objectMembers(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count addresses', one: '1 address');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count addresses',
+      one: '1 address',
+    );
     return '$_temp0';
   }
 
@@ -1564,7 +1622,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toolsTitle => 'Tools';
 
   @override
-  String get toolDiagnostics => 'Programming mode, address check, device info, line scan';
+  String get toolDiagnostics =>
+      'Programming mode, address check, device info, line scan';
 
   @override
   String get toolCheck => 'Compare bus traffic with the ETS project';
@@ -1591,7 +1650,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exportSelect => 'Select telegrams …';
 
   @override
-  String get exportSelectHint => 'Only specific telegrams as PDF, CSV or ETS file';
+  String get exportSelectHint =>
+      'Only specific telegrams as PDF, CSV or ETS file';
 
   @override
   String get projectMenu => 'ETS project';
@@ -1624,7 +1684,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get busmonTitle => 'Bus monitor';
 
   @override
-  String get busmonTool => 'Every frame on the line: acknowledgements, repetitions, corrupted telegrams';
+  String get busmonTool =>
+      'Every frame on the line: acknowledgements, repetitions, corrupted telegrams';
 
   @override
   String get busmonHint =>
@@ -1720,7 +1781,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get busmonSenders => 'Senders';
 
   @override
-  String get busmonSendersHint => 'Devices with repetitions or missing acknowledgements first. Tap to filter the list.';
+  String get busmonSendersHint =>
+      'Devices with repetitions or missing acknowledgements first. Tap to filter the list.';
 
   @override
   String get busmonDetails => 'Frame details';
@@ -1805,7 +1867,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get filterNoMatch => 'Nothing matches the filter';
 
   @override
-  String get emptyMonitorHint => 'Many devices only send on change. You can query the current state actively.';
+  String get emptyMonitorHint =>
+      'Many devices only send on change. You can query the current state actively.';
 
   @override
   String get emptyReadStatus => 'Read status';
@@ -1879,7 +1942,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get topoCheckNoAnswer => 'no answer – filter table or read flag';
 
   @override
-  String get topoCheckNone => 'No address with a sending device behind a coupler.';
+  String get topoCheckNone =>
+      'No address with a sending device behind a coupler.';
 
   @override
   String get topoIssues => 'Findings';
@@ -1912,7 +1976,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get topoCheckNoReadFlag => 'no answer, but telegrams pass the coupler – read flag missing';
+  String get topoCheckNoReadFlag =>
+      'no answer, but telegrams pass the coupler – read flag missing';
 
   @override
   String get devSent => 'Sent';
@@ -1924,10 +1989,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get devGroups => 'Addresses';
 
   @override
-  String get devReceivedHint => 'Telegrams to group addresses the device is linked to in the project.';
+  String get devReceivedHint =>
+      'Telegrams to group addresses the device is linked to in the project.';
 
   @override
-  String get devNoLinks => 'Not in the project – received telegrams cannot be assigned.';
+  String get devNoLinks =>
+      'Not in the project – received telegrams cannot be assigned.';
 
   @override
   String get devNothing => 'No telegrams yet';
@@ -1944,7 +2011,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectTitle => 'ETS project';
 
   @override
-  String get historyDeleteConfirm => 'Delete the entire long-term history? This cannot be undone.';
+  String get historyDeleteConfirm =>
+      'Delete the entire long-term history? This cannot be undone.';
 
   @override
   String get activityLastHour => 'last hour';
@@ -2059,16 +2127,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commRestart => 'Start over';
 
   @override
-  String get commRestartConfirm => 'Discard all results and notes and create a new checklist?';
+  String get commRestartConfirm =>
+      'Discard all results and notes and create a new checklist?';
 
   @override
-  String get commNoProject => 'The checklist needs an ETS project with group addresses.';
+  String get commNoProject =>
+      'The checklist needs an ETS project with group addresses.';
 
   @override
   String get healthTitle => 'Health';
 
   @override
-  String get healthTool => 'Read known addresses, check cycles, values and data types';
+  String get healthTool =>
+      'Read known addresses, check cycles, values and data types';
 
   @override
   String get healthExplain =>
@@ -2083,7 +2154,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get healthPassive => 'Analyse only';
 
   @override
-  String get healthAuto => 'Automatically after connecting (at most once a day)';
+  String get healthAuto =>
+      'Automatically after connecting (at most once a day)';
 
   @override
   String healthLastRun(String time) {
@@ -2157,7 +2229,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String healthBytes(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'bytes', one: 'byte');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'bytes',
+      one: 'byte',
+    );
     return '$count $_temp0';
   }
 
@@ -2167,7 +2244,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get healthAlwaysSilent => 'Never answered a read – check the read flag';
+  String get healthAlwaysSilent =>
+      'Never answered a read – check the read flag';
 
   @override
   String healthOverdue(String interval, String time) {
@@ -2185,7 +2263,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String healthDptSize(String sender, String actual, String dpt, String expected, int count) {
+  String healthDptSize(
+    String sender,
+    String actual,
+    String dpt,
+    String expected,
+    int count,
+  ) {
     return '$sender sends $actual, DPT $dpt expects $expected ($count×)';
   }
 
@@ -2210,7 +2294,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get healthUnlinked => 'No device linked in the project – cannot answer (placeholder or leftover?)';
+  String get healthUnlinked =>
+      'No device linked in the project – cannot answer (placeholder or leftover?)';
 
   @override
   String healthAlwaysSilentAt(String sender) {
@@ -2224,7 +2309,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get demoGateway => 'Demo house';
 
   @override
-  String get demoNoBusmonitor => 'The bus monitor needs a real gateway – not available in demo mode.';
+  String get demoNoBusmonitor =>
+      'The bus monitor needs a real gateway – not available in demo mode.';
 
   @override
   String get menuGroupCheck => 'Check';
@@ -2254,13 +2340,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectProject => 'ETS project';
 
   @override
-  String get errorTunnelAddressInUse => 'The requested tunnel address is in use.';
+  String get errorTunnelAddressInUse =>
+      'The requested tunnel address is in use.';
 
   @override
-  String get errorTunnelAddressRejected => 'Gateway rejects the requested tunnel address.';
+  String get errorTunnelAddressRejected =>
+      'Gateway rejects the requested tunnel address.';
 
   @override
-  String get errorLayerUnsupported => 'Gateway does not support this tunnel type (link layer/bus monitor).';
+  String get errorLayerUnsupported =>
+      'Gateway does not support this tunnel type (link layer/bus monitor).';
 
   @override
   String get connectModeUdp => 'UDP';
@@ -2275,10 +2364,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectModeSecure => 'Secure';
 
   @override
-  String get connectModeUdpHint => 'Tunnel over UDP – works with every IP interface.';
+  String get connectModeUdpHint =>
+      'Tunnel over UDP – works with every IP interface.';
 
   @override
-  String get connectModeTcpHint => 'Tunnel over TCP (KNXnet/IP 2.0) – copes better with Wi-Fi dropouts.';
+  String get connectModeTcpHint =>
+      'Tunnel over TCP (KNXnet/IP 2.0) – copes better with Wi-Fi dropouts.';
 
   @override
   String get connectModeRoutingHint =>
@@ -2292,7 +2383,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectTunnelAddress => 'Tunnel address (optional)';
 
   @override
-  String get connectTunnelAddressHelp => 'Fixed address instead of any free slot; if taken, a free one is used.';
+  String get connectTunnelAddressHelp =>
+      'Fixed address instead of any free slot; if taken, a free one is used.';
 
   @override
   String get connectRoutingAddress => 'Own address';
@@ -2310,7 +2402,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectSecureDeviceAuth => 'Device authentication code (optional)';
 
   @override
-  String get connectSecureDeviceAuthHelp => 'Verifies that it is really your interface answering.';
+  String get connectSecureDeviceAuthHelp =>
+      'Verifies that it is really your interface answering.';
 
   @override
   String routingUnavailable(String reason) {
@@ -2384,7 +2477,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get boxGatewayHint => 'The gateway below is set on the box, which stays connected to it.';
+  String get boxGatewayHint =>
+      'The gateway below is set on the box, which stays connected to it.';
 
   @override
   String get boxLeave => 'Gateway directly';
@@ -2396,7 +2490,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boxNone => 'No KNX box paired.';
 
   @override
-  String get boxUnauthorized => 'The box rejected access. Scan the box\'s QR code again.';
+  String get boxUnauthorized =>
+      'The box rejected access. Scan the box\'s QR code again.';
 
   @override
   String boxUnreachable(String address) {
@@ -2413,7 +2508,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyWriteNow => 'immediately';
 
   @override
-  String get historyWriteHint => 'Writing less often spares the SD card; a power cut then loses the last block.';
+  String get historyWriteHint =>
+      'Writing less often spares the SD card; a power cut then loses the last block.';
 
   @override
   String historyDeleteDayConfirm(String date) {
@@ -2441,7 +2537,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get secureSessionClosed => 'Gateway closed the secure session.';
 
   @override
-  String get secureNoCredentials => 'Enter a password or import a keyring for IP Secure.';
+  String get secureNoCredentials =>
+      'Enter a password or import a keyring for IP Secure.';
 
   @override
   String get keyringTitle => 'KNX Secure (keyring)';
@@ -2467,7 +2564,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get keyringNone => 'No keyring – Data Secure telegrams stay encrypted.';
+  String get keyringNone =>
+      'No keyring – Data Secure telegrams stay encrypted.';
 
   @override
   String get keyringNoneShort => 'Not loaded';
@@ -2476,7 +2574,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keyringRemove => 'Remove keyring';
 
   @override
-  String get keyringExplain => 'Keys stay on this device or in the add-on. In ETS: project → export → keyring.';
+  String get keyringExplain =>
+      'Keys stay on this device or in the add-on. In ETS: project → export → keyring.';
 
   @override
   String secureWithoutKeys(int count) {
@@ -2496,7 +2595,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'No own tunnel: the add-on reads what Home Assistant\'s KNX integration receives and sends through it. Device access (programming mode, address check, bus monitor) is not available this way.';
 
   @override
-  String get connectModeHaAddonOnly => 'Only possible in the Home Assistant add-on.';
+  String get connectModeHaAddonOnly =>
+      'Only possible in the Home Assistant add-on.';
 
   @override
   String get connectModeHat => 'KNX HAT (kBerry)';
@@ -2506,7 +2606,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'No gateway: the box is connected straight to the bus line through the KNX HAT (Weinzierl kBerry) on top.';
 
   @override
-  String get connectModeHatBoxOnly => 'Only possible through the KNX Box with a KNX HAT.';
+  String get connectModeHatBoxOnly =>
+      'Only possible through the KNX Box with a KNX HAT.';
 
   @override
   String get connectHatAddress => 'Own address (optional)';
@@ -2545,7 +2646,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get filterContextOff => 'Matches only';
 
   @override
-  String get filterContextTooltip => 'Also show telegrams shortly before and after each match';
+  String get filterContextTooltip =>
+      'Also show telegrams shortly before and after each match';
 
   @override
   String get writeFormatTime => 'Time';
@@ -2656,7 +2758,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get statsLongTermUnavailable => 'Analysis not available (update the add-on?).';
+  String get statsLongTermUnavailable =>
+      'Analysis not available (update the add-on?).';
 
   @override
   String get chartsTitle => 'Charts';
@@ -2671,7 +2774,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chartsMore => 'More';
 
   @override
-  String get chartsEmpty => 'Choose group addresses with numeric values – up to 8, one axis per unit.';
+  String get chartsEmpty =>
+      'Choose group addresses with numeric values – up to 8, one axis per unit.';
 
   @override
   String get chartsSaveSelection => 'Save as chart';
@@ -2762,7 +2866,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hzHWithoutReceiver => 'without receiver';
 
   @override
-  String get hzHFlowEmpty => 'According to the project no group address crosses this coupler.';
+  String get hzHFlowEmpty =>
+      'According to the project no group address crosses this coupler.';
 
   @override
   String get hzHAllDirections => 'All directions';
@@ -2914,7 +3019,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get replayTelegrams => 'Telegrams';
 
   @override
-  String get replayEditHint => 'Tap to change the value, × removes the telegram. The original stays unchanged.';
+  String get replayEditHint =>
+      'Tap to change the value, × removes the telegram. The original stays unchanged.';
 
   @override
   String get replayReset => 'Reset';
@@ -3080,14 +3186,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chartShareTemplate => 'Share as template';
 
   @override
-  String get chartShareTemplateEmpty => 'No series with a recognisable role – the template would be empty.';
+  String get chartShareTemplateEmpty =>
+      'No series with a recognisable role – the template would be empty.';
 
   @override
   String chartShareTemplateDropped(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count series without a recognisable role are not in the template.',
+      other:
+          '$count series without a recognisable role are not in the template.',
       one: '1 series without a recognisable role is not in the template.',
     );
     return '$_temp0';
@@ -3113,7 +3221,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chartTemplateRemove => 'Remove template';
 
   @override
-  String get chartTemplateNoMatch => 'Does not match any address in this installation yet.';
+  String get chartTemplateNoMatch =>
+      'Does not match any address in this installation yet.';
 
   @override
   String get boxAdd => 'Add KNX box';
@@ -3122,7 +3231,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boxScanTitle => 'Box QR code';
 
   @override
-  String get boxScanHint => 'Hold the QR code from the box\'s label inside the frame.';
+  String get boxScanHint =>
+      'Hold the QR code from the box\'s label inside the frame.';
 
   @override
   String get boxScanManual => 'Paste link or enter address';
@@ -3150,7 +3260,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boxStepReach => 'Reach the box';
 
   @override
-  String get boxStepReachFailed => 'The box does not answer. Is it switched on and this device in its Wi-Fi?';
+  String get boxStepReachFailed =>
+      'The box does not answer. Is it switched on and this device in its Wi-Fi?';
 
   @override
   String get boxStepPair => 'Pair with the box';
@@ -3159,7 +3270,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boxStepTime => 'Set the box clock';
 
   @override
-  String get boxStepTimeDiffers => 'The box clock is off; check it in the box settings.';
+  String get boxStepTimeDiffers =>
+      'The box clock is off; check it in the box settings.';
 
   @override
   String get boxStepGateway => 'Find the gateway on the box\'s cable';
@@ -3218,7 +3330,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boxRecordOnlyWithTime => 'Record only once the time is right';
 
   @override
-  String get boxRecordOnlyWithTimeHint => 'Otherwise the box records at once and puts the time right afterwards.';
+  String get boxRecordOnlyWithTimeHint =>
+      'Otherwise the box records at once and puts the time right afterwards.';
 
   @override
   String boxWaiting(int count) {
@@ -3262,13 +3375,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boxPasswordCurrentWrong => 'The current password is not correct.';
 
   @override
-  String get boxPasswordHint => 'At least 8 characters. The label\'s QR code no longer pairs new devices afterwards.';
+  String get boxPasswordHint =>
+      'At least 8 characters. The label\'s QR code no longer pairs new devices afterwards.';
 
   @override
   String get boxPasswordChanged => 'Password changed.';
 
   @override
-  String get boxNotAdmin => 'Managing needs the box password: scan the QR code on the label.';
+  String get boxNotAdmin =>
+      'Managing needs the box password: scan the QR code on the label.';
 
   @override
   String get installationsTitle => 'Installations';
@@ -3326,7 +3441,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get installationHistoryOf => 'History of';
 
   @override
-  String get installationDeleteOnBox => 'Also on the KNX box, including its long-term history.';
+  String get installationDeleteOnBox =>
+      'Also on the KNX box, including its long-term history.';
 
   @override
   String get boxRecordingTitle => 'Continuous recording on the KNX box';
@@ -3352,7 +3468,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'For your own installation: watchers with sound, history, charts, statistics, alarms and export.';
 
   @override
-  String get planProPitch => 'For commissioning and troubleshooting: every tool for professionals, without limits.';
+  String get planProPitch =>
+      'For commissioning and troubleshooting: every tool for professionals, without limits.';
 
   @override
   String get planUnlimitedRecordings => 'Unlimited recordings';
@@ -3398,7 +3515,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planNothingRestored => 'No previous purchases found.';
 
   @override
-  String get planNoOffers => 'The offers can’t be loaded right now. Please check your internet connection.';
+  String get planNoOffers =>
+      'The offers can’t be loaded right now. Please check your internet connection.';
 
   @override
   String planBuyFailed(String error) {
@@ -3411,7 +3529,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get planLegal => 'Subscriptions renew automatically and can be cancelled at any time in your store settings.';
+  String get planLegal =>
+      'Subscriptions renew automatically and can be cancelled at any time in your store settings.';
 
   @override
   String get planTerms => 'Terms of use';
@@ -3431,10 +3550,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get planMoreRecordings => 'Free keeps one recording. Plus keeps as many as you like.';
+  String get planMoreRecordings =>
+      'Free keeps one recording. Plus keeps as many as you like.';
 
   @override
-  String get planLongHistory => 'Long-term history comes with Plus. Free shows the last hour in the monitor.';
+  String get planLongHistory =>
+      'Long-term history comes with Plus. Free shows the last hour in the monitor.';
 
   @override
   String get planAllOfPlus => 'Everything in Plus, too';
@@ -3479,7 +3600,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String healthShowNotes(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'Show $count notes', one: 'Show 1 note');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Show $count notes',
+      one: 'Show 1 note',
+    );
     return '$_temp0';
   }
 
@@ -3519,10 +3645,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get menuMoreToolsHint => 'Bus monitor, diagnostics, commissioning, topology and more';
+  String get menuMoreToolsHint =>
+      'Bus monitor, diagnostics, commissioning, topology and more';
 
   @override
-  String get toolObjects => 'Rooms and objects from the ETS project, commands next to feedbacks';
+  String get toolObjects =>
+      'Rooms and objects from the ETS project, commands next to feedbacks';
 
   @override
   String topoRail(String line) {
@@ -3639,7 +3767,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'A watcher alerts you with a sound and a notification as soon as its group address is sent – optionally only for a certain value. It listens while the monitor is connected; on iPhone and iPad the screen stays on for that.';
 
   @override
-  String get watchEmpty => 'No watchers yet. Add one, or tap the bell in an address’s details.';
+  String get watchEmpty =>
+      'No watchers yet. Add one, or tap the bell in an address’s details.';
 
   @override
   String get watchNew => 'New watcher';
@@ -3659,7 +3788,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get planCheckoutOpened => 'The checkout is open in your browser. After buying, tap “Restore purchases” here.';
+  String get planCheckoutOpened =>
+      'The checkout is open in your browser. After buying, tap “Restore purchases” here.';
 
   @override
   String get planPendingApproval =>
@@ -3694,7 +3824,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get diagProblemLabel => 'What happened?';
 
   @override
-  String get diagProblemHint => 'e.g. kitchen light does not react to the push button';
+  String get diagProblemHint =>
+      'e.g. kitchen light does not react to the push button';
 
   @override
   String get diagExpectedLabel => 'What did you expect? (optional)';
@@ -3724,7 +3855,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get diagRangeHint => 'Minutes before the problem (for a recording, before its end).';
+  String get diagRangeHint =>
+      'Minutes before the problem (for a recording, before its end).';
 
   @override
   String get diagNamesTitle => 'Include names';
@@ -3757,10 +3889,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get diagContentNamesIn => 'Names of group addresses and devices: included';
+  String get diagContentNamesIn =>
+      'Names of group addresses and devices: included';
 
   @override
-  String get diagContentNamesOut => 'Names of group addresses and devices: removed';
+  String get diagContentNamesOut =>
+      'Names of group addresses and devices: removed';
 
   @override
   String get diagContentTechnical =>
@@ -3791,10 +3925,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get diagPackageInvalid => 'Not a KNX Monitor diagnostics package.';
 
   @override
-  String get diagPackageNewer => 'The diagnostics package comes from a newer app version.';
+  String get diagPackageNewer =>
+      'The diagnostics package comes from a newer app version.';
 
   @override
-  String get diagImportDisconnect => 'Disconnect first to open a diagnostics package.';
+  String get diagImportDisconnect =>
+      'Disconnect first to open a diagnostics package.';
 
   @override
   String diagImported(String name) {
@@ -3802,7 +3938,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get diagImportedRecordingOnly => 'Recording imported. The package\'s project can only be loaded in the apps.';
+  String get diagImportedRecordingOnly =>
+      'Recording imported. The package\'s project can only be loaded in the apps.';
 
   @override
   String diagNoteProblem(String text) {
@@ -3820,7 +3957,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get diagImportHint => 'Import: ETS telegram file (.xml) or diagnostics package (.zip)';
+  String get diagImportHint =>
+      'Import: ETS telegram file (.xml) or diagnostics package (.zip)';
 
   @override
   String get filterActive => 'Filtered';
@@ -3859,7 +3997,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String checkFindings(int n) {
-    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '$n findings', one: '1 finding');
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n findings',
+      one: '1 finding',
+    );
     return '$_temp0';
   }
 
@@ -3958,7 +4101,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String checkLineDevices(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count devices', one: '1 device');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count devices',
+      one: '1 device',
+    );
     return '$_temp0';
   }
 
@@ -4001,7 +4149,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importSaving => 'Saving project …';
 
   @override
-  String get importSlowHint => 'Large projects can take up to a minute in the browser.';
+  String get importSlowHint =>
+      'Large projects can take up to a minute in the browser.';
 
   @override
   String get addonAttaching => 'Connecting to the add-on …';
@@ -4026,7 +4175,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chartsNoValuesYet => 'no values yet';
 
   @override
-  String get chartsWaiting => 'Waiting for the first telegrams – the series appear as soon as the addresses send.';
+  String get chartsWaiting =>
+      'Waiting for the first telegrams – the series appear as soon as the addresses send.';
 
   @override
   String checkEvaluatedTelegrams(int count) {
@@ -4057,7 +4207,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get annotationNoteHint => 'Pressed a third time: the light stays off';
 
   @override
-  String get annotationEmpty => 'Write briefly what happened, or add a screenshot.';
+  String get annotationEmpty =>
+      'Write briefly what happened, or add a screenshot.';
 
   @override
   String get annotationDelete => 'Delete comment';
@@ -4105,7 +4256,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get shotsQuota => 'The space for screenshots is full. Delete older comments with images to add new ones.';
+  String get shotsQuota =>
+      'The space for screenshots is full. Delete older comments with images to add new ones.';
 
   @override
   String get shotsOpen => 'Show screenshot';
@@ -4124,7 +4276,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get timelineEmpty => 'This recording contains no telegrams.';
 
   @override
-  String get timelineNoAnnotations => 'No comments in this period yet. Tap a telegram or a spot on the timeline.';
+  String get timelineNoAnnotations =>
+      'No comments in this period yet. Tap a telegram or a spot on the timeline.';
 
   @override
   String get timelineRepeated => 'Repeat';
@@ -4216,7 +4369,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get findingsHints => 'Hints';
 
   @override
-  String get findingsNoHints => 'Nothing unusual in technical data and traffic.';
+  String get findingsNoHints =>
+      'Nothing unusual in technical data and traffic.';
 
   @override
   String get findingsNoAnnotations => 'No comments in the package.';
@@ -4284,7 +4438,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String findingRepeated(int count, int percent) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count repeats', one: '1 repeat');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count repeats',
+      one: '1 repeat',
+    );
     return '$_temp0 ($percent %): a sign of interference or missing acknowledgements.';
   }
 
@@ -4306,19 +4465,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String findingConfirmErrors(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count telegrams', one: '1 telegram');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count telegrams',
+      one: '1 telegram',
+    );
     return '$_temp0 without confirmation from the interface.';
   }
 
   @override
   String findingOutages(int count, String summary) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count outages', one: '1 outage');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count outages',
+      one: '1 outage',
+    );
     return '$_temp0 in the last 7 days: $summary';
   }
 
   @override
   String findingLogErrors(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count error lines', one: '1 error line');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count error lines',
+      one: '1 error line',
+    );
     return '$_temp0 in the app log.';
   }
 
@@ -4387,7 +4561,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportTitle => 'Report a problem';
 
   @override
-  String get reportTool => 'Reproduce a problem and send it to your electrician';
+  String get reportTool =>
+      'Reproduce a problem and send it to your electrician';
 
   @override
   String get reportIntro =>
@@ -4401,7 +4576,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Reproduce the problem, for example press the switch. Tap “It happened now” each time the problem occurs.';
 
   @override
-  String get reportStep3 => 'Describe briefly what happened and send the package to your electrician.';
+  String get reportStep3 =>
+      'Describe briefly what happened and send the package to your electrician.';
 
   @override
   String get reportNotConnected =>
@@ -4412,12 +4588,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String reportRunning(String time, int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count telegrams', one: '1 telegram');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count telegrams',
+      one: '1 telegram',
+    );
     return 'Recording since $time · $_temp0';
   }
 
   @override
-  String get reportNowHint => 'Reproduce the problem now. As soon as it occurs:';
+  String get reportNowHint =>
+      'Reproduce the problem now. As soon as it occurs:';
 
   @override
   String get reportNow => 'It happened now';
@@ -4432,19 +4614,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String reportMarks(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'Marked $count times', one: 'Marked once');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Marked $count times',
+      one: 'Marked once',
+    );
     return '$_temp0';
   }
 
   @override
-  String get reportMarksHint => 'Tap to describe what exactly happened or to add a screenshot.';
+  String get reportMarksHint =>
+      'Tap to describe what exactly happened or to add a screenshot.';
 
   @override
   String get reportFinish => 'Done, create package';
 
   @override
   String annotationsCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count comments', one: '1 comment');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count comments',
+      one: '1 comment',
+    );
     return '$_temp0';
   }
 
@@ -4479,7 +4672,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get annotationRecordFailed => 'Recording not started. The comment is saved anyway.';
+  String get annotationRecordFailed =>
+      'Recording not started. The comment is saved anyway.';
 
   @override
   String get dptChange => 'Change datapoint type';
@@ -4540,7 +4734,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exportsBundle => 'Combined export';
 
   @override
-  String get exportsBundleHint => 'Choose what goes into one ZIP file. It is created in the background.';
+  String get exportsBundleHint =>
+      'Choose what goes into one ZIP file. It is created in the background.';
 
   @override
   String exportsBundleButton(int count) {
@@ -4689,7 +4884,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get boxHatSerialConsole => 'The Linux console is still on the serial port (cmdline.txt).';
+  String get boxHatSerialConsole =>
+      'The Linux console is still on the serial port (cmdline.txt).';
 
   @override
   String get boxHatSeconds => 'Listening per step';
@@ -4758,12 +4954,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String boxHatBusmonCounts(int frames, int ack, int nak, int busy, int repeated, int errors) {
+  String boxHatBusmonCounts(
+    int frames,
+    int ack,
+    int nak,
+    int busy,
+    int repeated,
+    int errors,
+  ) {
     return '$frames frames: $ack ACK, $nak NAK, $busy BUSY, $repeated repeats, $errors with errors';
   }
 
   @override
-  String get boxHatNothing => 'Nothing received. Press a push button and test again.';
+  String get boxHatNothing =>
+      'Nothing received. Press a push button and test again.';
 
   @override
   String get boxHatModeLinkLayer => 'link layer';
@@ -4824,7 +5028,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tourChipInstallations => 'Installations';
 
   @override
-  String get tourProjectTitle => 'With your ETS project, every value gets a name.';
+  String get tourProjectTitle =>
+      'With your ETS project, every value gets a name.';
 
   @override
   String get tourProjectText =>
@@ -4844,7 +5049,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Current value, count and a small history, sorted by rooms and functions. The star keeps favourites, the pin moves a section to the top. The bar at the top counts the telegrams of the last 60 seconds, the hour or the day.';
 
   @override
-  String get tourObjectsTitle => 'Objects: what belongs together stays together.';
+  String get tourObjectsTitle =>
+      'Objects: what belongs together stays together.';
 
   @override
   String get tourObjectsText =>
@@ -5091,7 +5297,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ackInvalid => 'Address not recognised';
 
   @override
-  String get ackForegroundOnly => 'Acknowledgement runs while the app is in the foreground.';
+  String get ackForegroundOnly =>
+      'Acknowledgement runs while the app is in the foreground.';
 
   @override
   String get ackAndroidBackground =>
@@ -5193,7 +5400,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get acceptCreate => 'Create protocol';
 
   @override
-  String get acceptMissing => 'This needs customer, technician and both signatures.';
+  String get acceptMissing =>
+      'This needs customer, technician and both signatures.';
 
   @override
   String get acceptEarlier => 'Earlier protocols';
@@ -5205,7 +5413,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get acceptOpenPoints => 'Open points';
 
   @override
-  String get acceptConfirmation => 'The installation was handed over and accepted in the state described above.';
+  String get acceptConfirmation =>
+      'The installation was handed over and accepted in the state described above.';
 
   @override
   String get acceptRoleCustomer => 'Customer';
@@ -5219,7 +5428,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get acceptSignatureNote => 'Simple electronic signature on the device, created with KNX Monitor.';
+  String get acceptSignatureNote =>
+      'Simple electronic signature on the device, created with KNX Monitor.';
 
   @override
   String get signUndo => 'Undo last stroke';
@@ -5274,7 +5484,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String huntHits(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count hits', one: '1 hit');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hits',
+      one: '1 hit',
+    );
     return '$_temp0';
   }
 
@@ -5285,7 +5500,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get huntNew => 'New hunt';
 
   @override
-  String get huntNoWatchers => 'The hunt uses watchers as rules. Create one first, e.g. “Living room blind up = 1”.';
+  String get huntNoWatchers =>
+      'The hunt uses watchers as rules. Create one first, e.g. “Living room blind up = 1”.';
 
   @override
   String get huntChooseRules => 'What should be caught?';
@@ -5301,7 +5517,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String huntDays(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count days', one: '1 day');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '1 day',
+    );
     return '$_temp0';
   }
 
@@ -5309,7 +5530,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get huntOnlyWindow => 'Only in a time window';
 
   @override
-  String get huntOnlyWindowExplain => 'e.g. at night from 22:00 to 06:00 (box time)';
+  String get huntOnlyWindowExplain =>
+      'e.g. at night from 22:00 to 06:00 (box time)';
 
   @override
   String get huntStart => 'Start hunt';
@@ -5414,7 +5636,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get learnListening => 'Listening …';
 
   @override
-  String get learnPressNow => 'Now press a button or switch something – ideally one thing at a time.';
+  String get learnPressNow =>
+      'Now press a button or switch something – ideally one thing at a time.';
 
   @override
   String get learnDemoPress => 'Press a button in the demo house';
@@ -5423,7 +5646,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get learnMeasurements => 'Also catch measurements';
 
   @override
-  String get learnMeasurementsHint => 'Off: temperature and similar values don\'t interfere while you press buttons.';
+  String get learnMeasurementsHint =>
+      'Off: temperature and similar values don\'t interfere while you press buttons.';
 
   @override
   String learnCaught(String time) {
@@ -5495,17 +5719,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get learnClearAll => 'Forget everything learned';
 
   @override
-  String get learnClearConfirm => 'Delete all learned names? An imported project stays.';
+  String get learnClearConfirm =>
+      'Delete all learned names? An imported project stays.';
 
   @override
-  String get learnDemoNote => 'Demo house: what you teach here is kept only until you leave the demo.';
+  String get learnDemoNote =>
+      'Demo house: what you teach here is kept only until you leave the demo.';
 
   @override
   String get learnRoomSuggestions =>
       'Living room,Kitchen,Hall,Bathroom,Bedroom,Kids\' room,Office,Dining room,Garden,Basement';
 
   @override
-  String get learnNamesSwitch => 'Light,Ceiling light,Spots,Floor lamp,Socket,Outdoor light';
+  String get learnNamesSwitch =>
+      'Light,Ceiling light,Spots,Floor lamp,Socket,Outdoor light';
 
   @override
   String get learnNamesBlind => 'Shutter,Blind,Awning';
@@ -5563,7 +5790,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get helpNetworkTitle => 'The network can\'t be reached';
 
   @override
-  String get helpWifiOn => 'Are you on Wi-Fi or LAN – the home network, not mobile data?';
+  String get helpWifiOn =>
+      'Are you on Wi-Fi or LAN – the home network, not mobile data?';
 
   @override
   String get helpLocalNetworkPermission =>
@@ -5582,13 +5810,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'An IP gateway has only a few tunnels (often 1 to 8). ETS, a visualisation (e.g. Home Assistant, Gira X1) or a logic module keeps them busy.';
 
   @override
-  String get helpCloseEts => 'Close the ETS bus monitor or ETS connection, then connect again here.';
+  String get helpCloseEts =>
+      'Close the ETS bus monitor or ETS connection, then connect again here.';
 
   @override
-  String get helpScanShowsSlots => '“Search gateways” shows for many devices how many tunnels are free right now.';
+  String get helpScanShowsSlots =>
+      '“Search gateways” shows for many devices how many tunnels are free right now.';
 
   @override
-  String get helpUseRouting => 'Is there an IP router? Routing uses no tunnel (connection type in expert mode).';
+  String get helpUseRouting =>
+      'Is there an IP router? Routing uses no tunnel (connection type in expert mode).';
 
   @override
   String get helpTunnelAddressTitle => 'The fixed tunnel address doesn\'t work';
@@ -5616,7 +5847,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'By hand: the tunnel\'s user and password are in ETS on the gateway (Properties › IP › Tunnel).';
 
   @override
-  String get helpSecureNotProjectPassword => 'This is the tunnel password, not the project password of the .knxproj.';
+  String get helpSecureNotProjectPassword =>
+      'This is the tunnel password, not the project password of the .knxproj.';
 
   @override
   String get helpSecureDeviceTitle => 'IP Secure: device code doesn\'t match';
@@ -5626,13 +5858,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'The device authentication code is in ETS on the gateway (Properties › IP); the keyring brings it along.';
 
   @override
-  String get helpSecureRightDevice => 'Is it really your interface answering? Check for two devices with the same IP.';
+  String get helpSecureRightDevice =>
+      'Is it really your interface answering? Check for two devices with the same IP.';
 
   @override
   String get helpSecureMissingTitle => 'IP Secure needs credentials';
 
   @override
-  String get helpAskElectrician => 'No keyring? Your electrician can give it to you along with the project file.';
+  String get helpAskElectrician =>
+      'No keyring? Your electrician can give it to you along with the project file.';
 
   @override
   String get helpRoutingTitle => 'Routing doesn\'t work here';
@@ -5642,7 +5876,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Routing uses multicast (224.0.23.12). Many Wi-Fi routers and mesh systems don\'t pass it on.';
 
   @override
-  String get helpTryTunnel => 'Try a tunnel (UDP) with the gateway\'s IP address.';
+  String get helpTryTunnel =>
+      'Try a tunnel (UDP) with the gateway\'s IP address.';
 
   @override
   String get helpNoGatewayTitle => 'No gateway found';
@@ -5652,7 +5887,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Some gateways don\'t answer the search. Then type the IP address directly – it\'s in your router or ETS.';
 
   @override
-  String get helpRoutingSearch => 'The search finds IP interfaces (tunnel) and IP routers (routing) alike.';
+  String get helpRoutingSearch =>
+      'The search finds IP interfaces (tunnel) and IP routers (routing) alike.';
 
   @override
   String get helpTryDemo => 'Try it without an installation: the demo house.';
@@ -5817,7 +6053,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get termExampleNone => 'Your own project has no example for this yet – the demo house does.';
+  String get termExampleNone =>
+      'Your own project has no example for this yet – the demo house does.';
 
   @override
   String get glossaryTitle => 'Terms';
@@ -5848,7 +6085,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'A button doesn\'t know which light it switches. It just sends “on” to a group address. The actuator listening on that address switches – and reports back on a second address what it did.';
 
   @override
-  String get lessonSwitchTry => 'Watch in the live monitor how an “on” is followed by a status.';
+  String get lessonSwitchTry =>
+      'Watch in the live monitor how an “on” is followed by a status.';
 
   @override
   String get lessonWhoTitle => '2 · Who is who';
@@ -5958,7 +6196,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quizStatusTime => 'The time of the button press';
 
   @override
-  String get quizTunnelBusy => 'The gateway answers, but the app gets no connection. What\'s most likely?';
+  String get quizTunnelBusy =>
+      'The gateway answers, but the app gets no connection. What\'s most likely?';
 
   @override
   String get quizTunnelRight => 'All tunnels are in use';
@@ -5970,7 +6209,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quizTunnelWrongDpt => 'A datapoint type is missing';
 
   @override
-  String get quizFlagRead => 'An address never answers reads. Which flag is probably missing?';
+  String get quizFlagRead =>
+      'An address never answers reads. Which flag is probably missing?';
 
   @override
   String get quizFlagReadRight => 'R (read)';
@@ -6045,7 +6285,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String weekBasisPartial(String time, int days, String checks) {
-    String _temp0 = intl.Intl.pluralLogic(days, locale: localeName, other: '$days days', one: '1 day');
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '1 day',
+    );
     return 'Basis: the app listened for about $time on $_temp0 this week ($checks). The report can\'t see what happened in between – only a KNX box or the Home Assistant add-on listens around the clock.';
   }
 
@@ -6134,7 +6379,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get haTitle => 'Home Assistant';
 
   @override
-  String get haTool => 'Configuration for the KNX integration from your project';
+  String get haTool =>
+      'Configuration for the KNX integration from your project';
 
   @override
   String get haExplain =>
@@ -6183,7 +6429,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get haCopied => 'Configuration copied';
 
   @override
-  String get haYamlDevices => 'Devices (device): assign the area in Home Assistant under Settings › Devices.';
+  String get haYamlDevices =>
+      'Devices (device): assign the area in Home Assistant under Settings › Devices.';
 
   @override
   String get haDevices => 'Devices';
@@ -6245,7 +6492,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get haDoubtAmbiguous => 'several addresses fit, the first one is used';
 
   @override
-  String get haDoubtTargetFromCommand => 'setpoint without its own status address';
+  String get haDoubtTargetFromCommand =>
+      'setpoint without its own status address';
 
   @override
   String get haDoubtTypeGuessed => 'only the main DPT is known';
@@ -6256,7 +6504,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get haYamlInclude => 'Include in configuration.yaml with:  knx: !include knx.yaml';
+  String get haYamlInclude =>
+      'Include in configuration.yaml with:  knx: !include knx.yaml';
 
   @override
   String get haYamlSchema =>
@@ -6342,10 +6591,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Per channel, the time from a write command to the first status feedback (up to 3 s), from the current log. 50–300 ms is typical; much more points to a busy bus, filtering couplers or slow logic.';
 
   @override
-  String get reactEmpty => 'No measurement yet: switch or move something whose status feedback is in the project.';
+  String get reactEmpty =>
+      'No measurement yet: switch or move something whose status feedback is in the project.';
 
   @override
-  String get reactNoProject => 'Without an ETS project commands and feedback cannot be matched.';
+  String get reactNoProject =>
+      'Without an ETS project commands and feedback cannot be matched.';
 
   @override
   String get reactChannels => 'Channels';
@@ -6449,7 +6700,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get secLinkPlainCouldTitle => 'Gateway supports Secure – not in use';
 
   @override
-  String get secLinkRoutingCouldTitle => 'Routing without Secure although the device supports it';
+  String get secLinkRoutingCouldTitle =>
+      'Routing without Secure although the device supports it';
 
   @override
   String get secLinkPlainCouldText =>
@@ -6473,7 +6725,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get secLinkUnknownTitle => 'Connection path unknown';
 
   @override
-  String get secLinkUnknownText => 'The app is attached to Home Assistant; it cannot see how that connects to the bus.';
+  String get secLinkUnknownText =>
+      'The app is attached to Home Assistant; it cannot see how that connects to the bus.';
 
   @override
   String get secDataNoKeyringTitle => 'No keyring loaded';
@@ -6513,7 +6766,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String secWithoutKeyText(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count telegrams', one: '1 telegram');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count telegrams',
+      one: '1 telegram',
+    );
     return '$_temp0 could not be decrypted. Usually the keyring is older than the project – export it again from ETS.';
   }
 
@@ -6522,7 +6780,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String secRejectedText(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count telegrams', one: '1 telegram');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count telegrams',
+      one: '1 telegram',
+    );
     return '$_temp0 had a wrong checksum or an old counter. A few happen after a restart; if they pile up, check who sends them.';
   }
 
@@ -6530,13 +6793,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get secForeignNoProjectTitle => 'Senders cannot be checked';
 
   @override
-  String get secForeignNoProjectText => 'Checking senders needs a .knxproj with topology.';
+  String get secForeignNoProjectText =>
+      'Checking senders needs a .knxproj with topology.';
 
   @override
   String get secForeignNoneTitle => 'All senders are in the project';
 
   @override
-  String get secForeignNoneText => 'Every telegram in the log came from a device known to ETS.';
+  String get secForeignNoneText =>
+      'Every telegram in the log came from a device known to ETS.';
 
   @override
   String secForeignTitle(int count) {
@@ -6566,7 +6831,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String forumExplain(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count telegrams', one: '1 telegram');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count telegrams',
+      one: '1 telegram',
+    );
     return '$_temp0 as text to paste into the KNX user forum. IP addresses, host names, serial numbers, passwords and keys are never included.';
   }
 
@@ -6574,7 +6844,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get forumPseudonymize => 'Replace names';
 
   @override
-  String get forumPseudonymizeHint => 'Group addresses become “GA 1”, devices keep only the product name.';
+  String get forumPseudonymizeHint =>
+      'Group addresses become “GA 1”, devices keep only the product name.';
 
   @override
   String get forumCopy => 'Copy to clipboard';
@@ -6628,7 +6899,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String forumMetaRange(int count, String date, String from, String to) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count telegrams', one: '1 telegram');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count telegrams',
+      one: '1 telegram',
+    );
     return '$_temp0 on $date, $from–$to';
   }
 
@@ -6727,17 +7003,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'Set the T flag on the object that provides the status (usually the actuator channel).';
 
   @override
-  String get etsTodoReadNoReadFlag => 'Set the R flag on the object that provides the status.';
+  String get etsTodoReadNoReadFlag =>
+      'Set the R flag on the object that provides the status.';
 
   @override
-  String get etsTodoNoComm => 'Set the C flag or remove the group address from the object.';
+  String get etsTodoNoComm =>
+      'Set the C flag or remove the group address from the object.';
 
   @override
   String get etsTodoMultipleSenders =>
       'Check whether intended; otherwise let only one object send or give it its own address.';
 
   @override
-  String get etsTodoNoLinks => 'Link group addresses or remove the device from the project.';
+  String get etsTodoNoLinks =>
+      'Link group addresses or remove the device from the project.';
 
   @override
   String get etsImportFile => 'Group addresses ETS import (preview)';
@@ -6753,13 +7032,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String etsTaskCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count tasks', one: '1 task');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tasks',
+      one: '1 task',
+    );
     return '$_temp0';
   }
 
   @override
   String etsHintCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count notes', one: '1 note');
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count notes',
+      one: '1 note',
+    );
     return '$_temp0';
   }
 
@@ -6807,7 +7096,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get etsTodoNoName => 'Give it a meaningful name: floor, room, object, function.';
+  String get etsTodoNoName =>
+      'Give it a meaningful name: floor, room, object, function.';
 
   @override
   String get etsTodoNoDpt =>
@@ -6865,7 +7155,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'For faults that only happen sometimes: the add-on runs around the clock, the hunt catches every hit of a watcher with two minutes before and one after. Afterwards you see who sent it – often it is always the same one.';
 
   @override
-  String get huntOnlyWindowExplainAddon => 'e.g. at night from 22:00 to 06:00 (Home Assistant time)';
+  String get huntOnlyWindowExplainAddon =>
+      'e.g. at night from 22:00 to 06:00 (Home Assistant time)';
 
   @override
   String get secLinkDemoTitle => 'Demo house';
@@ -6875,7 +7166,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'The demo house has no real bus. At your installation the check shows here how the app connects to the gateway – encrypted or not.';
 
   @override
-  String get addonConfigLost => 'The continuous recording settings were damaged – please connect once more.';
+  String get addonConfigLost =>
+      'The continuous recording settings were damaged – please connect once more.';
 
   @override
   String get learnRoleAlsoSeen => 'Also seen';
@@ -6885,7 +7177,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'The demo house has no flags – at your installation the check reads them from the ETS project';
 
   @override
-  String get learnWarmUp => 'Listening for a moment to get to know your bus … Please don\'t press anything yet.';
+  String get learnWarmUp =>
+      'Listening for a moment to get to know your bus … Please don\'t press anything yet.';
 
   @override
   String get invPresent => 'Found';
@@ -6899,7 +7192,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ackTestTitle => 'Did you hear it?';
 
   @override
-  String get ackTestText => 'The app just played the acknowledgement tone. Heard it? Then off you go.';
+  String get ackTestText =>
+      'The app just played the acknowledgement tone. Heard it? Then off you go.';
 
   @override
   String get ackTestNotHeard =>
@@ -6943,10 +7237,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get companyLogoReplace => 'Replace logo';
 
   @override
-  String get companyLogoHint => 'PNG, JPEG or SVG. The image is scaled down automatically.';
+  String get companyLogoHint =>
+      'PNG, JPEG or SVG. The image is scaled down automatically.';
 
   @override
-  String get companyLogoFailed => 'This image can\'t be read. Please try a PNG or JPEG.';
+  String get companyLogoFailed =>
+      'This image can\'t be read. Please try a PNG or JPEG.';
 
   @override
   String get companyDetails => 'Details';
@@ -6990,7 +7286,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get srTitle => 'Service report';
 
   @override
-  String get srTool => 'Report for the customer from recording, comments and health check';
+  String get srTool =>
+      'Report for the customer from recording, comments and health check';
 
   @override
   String get srFeature => 'Service report for the customer';
@@ -7090,7 +7387,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get srLevelInfo => 'For info';
 
   @override
-  String get srConfirmation => 'The customer received this report and confirmed the visit.';
+  String get srConfirmation =>
+      'The customer received this report and confirmed the visit.';
 
   @override
   String get customerTitle => 'Customer records';
@@ -7099,7 +7397,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get customerTool => 'Installations, customers, maintenance and visits';
 
   @override
-  String get customerFeature => 'Installations as customer records with visit history';
+  String get customerFeature =>
+      'Installations as customer records with visit history';
 
   @override
   String get customerSearch => 'Search customer, address, order';
@@ -7227,20 +7526,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get handoverTitle => 'Handover package';
 
   @override
-  String get handoverTool => 'Hand the installation over to the customer\'s app';
+  String get handoverTool =>
+      'Hand the installation over to the customer\'s app';
 
   @override
   String get handoverFeature => 'Handover package for the customer\'s app';
 
   @override
-  String get handoverReceiveFeature => 'Open a handover package from your electrician';
+  String get handoverReceiveFeature =>
+      'Open a handover package from your electrician';
 
   @override
   String get handoverExplain =>
       'One file for your customer\'s app: names of group addresses and devices, structure and gateway. No cloud, no account: it goes by mail, AirDrop or USB stick. Customer details stay here.';
 
   @override
-  String get handoverNeedsCompany => 'Enter your company first. The customer sees it as \"set up by\".';
+  String get handoverNeedsCompany =>
+      'Enter your company first. The customer sees it as \"set up by\".';
 
   @override
   String get handoverContents => 'Contents';
@@ -7255,7 +7557,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get handoverIncludeKeys => 'Include KNX Secure keys';
 
   @override
-  String get handoverIncludeKeysHint => 'Only if the customer needs them. The file is then always password-protected.';
+  String get handoverIncludeKeysHint =>
+      'Only if the customer needs them. The file is then always password-protected.';
 
   @override
   String get handoverProtect => 'Protect with password';
@@ -7288,7 +7591,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get handoverScanTitle => 'Scan QR code';
 
   @override
-  String get handoverWrongPassword => 'The password is wrong or the file was changed.';
+  String get handoverWrongPassword =>
+      'The password is wrong or the file was changed.';
 
   @override
   String get handoverOpen => 'Open';
@@ -7321,10 +7625,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get packageCorrupt => 'This file can\'t be read. It is damaged or not a KNX Monitor package.';
+  String get packageCorrupt =>
+      'This file can\'t be read. It is damaged or not a KNX Monitor package.';
 
   @override
-  String get packageNewer => 'This file comes from a newer version. Please update the app.';
+  String get packageNewer =>
+      'This file comes from a newer version. Please update the app.';
 
   @override
   String get packageTooLarge =>
@@ -7343,7 +7649,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get faultReportTool => 'Report a fault to your electrician with real data';
+  String get faultReportTool =>
+      'Report a fault to your electrician with real data';
 
   @override
   String faultExplain(String company) {
@@ -7385,7 +7692,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get manualTitle => 'Resident manual';
 
   @override
-  String get manualTool => 'Booklet for residents from the project and learned names';
+  String get manualTool =>
+      'Booklet for residents from the project and learned names';
 
   @override
   String get manualFeature => 'Resident manual as PDF';
@@ -7431,7 +7739,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get manualTrouble1 => 'Press the switch again and wait a moment.';
 
   @override
-  String get manualTrouble2 => 'Check whether other things in the room are affected and note it down.';
+  String get manualTrouble2 =>
+      'Check whether other things in the room are affected and note it down.';
 
   @override
   String get manualTrouble3 => 'Don\'t replace fuses yourself, please call us.';
@@ -7515,7 +7824,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get galleryFitsNothing => 'Finds no matching addresses in this project yet';
+  String get galleryFitsNothing =>
+      'Finds no matching addresses in this project yet';
 
   @override
   String galleryAdopted(String name) {
@@ -7536,7 +7846,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get siteDocsTitle => 'Photos and labels';
 
   @override
-  String get siteDocsTool => 'Photos of the distribution board, labels with QR code';
+  String get siteDocsTool =>
+      'Photos of the distribution board, labels with QR code';
 
   @override
   String get siteDocsPhotos => 'Photos';
@@ -7564,7 +7875,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get siteDocsDelete => 'Delete photo';
 
   @override
-  String get siteDocsQuota => 'No more room for photos of this installation. Delete older ones first.';
+  String get siteDocsQuota =>
+      'No more room for photos of this installation. Delete older ones first.';
 
   @override
   String get siteDocsUnreadable => 'The image could not be read.';
@@ -7577,7 +7889,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'A4 sheet with 70 × 37 mm labels: individual address, function, location and QR code. The code opens the device only in this app and contains no web address and no credentials.';
 
   @override
-  String get siteDocsLabelsNoProject => 'Labels need devices from an ETS project.';
+  String get siteDocsLabelsNoProject =>
+      'Labels need devices from an ETS project.';
 
   @override
   String get siteDocsLabelsCreate => 'Create labels';
@@ -7724,7 +8037,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get plantTitle => 'Installation report';
 
   @override
-  String get plantTool => 'Monthly or quarterly report from box and add-on, as PDF';
+  String get plantTool =>
+      'Monthly or quarterly report from box and add-on, as PDF';
 
   @override
   String get plantIntro =>
@@ -7734,7 +8048,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get plantEnabled => 'Create reports';
 
   @override
-  String get plantEnabledHint => 'Off by default. The first report is created after the current period ends.';
+  String get plantEnabledHint =>
+      'Off by default. The first report is created after the current period ends.';
 
   @override
   String get plantLastError => 'The last run failed; recording continues.';
@@ -7752,7 +8067,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get plantMaintenance => 'Maintenance';
 
   @override
-  String get plantMaintenanceNone => 'No maintenance interval in the customer record.';
+  String get plantMaintenanceNone =>
+      'No maintenance interval in the customer record.';
 
   @override
   String get plantNotify => 'Notifications';
@@ -8086,7 +8402,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dataExportTitle => 'Data export';
 
   @override
-  String get dataExportTool => 'Counters and values to InfluxDB or Prometheus, with a Grafana template';
+  String get dataExportTool =>
+      'Counters and values to InfluxDB or Prometheus, with a Grafana template';
 
   @override
   String get dataExportIntro =>
@@ -8106,13 +8423,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dataExportPort => 'Port';
 
   @override
-  String get dataExportTokenSet => 'Access token saved; it will not be shown again.';
+  String get dataExportTokenSet =>
+      'Access token saved; it will not be shown again.';
 
   @override
   String get dataExportTokenTitle => 'Token for Prometheus';
 
   @override
-  String get dataExportTokenBody => 'Shown once. Enter it in Prometheus under “authorization: credentials”.';
+  String get dataExportTokenBody =>
+      'Shown once. Enter it in Prometheus under “authorization: credentials”.';
 
   @override
   String get dataExportCopy => 'Copy';
@@ -8154,7 +8473,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dataExportGrafana => 'Grafana template';
 
   @override
-  String get dataExportGrafanaHint => 'Load it in Grafana under Dashboards › Import and choose the data source.';
+  String get dataExportGrafanaHint =>
+      'Load it in Grafana under Dashboards › Import and choose the data source.';
 
   @override
   String get dataExportGrafanaPrometheus => 'Save for Prometheus';
@@ -8163,7 +8483,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dataExportGrafanaInflux => 'Save for InfluxDB';
 
   @override
-  String get dataExportBindError => 'The port is in use. Please choose another one.';
+  String get dataExportBindError =>
+      'The port is in use. Please choose another one.';
 
   @override
   String dataExportPortHint(String port) {
@@ -8212,7 +8533,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appLockReason => 'Unlock KNX Monitor';
 
   @override
-  String get appLockSystemHint => 'Unlock with Face ID, fingerprint, Windows Hello or the device passcode.';
+  String get appLockSystemHint =>
+      'Unlock with Face ID, fingerprint, Windows Hello or the device passcode.';
 
   @override
   String get appLockPasswordHint => 'Unlock with the app password.';
@@ -8224,7 +8546,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appLockUnlock => 'Unlock';
 
   @override
-  String get appLockWrong => 'That did not work. After several failed attempts you have to wait.';
+  String get appLockWrong =>
+      'That did not work. After several failed attempts you have to wait.';
 
   @override
   String get appLockForgot => 'Forgot password';
@@ -8265,13 +8588,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'You work in a company and have customer data on this device. That is why the app needs a lock.';
 
   @override
-  String get appLockRequiredNote => 'Your company requires the lock while you are a member.';
+  String get appLockRequiredNote =>
+      'Your company requires the lock while you are a member.';
 
   @override
   String get appLockUseSystem => 'Use device lock';
 
   @override
-  String get appLockSystemFailed => 'The device lock did not confirm. Try again or use an app password.';
+  String get appLockSystemFailed =>
+      'The device lock did not confirm. Try again or use an app password.';
 
   @override
   String get appLockNewPassword => 'New app password';
@@ -8352,13 +8677,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Files with the same name are replaced. The app quits afterwards and starts from the backup\'s state next time.';
 
   @override
-  String get backupOpenFailed => 'That did not work: wrong password or not a valid backup.';
+  String get backupOpenFailed =>
+      'That did not work: wrong password or not a valid backup.';
 
   @override
-  String get backupNewer => 'This backup comes from a newer version. Please update the app first.';
+  String get backupNewer =>
+      'This backup comes from a newer version. Please update the app first.';
 
   @override
-  String get backupNotIncluded => 'Not included: the app lock and history on a box.';
+  String get backupNotIncluded =>
+      'Not included: the app lock and history on a box.';
 
   @override
   String get backupNotIncludedTeam =>
@@ -8384,10 +8712,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recoveryRenew => 'Create new recovery key';
 
   @override
-  String get recoveryResetBody => 'The recovery key opened the app and is no longer valid. Set a new lock.';
+  String get recoveryResetBody =>
+      'The recovery key opened the app and is no longer valid. Set a new lock.';
 
   @override
-  String get recoveryPdfIntro => 'This key opens the KNX Monitor app lock if the app password has been forgotten.';
+  String get recoveryPdfIntro =>
+      'This key opens the KNX Monitor app lock if the app password has been forgotten.';
 
   @override
   String recoveryPdfAccount(String email) {
@@ -8504,10 +8834,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backupNever => 'There is no backup from this device yet.';
 
   @override
-  String get backupSlow => 'Encrypting can take up to a minute on older devices.';
+  String get backupSlow =>
+      'Encrypting can take up to a minute on older devices.';
 
   @override
-  String get zipTooLarge => 'This file is too large when unpacked and was not opened.';
+  String get zipTooLarge =>
+      'This file is too large when unpacked and was not opened.';
 
   @override
   String get installationsNewerTitle => 'Newer data';
@@ -8537,7 +8869,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quarantineDelete => 'Delete files';
 
   @override
-  String get quarantineDeleteBody => 'These files can never be opened again after this.';
+  String get quarantineDeleteBody =>
+      'These files can never be opened again after this.';
 
   @override
   String get boxForeignTitle => 'This box is not on your local network';
@@ -8616,7 +8949,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'All devices are dropped from the box\'s Wi-Fi and have to rejoin with the new password. This device does that itself where the system allows it.';
 
   @override
-  String get boxWifiChanged => 'Wi-Fi password changed. The box restarts its Wi-Fi in a moment.';
+  String get boxWifiChanged =>
+      'Wi-Fi password changed. The box restarts its Wi-Fi in a moment.';
 
   @override
   String get boxLowSpace =>
@@ -8645,7 +8979,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get writeNoticeHide => 'Don\'t show again';
 
   @override
-  String get writeNoticeHideHint => 'Hiding this is recorded with the date in diagnostics packages and error reports.';
+  String get writeNoticeHideHint =>
+      'Hiding this is recorded with the date in diagnostics packages and error reports.';
 
   @override
   String get writeNoticeConfirm => 'Write';
@@ -8665,10 +9000,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get telegramMenuSelect => 'Select';
 
   @override
-  String get scanCameraDenied => 'Camera access is off. Allow it in the device settings, or enter the details by hand.';
+  String get scanCameraDenied =>
+      'Camera access is off. Allow it in the device settings, or enter the details by hand.';
 
   @override
-  String get backupShort => 'Everything on this device in one file with its own password.';
+  String get backupShort =>
+      'Everything on this device in one file with its own password.';
 
   @override
   String get backupAppStorage => 'App storage';
@@ -8706,7 +9043,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quizMeta => 'Questions from your installation';
 
   @override
-  String get handoverShort => 'Everything for your customer\'s app in one file.';
+  String get handoverShort =>
+      'Everything for your customer\'s app in one file.';
 
   @override
   String get handoverProject => 'Project';
@@ -8804,7 +9142,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planLicenseApply => 'Activate';
 
   @override
-  String get planLicenseInvalid => 'This license is not valid. Please paste the whole line from the email.';
+  String get planLicenseInvalid =>
+      'This license is not valid. Please paste the whole line from the email.';
 
   @override
   String get planLicenseEnded =>
@@ -8824,10 +9163,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Read only is on: the server sends nothing to the bus. Turn off “Read only” in the add-on configuration, or remove READ_ONLY on the box and in Docker.';
 
   @override
-  String get exportsEtsHistory => 'History as ETS file (for Home Assistant and SpectrumKNX)';
+  String get exportsEtsHistory =>
+      'History as ETS file (for Home Assistant and SpectrumKNX)';
 
   @override
-  String get exportsEtsHistoryMeta => 'Continuous recording, single days or everything';
+  String get exportsEtsHistoryMeta =>
+      'Continuous recording, single days or everything';
 
   @override
   String get exportsEtsHistoryHint =>
@@ -8861,7 +9202,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chartsPeriodMetrics => 'Bus metrics show only the loaded period.';
 
   @override
-  String get chartsDashedHint => 'Dashed: the last value still applies, no new telegram has arrived since.';
+  String get chartsDashedHint =>
+      'Dashed: the last value still applies, no new telegram has arrived since.';
 
   @override
   String get chartsPeriodUnreachable => 'The add-on or box does not answer.';
@@ -8914,7 +9256,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupReplaceWith => 'Replace with';
 
   @override
-  String get groupReplaceHint => 'For example a typo that occurs in many names. Case matters.';
+  String get groupReplaceHint =>
+      'For example a typo that occurs in many names. Case matters.';
 
   @override
   String groupReplaceCount(int count) {
@@ -8954,7 +9297,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exportFailedGeneric => 'Export didn\'t work. Please try again.';
 
   @override
-  String get pdfExportFailedGeneric => 'The PDF didn\'t work. Please try again.';
+  String get pdfExportFailedGeneric =>
+      'The PDF didn\'t work. Please try again.';
 
   @override
   String get boxShareFailed => 'The box did not accept the data.';
@@ -9016,5 +9360,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boxProjectDeny => 'Not yet';
 
   @override
-  String get appLockRestart => 'Too many failed attempts. Close the app and open it again, then you can try once more.';
+  String get appLockRestart =>
+      'Too many failed attempts. Close the app and open it again, then you can try once more.';
 }
