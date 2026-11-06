@@ -6,6 +6,14 @@ slug: "changelog"
 ---
 What the latest versions of KNX Monitor brought, newest first. App, Home Assistant add-on and KNX box share one version number. Every version is on [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant the add-on shows the same notes before an update.
 
+## 1.9.9 – 6 Nov 2026
+
+- Docker: `LAN_ACCESS` now applies on every start. Setting `LAN_ACCESS=yes` later used to have no effect. Messages, the login dialog and the settings page speak of network access and the password instead of the box Wi-Fi, which does not exist in Docker.
+- Alarms on the add-on and the KNX box use the names you corrected or taught in the app.
+- The Home Assistant notification for findings says in plain words what is wrong and leads to the add-on page.
+- Diagnostic and handover packages keep corrected group address names, so the tasks for the ETS survive.
+- Topology: devices with an address outside the project, such as the KNX module of a box on the factory address 15.15.255, appear on the gateway's line with a hint, instead of as an extra line with a missing coupler.
+
 ## 1.9.8 – 5 Nov 2026
 
 - Security and speed: this version follows a thorough review of all parts, a penetration test and a load test with 30 days of 100,000 telegrams each.

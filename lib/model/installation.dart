@@ -590,7 +590,7 @@ class InstallationStore extends ChangeNotifier {
           if (project == null && id != boxActive) continue;
           final target = ScopedStorage(AppStorage.instance, 'installations/$id/');
           if (project != null) await target.write('catalog.json', utf8.decode(project));
-          for (final file in const ['dpt_overrides.json', 'name_overrides.json']) {
+          for (final file in const ['dpt_overrides.json', 'name_overrides.json', 'learned.json']) {
             final bytes = await Addon.getInstallationFile(id, file);
             if (bytes != null) await target.write(file, utf8.decode(bytes));
           }

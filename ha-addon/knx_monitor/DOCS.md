@@ -346,7 +346,8 @@ dashboard_card: true
 
 - `notify_service` (optional): additionally send a push notification via a
   notify service, e.g. `notify.mobile_app_my_iphone`. Leave empty for a
-  Home Assistant notification only.
+  Home Assistant notification only. Both link to the add-on: the Home
+  Assistant notification with "KNX Monitor →", the push when you tap it.
 - `dashboard_card`: install and register the dashboard card (default on,
   see Dashboard card). Turn off if you do not use it.
 

@@ -172,6 +172,7 @@ class _TopologyScreenState extends State<TopologyScreen> {
       partner: partner,
       log: widget.log,
       gatewayLine: _topo.gatewayLine,
+      origin: _topo.lineOfSource,
       onFilter: widget.onFilter,
     );
   }
@@ -239,7 +240,14 @@ class _TopologyScreenState extends State<TopologyScreen> {
       });
       return;
     }
-    showDeviceSheet(context, address: address, log: widget.log, hops: _hopsOf(address), onFilter: widget.onFilter);
+    showDeviceSheet(
+      context,
+      address: address,
+      log: widget.log,
+      hops: _hopsOf(address),
+      line: _topo.lineOfSource(address),
+      onFilter: widget.onFilter,
+    );
   }
 
   Future<void> _openMap(int ga) async {
@@ -254,7 +262,7 @@ class _TopologyScreenState extends State<TopologyScreen> {
   /// Hop count with which the device has been seen so far.
   int? _hopsOf(int address) {
     for (final l in _topo.lines) {
-      if (l.line == lineOf(address)) return l.activeSources[address];
+      if (l.line == _topo.lineOfSource(address)) return l.activeSources[address];
     }
     return null;
   }
@@ -392,8 +400,14 @@ class _TopologyScreenState extends State<TopologyScreen> {
           key: ValueKey(line.line),
           line: line,
           telegrams: _live.deviceTelegrams,
-          onDevice: (address, hops) =>
-              showDeviceSheet(context, address: address, log: widget.log, hops: hops, onFilter: widget.onFilter),
+          onDevice: (address, hops) => showDeviceSheet(
+            context,
+            address: address,
+            log: widget.log,
+            hops: hops,
+            line: _topo.lineOfSource(address),
+            onFilter: widget.onFilter,
+          ),
         ),
         const SizedBox(height: Gap.section),
         _analysis(context),
@@ -450,7 +464,8 @@ class _TopologyScreenState extends State<TopologyScreen> {
                   for (final d in line.devices)
                     if (matches(d.address, d.name)) (d.address, d.name, false),
                   for (final a in _unknownOf(line))
-                    if (matches(a, store.device(a)?.name ?? '')) (a, store.device(a)?.name ?? s.topoNotInProject, true),
+                    if (matches(a, store.device(a)?.name ?? ''))
+                      (a, store.device(a)?.name ?? unknownDeviceName(a), true),
                   for (final d in line.tunnels)
                     if (matches(d.address, d.name)) (d.address, d.name, false),
                 ],
@@ -471,6 +486,7 @@ class _TopologyScreenState extends State<TopologyScreen> {
               address: selected,
               log: widget.log,
               hops: _hopsOf(selected),
+              line: _topo.lineOfSource(selected),
               onFilter: widget.onFilter,
             ),
           ),
@@ -498,6 +514,7 @@ class _TopologyScreenState extends State<TopologyScreen> {
         address: address,
         log: widget.log,
         hops: _hopsOf(address),
+        line: _topo.lineOfSource(address),
         embedded: true,
         onMap: () => openDeviceMap(context, address: address, log: widget.log),
         onFilter: widget.onFilter == null ? null : () => widget.onFilter!(senderQuery(formatIndividual(address))),
@@ -520,6 +537,7 @@ class _TopologyScreenState extends State<TopologyScreen> {
         partner: coupler.$2,
         log: widget.log,
         gatewayLine: topo.gatewayLine,
+        origin: topo.lineOfSource,
         embedded: true,
         onFilter: widget.onFilter,
         onClose: () => setState(() => _coupler = null),
@@ -729,7 +747,7 @@ class _DeviceTreeState extends State<_DeviceTree> {
             for (final a in _unknownOf(line))
               _DeviceRow(
                 address: a,
-                name: store.device(a)?.name ?? s.topoNotInProject,
+                name: store.device(a)?.name ?? unknownDeviceName(a),
                 hops: line.activeSources[a],
                 telegrams: widget.telegrams[a],
                 unknown: true,
@@ -1209,7 +1227,7 @@ class _LineDevices extends StatelessWidget {
             for (final a in unknown)
               _DeviceRow(
                 address: a,
-                name: store.device(a)?.name ?? s.topoNotInProject,
+                name: store.device(a)?.name ?? unknownDeviceName(a),
                 hops: line.activeSources[a],
                 telegrams: telegrams[a],
                 unknown: true,
@@ -1530,7 +1548,7 @@ class _SelectedDevice extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AddressTitle('${formatIndividual(address)}  ${device?.name ?? s.topoNotInProject}'),
+                    AddressTitle('${formatIndividual(address)}  ${device?.name ?? unknownDeviceName(address)}'),
                     Text(
                       [
                         ?device?.product,
@@ -2104,8 +2122,8 @@ class _Live {
   final List<_Flow> flows;
 
   /// The last telegrams with receivers on a different line than the sender
-  /// (telegram, receiver lines).
-  final List<(Telegram, List<int>)> crossRows;
+  /// (telegram, line of the sender, receiver lines).
+  final List<(Telegram, int, List<int>)> crossRows;
 
   static const _crossRows = 12;
 
@@ -2121,7 +2139,9 @@ class _Live {
     final last = log.lastOrNull?.time;
     final lineNow = live || last == null ? wall : last;
     final lines = topo.lines;
-    final lineBins = {for (final l in lines) l.line: lineActivity(log, l.line, range, lineNow)};
+    final lineBins = {
+      for (final l in lines) l.line: lineActivity(log, l.line, range, lineNow, origin: topo.lineOfSource),
+    };
     final deviceTelegrams = <int, int>{};
     for (final t in log) {
       deviceTelegrams[t.source] = (deviceTelegrams[t.source] ?? 0) + 1;
@@ -2132,7 +2152,13 @@ class _Live {
     final flowNow = last != null && wall.difference(last) > const Duration(minutes: 2) ? last : wall;
     final flows = <_Flow>[
       for (var i = 1; i < lines.length; i++)
-        for (final f in CouplerTraffic.build(catalog, log, lines[i].line, gatewayLine: topo.gatewayLine).flows)
+        for (final f in CouplerTraffic.build(
+          catalog,
+          log,
+          lines[i].line,
+          gatewayLine: topo.gatewayLine,
+          origin: topo.lineOfSource,
+        ).flows)
           (
             lines[i].line,
             lines[i - 1].line,
@@ -2145,16 +2171,17 @@ class _Live {
     // Determine receiver lines per address only once; without a hit the search
     // runs back to the beginning of the log.
     final linkLines = <int, Set<int>>{};
-    final crossRows = <(Telegram, List<int>)>[];
+    final crossRows = <(Telegram, int, List<int>)>[];
     for (var i = log.length - 1; i >= 0 && crossRows.length < _crossRows; i--) {
       final t = log[i];
-      final from = lineOf(t.source);
+      final from = topo.lineOfSource(t.source);
       final receivers = linkLines.putIfAbsent(t.destination, () {
         return {for (final l in catalog[t.destination]?.links ?? const <GroupLink>[]) lineOf(l.device)};
       });
       if (receivers.every((l) => l == from)) continue;
       crossRows.add((
         t,
+        from,
         [
           for (final l in receivers)
             if (l != from) l,
@@ -2243,7 +2270,7 @@ class _CrossLive extends StatelessWidget {
   const _CrossLive({required this.rows, required this.onGroup});
 
   /// [_Live.crossRows].
-  final List<(Telegram, List<int>)> rows;
+  final List<(Telegram, int, List<int>)> rows;
 
   /// Opens the address (details, history, writing, devices).
   final ValueChanged<int> onGroup;
@@ -2261,7 +2288,7 @@ class _CrossLive extends StatelessWidget {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final (i, (t, to)) in rows.indexed)
+                for (final (i, (t, from, to)) in rows.indexed)
                   InkWell(
                     onTap: () => onGroup(t.destination),
                     child: Container(
@@ -2293,7 +2320,7 @@ class _CrossLive extends StatelessWidget {
                                 Text(
                                   [
                                     formatTime(t.time),
-                                    '${formatLine(lineOf(t.source))} → ${to.map(formatLine).join(', ')}',
+                                    '${formatLine(from)} → ${to.map(formatLine).join(', ')}',
                                   ].join(metaSeparator),
                                   style: context.figures(theme.textTheme.bodySmall).copyWith(color: hz.textFaint),
                                 ),
@@ -2739,7 +2766,7 @@ class _GroupLinkRow extends StatelessWidget {
                       const SizedBox(width: HzSpace.s8),
                       Expanded(
                         child: Text(
-                          device?.name ?? s.topoNotInProject,
+                          device?.name ?? unknownDeviceName(link.device),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(color: hz.text),

@@ -62,8 +62,7 @@ import 'app_localizations_en.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -71,8 +70,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -84,19 +82,15 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
-      <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[
-    Locale('de'),
-    Locale('en'),
-  ];
+  static const List<Locale> supportedLocales = <Locale>[Locale('de'), Locale('en')];
 
   /// Subtitle under the app name on the splash screen.
   ///
@@ -3392,6 +3386,18 @@ abstract class AppLocalizations {
   /// **'nicht im Projekt (Tunnel/Visu?)'**
   String get topoNotInProject;
 
+  /// Topology tool: sender 15.15.255, the factory address of KNX devices and of the KNX HAT in a KNX Monitor Box
+  ///
+  /// In de, this message translates to:
+  /// **'Werksadresse (Box-Modul oder neues Gerät?)'**
+  String get topoFactoryAddress;
+
+  /// Topology tool: device whose address names a line that is not in the project, but which sits on the gateway line
+  ///
+  /// In de, this message translates to:
+  /// **'Die Adresse gehört zu Linie {line}, die es im Projekt nicht gibt. Die Telegramme kommen ohne Koppler an, das Gerät hängt also an Linie {gateway}. Gib ihm eine freie Adresse dieser Linie.'**
+  String topoStrayHint(String line, String gateway);
+
   /// Topology tool
   ///
   /// In de, this message translates to:
@@ -3908,6 +3914,12 @@ abstract class AppLocalizations {
   /// **'KNX: {count, plural, =1{1 neuer Befund} other{{count} neue Befunde}}'**
   String healthNotifyTitle(int count);
 
+  /// Letzte Zeile der Befund-Mitteilung: wie viele Befunde nicht aufgeführt sind und wo die Einzelheiten stehen
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =0{Einzelheiten in KNX Monitor unter „Gesundheit“} =1{… und 1 weiterer. Einzelheiten in KNX Monitor unter „Gesundheit“} other{… und {count} weitere. Einzelheiten in KNX Monitor unter „Gesundheit“}}'**
+  String healthNotifyMore(int count);
+
   /// Gesundheit: Kennzeichen neuer Befund
   ///
   /// In de, this message translates to:
@@ -3960,13 +3972,7 @@ abstract class AppLocalizations {
   ///
   /// In de, this message translates to:
   /// **'{sender} sendet {actual}, DPT {dpt} erwartet {expected} ({count}×)'**
-  String healthDptSize(
-    String sender,
-    String actual,
-    String dpt,
-    String expected,
-    int count,
-  );
+  String healthDptSize(String sender, String actual, String dpt, String expected, int count);
 
   /// Befund: ungültiger Wert
   ///
@@ -7844,6 +7850,18 @@ abstract class AppLocalizations {
   /// **'Aus: Die Box ist nur in ihrem eigenen WLAN erreichbar, beim Kunden kommt niemand aus dessen Netz an sie heran. An: für die eigene Box im eigenen Netz, dann reicht dort das Box-Passwort.'**
   String get boxLanAccessHint;
 
+  /// Settings of KNX Monitor in a Docker container: whether other devices on the network may reach it.
+  ///
+  /// In de, this message translates to:
+  /// **'Zugriff aus dem Netzwerk'**
+  String get boxContainerLanAccess;
+
+  /// Docker settings: the network access switch is read-only, it comes from the container's LAN_ACCESS setting.
+  ///
+  /// In de, this message translates to:
+  /// **'Festgelegt im Container mit LAN_ACCESS (yes oder no). Zum Ändern dort umstellen und den Container neu starten. Aus: nur am Rechner mit dem Container erreichbar.'**
+  String get boxContainerLanAccessHint;
+
   /// Dialog title before turning cable access off.
   ///
   /// In de, this message translates to:
@@ -8100,14 +8118,7 @@ abstract class AppLocalizations {
   ///
   /// In de, this message translates to:
   /// **'{frames} Frames: {ack} ACK, {nak} NAK, {busy} BUSY, {repeated} Wiederholungen, {errors} mit Fehlern'**
-  String boxHatBusmonCounts(
-    int frames,
-    int ack,
-    int nak,
-    int busy,
-    int repeated,
-    int errors,
-  );
+  String boxHatBusmonCounts(int frames, int ack, int nak, int busy, int repeated, int errors);
 
   /// KNX HAT test: no frames received while listening.
   ///
@@ -15292,8 +15303,7 @@ abstract class AppLocalizations {
   String get appLockRestart;
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -15302,8 +15312,7 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['de', 'en'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['de', 'en'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

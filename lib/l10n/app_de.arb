@@ -2583,6 +2583,22 @@
   "@topoNotInProject": {
     "description": "Topology tool"
   },
+  "topoFactoryAddress": "Werksadresse (Box-Modul oder neues Gerät?)",
+  "@topoFactoryAddress": {
+    "description": "Topology tool: sender 15.15.255, the factory address of KNX devices and of the KNX HAT in a KNX Monitor Box"
+  },
+  "topoStrayHint": "Die Adresse gehört zu Linie {line}, die es im Projekt nicht gibt. Die Telegramme kommen ohne Koppler an, das Gerät hängt also an Linie {gateway}. Gib ihm eine freie Adresse dieser Linie.",
+  "@topoStrayHint": {
+    "description": "Topology tool: device whose address names a line that is not in the project, but which sits on the gateway line",
+    "placeholders": {
+      "line": {
+        "type": "String"
+      },
+      "gateway": {
+        "type": "String"
+      }
+    }
+  },
   "topoSilent": "nicht gesehen",
   "@topoSilent": {
     "description": "Topology tool"
@@ -3019,6 +3035,15 @@
   "healthNotifyTitle": "KNX: {count, plural, =1{1 neuer Befund} other{{count} neue Befunde}}",
   "@healthNotifyTitle": {
     "description": "Mitteilung nach Gesundheitsprüfung",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "healthNotifyMore": "{count, plural, =0{Einzelheiten in KNX Monitor unter „Gesundheit“} =1{… und 1 weiterer. Einzelheiten in KNX Monitor unter „Gesundheit“} other{… und {count} weitere. Einzelheiten in KNX Monitor unter „Gesundheit“}}",
+  "@healthNotifyMore": {
+    "description": "Letzte Zeile der Befund-Mitteilung: wie viele Befunde nicht aufgeführt sind und wo die Einzelheiten stehen",
     "placeholders": {
       "count": {
         "type": "int"
@@ -6572,6 +6597,14 @@
   "boxLanAccessHint": "Aus: Die Box ist nur in ihrem eigenen WLAN erreichbar, beim Kunden kommt niemand aus dessen Netz an sie heran. An: für die eigene Box im eigenen Netz, dann reicht dort das Box-Passwort.",
   "@boxLanAccessHint": {
     "description": "Box settings: explanation of the cable access switch."
+  },
+  "boxContainerLanAccess": "Zugriff aus dem Netzwerk",
+  "@boxContainerLanAccess": {
+    "description": "Settings of KNX Monitor in a Docker container: whether other devices on the network may reach it."
+  },
+  "boxContainerLanAccessHint": "Festgelegt im Container mit LAN_ACCESS (yes oder no). Zum Ändern dort umstellen und den Container neu starten. Aus: nur am Rechner mit dem Container erreichbar.",
+  "@boxContainerLanAccessHint": {
+    "description": "Docker settings: the network access switch is read-only, it comes from the container's LAN_ACCESS setting."
   },
   "boxLanAccessOffTitle": "Zugriff über das Kabel sperren?",
   "@boxLanAccessOffTitle": {

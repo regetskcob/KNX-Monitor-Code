@@ -1,5 +1,7 @@
 # Every pull request: app (format, analysis, tests, web build for the HA
-# add-on) and the add-on server. main changes only through pull requests, so
+# add-on) and the add-on server – unless tool/release.sh verify passed for
+# the pull request's head locally and tool/release.sh push marked it on GitHub
+# (status werkbank/verify, job gate; tool/werkbank/STANDARD.md, "Stempel"). main changes only through pull requests, so
 # there is no second run after the merge. Changes only to the website or docs
 # start no run. Desktop (Linux, Windows) builds run only on an app-v* tag
 # (tool/release.sh app pushes it) or by hand; the Android test APK only by hand
@@ -18,13 +20,40 @@ on:
 
 permissions:
   contents: read
+  statuses: read
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Was the head checked locally already? Then app and addon-server skip.
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      verified: ${{ steps.stamp.outputs.verified }}
+    steps:
+      - id: stamp
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          verified=false
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            for _ in 1 2 3; do
+              state=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/statuses" \
+                --jq '[.[] | select(.context == "werkbank/verify" and .creator.login == "'"$GITHUB_REPOSITORY_OWNER"'")][0].state // ""' \
+                2>/dev/null || true)
+              if [ "$state" = success ]; then verified=true; break; fi
+              sleep 10
+            done
+          fi
+          echo "verified=$verified" >> "$GITHUB_OUTPUT"
+
   app:
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.outputs.verified != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -118,6 +147,8 @@ jobs:
 
   # Add-on server and the internal package it shares with the app (packages/knx).
   addon-server:
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.outputs.verified != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:

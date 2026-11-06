@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.9.9
+
+- Docker: `LAN_ACCESS` now applies on every start. Setting `LAN_ACCESS=yes` after
+  the first start used to have no effect. Messages, the login dialog and the
+  settings page speak of network access and the password instead of the box
+  Wi-Fi, which does not exist in Docker. On start the log says whether only the
+  host or the whole network can reach it.
+- Alarms on the add-on and the KNX box use the names you corrected or taught in
+  the app, not only the ETS project.
+- The Home Assistant notification for findings says in plain words what is wrong,
+  counts the ones not listed and links to the add-on page.
+- Diagnostic and handover packages keep corrected group address names, so the
+  tasks for the ETS survive opening the package elsewhere.
+- Topology: devices with an address outside the project (for example the KNX HAT
+  of a box on the factory address 15.15.255) appear on the gateway's line with a
+  hint, instead of as an extra line with a missing coupler.
+
 ## 1.9.8
 
 Security and load release, from an audit, a pen test and a load test with 30 days

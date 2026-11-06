@@ -19,6 +19,7 @@ Future<void> showCouplerSheet(
   required int line,
   required TelegramLog log,
   int? gatewayLine,
+  int Function(int source) origin = lineOf,
   int? partner,
   ValueChanged<String>? onFilter,
 }) => showModalBottomSheet<void>(
@@ -36,6 +37,7 @@ Future<void> showCouplerSheet(
         line: line,
         log: log,
         gatewayLine: gatewayLine,
+        origin: origin,
         partner: partner,
         scrollController: scroll,
         onFilter: onFilter == null
@@ -57,6 +59,7 @@ class CouplerTrafficView extends StatefulWidget {
     required this.line,
     required this.log,
     this.gatewayLine,
+    this.origin = lineOf,
     this.partner,
     this.scrollController,
     this.onFilter,
@@ -71,6 +74,9 @@ class CouplerTrafficView extends StatefulWidget {
   final int line;
   final TelegramLog log;
   final int? gatewayLine;
+
+  /// Line of a sender, see [Topology.lineOfSource].
+  final int Function(int source) origin;
 
   /// Neighboring line in the view, in case the project defines no direction.
   final int? partner;
@@ -105,6 +111,7 @@ class _CouplerTrafficViewState extends State<CouplerTrafficView> {
           widget.log.log,
           widget.line,
           gatewayLine: widget.gatewayLine,
+          origin: widget.origin,
         );
         final partners = <int>{for (final f in traffic.flows) f.from == widget.line ? f.to : f.from}.toList();
         if (partners.isEmpty && widget.partner != null) partners.add(widget.partner!);

@@ -599,8 +599,10 @@ Limits against overload, for all roles:
 The Docker template (`tool/public-repo/docker/compose.yaml`) runs the same
 server with `BOX=1`, requires `BOX_PASSWORD` (Compose refuses to start without
 it, and so does the server on its first start, instead of inventing a password
-and printing it to the log), and answers only on the host itself (loopback) unless `LAN_ACCESS=yes`;
-the box Wi-Fi range `10.42.0.0/24` counts only on the real box, since in
+and printing it to the log), and answers only on the host itself (loopback) unless `LAN_ACCESS=yes`.
+In Docker (`BOX=1` without `BOX_STICKER=1`) `LAN_ACCESS` applies on every start and
+cannot be switched in the app, so the container's settings are the only place
+that opens it to the network; the password is required either way. The box Wi-Fi range `10.42.0.0/24` counts only on the real box, since in
 Docker it can be a home or k3s pod network. The data folder is a bind mount on
 the host: the server sets it to 0700 and creates files with umask 077, so the
 keyring and IP Secure passwords are not readable by other host accounts

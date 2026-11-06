@@ -41,6 +41,8 @@
 #                                      build a site of WB_SITES; --live deploys it to its target
 #   werkbank resolved                  fails while a store build left ios/ or macos/
 #                                      Package.resolved changed (commit them via PR)
+#   werkbank push [git push args]      git push, then mark HEAD verified on GitHub
+#                                      (status werkbank/verify) when verify passed for it
 #   werkbank doctor                    which tools and keys are there
 #
 # Works from any directory: a copy in tool/werkbank/ always acts on its own
@@ -80,6 +82,7 @@ case "$cmd" in
   release) wb_release "$@" ;;
   site-deploy) wb_site_deploy "$@" ;;
   resolved) wb_resolved_guard && say "Package.resolved unchanged" ;;
+  push) wb_push "$@" ;;
   doctor) wb_doctor ;;
-  *) sed -n '2,47p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 2 ;;
+  *) sed -n '2,49p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac

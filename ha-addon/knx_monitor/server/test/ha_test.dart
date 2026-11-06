@@ -5,6 +5,22 @@ import 'package:knx_monitor_server/bus.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('Link der Mitteilungen: Seite des Add-ons aus der Supervisor-Antwort', () {
+    expect(
+      panelPathOf({
+        'data': {'slug': '2541da37_knx_monitor'},
+      }),
+      '/hassio/ingress/2541da37_knx_monitor',
+    );
+    expect(
+      panelPathOf({
+        'data': {'slug': 'x)](javascript:'},
+      }),
+      isNull,
+    );
+    expect(panelPathOf({'result': 'error'}), isNull);
+  });
+
   group('HomeAssistant', () {
     late HttpServer server;
     final requests = <(String, String, String?, Object?)>[];
@@ -186,6 +202,54 @@ void main() {
       await File('${data.path}/name_overrides.json').delete();
       await alarms.loadCatalog();
       expect(alarms.nameOf(0x0801), 'Rauchmeldr Flur');
+    });
+
+    test('Alarm: angelernte Adressen ohne ETS-Projekt, das Projekt hat Vorrang', () async {
+      final catalog = File('${data.path}/catalog.json');
+      if (await catalog.exists()) await catalog.delete();
+      await File('${data.path}/learned.json').writeAsString(
+        jsonEncode({
+          'groups': [
+            {
+              'a': 0x0801,
+              'n': 'Rauchmelder Keller',
+              'd': [1, 5],
+            },
+            {'a': 0x0802, 'n': 'Wassermelder Bad'},
+          ],
+          'devices': <Object>[],
+        }),
+      );
+      final notes = <String>[];
+      final alarms = AlarmWatch(
+        data,
+        notify: ({required id, required title, required message}) async => notes.add(title),
+      );
+      await alarms.loadCatalog();
+      expect(alarms.nameOf(0x0801), 'Rauchmelder Keller');
+      expect(alarms.dptMainOf(0x0801), 1);
+      await alarms.check(line(0x0801, '01', small: true));
+      expect(notes.single, contains('Rauchmelder Keller'));
+
+      // The project wins, the learned type fills in a missing one, a correction replaces both.
+      await catalog.writeAsString(
+        jsonEncode({
+          'style': 'threeLevel',
+          'groups': [
+            {'a': 0x0801, 'n': 'RM Keller'},
+          ],
+        }),
+      );
+      await alarms.loadCatalog();
+      expect(alarms.nameOf(0x0801), 'RM Keller');
+      expect(alarms.dptMainOf(0x0801), 1);
+      expect(alarms.nameOf(0x0802), 'Wassermelder Bad');
+      await File('${data.path}/name_overrides.json').writeAsString(jsonEncode({'${0x0802}': 'Wassermelder Gäste-WC'}));
+      await alarms.loadCatalog();
+      expect(alarms.nameOf(0x0802), 'Wassermelder Gäste-WC');
+      await File('${data.path}/name_overrides.json').delete();
+      await File('${data.path}/learned.json').delete();
+      await catalog.delete();
     });
   });
 }

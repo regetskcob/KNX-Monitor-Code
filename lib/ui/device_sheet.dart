@@ -36,6 +36,11 @@ import '../model/push_buttons.dart';
 import '../model/filter.dart';
 import 'plan_screen.dart';
 
+/// Name for a sender that is not in the project: the factory address
+/// 15.15.255 gets its own, as it is mostly a fresh interface (e.g. the
+/// KNX HAT of a KNX Monitor Box) or an unprogrammed device.
+String unknownDeviceName(int address) => address == factoryAddress ? s.topoFactoryAddress : s.topoNotInProject;
+
 /// Device in a sheet: sent and received telegrams, jump to the communication
 /// map and monitor filter. On iPad and Mac wide enough for drawing, channels
 /// and telegrams side by side.
@@ -44,6 +49,7 @@ Future<void> showDeviceSheet(
   required int address,
   required TelegramLog log,
   int? hops,
+  int? line,
   ValueChanged<String>? onFilter,
 }) => showModalBottomSheet<void>(
   context: context,
@@ -60,6 +66,7 @@ Future<void> showDeviceSheet(
         address: address,
         log: log,
         hops: hops,
+        line: line,
         scrollController: scroll,
         onMap: () async {
           Navigator.pop(sheet);
@@ -92,6 +99,7 @@ class DeviceTraffic extends StatefulWidget {
     required this.address,
     required this.log,
     this.hops,
+    this.line,
     this.scrollController,
     this.onMap,
     this.onFilter,
@@ -105,6 +113,10 @@ class DeviceTraffic extends StatefulWidget {
   final int address;
   final TelegramLog log;
   final int? hops;
+
+  /// Line the topology lists the device on, if not the one of its address
+  /// (see [Topology.strays]).
+  final int? line;
   final ScrollController? scrollController;
   final VoidCallback? onMap;
   final VoidCallback? onFilter;
@@ -245,7 +257,7 @@ class _DeviceTrafficState extends State<DeviceTraffic> {
                           ),
                           const SizedBox(height: HzSpace.s4),
                           Text(
-                            device?.name ?? s.topoNotInProject,
+                            device?.name ?? unknownDeviceName(widget.address),
                             style: (wide ? theme.textTheme.titleLarge : theme.textTheme.titleMedium)?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
@@ -254,7 +266,10 @@ class _DeviceTrafficState extends State<DeviceTraffic> {
                           Text(
                             [
                               ?device?.product,
-                              s.devLineHops(formatLine(lineOf(widget.address)), widget.hops?.toString() ?? '—'),
+                              s.devLineHops(
+                                formatLine(widget.line ?? lineOf(widget.address)),
+                                widget.hops?.toString() ?? '—',
+                              ),
                             ].join(metaSeparator),
                             style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted),
                           ),
@@ -265,6 +280,15 @@ class _DeviceTrafficState extends State<DeviceTraffic> {
                     if (widget.onClose != null) CloseDetailButton(onPressed: widget.onClose),
                   ],
                 ),
+                // Address of a line that is not in the project, the device sits
+                // on the gateway line (see Topology.strays).
+                if (widget.line case final line? when line != lineOf(widget.address)) ...[
+                  const SizedBox(height: Gap.inner),
+                  HorizontNotice(
+                    HorizontStatus.warning,
+                    child: Text(s.topoStrayHint(formatLine(lineOf(widget.address)), formatLine(line))),
+                  ),
+                ],
                 const SizedBox(height: Gap.inner),
                 if (wide)
                   // Kennzahlen links, Aktionen rechts in einer Zeile.

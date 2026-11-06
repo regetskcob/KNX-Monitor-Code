@@ -19,6 +19,7 @@ import 'commissioning.dart';
 import 'history_store.dart';
 import 'statistics.dart';
 import 'telegram_log.dart';
+import 'weekly_report.dart';
 import 'installation.dart';
 
 /// Areas of the health check.
@@ -576,11 +577,7 @@ class HealthCheck extends ChangeNotifier {
     ];
     if (fresh.isEmpty) return;
     try {
-      await sendNotification(
-        id: 'health',
-        title: s.healthNotifyTitle(fresh.length),
-        body: fresh.take(3).map(findingTitle).join('\n'),
-      );
+      await sendNotification(id: 'health', title: s.healthNotifyTitle(fresh.length), body: notificationBody(fresh));
     } on Object catch (e) {
       debugPrint('Mitteilung Gesundheit: $e');
     }
@@ -618,6 +615,21 @@ class HealthCheck extends ChangeNotifier {
     _clear();
     _loaded = true;
   }
+}
+
+/// Text of the notification after a run: what is wrong in plain words, with the
+/// address, at most [shown] findings, then how many more and where the details are.
+/// The address alone ("2/4/4 Ventil-Zustand") left the user guessing.
+String notificationBody(List<HealthFinding> fresh, {int shown = 3}) => [
+  for (final f in fresh.take(shown)) _withAddress(f),
+  s.healthNotifyMore(fresh.length > shown ? fresh.length - shown : 0),
+].join('\n');
+
+String _withAddress(HealthFinding f) {
+  final text = plainFinding(f);
+  final address = f.kind.device ? formatIndividual(f.address) : formatGroup(f.address);
+  // Without a name the sentence already carries the address.
+  return text.contains(address) ? text : '$text ($address)';
 }
 
 /// Address or device with name: "8/1/1 Windgeschwindigkeit".

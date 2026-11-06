@@ -53,6 +53,7 @@ wb_load_conf() {
   WB_GH_RELEASE_REPO=""
   WB_SITES=""
   WB_RELEASE_SITES=""
+  WB_CI_VERIFY="full"
   if [ -f tool/werkbank.conf ]; then
     # shellcheck disable=SC1091
     . tool/werkbank.conf
@@ -142,6 +143,8 @@ wb_verify() {
   fi
   if $quick; then
     say "Quick check green"
+    # Where the pull request CI runs only the quick checks, they are enough for the stamp.
+    if [ "$WB_CI_VERIFY" = quick ]; then wb_stamp_verified; fi
     return 0
   fi
   if wb_has_hook verify_extra; then
@@ -149,6 +152,52 @@ wb_verify() {
   fi
   wb_site_check
   say "All green"
+  wb_stamp_verified
+}
+
+# The full verify of a clean working tree is the pull request CI run ahead of
+# time: remember the commit, so `werkbank push` can tell GitHub (status
+# werkbank/verify) and the CI's gate job skips the same checks. Changes or
+# untracked files would make the run say nothing about the commit: no stamp.
+wb_stamp_file() { echo "$(git rev-parse --git-dir)/werkbank-verified"; }
+
+wb_stamp_verified() {
+  if [ -n "$(git status --porcelain --untracked-files=all)" ]; then
+    rm -f "$(wb_stamp_file)"
+    say "Not stamped: the working tree has changes (the CI will run in full)"
+    return 0
+  fi
+  git rev-parse HEAD >"$(wb_stamp_file)"
+  say "Stamped $(git rev-parse --short HEAD) as verified – push with: tool/release.sh push"
+}
+
+# Pushes (arguments as for git push), then marks the pushed HEAD as verified
+# on GitHub when verify passed for exactly that commit. Without a stamp, or
+# when gh cannot set it, the CI simply runs in full.
+wb_push() {
+  git push "$@"
+  local file sha head slug
+  file=$(wb_stamp_file)
+  head=$(git rev-parse HEAD)
+  if [ ! -f "$file" ]; then
+    warn "no verify stamp – the CI runs in full (tool/release.sh verify first saves it)"
+    return 0
+  fi
+  sha=$(cat "$file")
+  if [ "$sha" != "$head" ]; then
+    warn "verify ran for ${sha:0:7}, HEAD is ${head:0:7} – the CI runs in full"
+    return 0
+  fi
+  if ! slug=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null); then
+    warn "gh cannot see the repository – the CI runs in full"
+    return 0
+  fi
+  if gh api -X POST "repos/$slug/statuses/$head" -f state=success -f context=werkbank/verify \
+    -f "description=tool/release.sh verify passed locally" >/dev/null; then
+    say "GitHub: ${head:0:7} verified – the CI's gate skips its checks"
+  else
+    warn "could not set the status – the CI runs in full"
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -677,6 +726,13 @@ wb_release_build() {
     return
   fi
   for platform in $(wb_platforms "$p"); do
+    # A project hook build_<platform> replaces werkbank's own build, also for
+    # android and ios (watch app inside the IPA, phone plus Wear OS bundle, …).
+    if wb_has_hook "build_$platform"; then
+      "build_$platform" "$upload"
+      wb_resolved_guard after-hook
+      continue
+    fi
     case "$platform" in
       android)
         wb_android
@@ -686,12 +742,7 @@ wb_release_build() {
         wb_ios
         if $upload; then wb_upload_apple build/ios/archive/Runner.xcarchive; fi
         ;;
-      *)
-        wb_has_hook "build_$platform" || die "no werkbank build for $platform – define build_$platform in tool/werkbank.conf"
-        "build_$platform" "$upload"
-        wb_resolved_guard after-hook
-        continue
-        ;;
+      *) die "no werkbank build for $platform – define build_$platform in tool/werkbank.conf" ;;
     esac
     wb_resolved_guard
   done

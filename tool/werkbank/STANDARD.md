@@ -63,7 +63,8 @@ Watch-App, Seiten-Deploy), steht als eigener Befehl daneben.
 
 | Befehl | Was | Quelle |
 |---|---|---|
-| `verify` | vor jedem Push: Layout, Übersetzungen, Format, Analyse, Tests, dann die Hooks `verify_quick_extra` und `verify_extra` | `werkbank verify` |
+| `verify` | vor jedem Push: Layout, Übersetzungen, Format, Analyse, Tests, dann die Hooks `verify_quick_extra` und `verify_extra`; grün bei sauberem Arbeitsbaum merkt es sich den Commit (Stempel) | `werkbank verify` |
+| `push [args]` | `git push`, danach – wenn `verify` genau diesen Commit geprüft hat – Status `werkbank/verify` auf GitHub, damit die PR-CI ihre Prüfungen überspringt | `werkbank push` |
 | `android` | signiertes AAB (baut fastlane oder ein Projektskript, nimmt `werkbank collect aab <pfad> [variante]` es auf) nach `build/release/<app>-<version>.aab`, Prüfung gegen den Debug-Schlüssel, Symbole wegsichern | `werkbank android` |
 | `ios` | IPA nach `build/release/<app>-<version>.ipa`, mit `--upload` zu App Store Connect | `werkbank ios` |
 | `changelog [--draft]` | Changelog-Abschnitt der Version in allen Sprachen fertig? `--draft` macht aus „Unreleased“ die Version | `werkbank changelog` |
@@ -79,6 +80,46 @@ Watch-App, Seiten-Deploy), steht als eigener Befehl daneben.
 - **Version** nur in `pubspec.yaml` (`x.y.z+build`); Skripte lesen sie mit `werkbank version`.
 - **CI** läuft auf Pull Requests (Linux) mit denselben Schritten wie `verify --quick`; teure
   Builds (macOS, Windows) nur auf Tag oder von Hand. Release-Builds entstehen lokal.
+- **Stempel statt doppelter Prüfung:** Actions-Minuten privater Repos sind knapp (3.000 im
+  Monat für alle). Ein voller `verify` auf sauberem Arbeitsbaum merkt sich den Commit,
+  `tool/release.sh push` setzt danach den Status `werkbank/verify` auf GitHub. Die PR-CI
+  beginnt mit einem Job `gate`, der diesen Status für den Kopf des PRs abfragt; ist er da,
+  überspringen die teuren Jobs (`needs: gate`, `if: ${{ !cancelled() && needs.gate.outputs.verified != 'true' }}`).
+  Ohne Stempel (geändert nach `verify`, gewöhnliches `git push`, `--quick`) läuft alles.
+  Prüft die PR-CI eines Projekts nur `verify --quick`, stempelt mit `WB_CI_VERIFY=quick`
+  auch der schnelle Lauf.
+  Tags und `workflow_dispatch` prüfen immer voll. Das Gate zählt nur Statusmeldungen des
+  Repo-Besitzers (ein persönliches Repo); kann es GitHub nicht fragen, prüft die CI voll
+  (`!cancelled()`, Fehler der Abfrage gelten als „kein Stempel“). Vorlage für den Job:
+
+  ```yaml
+  permissions:
+    contents: read
+    statuses: read
+  jobs:
+    gate:
+      runs-on: ubuntu-latest
+      timeout-minutes: 3
+      outputs:
+        verified: ${{ steps.stamp.outputs.verified }}
+      steps:
+        - id: stamp
+          env:
+            GH_TOKEN: ${{ github.token }}
+            SHA: ${{ github.event.pull_request.head.sha }}
+          run: |
+            verified=false
+            if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+              for _ in 1 2 3; do
+                state=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/statuses" \
+                  --jq '[.[] | select(.context == "werkbank/verify" and .creator.login == "'"$GITHUB_REPOSITORY_OWNER"'")][0].state // ""' \
+                  2>/dev/null || true)
+                if [ "$state" = success ]; then verified=true; break; fi
+                sleep 10
+              done
+            fi
+            echo "verified=$verified" >> "$GITHUB_OUTPUT"
+  ```
 - **Ausgaben:** Erzeugtes nach `build/`, Release-Dateien nach `build/release/`, Symbole von
   `--split-debug-info` nach `~/keys/symbols/<app>/<version>/<plattform>/`.
 
@@ -94,7 +135,7 @@ tool/release.sh release [--upload]    # dann wirklich
 | Phase | Was |
 |---|---|
 | Vorprüfung | sauberer `main` gleich `origin/main`, Abschnitt `## <version>` im `CHANGELOG.md`, Release-Texte vollständig (bei iOS/Android), dann `verify` (oder Hook `verify_release`) |
-| Bauen | je Produkt und Plattform: `android` und `ios` aus der werkbank, andere über `build_<plattform>`; ein Produkt mit Hook `release_<produkt>` baut ganz selbst (z. B. per CI) |
+| Bauen | je Produkt und Plattform: `android` und `ios` aus der werkbank, andere über `build_<plattform>`; ein Hook `build_<plattform>` ersetzt auch den werkbank-Weg für `android`/`ios` (z. B. Watch-App im IPA, Phone- und Wear-Bundle); ein Produkt mit Hook `release_<produkt>` baut ganz selbst (z. B. per CI) |
 | Hochladen | mit `--upload`: Apple über das Xcode-Konto, Play über das Dienstkonto |
 | Tag | `<präfix><version>` je Produkt, erst nach Bauen und Hochladen, gepusht |
 | GitHub-Release | mit `WB_GH_RELEASE_REPO`: Changelog-Abschnitt als Text, Dateien aus `build/release/` |
@@ -248,6 +289,7 @@ optional; Vorlage: `werkbank.conf.example` im werkbank-Repo.
 | `WB_PRODUCTS`, `WB_VERSION_FILE_<p>`, `WB_TAG_PREFIX_<p>`, `WB_PLATFORMS_<p>` | `app`, `pubspec.yaml`, `<p>-v`, Plattformordner | Produkte des Release |
 | `WB_CHANGELOG`, `WB_CHANGELOG_LANGS`, `WB_GH_RELEASE_REPO` | `CHANGELOG.md`, `en de`, – | Changelog (weitere Sprachen als `CHANGELOG.<lang>.md`) und Repo der GitHub-Releases |
 | `WB_SITES`, `WB_RELEASE_SITES` | – | Seiten und welche der Release live stellt |
+| `WB_CI_VERIFY` | `full` | was die PR-CI prüft (`quick`: dann stempelt auch `verify --quick`) |
 | `release_<p>`, `build_<plattform>`, `verify_release`, `release_manual`, `site_post_<name>`, `site_deploy_<name>` | – | Hooks des Release und der Seiten |
 | `WB_DEVICETEST_TARGETS` | alle `integration_test/*_test.dart` | Tests für `devicetest` |
 | `devicetest_before`, `devicetest_after` | – | Funktionen je Gerät (`$1` Geräte-ID, `$2` Plattform) |

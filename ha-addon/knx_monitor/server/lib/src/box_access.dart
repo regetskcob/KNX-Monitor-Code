@@ -109,6 +109,7 @@ class BoxAccess {
     this._fromWlan,
     this.sticker,
     this._peerOf,
+    this.container,
   );
 
   /// Opens `access.json` in [data]. If it does not exist yet, a password is
@@ -118,6 +119,9 @@ class BoxAccess {
   /// `/api/files/`.
   ///
   /// [initialLanAccess] applies as long as nothing else is set in the app.
+  /// In a [container] (Docker) it applies on every start instead: there it
+  /// comes from `LAN_ACCESS` in the container's settings, and the app cannot
+  /// change it.
   /// [fromWlan] decides whether a sender is in the box Wi-Fi (default:
   /// [wlanPeer]).
   static Future<BoxAccess> open(
@@ -127,6 +131,7 @@ class BoxAccess {
     bool initialLanAccess = false,
     bool Function(InternetAddress peer) fromWlan = wlanPeer,
     bool sticker = false,
+    bool container = false,
     String Function(HttpRequest request)? peerOf,
     // 200,000 rounds took over 30 seconds per first login on the Pi 4; the password is on
     // the SD card anyway, and online attempts are slowed by the lockout after failures.
@@ -144,6 +149,7 @@ class BoxAccess {
       fromWlan,
       sticker,
       peerOf,
+      container,
     );
     access._lanAccess = initialLanAccess;
     // Older versions stored the initial password in plain text.
@@ -184,6 +190,12 @@ class BoxAccess {
       }
       await access._save();
       access.firstPassword = password;
+    }
+    // Docker: LAN_ACCESS from the container's settings wins over what the
+    // first start stored, so changing it there and restarting takes effect.
+    if (container && access._lanAccess != initialLanAccess) {
+      access._lanAccess = initialLanAccess;
+      await access._save();
     }
     await access._consumeReset();
     // Box from 1.9.1: is the sticker password still valid? In the background, the old
@@ -245,6 +257,10 @@ class BoxAccess {
 
   /// Real box with sticker and SD card (not Docker, see knx-box.service).
   final bool sticker;
+
+  /// Docker container (`BOX=1` without the sticker of the real box): no box
+  /// Wi-Fi, access from the network only via `LAN_ACCESS`, see [open].
+  final bool container;
 
   /// Tests only: sender for lockout and counters instead of the real address.
   final String Function(HttpRequest request)? _peerOf;
@@ -339,7 +355,10 @@ class BoxAccess {
       return _deny(
         response,
         HttpStatus.forbidden,
-        'Zugriff über das Kabel ist aus. Im WLAN der Box verbinden oder in den Box-Einstellungen freigeben.',
+        container
+            ? 'Zugriff aus dem Netzwerk ist aus. Am Rechner mit dem Container über http://localhost öffnen, '
+                  'oder LAN_ACCESS=yes setzen und den Container neu starten.'
+            : 'Zugriff über das Kabel ist aus. Im WLAN der Box verbinden oder in den Box-Einstellungen freigeben.',
       );
     }
     final peer = _peerOf?.call(request) ?? address?.address ?? '';
@@ -419,7 +438,7 @@ class BoxAccess {
     // The raw relay can send arbitrary KNXnet/IP packets; pairing devices
     // requires the password.
     if (role != BoxRole.admin && (path == '/ws' || path == '/pair' || path.startsWith('/pair/'))) {
-      return _deny(response, HttpStatus.forbidden, 'Nur mit dem Box-Passwort.');
+      return _deny(response, HttpStatus.forbidden, 'Nur mit dem $_passwordWord.');
     }
     return role;
   }
@@ -453,7 +472,11 @@ class BoxAccess {
   }
 
   /// Text in the browser's login dialog (if it shows one).
-  static const realm = 'KNX-Box: Benutzername beliebig, Box-Passwort';
+  String get realm =>
+      container ? 'KNX Monitor: Benutzername beliebig, Passwort' : 'KNX-Box: Benutzername beliebig, Box-Passwort';
+
+  /// "Box-Passwort", in Docker just "Passwort" (there is no box).
+  String get _passwordWord => container ? 'Passwort' : 'Box-Passwort';
 
   /// Logged in by cookie only: modifying requests and WebSockets must state
   /// their origin (browsers always do), and requests from foreign pages do
@@ -817,6 +840,7 @@ class BoxAccess {
           'name': name,
           'role': role.name,
           'lanAccess': _lanAccess,
+          if (container) 'container': true,
           if (sticker) 'wifiChange': true,
           if (_mustChange) 'mustChangePassword': true,
           if (_required) 'passwordChangeRequired': true,
@@ -861,8 +885,12 @@ class BoxAccess {
             notice = 'Gerät gesperrt.';
           }
         case '/pair/lan':
-          await setLanAccess(form['enabled'] == '1');
-          notice = lanAccess ? 'Zugriff über das Kabel ist frei.' : 'Zugriff über das Kabel ist aus.';
+          if (container) {
+            notice = _containerLan;
+          } else {
+            await setLanAccess(form['enabled'] == '1');
+            notice = lanAccess ? 'Zugriff über das Kabel ist frei.' : 'Zugriff über das Kabel ist aus.';
+          }
         case '/pair/password':
           final next = form['password'] ?? '';
           if (next.length < 8) {
@@ -918,7 +946,7 @@ class BoxAccess {
     final response = request.response;
     final path = request.uri.path;
     if (role != BoxRole.admin) {
-      await _deny(response, HttpStatus.forbidden, 'Nur mit dem Box-Passwort.');
+      await _deny(response, HttpStatus.forbidden, 'Nur mit dem $_passwordWord.');
       return;
     }
     final post = request.method == 'POST';
@@ -1015,6 +1043,10 @@ class BoxAccess {
         final enabled = body['enabled'];
         if (enabled is! bool) {
           await _deny(response, HttpStatus.badRequest, 'Ungültige Anfrage.');
+          return;
+        }
+        if (container) {
+          await _deny(response, HttpStatus.conflict, _containerLan);
           return;
         }
         await setLanAccess(enabled);
@@ -1121,25 +1153,30 @@ class BoxAccess {
         ..write('placeholder="Aktuelles Passwort"><button class="quiet">Alle sperren</button></form>');
     }
     out
-      ..write('</section><section><h2>Box-Passwort ändern</h2><form method="post" action="/pair/password">')
+      ..write('</section><section><h2>$_passwordWord ändern</h2><form method="post" action="/pair/password">')
       ..write('<input type="password" name="current" autocomplete="current-password" required ')
       ..write('placeholder="Aktuelles Passwort">')
       ..write('<input type="password" name="password" minlength="8" autocomplete="new-password" ')
       ..write('placeholder="Neues Passwort"><button>Ändern</button></form></section>')
-      ..write('<section><h2>Zugriff über das Kabel</h2><p class="hint">')
-      ..write(
-        _lanAccess
-            ? 'Frei: Auch Geräte im Netz am Kabel erreichen die Box (mit Passwort).'
-            : 'Aus: Die Box ist nur im eigenen WLAN erreichbar.',
-      )
-      ..write('</p><form method="post" action="/pair/lan"><input type="hidden" name="enabled" ')
-      ..write(
-        'value="${_lanAccess ? '0' : '1'}"><button class="quiet">${_lanAccess ? 'Sperren' : 'Freigeben'}</button>',
-      )
-      ..write('</form></section>')
+      ..write(container ? _containerLanSection() : _boxLanSection())
       ..write('<p class="hint"><a href="/">Zum Monitor</a></p></main></body></html>');
     return '$out';
   }
+
+  /// Docker: why the switch is not here.
+  static const _containerLan = 'Im Container über LAN_ACCESS einstellen (yes oder no) und den Container neu starten.';
+
+  String _boxLanSection() =>
+      '<section><h2>Zugriff über das Kabel</h2><p class="hint">'
+      '${_lanAccess ? 'Frei: Auch Geräte im Netz am Kabel erreichen die Box (mit Passwort).' : 'Aus: Die Box ist nur im eigenen WLAN erreichbar.'}'
+      '</p><form method="post" action="/pair/lan"><input type="hidden" name="enabled" '
+      'value="${_lanAccess ? '0' : '1'}"><button class="quiet">${_lanAccess ? 'Sperren' : 'Freigeben'}</button>'
+      '</form></section>';
+
+  String _containerLanSection() =>
+      '<section><h2>Zugriff aus dem Netzwerk</h2><p class="hint">'
+      '${_lanAccess ? 'Frei: Geräte im Netzwerk erreichen KNX Monitor (mit Passwort).' : 'Aus: Nur am Rechner mit dem Container selbst erreichbar.'} '
+      '$_containerLan</p></section>';
 
   static String _date(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year} '

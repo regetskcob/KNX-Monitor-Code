@@ -35,7 +35,10 @@ up -d`. The image is signed, see [Verify the image](#verify-the-image).
 ## Access from your network
 
 The default `LAN_ACCESS=no` answers only on the host itself. With `LAN_ACCESS=yes`
-in `.env`, every device in your network can reach the login.
+in `.env`, every device in your network can reach the login; the password is
+still required. The setting applies on every start: change it in `.env`, then
+`docker compose up -d`. Started without Compose (`docker run`)? Pass it there,
+for example `-e LAN_ACCESS=yes`.
 
 **Without HTTPS this is plain HTTP:** your password, device access and all
 telegrams cross your network unencrypted, and anyone in the network can read them
@@ -73,6 +76,25 @@ docker build -t knx-monitor --build-arg BUILD_VERSION="$(sed -n 's/^version: "\(
 Then replace the `image:` line in `compose.yaml` with `image: knx-monitor`.
 The build takes a few minutes, mostly for the web app.
 
+## Without Compose
+
+`compose.yaml` sets everything the container needs. With `docker run`, pass the
+same settings yourself, at least `BOX=1`, the password and the host network:
+
+```sh
+docker run -d --name knx-monitor --restart unless-stopped --network host \
+  --cap-drop ALL --cap-add DAC_OVERRIDE --cap-add FOWNER \
+  --security-opt no-new-privileges:true \
+  -e BOX=1 -e BOX_PASSWORD='your-own-password' -e LAN_ACCESS=yes \
+  -e TZ=Europe/Berlin -v "$PWD/data:/data" \
+  ghcr.io/regetskcob/knx-monitor:<version>
+```
+
+`<version>` is the one in `compose.yaml`, or any newer one from the
+[releases](https://github.com/regetskcob/KNX-Monitor/releases). Leave out `-e LAN_ACCESS=yes` to allow only the host itself. To change a
+setting later, remove the container and run it again with the new values;
+`./data` keeps history, project and paired devices.
+
 ## Settings
 
 | Variable | Meaning |
@@ -80,7 +102,7 @@ The build takes a few minutes, mostly for the web app.
 | `BOX=1` | Standalone mode with password (required outside Home Assistant). |
 | `BOX_PASSWORD` | Password for the browser and for pairing apps, at least 8 characters. Used on the first start; change it later in the app under box settings. |
 | `BOX_NAME` | Name shown in the apps. |
-| `LAN_ACCESS=yes` | Reachable from your network, not only from the host (default `no`). Plain HTTP unless you set up TLS, see above. |
+| `LAN_ACCESS=yes` | Reachable from your network, not only from the host (default `no`). Applies on every start (since 1.9.9). Plain HTTP unless you set up TLS, see above. |
 | `TLS_CERT`, `TLS_KEY`, `TLS_PORT` | Optional HTTPS with your own certificate (PEM files), default port 443. |
 | `KNX_MONITOR_VERSION` | Image version (default: the one this file was published for). |
 | `PORT` | Web port, default 8765. |
@@ -120,6 +142,22 @@ notify or log.
 A native ioBroker adapter (admin tab, states without MQTT) is planned if
 enough users want it: vote with 👍 in
 [issue #3](https://github.com/regetskcob/KNX-Monitor/issues/3).
+
+## Troubleshooting
+
+**"Zugriff aus dem Netzwerk ist aus" / "Zugriff über das Kabel ist aus"** (HTTP 403):
+the container only answers the host itself. Open `http://localhost:8765` there, or
+set `LAN_ACCESS=yes` and restart the container (Compose: `docker compose up -d`).
+The password is still required.
+
+Up to version 1.9.8, `LAN_ACCESS` only counted on the very first start, and the
+message spoke of a box Wi-Fi that does not exist in Docker. On those versions,
+either open `http://localhost:8765/pair` on the host and allow access there, or
+update to 1.9.9 or later and restart.
+
+**Container stops right away, log says `BOX_PASSWORD fehlt`:** set `BOX_PASSWORD`
+(at least 8 characters). It is only needed on the first start; after that the
+stored password counts, and you change it in the app or on `/pair`.
 
 ## Notes
 

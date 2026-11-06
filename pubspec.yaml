@@ -3,7 +3,7 @@ description: "KNX group monitor and diagnostic tool (KNXnet/IP)."
 publish_to: 'none'
 
 # <name>+<build>; the build number must grow with every store upload.
-version: 1.9.8+30
+version: 1.9.9+31
 
 environment:
   sdk: ^3.13.5

@@ -233,4 +233,45 @@ void main() {
     expect(hour[55], 1);
     expect(lineActivity(log, 0x12, ActivityRange.today, now).fold(0, (a, b) => a + b), 1);
   });
+
+  test('Fremde Adresse ohne Koppler gehört zur Gateway-Linie, keine erfundene Linie', () {
+    // 15.15.255 (Werksadresse, z. B. KNX-HAT einer Box) fragt 1/1/72 ab und
+    // kommt mit Hop 6 an: Linie 15.15 gibt es im Projekt nicht.
+    final topo = Topology.build(catalog, [
+      t('1.1.10', '1/1/72', 6),
+      t('1.2.5', '1/4/72', 5),
+      t('15.15.255', '1/1/72', 6),
+      t('15.15.255', '1/1/72', 6),
+    ]);
+    expect(topo.gatewayLine, 0x11);
+    expect(topo.lines.map((l) => l.line), [0x11, 0x12]);
+    expect(topo.strays, {factoryAddress});
+    expect(topo.lineOfSource(factoryAddress), 0x11);
+    expect(topo.line(0x11)!.activeSources[factoryAddress], 6);
+    expect(topo.line(0x11)!.telegrams, 3);
+    expect(topo.mismatches, isEmpty);
+    expect(topo.unneeded, isEmpty);
+  });
+
+  test('Fremde Linie hinter einem Koppler bleibt eine Linie', () {
+    final topo = Topology.build(catalog, [t('1.1.10', '1/1/72', 6), t('1.3.4', '1/1/72', 5)]);
+    expect(topo.strays, isEmpty);
+    expect(topo.lines.map((l) => l.line), containsAll([0x11, 0x13]));
+  });
+
+  test('Eigene Adresse auf einer Linie außerhalb des Projekts zeigt nicht die Gateway-Linie', () {
+    // Box mit KNX-HAT auf Werksadresse: Gateway-Linie wird geschätzt.
+    final topo = Topology.build(catalog, [t('1.1.10', '1/1/72', 6), t('15.15.255', '1/1/72', 6)], gatewayLine: 0xFF);
+    expect(topo.gatewayLine, 0x11);
+    expect(topo.strays, {factoryAddress});
+  });
+
+  test('Koppler-Verkehr: fremde Adresse auf der Gateway-Linie zählt als Gateway-Linie', () {
+    // 15.15.255 schreibt auf 1/1/72 (Empfänger in 1.2): Richtung 1.1 → 1.2, nicht 15.15 → 1.2.
+    final log = [t('1.1.10', '1/1/72', 6), t('15.15.255', '1/1/72', 6)];
+    final topo = Topology.build(catalog, log);
+    final traffic = CouplerTraffic.build(catalog, log, 0x12, gatewayLine: topo.gatewayLine, origin: topo.lineOfSource);
+    expect(traffic.flows.map((f) => (f.from, f.to)), isNot(contains((0xFF, 0x12))));
+    expect(traffic.flows.firstWhere((f) => f.from == 0x11 && f.to == 0x12).telegrams, 2);
+  });
 }

@@ -62,6 +62,8 @@ class Installations {
     'server.json',
     'catalog.json',
     'dpt_overrides.json',
+    'name_overrides.json',
+    'learned.json',
     'secure_keys.json',
     'health.json',
     'commissioning.json',

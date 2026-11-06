@@ -22,7 +22,10 @@ import 'package:knx_monitor_server/files.dart';
 /// BOX=1: KNX box without Home Assistant – access with the box password or
 /// device access instead of Ingress (BOX_PASSWORD for the first password, BOX_NAME;
 /// LAN_ACCESS=yes allows access over the cable, otherwise only from the box
-/// Wi-Fi, or in Docker only from the host itself).
+/// Wi-Fi, or in Docker only from the host itself). BOX=1 without BOX_STICKER=1
+/// (which only the real box sets, knx-box.service) is the Docker container:
+/// LAN_ACCESS then applies on every start, and texts speak of the network
+/// instead of cable and box Wi-Fi.
 /// MQTT_HOST (+ MQTT_PORT, MQTT_USER, MQTT_PASSWORD, MQTT_SSL): MQTT device
 /// without Supervisor, e.g. in a Docker container next to ioBroker.
 ///
@@ -108,6 +111,8 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
     );
     exit(78); // EX_CONFIG
   }
+  // Standalone without the real box (Docker): see the doc comment of main.
+  final docker = env['BOX'] == '1' && !sticker;
   final box = env['BOX'] == '1'
       ? await BoxAccess.open(
           data,
@@ -115,12 +120,21 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
           name: env['BOX_NAME'],
           initialLanAccess: env['LAN_ACCESS'] == 'yes',
           sticker: env['BOX_STICKER'] == '1',
+          container: docker,
           // Only the real box has its own Wi-Fi (10.42.0.0/24). In Docker,
           // "no LAN access" means the host itself: 10.42.x can be a home
           // network or a k3s pod network there.
           fromWlan: env['BOX_STICKER'] == '1' ? BoxAccess.wlanPeer : (peer) => peer.isLoopback,
         )
       : null;
+  if (box != null && docker) {
+    stdout.writeln(
+      box.lanAccess
+          ? 'KNX Monitor: aus dem Netzwerk erreichbar (LAN_ACCESS=yes), mit Passwort'
+          : 'KNX Monitor: nur am Rechner selbst erreichbar (http://localhost:$port). '
+                'Für andere Geräte im Netzwerk LAN_ACCESS=yes setzen.',
+    );
+  }
 
   // Box: set the clock without internet (iPhone, KNX time sender); the request is
   // carried out on the host by knx-box-time.path (DATA_DIR is /var/lib/knx-box there).
@@ -648,14 +662,47 @@ Future<bool> _sendNotification({required String id, required String title, requi
     }
   }
 
-  await call('persistent_notification/create', {'title': title, 'message': message, 'notification_id': id});
+  // A notification without a way to the details left the user guessing: link to the add-on.
+  final panel = await _panelPath(token);
+  await call('persistent_notification/create', {
+    'title': title,
+    'message': panel == null ? message : '$message\n\n[KNX Monitor →]($panel)',
+    'notification_id': id,
+  });
   final service = await _option('notify_service');
   // Only "notify.<name>" – the value ends up in the path of the Supervisor URL.
   if (service != null && RegExp(r'^notify\.[a-z0-9_]+$').hasMatch(service)) {
-    await call('notify/${service.substring('notify.'.length)}', {'title': title, 'message': message});
+    await call('notify/${service.substring('notify.'.length)}', {
+      'title': title,
+      'message': message,
+      // Tapping the push opens the add-on (iOS: url, Android: clickAction).
+      if (panel != null) 'data': {'url': panel, 'clickAction': panel},
+    });
   }
   return true;
 }
+
+/// Path of the add-on's page in the Home Assistant frontend
+/// (`/hassio/ingress/<slug>`), asked once from the Supervisor; `null` if it
+/// cannot be determined.
+Future<String?>? _panel;
+
+Future<String?> _panelPath(String token) => _panel ??= () async {
+  final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+  try {
+    final req = await client.getUrl(Uri.parse('http://supervisor/addons/self/info'));
+    req.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
+    final res = await req.close();
+    final json = jsonDecode(await utf8.decodeStream(res)) as Map<String, Object?>;
+    return panelPathOf(json);
+  } on Object catch (e) {
+    stderr.writeln('Add-on-Seite für Mitteilungen: $e');
+    _panel = null;
+    return null;
+  } finally {
+    client.close();
+  }
+}();
 
 // --- Dashboard card ---------------------------------------------------------------
 

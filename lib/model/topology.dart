@@ -8,6 +8,10 @@ int lineOf(int individualAddress) => individualAddress >> 8;
 /// „1.2“
 String formatLine(int line) => '${(line >> 4) & 0x0F}.${line & 0x0F}';
 
+/// Factory individual address of KNX devices and interfaces (15.15.255), also
+/// the one the KNX HAT of a KNX Monitor Box keeps until one is entered.
+const factoryAddress = 0xFFFF;
+
 /// A line with its devices according to the project and the observed traffic.
 class LineInfo {
   LineInfo(this.line);
@@ -73,7 +77,7 @@ class HopMismatch {
 /// lines. The hop count (6 when sent, −1 per coupler) reveals how many couplers
 /// a telegram passed through.
 class Topology {
-  Topology._(this.lines, this.cross, this.mismatches, this.unneeded, this.gatewayLine);
+  Topology._(this.lines, this.cross, this.mismatches, this.unneeded, this.gatewayLine, this.strays);
 
   /// Lines sorted, the gateway line first.
   final List<LineInfo> lines;
@@ -91,7 +95,17 @@ class Topology {
   /// Line the gateway is on (tunnel address, or estimated).
   final int? gatewayLine;
 
+  /// Senders listed on the gateway line although their address belongs to
+  /// another line: that line is not in the project and their telegrams arrive
+  /// without passing a coupler. Typically the factory address 15.15.255 (e.g.
+  /// the KNX HAT of a KNX Monitor Box) or a visualisation. Without this they
+  /// would appear as a line of their own behind an invented coupler.
+  final Set<int> strays;
+
   LineInfo? line(int line) => lines.where((l) => l.line == line).firstOrNull;
+
+  /// Line a sender is listed on: its own, or the gateway line for [strays].
+  int lineOfSource(int address) => strays.contains(address) ? gatewayLine! : lineOf(address);
 
   factory Topology.build(GroupCatalog catalog, Iterable<Telegram> log, {int? gatewayLine}) {
     final lines = <int, LineInfo>{};
@@ -111,6 +125,13 @@ class Topology {
       l.devices.sort((a, b) => a.address.compareTo(b.address));
       l.tunnels.sort((a, b) => a.address.compareTo(b.address));
     }
+    // Lines that exist in the project; only these are real lines.
+    final projectLines = lines.keys.toSet();
+    // The own address only shows the gateway line if that line is in the
+    // project: the KNX HAT of a box keeps 15.15.255 until one is entered.
+    final given = gatewayLine != null && (projectLines.isEmpty || projectLines.contains(gatewayLine))
+        ? gatewayLine
+        : null;
 
     // Addresses spanning several lines, from the associations.
     final cross = <int, CrossGroup>{};
@@ -144,13 +165,39 @@ class Topology {
       if (c != null) c.seenFrom[lineOf(t.source)] = (c.seenFrom[lineOf(t.source)] ?? 0) + 1;
     }
 
-    // Gateway line: from the tunnel address, otherwise the line with hop count 6.
+    // Gateway line: from the tunnel address, otherwise the line with hop count 6
+    // and the most telegrams – a line from the project before a foreign one.
+    LineInfo? busiest(Iterable<LineInfo> ls) => ls
+        .where((l) => l.typicalHops == 6)
+        .fold<LineInfo?>(null, (best, l) => best == null || l.telegrams > best.telegrams ? l : best);
     final gw =
-        gatewayLine ??
-        lines.values
-            .where((l) => l.typicalHops == 6)
-            .fold<LineInfo?>(null, (best, l) => best == null || l.telegrams > best.telegrams ? l : best)
-            ?.line;
+        given ?? (busiest(lines.values.where((l) => projectLines.contains(l.line))) ?? busiest(lines.values))?.line;
+
+    // Senders from a line that is not in the project whose telegrams arrive
+    // like those of the gateway line (hop count 6, no coupler) sit on the
+    // gateway line with a foreign address. Only with a project: without one
+    // no line is known.
+    final strays = <int>{};
+    final home = gw == null ? null : lines[gw];
+    if (home != null && projectLines.isNotEmpty) {
+      for (final l in lines.values.toList()) {
+        if (l.line == gw || projectLines.contains(l.line) || l.hops.isEmpty || l.hops.keys.any((h) => h != 6)) {
+          continue;
+        }
+        strays.addAll(l.activeSources.keys);
+        home.activeSources.addAll(l.activeSources);
+        home.telegrams += l.telegrams;
+        for (final MapEntry(key: h, value: n) in l.hops.entries) {
+          home.hops[h] = (home.hops[h] ?? 0) + n;
+        }
+        for (final c in cross.values) {
+          final n = c.seenFrom.remove(l.line);
+          if (n != null) c.seenFrom[gw!] = (c.seenFrom[gw] ?? 0) + n;
+        }
+        lines.remove(l.line);
+      }
+    }
+    int origin(int source) => strays.contains(source) ? gw! : lineOf(source);
 
     // Hop count does not match the line: deviation from what is typical for the
     // line, or from 6 for the gateway line.
@@ -167,7 +214,7 @@ class Topology {
     final unneeded = <int, int>{};
     if (gw != null) {
       for (final t in received) {
-        final from = lineOf(t.source);
+        final from = origin(t.source);
         if (from == gw) continue;
         final receivers = receiverLines[t.destination];
         if (receivers == null || receivers.isEmpty || receivers.contains(gw)) continue;
@@ -183,6 +230,7 @@ class Topology {
       mismatches,
       unneeded,
       gw,
+      strays,
     );
   }
 }
@@ -310,7 +358,15 @@ class CouplerTraffic {
   /// Largest telegram count of a direction (for the arrow thickness).
   int get maxTelegrams => flows.fold(0, (n, f) => f.telegrams > n ? f.telegrams : n);
 
-  factory CouplerTraffic.build(GroupCatalog catalog, Iterable<Telegram> log, int line, {int? gatewayLine}) {
+  /// [origin] gives the line of a sender (default: from its address, see
+  /// [Topology.lineOfSource]).
+  factory CouplerTraffic.build(
+    GroupCatalog catalog,
+    Iterable<Telegram> log,
+    int line, {
+    int? gatewayLine,
+    int Function(int source) origin = lineOf,
+  }) {
     // Receiver lines per address according to the project.
     final receivers = <int, Set<int>>{
       for (final g in catalog.groups.values) g.address: {for (final l in g.links) lineOf(l.device)},
@@ -340,7 +396,7 @@ class CouplerTraffic {
     var seen = 0;
     var lonely = 0;
     for (final t in log) {
-      final from = lineOf(t.source);
+      final from = origin(t.source);
       final to = receivers[t.destination] ?? const <int>{};
       if (from == line && gatewayLine != null && gatewayLine != line) {
         seen++;
@@ -373,8 +429,15 @@ class CouplerTraffic {
 }
 
 /// Telegrams from [line] per segment of the activity bar's time range, up to
-/// [now]: 60 × 1 s, 60 × 1 min or 96 × 15 min from midnight.
-List<int> lineActivity(Iterable<Telegram> log, int line, ActivityRange range, DateTime now) {
+/// [now]: 60 × 1 s, 60 × 1 min or 96 × 15 min from midnight. [origin] gives the
+/// line of a sender (default: from its address, see [Topology.lineOfSource]).
+List<int> lineActivity(
+  Iterable<Telegram> log,
+  int line,
+  ActivityRange range,
+  DateTime now, {
+  int Function(int source) origin = lineOf,
+}) {
   final (count, step, start) = switch (range) {
     ActivityRange.seconds => (60, const Duration(seconds: 1), now.subtract(const Duration(seconds: 60))),
     ActivityRange.hour => (60, const Duration(minutes: 1), now.subtract(const Duration(hours: 1))),
@@ -382,7 +445,7 @@ List<int> lineActivity(Iterable<Telegram> log, int line, ActivityRange range, Da
   };
   final bins = List.filled(count, 0);
   for (final t in log) {
-    if (lineOf(t.source) != line || t.time.isBefore(start) || t.time.isAfter(now)) continue;
+    if (origin(t.source) != line || t.time.isBefore(start) || t.time.isAfter(now)) continue;
     final i = t.time.difference(start).inMicroseconds ~/ step.inMicroseconds;
     if (i >= 0 && i < count) bins[i]++;
   }

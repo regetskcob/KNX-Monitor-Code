@@ -82,3 +82,11 @@ class HomeAssistant {
     }
   }
 }
+
+/// Path of the add-on's page in the Home Assistant frontend from the answer of
+/// the Supervisor (`GET /addons/self/info`): `/hassio/ingress/<slug>`, or `null`
+/// without a usable slug. The slug ends up in a link, so only plain characters.
+String? panelPathOf(Map<String, Object?> info) => switch ((info['data'] as Map?)?['slug']) {
+  final String slug when RegExp(r'^[a-z0-9_]+$').hasMatch(slug) => '/hassio/ingress/$slug',
+  _ => null,
+};

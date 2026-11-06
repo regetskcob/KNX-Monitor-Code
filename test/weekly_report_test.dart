@@ -122,6 +122,28 @@ void main() {
     );
   });
 
+  test('Mitteilung nach der Prüfung: Klartext mit Adresse, Rest gezählt, Weg zu den Einzelheiten', () {
+    final five = [
+      HealthFinding(FindingKind.newSilent, window),
+      HealthFinding(FindingKind.overdue, ga('9/7/9')),
+      const HealthFinding(FindingKind.repeats, 0x1105),
+      HealthFinding(FindingKind.stuck, window),
+      HealthFinding(FindingKind.dptSize, window),
+    ];
+    expect(
+      notificationBody(five),
+      '„Fensterkontakt Bad“ meldet sich nicht mehr (3/0/1)\n'
+      '„Adresse 9/7/9“ ist ungewöhnlich lange still\n'
+      '„Gerät 1.1.5“ muss oft wiederholen – Leitung oder Gerät prüfen lassen\n'
+      '… und 2 weitere. Einzelheiten in KNX Monitor unter „Gesundheit“',
+    );
+    expect(
+      notificationBody([HealthFinding(FindingKind.newSilent, window)]),
+      '„Fensterkontakt Bad“ meldet sich nicht mehr (3/0/1)\n'
+      'Einzelheiten in KNX Monitor unter „Gesundheit“',
+    );
+  });
+
   test('Mithörzeit je Tag, gespeichert und nach 7 Tagen nicht mehr in der Woche', () async {
     SharedPreferences.setMockInitialValues({});
     final log = ListeningLog.instance..debugReset();

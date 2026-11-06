@@ -33,6 +33,8 @@ void main() {
       await write('server.json', '{"retentionDays":30}');
       await write('catalog.json', '{"project":"Musterhaus","groups":[]}');
       await write('dpt_overrides.json', '{}');
+      await write('name_overrides.json', '{}');
+      await write('learned.json', '{"groups":[]}');
       await write('secure_keys.json', '{"groupKeys":{}}');
       await write('health.json', '[]');
       await write('history/2026-10-01.ndjson', '{"t":1}\n');
@@ -49,6 +51,8 @@ void main() {
         'server.json',
         'catalog.json',
         'dpt_overrides.json',
+        'name_overrides.json',
+        'learned.json',
         'secure_keys.json',
         'health.json',
         'history/2026-10-01.ndjson',

@@ -18,7 +18,9 @@ void main() {
 
   test('alle Actions auf Commit-SHAs', () {
     for (final name in ['addon.yml', 'box-image.yml', 'ci.yml']) {
-      final uses = RegExp(r'uses:\s*(\S+)').allMatches(read('.github/workflows/$name'));
+      // Only a `uses:` key, not words ending in it (`statuses: read`).
+      final uses = RegExp(r'^\s*(?:-\s+)?uses:\s*(\S+)', multiLine: true).allMatches(read('.github/workflows/$name'));
+      expect(uses, isNotEmpty, reason: '$name has no actions – the pattern misses them');
       for (final m in uses) {
         expect(m[1], matches(RegExp(r'@[0-9a-f]{40}$')), reason: '$name: ${m[1]}');
       }

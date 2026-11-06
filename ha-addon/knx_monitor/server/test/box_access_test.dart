@@ -521,7 +521,7 @@ void main() {
 
   group('Zugriff über das Kabel', () {
     // Wie ein Absender am Kabel: der Testserver sieht nur 127.0.0.1.
-    Future<void> fromLan({bool initial = false, bool fresh = false}) async {
+    Future<void> fromLan({bool initial = false, bool fresh = false, bool container = false}) async {
       await access.flush();
       if (fresh) await File('${data.path}/access.json').delete();
       access = await BoxAccess.open(
@@ -531,8 +531,50 @@ void main() {
         clock: () => now,
         initialLanAccess: initial,
         fromWlan: (_) => false,
+        container: container,
       );
     }
+
+    test('Docker: LAN_ACCESS gilt bei jedem Start, auch nach dem ersten', () async {
+      await fromLan(container: true, fresh: true);
+      expect((await send('/api/bus', auth: basic('richtig123'))).$1, 403);
+      // Später LAN_ACCESS=yes gesetzt und neu gestartet: frei.
+      await fromLan(initial: true, container: true);
+      expect(access.lanAccess, isTrue);
+      expect((await send('/api/bus', auth: basic('richtig123'))).$1, 200);
+      // Und wieder zurück auf no.
+      await fromLan(container: true);
+      expect(access.lanAccess, isFalse);
+    });
+
+    test('Docker: Meldung ohne Box-WLAN, Schalter nur lesend', () async {
+      await fromLan(container: true, fresh: true);
+      final (status, text, _) = await send('/api/bus', auth: basic('richtig123'));
+      expect(status, 403);
+      expect(text, contains('LAN_ACCESS=yes'));
+      expect(text, isNot(contains('WLAN')));
+      await fromLan(initial: true, container: true);
+      final (_, info, _) = await send('/api/box', auth: basic('richtig123'));
+      expect(jsonDecode(info), allOf(containsPair('container', true), containsPair('lanAccess', true)));
+      expect(
+        (await send('/api/box/lan', method: 'POST', auth: basic('richtig123'), body: '{"enabled":false}')).$1,
+        409,
+      );
+      expect(access.lanAccess, isTrue);
+      final (_, html, _) = await send('/pair', auth: basic('richtig123'));
+      expect(html, contains('Zugriff aus dem Netzwerk'));
+      expect(html, isNot(contains('action="/pair/lan"')));
+      expect(html, isNot(contains('Box-Passwort')));
+      expect((await send('/pair/lan', method: 'POST', auth: basic('richtig123'), body: 'enabled=0')).$1, 200);
+      expect(access.lanAccess, isTrue);
+    });
+
+    test('Docker: Anmeldedialog ohne „KNX-Box“', () async {
+      await fromLan(initial: true, container: true, fresh: true);
+      final (status, _, headers) = await send('/api/bus');
+      expect(status, 401);
+      expect(headers.value(HttpHeaders.wwwAuthenticateHeader), contains('KNX Monitor'));
+    });
 
     test('WLAN der Box und die Box selbst: ja, sonst nein', () {
       bool wlan(String a) => BoxAccess.wlanPeer(InternetAddress(a));

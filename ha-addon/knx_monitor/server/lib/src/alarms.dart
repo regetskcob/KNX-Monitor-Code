@@ -25,7 +25,9 @@ class AlarmWatch {
 
   Map<int, _Group> _groups = const {};
   String _style = 'threeLevel';
+  bool _loaded = false;
   DateTime? _catalogTime;
+  DateTime? _learnedTime;
   DateTime? _namesTime;
   final _active = <int, bool>{};
 
@@ -49,35 +51,85 @@ class AlarmWatch {
     r'störung|stoerung|defekt|fehler|fault|error|failure|ausfall|malfunction|broken|trouble',
   );
 
-  /// Rereads the catalog when the app has changed it, together with the names
-  /// corrected in the app (`name_overrides.json`), which replace the project's.
-  Future<void> _reloadCatalog() async {
+  /// Rereads the catalog when the app has changed it, together with the
+  /// addresses learned without an ETS project (`learned.json`) and the names
+  /// corrected in the app (`name_overrides.json`). As in the app
+  /// (`mergeLearned`, `withNames`): the project takes precedence, learned
+  /// addresses fill in what it lacks (also a missing type), corrected names
+  /// replace both.
+  Future<void> _reloadCatalog() => _reloading ??= _readCatalogFiles().whenComplete(() => _reloading = null);
+
+  /// The reload in progress: a second caller waits for it instead of returning
+  /// early with the old catalog while the files are still being read.
+  Future<void>? _reloading;
+
+  Future<void> _readCatalogFiles() async {
     final file = File('${data.path}/catalog.json');
+    final learnedFile = File('${data.path}/learned.json');
     final namesFile = File('${data.path}/name_overrides.json');
     try {
-      final modified = await file.lastModified();
-      final namesModified = await namesFile.exists() ? await namesFile.lastModified() : null;
-      if (modified == _catalogTime && namesModified == _namesTime) return;
+      final modified = await _modified(file);
+      final learnedModified = await _modified(learnedFile);
+      final namesModified = await _modified(namesFile);
+      if (_loaded && modified == _catalogTime && learnedModified == _learnedTime && namesModified == _namesTime) {
+        return;
+      }
+      _loaded = true;
       _catalogTime = modified;
+      _learnedTime = learnedModified;
       _namesTime = namesModified;
-      final json = jsonDecode(await file.readAsString()) as Map<String, Object?>;
+      final project = await _readCatalog(file);
+      final learned = await _readCatalog(learnedFile);
+      // Unreadable (perhaps still being written): use what is there, read again next time.
+      if ((modified != null && project == null) || (learnedModified != null && learned == null)) _loaded = false;
       final names = await _readNames(namesFile);
-      _style = json['style'] as String? ?? 'threeLevel';
+      _style = project?['style'] as String? ?? learned?['style'] as String? ?? 'threeLevel';
+      final groups = <int, _Group>{..._groupsOf(learned)};
+      for (final MapEntry(key: a, value: g) in _groupsOf(project).entries) {
+        final fallback = groups[a];
+        groups[a] = g.main == null && fallback?.main != null
+            ? _Group(name: g.name, path: g.path, main: fallback!.main, sub: fallback.sub)
+            : g;
+      }
       _groups = {
-        for (final g in (json['groups'] as List? ?? const []).cast<Map<String, Object?>>())
-          g['a']! as int: _Group(
-            name: names[g['a']! as int] ?? g['n'] as String? ?? '',
-            path: g['p'] as String?,
-            main: (g['d'] as List?)?[0] as int?,
-            sub: (g['d'] as List?)?[1] as int?,
-          ),
+        for (final MapEntry(key: a, value: g) in groups.entries)
+          a: switch (names[a]) {
+            final name? => _Group(name: name, path: g.path, main: g.main, sub: g.sub),
+            null => g,
+          },
       };
     } on Object {
       _groups = const {};
+      _loaded = false;
       _catalogTime = null;
+      _learnedTime = null;
       _namesTime = null;
     }
   }
+
+  static Future<DateTime?> _modified(File file) async => await file.exists() ? await file.lastModified() : null;
+
+  /// A catalog file (`catalog.json` or `learned.json`, same format); missing or
+  /// unreadable gives `null`.
+  static Future<Map<String, Object?>?> _readCatalog(File file) async {
+    try {
+      if (!await file.exists()) return null;
+      return jsonDecode(await file.readAsString()) as Map<String, Object?>;
+    } on Object {
+      return null;
+    }
+  }
+
+  static Map<int, _Group> _groupsOf(Map<String, Object?>? json) => {
+    for (final g in (json?['groups'] as List? ?? const []).whereType<Map<String, Object?>>())
+      if (g['a'] case final int a)
+        a: _Group(
+          name: g['n'] as String? ?? '',
+          path: g['p'] as String?,
+          main: (g['d'] as List?)?[0] as int?,
+          sub: (g['d'] as List?)?[1] as int?,
+        ),
+  };
 
   /// Corrected names by address; a missing or unreadable file corrects nothing.
   static Future<Map<int, String>> _readNames(File file) async {

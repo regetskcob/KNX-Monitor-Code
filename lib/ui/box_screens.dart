@@ -724,13 +724,23 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
                 if (_admin) ...[
                   const SizedBox(height: Gap.section),
                   Kennung(s.boxNetwork),
-                  SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(s.boxLanAccess),
-                    subtitle: SwitchHint(s.boxLanAccessHint),
-                    value: _info?['lanAccess'] == true,
-                    onChanged: _setLanAccess,
-                  ),
+                  // Docker: the setting comes from LAN_ACCESS and only shows here.
+                  if (_info?['container'] == true)
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(s.boxContainerLanAccess),
+                      subtitle: SwitchHint(s.boxContainerLanAccessHint),
+                      value: _info?['lanAccess'] == true,
+                      onChanged: null,
+                    )
+                  else
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(s.boxLanAccess),
+                      subtitle: SwitchHint(s.boxLanAccessHint),
+                      value: _info?['lanAccess'] == true,
+                      onChanged: _setLanAccess,
+                    ),
                   const SizedBox(height: Gap.section),
                   Kennung(s.boxHat),
                   ListTile(

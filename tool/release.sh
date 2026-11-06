@@ -2,6 +2,7 @@
 # Builds and publishes all release artifacts of KNX Monitor.
 #
 #   tool/release.sh verify           # checks of the pull request CI, on any branch – run before pushing
+#   tool/release.sh push [args]      # git push; marks HEAD verified on GitHub, so the PR CI skips its checks
 #   tool/release.sh layout           # folder structure only (part of verify, tool/werkbank/STANDARD.md)
 #   tool/release.sh check            # preflight: clean main, verify, versions
 #   tool/release.sh addon            # tag addon-v<version>, wait for both images, then merge main via PR + GitHub release
@@ -431,6 +432,7 @@ cmd_status() {
 
 case "${1:-}" in
   verify) cmd_verify ;;
+  push) shift; wb_push "$@" ;;
   layout) wb_layout ;;
   check) cmd_check ;;
   addon) cmd_addon ;;
@@ -448,5 +450,5 @@ case "${1:-}" in
   # For tests and for checking what a build would get, without building.
   rc-define) rc_define "${2:?RC_APPLE_KEY or RC_GOOGLE_KEY}" ;;
   desktop-run) desktop_run "${2:?tag}" ;;
-  *) sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,37p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

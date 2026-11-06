@@ -1,0 +1,6 @@
+Contact: https://github.com/regetskcob/KNX-Monitor/security/advisories/new
+Contact: mailto:support@knx-monitor.de
+Expires: 2027-11-05T00:00:00.000Z
+Policy: https://github.com/regetskcob/KNX-Monitor/blob/main/SECURITY.md
+Preferred-Languages: de, en
+Canonical: https://knx-monitor.de/.well-known/security.txt

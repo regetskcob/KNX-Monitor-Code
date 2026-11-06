@@ -282,9 +282,10 @@ class CatalogStore extends ChangeNotifier {
     if (_beforeDemo != null || DemoTunnel.active) return;
     final text = jsonEncode(_learned.toJson());
     // Lives in the installation's storage: natively on the device, in the add-on (browser) in the
-    // data folder of the user's own Home Assistant – never in a cloud. Server features (alarms,
-    // timers) only read the project.
+    // data folder of the user's own Home Assistant – never in a cloud. Via a KNX box it goes there
+    // too, so its alarms use the learned names like the app.
     await _storage.write(_learnedPath, text);
+    _shareWithBox(_learnedPath, text);
   }
 
   /// Opens the file picker and imports a .knxproj or ETS CSV. Returns `false` when cancelled;
@@ -432,12 +433,12 @@ class CatalogStore extends ChangeNotifier {
     }());
   }
 
-  /// Puts the project, user-chosen types and corrected names on the box (after setup, when it has
+  /// Puts the project, user-chosen types, corrected names and learned addresses on the box (after setup, when it has
   /// none yet).
   Future<void> shareWithBox() async {
     final box = Addon.box;
     if (box == null || !await BoxProjectConsent.allowed(box)) return;
-    for (final path in [_path, _overridesPath, _namesPath]) {
+    for (final path in [_path, _overridesPath, _namesPath, _learnedPath]) {
       final text = await _storage.read(path);
       if (text != null && Addon.box != null) {
         await Addon.putFile(path, utf8.encode(text));
@@ -446,13 +447,13 @@ class CatalogStore extends ChangeNotifier {
     }
   }
 
-  /// Syncs the project, user-chosen types and corrected names ([BoxShare]); `true` if the box has a
+  /// Syncs the project, user-chosen types, corrected names and learned addresses ([BoxShare]); `true` if the box has a
   /// different version of one of them and it was therefore kept.
   Future<bool> syncWithBox() async {
     final box = Addon.box;
     if (box == null || !await BoxProjectConsent.allowed(box)) return false;
     var differs = false;
-    for (final path in [_path, _overridesPath, _namesPath]) {
+    for (final path in [_path, _overridesPath, _namesPath, _learnedPath]) {
       final outcome = await BoxShare.sync(
         InstallationStore.instance.active.id,
         path,
