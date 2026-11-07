@@ -110,4 +110,111 @@ void main() {
     expect(keep.entries, hasLength(2));
     await keep.cleanExit();
   });
+
+  test('Uhr gestellt: der Eintrag dieses Starts bekommt die richtige Zeit', () async {
+    await watch().start();
+    final seen = await File('${data.path}/running.json').lastModified();
+    boot.writeAsStringSync('B\n');
+    now = DateTime(2026, 10, 26, 11, 31); // Startzeit ohne Batterie-Uhr
+    final next = watch();
+    await next.start();
+    expect(next.entries.single['t'], lessThan(seen.millisecondsSinceEpoch));
+    final real = DateTime(2026, 11, 7, 7, 4);
+    await next.retime(real);
+    final t = next.entries.single['t']! as int;
+    expect(real.millisecondsSinceEpoch - t, inInclusiveRange(0, 5000));
+    expect(next.entries.single['lastSeen'], seen.millisecondsSinceEpoch);
+    final saved = jsonDecode(File('${data.path}/restarts.ndjson').readAsLinesSync().single) as Map;
+    expect(saved['t'], t);
+    await next.cleanExit();
+  });
+
+  test('Uhr gestellt ohne Eintrag dieses Starts: nichts geändert', () async {
+    final first = watch();
+    await first.start();
+    await first.retime(DateTime(2026, 11, 7));
+    expect(first.entries, isEmpty);
+    expect(File('${data.path}/restarts.ndjson').existsSync(), isFalse);
+    await first.cleanExit();
+  });
+
+  group('Grund von systemd (last-exit.json)', () {
+    Future<Map<String, Object?>> endWith(Map<String, Object?> exit, {bool newBoot = false}) async {
+      await watch().start(); // kein cleanExit
+      File('${data.path}/last-exit.json').writeAsStringSync(jsonEncode(exit));
+      if (newBoot) boot.writeAsStringSync('B\n');
+      final next = watch();
+      await next.start();
+      expect(File('${data.path}/last-exit.json').existsSync(), isFalse);
+      await next.cleanExit();
+      return next.entries.single;
+    }
+
+    test('Speicher voll', () async {
+      final e = await endWith({'result': 'oom-kill', 'code': 'killed', 'status': 'KILL'});
+      expect(e['reason'], 'oom');
+      expect(e['signal'], 'KILL');
+    });
+
+    test('Signal mit Name', () async {
+      final e = await endWith({'result': 'core-dump', 'code': 'dumped', 'status': 'SEGV'});
+      expect(e['reason'], 'signal');
+      expect(e['signal'], 'SEGV');
+    });
+
+    test('Watchdog', () async {
+      expect((await endWith({'result': 'watchdog', 'code': 'killed', 'status': 'ABRT'}))['reason'], 'watchdog');
+    });
+
+    test('Exit-Code sagt nichts Neues: Boot-ID entscheidet wie bisher', () async {
+      final e = await endWith({'result': 'exit-code', 'code': 'exited', 'status': '1'}, newBoot: true);
+      expect(e['reason'], 'host');
+      expect(e.containsKey('signal'), isFalse);
+    });
+
+    test('eigener Fehlertext geht vor', () async {
+      final first = watch();
+      await first.start();
+      first.recordError(StateError('kaputt'), null);
+      File('${data.path}/last-exit.json').writeAsStringSync(jsonEncode({'result': 'exit-code', 'status': '255'}));
+      final next = watch();
+      await next.start();
+      expect(next.entries.single['reason'], 'error');
+      await next.cleanExit();
+    });
+
+    test('nach sauberem Ende: Datei weg, kein Eintrag, erklärt kein späteres Ende', () async {
+      final first = watch();
+      await first.start();
+      await first.cleanExit();
+      File('${data.path}/last-exit.json').writeAsStringSync(jsonEncode({'result': 'signal', 'status': 'TERM'}));
+      final second = watch();
+      await second.start(); // liest und löscht
+      expect(second.entries, isEmpty);
+      // jetzt ein Ende ohne systemd-Angabe
+      final third = watch();
+      await third.start();
+      expect(third.entries.single['reason'], 'unknown');
+      await third.cleanExit();
+    });
+
+    test('kaputte Datei: kein Grund, Start läuft weiter', () async {
+      await watch().start();
+      File('${data.path}/last-exit.json').writeAsStringSync('{kaputt');
+      final next = watch();
+      await next.start();
+      expect(next.entries.single['reason'], 'unknown');
+      expect(File('${data.path}/last-exit.json').existsSync(), isFalse);
+      await next.cleanExit();
+    });
+
+    test('Signal erscheint in Zusammenfassung und Bericht', () async {
+      await endWith({'result': 'signal', 'code': 'killed', 'status': 'KILL'});
+      final again = watch();
+      await again.start();
+      expect((again.summary()!['last']! as Map)['signal'], 'KILL');
+      expect(again.between(DateTime(2000), DateTime(2100)).single['signal'], 'KILL');
+      await again.cleanExit();
+    });
+  });
 }

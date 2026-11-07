@@ -59,6 +59,7 @@ addon:
     - { term: "Exports", value: "One page for PDF, CSV, ETS file, reports and a ZIP with everything" }
     - { term: "Experts", value: "Bus monitor with raw frames, topology, comparison with the ETS project, commissioning checklist" }
     - { term: "Connection", value: "Tunneling, routing and KNX IP Secure" }
+    - { term: "Home Assistant", value: "Read-only by default; [integration](https://github.com/regetskcob/KNX-Monitor-HA) with sensors, triggers and repair hints, events, blueprints and MQTT" }
 apps:
   kennung: "03 — Coming as an app"
   title: "Soon without Home Assistant too, right at the gateway."
@@ -94,7 +95,7 @@ roadmap:
     - { term: "Soon", value: "**iPhone, iPad, Mac and Windows** in the App Store and as a download for Windows", when: [android] }
     - { term: "Soon", value: "**Mac and Windows** in the App Store and as a download for Windows", when: [both] }
     - { term: "Preview", value: "**Home builder package**: from everyday wishes through room book and floor plan to documents for your electrician. [Learn more](/en/bauherren/)" }
-    - { term: "Later", value: "**KNX box**: a Raspberry Pi as an on-site telegram recorder, recording for days on the building site, without Home Assistant and without internet. Until the other apps arrive, set it up with the Linux app" }
+    - { term: "Preview", value: "**[KNX box](/en/box/)**: a Raspberry Pi as an on-site telegram recorder, recording for days on the building site, without Home Assistant and without internet. Until the other apps arrive, set it up with the Linux app" }
     - { term: "Apps", value: "Free to use, more tools with Plus and Pro. Everything is free in the beta.", commerce: false }
 # From section 05 the landing page: features, expert mode, ETS project,
 # connection, KNX box, privacy and FAQ from site/data/home and

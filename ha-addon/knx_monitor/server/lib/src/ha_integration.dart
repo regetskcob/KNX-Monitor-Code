@@ -21,6 +21,16 @@
 /// - `POST /api/ha/claim`, `DELETE /api/ha/claim`: the integration takes
 ///   over the entities; the MQTT device stops announcing them, and announces
 ///   them again when the integration is removed.
+/// - `GET /api/ha/watchers`: id and name of each watcher, for one device
+///   trigger per watcher (no conditions, no addresses).
+/// - `GET /api/ha/silent`: addresses that stopped sending ([CycleWatch]), at
+///   most 20, oldest silence first; `POST /api/ha/silent/ignore`
+///   `{"address": "1/2/3"}` stops reporting one until it sends again.
+///
+/// Without Supervisor (KNX box, Docker; `BOX=1`) there is no discovery and no
+/// token ([tokenAccess] off): the server lets a paired device with admin
+/// rights (box_access.dart, bearer token from the pairing link) through to the
+/// same endpoints and calls [touch] for it.
 library;
 
 import 'dart:async';
@@ -29,6 +39,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'bus.dart';
+import 'cycle_watch.dart';
 import 'ets_xml.dart';
 import 'http.dart';
 import 'key_figures.dart';
@@ -47,12 +58,15 @@ class HaIntegration {
     String? supervisorToken,
     Uri? supervisor,
     this.releaseAfter = const Duration(hours: 1),
+    this.tokenAccess = true,
     DateTime Function() clock = DateTime.now,
+    CycleWatch? cycles,
   }) : _supervisorToken = supervisorToken ?? Platform.environment['SUPERVISOR_TOKEN'],
        _supervisor = supervisor ?? Uri.parse('http://supervisor/'),
        _clock = clock,
        _lastSeen = clock(),
-       figures = KeyFigures(currentBus, clock: clock);
+       figures = KeyFigures(currentBus, clock: clock),
+       cycles = cycles ?? CycleWatch(currentBus, clock: clock);
 
   final Directory data;
   final BusService Function() currentBus;
@@ -65,6 +79,15 @@ class HaIntegration {
   final String? _supervisorToken;
   final Uri _supervisor;
   final KeyFigures figures;
+
+  /// Addresses that stopped sending (`/api/ha/silent`).
+  final CycleWatch cycles;
+
+  /// Whether the integration authenticates with the add-on's own token (Home
+  /// Assistant with Supervisor, which hands it over through discovery). Off on
+  /// the box and in Docker: there the token could not be delivered safely, and
+  /// a paired admin device opens `/api/ha/` instead.
+  final bool tokenAccess;
 
   String? _token;
   bool _claimed = false;
@@ -87,10 +110,15 @@ class HaIntegration {
 
   File get _file => File('${data.path}/ha_integration.json');
 
-  /// Loads or creates the token, starts the key figures and announces the
-  /// add-on to the Supervisor.
-  Future<void> start({Duration tick = const Duration(seconds: 60)}) async {
+  /// Loads or creates the token, starts the key figures and the cycle watch
+  /// and announces the add-on to the Supervisor.
+  Future<void> start({Duration tick = const Duration(seconds: 60), Duration? firstCycleCheck}) async {
     await _load();
+    if (firstCycleCheck != null) {
+      cycles.start(first: firstCycleCheck);
+    } else {
+      cycles.start();
+    }
     figures.count();
     await figures.measure();
     _timer = Timer.periodic(tick, (_) async {
@@ -98,10 +126,13 @@ class HaIntegration {
       await figures.measure();
       await checkClaim();
     });
-    unawaited(announce());
+    if (tokenAccess) unawaited(announce());
   }
 
-  void stop() => _timer?.cancel();
+  void stop() {
+    _timer?.cancel();
+    cycles.stop();
+  }
 
   Future<void> _load() async {
     try {
@@ -110,6 +141,15 @@ class HaIntegration {
       _claimed = json['claimed'] == true;
     } on Object {
       // Missing or damaged: a new token, the integration is offered again.
+    }
+    if (!tokenAccess) {
+      // No token without Supervisor: nothing could hand it over. One left
+      // from an earlier start in the add-on does not stay valid on disk.
+      if (_token != null) {
+        _token = null;
+        await _save();
+      }
+      return;
     }
     if (_token == null || _token!.length < 32) {
       final random = Random.secure();
@@ -121,7 +161,7 @@ class HaIntegration {
 
   Future<void> _save() async {
     final tmp = File('${_file.path}.tmp');
-    await tmp.writeAsString(jsonEncode({'token': _token, 'claimed': _claimed}), flush: true);
+    await tmp.writeAsString(jsonEncode({'token': ?_token, 'claimed': _claimed}), flush: true);
     await tmp.rename(_file.path);
   }
 
@@ -176,9 +216,11 @@ class HaIntegration {
     }
   }
 
-  /// Whether [request] carries the token, compared in constant time.
+  /// Whether [request] carries the token, compared in constant time. Always
+  /// `false` without [tokenAccess].
   bool authorized(HttpRequest request) {
     final token = _token;
+    if (!tokenAccess) return false;
     final header = request.headers.value(HttpHeaders.authorizationHeader) ?? '';
     if (token == null || !header.startsWith('Bearer ')) return false;
     final given = header.substring(7).trim();
@@ -188,9 +230,13 @@ class HaIntegration {
       diff |= given.codeUnitAt(i) ^ token.codeUnitAt(i);
     }
     if (diff != 0) return false;
-    _lastSeen = _clock();
+    touch();
     return true;
   }
+
+  /// The integration has just made a request (the claim stays, see
+  /// [checkClaim]); for requests the caller authorised otherwise (box device).
+  void touch() => _lastSeen = _clock();
 
   static bool handles(String path) => path.startsWith('/api/ha/');
 
@@ -228,6 +274,24 @@ class HaIntegration {
       case ('DELETE', '/api/ha/claim'):
         await _setClaimed(false);
         await sendJson(response, {'claimed': false});
+      case ('GET', '/api/ha/watchers'):
+        // Only what a trigger needs: no conditions, no addresses.
+        await sendJson(response, [
+          for (final r in await bus.watchers.rules()) {'id': r.id, 'name': r.name},
+        ]);
+      case ('GET', '/api/ha/silent'):
+        await sendJson(response, cycles.silent());
+      case ('POST', '/api/ha/silent/ignore'):
+        final address = (await _body(request))?['address'];
+        if (address is! String || address.length > 16) {
+          response.statusCode = HttpStatus.badRequest;
+          await response.close();
+        } else if (!await cycles.ignore(address)) {
+          response.statusCode = HttpStatus.notFound;
+          await response.close();
+        } else {
+          await sendJson(response, {'ignored': address});
+        }
       default:
         response.statusCode = HttpStatus.notFound;
         await response.close();
@@ -253,6 +317,7 @@ class HaIntegration {
       'last_lost': bus.lastLost?.toUtc().toIso8601String(),
       'read_only': bus.readOnly,
       'claimed': _claimed,
+      'silent': cycles.count,
     };
   }
 
@@ -286,6 +351,8 @@ class HaIntegration {
       },
       'restarts': ?status['restarts'],
       'claimed': _claimed,
+      // Only how many, no addresses.
+      'silent': cycles.count,
     };
   }
 

@@ -446,7 +446,7 @@ const _de = _Texts(
     ),
     (
       'Ohne App.',
-      'Aufkleber 2 mit der Kamera scannen, im Browser http://knx-box.local öffnen und mit dem Box-Passwort anmelden (Benutzername beliebig).',
+      'Aufkleber 2 mit der Kamera scannen, im Browser http://knx-box.local öffnen und mit dem Box-Passwort anmelden.',
     ),
     (
       'Eigenes Passwort.',
@@ -502,7 +502,7 @@ const _en = _Texts(
     ),
     (
       'Without the app.',
-      'Scan label 2 with the camera, open http://knx-box.local in a browser and sign in with the box password (any user name).',
+      'Scan label 2 with the camera, open http://knx-box.local in a browser and sign in with the box password.',
     ),
     (
       'Your own password.',

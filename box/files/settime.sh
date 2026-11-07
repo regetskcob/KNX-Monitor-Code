@@ -33,4 +33,8 @@ before=$(date '+%F %T')
 # English month names: chrony does not understand "Okt" (the image runs on de_DE).
 chronyc -m "settime $(LC_ALL=C date -d "@$seconds" '+%b %d, %Y %H:%M:%S')" >/dev/null
 if [ -e /dev/rtc0 ]; then hwclock -w || true; fi
+# Remember it for the next start without an RTC (as knx-box-clock-save.service).
+if mkdir -p /var/lib/systemd/timesync 2>/dev/null; then
+  touch /var/lib/systemd/timesync/clock 2>/dev/null || true
+fi
 echo "knx-box-time: Uhr gestellt ($before -> $(date '+%F %T'))"

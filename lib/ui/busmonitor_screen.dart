@@ -75,8 +75,20 @@ class _BusMonitorScreenState extends State<BusMonitorScreen> {
 
   int _total = 0, _data = 0, _acks = 0, _negative = 0, _errors = 0, _repeated = 0, _unacked = 0;
 
+  /// Acknowledgements without a data frame directly before them: the interface
+  /// did not pass that frame on (issue #1; the kBerry leaves out about every
+  /// second one).
+  int _orphanAcks = 0;
+
   /// Data telegram still waiting for its acknowledgement.
   BusmonFrame? _awaiting;
+
+  /// Connection whose frames this view shows. When it drops or reconnects, a
+  /// pending data frame no longer pairs with the next acknowledgement: the
+  /// server starts counting afresh too.
+  late final ValueNotifier<TunnelState> _connection = _fromServer ? widget.monitor.state : _tunnel.state;
+
+  void _onConnection() => _awaiting = null;
 
   /// Data frames without a following ACK (for the marker in the list).
   final _withoutAck = Expando<bool>();
@@ -102,6 +114,7 @@ class _BusMonitorScreenState extends State<BusMonitorScreen> {
   @override
   void initState() {
     super.initState();
+    _connection.addListener(_onConnection);
     _start();
     _tick = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && !_paused) setState(() {});
@@ -152,6 +165,7 @@ class _BusMonitorScreenState extends State<BusMonitorScreen> {
   void _onFrame(BusmonFrame f) {
     // Acknowledgement of the previous data telegram?
     final waiting = _awaiting;
+    if (waiting == null && f.isAck) _orphanAcks++;
     if (waiting != null) {
       if (f.kind != BusmonKind.data) _ackOf[waiting] = f;
       final sender = waiting.source == null ? null : _senders[waiting.source!];
@@ -202,7 +216,7 @@ class _BusMonitorScreenState extends State<BusMonitorScreen> {
 
   void _clear() => setState(() {
     _frames.clear();
-    _total = _data = _acks = _negative = _errors = _repeated = _unacked = 0;
+    _total = _data = _acks = _negative = _errors = _repeated = _unacked = _orphanAcks = 0;
     _awaiting = null;
     _selected = null;
     _load.clear();
@@ -253,6 +267,7 @@ class _BusMonitorScreenState extends State<BusMonitorScreen> {
     _tick?.cancel();
     _pulse.dispose();
     _sub?.cancel();
+    _connection.removeListener(_onConnection);
     if (_fromServer) {
       super.dispose();
       return;
@@ -520,6 +535,14 @@ class _BusMonitorScreenState extends State<BusMonitorScreen> {
               HorizontStatus.critical,
               action: TextButton(onPressed: _start, child: Text(s.busmonRetry)),
               child: Text(s.busmonFailed(error)),
+            ),
+          ),
+        if (_orphanAcks > 0)
+          Padding(
+            padding: EdgeInsets.fromLTRB(gutter, 0, gutter, Gap.inner),
+            child: HorizontNotice(
+              HorizontStatus.warning,
+              child: Text(_fromServer ? s.busmonOrphanAcksHat(_orphanAcks) : s.busmonOrphanAcks(_orphanAcks)),
             ),
           ),
         Expanded(

@@ -74,10 +74,12 @@ class BoxDevice {
 
 /// Access protection of the KNX box (`BOX=1`), see docs/knx-box.md and docs/security.md.
 ///
-/// - **Browser:** HTTP Basic with the box password (any user name).
-///   After the first valid login the box sets a session cookie
-///   ([sessionCookie]): Safari/WebKit does not send the Basic credentials with
-///   the WebSocket handshake, but it does send the cookie.
+/// - **Browser:** the page `/login` asks for the password only and then sets
+///   a session cookie ([sessionCookie]); `/logout` ends it. A browser without
+///   a session is sent there instead of getting the browser's own login dialog
+///   (which asks for a user name that does not matter). HTTP Basic with the
+///   password (any user name) still works for tools such as curl, which get
+///   the `WWW-Authenticate` challenge as before.
 /// - **App:** device token as `Authorization: Bearer …`, created on `/pair`
 ///   and shown there as a QR code (`knxmonitor://box?url=…&key=…`).
 ///
@@ -361,42 +363,51 @@ class BoxAccess {
             : 'Zugriff über das Kabel ist aus. Im WLAN der Box verbinden oder in den Box-Einstellungen freigeben.',
       );
     }
+    // Docker without LAN access: only this machine, and only under a local
+    // name. Otherwise a web page could rebind its own name to 127.0.0.1 and
+    // ask for the password in the browser's login dialog (DNS rebinding).
+    // A reverse proxy on the same host that passes its own host name lands
+    // here too: it makes the container reachable from the network, so it
+    // needs LAN_ACCESS=yes.
+    if (container && !_lanAccess && !localHostName(request.headers.value(HttpHeaders.hostHeader))) {
+      return _deny(
+        response,
+        HttpStatus.forbidden,
+        'Nur über http://localhost erreichbar. Hinter einem Reverse-Proxy oder aus dem Netzwerk '
+        'LAN_ACCESS=yes setzen und den Container neu starten.',
+      );
+    }
     final peer = _peerOf?.call(request) ?? address?.address ?? '';
     final now = _clock();
+    if (request.uri.path == loginPath || request.uri.path == logoutPath) {
+      await _loginOrLogout(request, peer, now);
+      return null;
+    }
+    final auth = request.headers.value(HttpHeaders.authorizationHeader) ?? '';
+    // A valid device token is checked first: a lockout of the sender (behind
+    // a reverse proxy or NAT that is everyone) must not lock out paired apps.
+    // Wrong tokens still count and are refused during the lockout.
+    final bearer = auth.startsWith('Bearer ') ? _deviceFor(auth.substring(7).trim()) : null;
     final strike = _strikes[peer];
-    if (strike != null && strike.until.isAfter(now)) {
+    if (bearer == null && strike != null && strike.until.isAfter(now)) {
       response.headers.set(HttpHeaders.retryAfterHeader, '${strike.until.difference(now).inSeconds + 1}');
       return _deny(response, HttpStatus.tooManyRequests, 'Zu viele Fehlversuche, bitte warten.');
     }
     // The browser loads the manifest without credentials; it only contains
     // the app's name, colours and icons.
     if (request.uri.path == '/manifest.json' && request.method == 'GET') return BoxRole.device;
-    final auth = request.headers.value(HttpHeaders.authorizationHeader) ?? '';
     final session = _sessionOf(request, now);
     final BoxRole? role;
     if (auth.startsWith('Bearer ')) {
-      final device = _deviceFor(auth.substring(7).trim());
-      role = device?.role;
+      role = bearer?.role;
     } else if (auth.startsWith('Basic ')) {
       final encoded = auth.substring(6).trim();
       final known = _acceptedBasic.contains(_sha256(utf8.encode(encoded)));
-      final running = _verifying[peer] ?? 0;
-      final total = _verifying.values.fold(0, (a, b) => a + b);
-      if (!known && (running >= _maxVerifying || total >= _maxVerifyingTotal)) {
+      if (!known && _tooManyChecks(peer)) {
         response.headers.set(HttpHeaders.retryAfterHeader, '5');
         return _deny(response, HttpStatus.tooManyRequests, 'Zu viele Anmeldungen auf einmal, bitte warten.');
       }
-      _verifying[peer] = running + 1;
-      try {
-        role = await _checkBasic(encoded) ? BoxRole.admin : null;
-      } finally {
-        final left = (_verifying[peer] ?? 1) - 1;
-        if (left <= 0) {
-          _verifying.remove(peer);
-        } else {
-          _verifying[peer] = left;
-        }
-      }
+      role = await _counted(peer, () => _checkBasic(encoded)) ? BoxRole.admin : null;
     } else if (auth.isEmpty) {
       role = session == null ? null : BoxRole.admin;
     } else {
@@ -408,7 +419,17 @@ class BoxAccess {
       // A browser's first request always comes without; only wrong ones count.
       // An expired cookie is not a failed attempt.
       if (auth.isNotEmpty) _fail(peer, now);
-      response.headers.set(HttpHeaders.wwwAuthenticateHeader, 'Basic realm="$realm", charset="UTF-8"');
+      // A browser goes to the login page; its own dialog would ask for a user
+      // name that does not matter. Pages are redirected, its other requests
+      // (the web app's API calls) get 401 without the challenge, so that no
+      // dialog pops up either. Tools without Sec-Fetch headers keep Basic.
+      if (_isPage(request) && _isBrowser(request)) {
+        final target = request.uri.hasQuery ? '${request.uri.path}?${request.uri.query}' : request.uri.path;
+        return _redirect(response, target == '/' ? loginPath : '$loginPath?next=${Uri.encodeQueryComponent(target)}');
+      }
+      if (request.headers.value('sec-fetch-mode') == null) {
+        response.headers.set(HttpHeaders.wwwAuthenticateHeader, 'Basic realm="$realm", charset="UTF-8"');
+      }
       return _deny(response, HttpStatus.unauthorized, 'Anmeldung nötig.');
     }
     // Only the password itself clears the failed attempts: otherwise a valid device token
@@ -492,6 +513,12 @@ class BoxAccess {
 
   /// Session expiry from the cookie of [request], otherwise `null`.
   DateTime? _sessionOf(HttpRequest request, DateTime now) {
+    final key = _sessionKeyOf(request, now);
+    return key == null ? null : _sessions[key];
+  }
+
+  /// Stored key (hash) of the valid session in the cookie of [request].
+  String? _sessionKeyOf(HttpRequest request, DateTime now) {
     _sessions.removeWhere((_, until) => !until.isAfter(now));
     for (final header in request.headers[HttpHeaders.cookieHeader] ?? const <String>[]) {
       for (final part in header.split(';')) {
@@ -499,11 +526,176 @@ class BoxAccess {
         if (eq < 0 || part.substring(0, eq).trim() != sessionCookie) continue;
         final value = part.substring(eq + 1).trim();
         if (value.isEmpty || value.length > 128) continue;
-        final until = _sessions[_sha256(utf8.encode(value))];
-        if (until != null) return until;
+        final key = _sha256(utf8.encode(value));
+        if (_sessions.containsKey(key)) return key;
       }
     }
     return null;
+  }
+
+  /// A browser: it sends fetch metadata (Sec-Fetch-*), older ones (Safari
+  /// before 16.4) at least a browser user agent. curl or scripts asking for
+  /// HTML keep the Basic challenge.
+  static bool _isBrowser(HttpRequest request) =>
+      request.headers.value('sec-fetch-mode') != null ||
+      (request.headers.value(HttpHeaders.userAgentHeader) ?? '').startsWith('Mozilla/');
+
+  /// A page the browser navigates to (not an API call or an asset).
+  static bool _isPage(HttpRequest request) =>
+      request.method == 'GET' && (request.headers.value(HttpHeaders.acceptHeader) ?? '').contains('text/html');
+
+  /// Runs a password check of [peer] within the limits of concurrent checks
+  /// (per sender and in total); the caller has checked them before.
+  Future<bool> _counted(String peer, Future<bool> Function() check) async {
+    _verifying[peer] = (_verifying[peer] ?? 0) + 1;
+    try {
+      return await check();
+    } finally {
+      final left = (_verifying[peer] ?? 1) - 1;
+      if (left <= 0) {
+        _verifying.remove(peer);
+      } else {
+        _verifying[peer] = left;
+      }
+    }
+  }
+
+  bool _tooManyChecks(String peer) =>
+      (_verifying[peer] ?? 0) >= _maxVerifying || _verifying.values.fold(0, (a, b) => a + b) >= _maxVerifyingTotal;
+
+  // --- Login page ---------------------------------------------------------------
+
+  /// Login page: password only, then a session cookie.
+  static const loginPath = '/login';
+
+  /// Ends the browser's session (POST, from the button on `/pair`).
+  static const logoutPath = '/logout';
+
+  /// Where to go after logging in: a local path only (no `//host`, no
+  /// backslash), never back to the login itself.
+  static String safeNext(String? next) {
+    if (next == null || next.length > 512) return '/';
+    if (!RegExp(r'^/(?![/\\])[A-Za-z0-9/_.~%?=&+-]*$').hasMatch(next)) return '/';
+    if (next.startsWith(loginPath) || next.startsWith(logoutPath)) return '/';
+    return next;
+  }
+
+  /// A form sent by this box's own page: browsers send `Origin` with every
+  /// form POST; a foreign page (login CSRF) has another one.
+  bool _ownForm(HttpRequest request) {
+    final origin = request.headers.value('origin');
+    if (origin == null || !_sameOrigin(origin, request.headers.value(HttpHeaders.hostHeader))) return false;
+    final site = request.headers.value('sec-fetch-site');
+    return site == null || site == 'same-origin';
+  }
+
+  Future<void> _loginOrLogout(HttpRequest request, String peer, DateTime now) async {
+    final response = request.response;
+    response.headers.set(HttpHeaders.cacheControlHeader, 'no-store');
+    final secure = request.requestedUri.scheme == 'https';
+    if (request.uri.path == logoutPath) {
+      if (request.method != 'POST') {
+        await _deny(response, HttpStatus.methodNotAllowed, 'Nicht erlaubt.');
+        return;
+      }
+      if (!_ownForm(request)) {
+        await _deny(response, HttpStatus.forbidden, 'Fremde Herkunft.');
+        return;
+      }
+      final key = _sessionKeyOf(request, now);
+      if (key != null) _sessions.remove(key);
+      response.headers.add(
+        HttpHeaders.setCookieHeader,
+        '$sessionCookie=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict${secure ? '; Secure' : ''}',
+      );
+      await _redirect(response, loginPath);
+      return;
+    }
+    if (request.method == 'GET') {
+      final next = safeNext(request.uri.queryParameters['next']);
+      if (_sessionOf(request, now) != null) {
+        await _redirect(response, next);
+        return;
+      }
+      await _loginAnswer(response, HttpStatus.ok, next: next);
+      return;
+    }
+    if (request.method != 'POST') {
+      await _deny(response, HttpStatus.methodNotAllowed, 'Nicht erlaubt.');
+      return;
+    }
+    if (!_ownForm(request)) {
+      await _deny(response, HttpStatus.forbidden, 'Fremde Herkunft.');
+      return;
+    }
+    final form = await _form(request);
+    if (form == null) {
+      await _deny(response, HttpStatus.requestEntityTooLarge, 'Zu groß.');
+      return;
+    }
+    final next = safeNext(form['next']);
+    final strike = _strikes[peer];
+    if (strike != null && strike.until.isAfter(now)) {
+      final seconds = strike.until.difference(now).inSeconds + 1;
+      response.headers.set(HttpHeaders.retryAfterHeader, '$seconds');
+      await _loginAnswer(
+        response,
+        HttpStatus.tooManyRequests,
+        next: next,
+        notice:
+            'Zu viele Fehlversuche. Bitte ${seconds < 120 ? '$seconds Sekunden' : '${(seconds / 60).ceil()} Minuten'} warten.',
+      );
+      return;
+    }
+    final password = form['password'] ?? '';
+    if (password.isEmpty || password.length > 128) {
+      if (password.isNotEmpty) _fail(peer, now);
+      await _loginAnswer(response, HttpStatus.unauthorized, next: next, notice: 'Bitte das Passwort eingeben.');
+      return;
+    }
+    if (_tooManyChecks(peer)) {
+      response.headers.set(HttpHeaders.retryAfterHeader, '5');
+      await _loginAnswer(
+        response,
+        HttpStatus.tooManyRequests,
+        next: next,
+        notice: 'Zu viele Anmeldungen auf einmal. Bitte kurz warten.',
+      );
+      return;
+    }
+    if (!await _counted(peer, () => verifyPassword(password))) {
+      _fail(peer, _clock());
+      await _loginAnswer(response, HttpStatus.unauthorized, next: next, notice: 'Das Passwort stimmt nicht.');
+      return;
+    }
+    unawaited(_rehash(password));
+    _strikes.remove(peer);
+    _startSession(response, _clock(), secure: secure);
+    // The sticker password is still valid: first set an own one.
+    await _redirect(response, _mustChange ? '/pair' : next);
+  }
+
+  Future<void> _loginAnswer(HttpResponse response, int status, {required String next, String? notice}) async {
+    const e = HtmlEscape(HtmlEscapeMode.attribute);
+    response
+      ..statusCode = status
+      ..headers.contentType = ContentType.html
+      ..write('<!doctype html><html lang="de"><head><meta charset="utf-8">')
+      ..write('<meta name="viewport" content="width=device-width, initial-scale=1">')
+      ..write('<title>${e.convert(name)} · Anmelden</title><style>$_css</style></head><body><main>')
+      ..write('<h1>${e.convert(name)}</h1>');
+    if (notice != null) response.write('<p class="notice" role="alert">${e.convert(notice)}</p>');
+    response
+      ..write('<form method="post" action="$loginPath">')
+      ..write('<input type="hidden" name="next" value="${e.convert(next)}">')
+      ..write('<label class="sr" for="password">$_passwordWord</label>')
+      ..write('<input id="password" type="password" name="password" autocomplete="current-password" required ')
+      ..write('autofocus placeholder="$_passwordWord"><button>Anmelden</button></form>')
+      ..write(
+        '<p class="hint">${container ? 'Das Passwort aus BOX_PASSWORD oder das zuletzt gesetzte.' : 'Das eigene Box-Passwort, bei einer neuen Box das vom Aufkleber.'}</p>',
+      )
+      ..write('</main></body></html>');
+    await response.close();
   }
 
   void _startSession(HttpResponse response, DateTime now, {required bool secure}) {
@@ -538,6 +730,12 @@ class BoxAccess {
 
   String _peerAddress(HttpRequest request) =>
       _peerOf?.call(request) ?? request.connectionInfo?.remoteAddress.address ?? '';
+
+  /// `Host` of a request to this machine itself: localhost, 127.0.0.1 or
+  /// [::1], with or without port.
+  static bool localHostName(String? host) => host != null && _localHost.hasMatch(host);
+
+  static final _localHost = RegExp(r'^(localhost|127\.0\.0\.1|\[::1\])(:\d{1,5})?$', caseSensitive: false);
 
   static bool _sameOrigin(String origin, String? host) {
     if (host == null) return false;
@@ -734,8 +932,12 @@ class BoxAccess {
     onAccessChanged?.call();
   }
 
+  /// Locks out everyone: devices, browser sessions and cached logins (after an
+  /// incident nothing logged in before may stay in).
   Future<void> revokeAll() async {
     _devices.clear();
+    _sessions.clear();
+    _acceptedBasic.clear();
     await _save();
     onAccessChanged?.call();
   }
@@ -871,7 +1073,10 @@ class BoxAccess {
       }
       switch (path) {
         case '/pair':
-          key = await pair(form['name'] ?? '', viewOnly: form['viewOnly'] == '1');
+          // The page itself needs the password, so it may also hand out a
+          // device with admin rights (as POST /api/box/pair does): Home
+          // Assistant and ioBroker need one for /api/ha/.
+          key = await pair(form['name'] ?? '', admin: form['admin'] == '1', viewOnly: form['viewOnly'] == '1');
         case '/pair/revoke':
           if (form['id'] == '*') {
             if (await _confirmCurrent(request, form['current'])) {
@@ -900,7 +1105,7 @@ class BoxAccess {
           } else {
             try {
               await changePassword(next);
-              notice = 'Passwort geändert. Der Browser fragt gleich neu danach.';
+              notice = 'Passwort geändert. Bitte gleich mit dem neuen anmelden.';
             } on SamePasswordException {
               notice = 'Das ist das Passwort vom Aufkleber. Bitte ein eigenes wählen.';
             }
@@ -975,6 +1180,13 @@ class BoxAccess {
     Object? result;
     switch (path) {
       case '/api/box/pair':
+        // An admin token outlives a password change. Only with the password
+        // itself (as the app pairs), not with a session or another token: a
+        // borrowed browser or a lost tablet must not mint a lasting one.
+        if (!(request.headers.value(HttpHeaders.authorizationHeader) ?? '').startsWith('Basic ')) {
+          await _deny(response, HttpStatus.forbidden, 'Nur mit dem $_passwordWord.');
+          return;
+        }
         final key = await pair(body['name'] as String? ?? '', admin: true);
         result = {'key': key, 'id': _devices.last.id, 'name': name};
       case '/api/box/devices':
@@ -1132,6 +1344,8 @@ class BoxAccess {
       ..write('<input name="name" maxlength="40" placeholder="z. B. iPad Bauleitung" autocomplete="off">')
       ..write('<label class="check"><input type="checkbox" name="viewOnly" value="1"> Nur ansehen: ')
       ..write('schaltet nichts und schickt nichts auf den Bus</label>')
+      ..write('<label class="check"><input type="checkbox" name="admin" value="1"> Verwalten: darf alles wie mit ')
+      ..write('dem Passwort, für Home Assistant und ioBroker</label>')
       ..write('<button>QR-Code erzeugen</button></form></section>')
       ..write('<section><h2>Gekoppelte Geräte</h2>');
     if (devices.isEmpty) {
@@ -1140,7 +1354,8 @@ class BoxAccess {
       out.write('<ul>');
       for (final d in devices) {
         out
-          ..write('<li><span><b>${e.convert(d.name)}</b>${d.viewOnly ? ' <small>· nur ansehen</small>' : ''}')
+          ..write('<li><span><b>${e.convert(d.name)}</b>')
+          ..write(d.admin ? ' <small>· verwalten</small>' : (d.viewOnly ? ' <small>· nur ansehen</small>' : ''))
           ..write('<br><small>gekoppelt ${_date(d.created)}')
           ..write(d.lastUsed == null ? '' : ' · zuletzt ${_date(d.lastUsed!)}')
           ..write('</small></span><form method="post" action="/pair/revoke">')
@@ -1159,7 +1374,8 @@ class BoxAccess {
       ..write('<input type="password" name="password" minlength="8" autocomplete="new-password" ')
       ..write('placeholder="Neues Passwort"><button>Ändern</button></form></section>')
       ..write(container ? _containerLanSection() : _boxLanSection())
-      ..write('<p class="hint"><a href="/">Zum Monitor</a></p></main></body></html>');
+      ..write('<form method="post" action="$logoutPath" class="end"><a class="hint" href="/">Zum Monitor</a>')
+      ..write('<button class="quiet">Abmelden</button></form></main></body></html>');
     return '$out';
   }
 
@@ -1195,7 +1411,9 @@ class BoxAccess {
       'li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;'
       'border-bottom:1px solid var(--line)}small,.hint{color:var(--muted)}.notice{padding:10px;'
       'border:1px solid var(--line);border-radius:10px}.pair{text-align:center}'
-      '.pair svg{width:min(100%,320px);height:auto;background:#fff;border-radius:12px}';
+      '.pair svg{width:min(100%,320px);height:auto;background:#fff;border-radius:12px}'
+      'form.end{justify-content:space-between;align-items:center;margin-top:28px}'
+      '.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}';
 
   // --- Helpers ------------------------------------------------------------------
 

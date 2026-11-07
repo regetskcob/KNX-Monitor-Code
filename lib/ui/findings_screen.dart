@@ -135,7 +135,7 @@ class _FindingsScreenState extends State<FindingsScreen> {
                         },
                       ),
                       const SizedBox(width: HzSpace.s8),
-                      Expanded(child: Text(f.text)),
+                      Expanded(child: SelectableText(f.text)),
                     ],
                   ),
                 ),
@@ -164,6 +164,7 @@ class _FindingsScreenState extends State<FindingsScreen> {
                 HorizontFact(
                   term: formatGroup(ga),
                   value: '${CatalogStore.instance.catalog[ga]?.name ?? ''}$metaSeparator${s.telegramCount(n)}',
+                  selectable: true,
                 ),
               const SizedBox(height: Gap.section * 2),
             ],
@@ -171,7 +172,7 @@ class _FindingsScreenState extends State<FindingsScreen> {
             // Technik.
             Kennung(s.findingsTechnical),
             const SizedBox(height: HzSpace.s8),
-            for (final (term, value) in technicalFacts(tech)) HorizontFact(term: term, value: value),
+            for (final (term, value) in technicalFacts(tech)) HorizontFact(term: term, value: value, selectable: true),
             const SizedBox(height: Gap.section * 2),
           ];
           return ListView(

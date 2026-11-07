@@ -36,6 +36,8 @@ Eine ZIP-Datei, die KNX Monitor für dich zusammenstellt. Du siehst vor dem Send
 
 Schreibst du in einem Forum oder in einem [GitHub-Issue](https://github.com/regetskcob/KNX-Monitor/issues), genügt dort der Hinweis „Diagnosepaket per E-Mail geschickt“. Bitte häng das Paket dort nicht an: Beides ist öffentlich.
 
+**Nach einem Absturz** zeigt KNX Monitor beim nächsten Start einen Hinweis, der zum Diagnosepaket führt. Dort öffnet „Als Issue melden“ ein vorausgefülltes Formular auf GitHub, nur mit Version, Plattform, Zeit und Art des Absturzes. Auf der KNX-Box siehst du die letzten Neustarts mit Grund, wenn du auf die Zeile mit den unerwarteten Neustarts tippst.
+
 Wir öffnen das Paket in KNX Monitor, stellen den Fehler nach und nutzen es nur dafür. Sobald deine Anfrage erledigt ist, löschen wir es. Mehr dazu im [Datenschutz](/datenschutz/).
 
 ## Noch ohne KNX Monitor?

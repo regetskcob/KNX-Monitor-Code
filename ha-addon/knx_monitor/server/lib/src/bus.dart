@@ -257,8 +257,10 @@ class BusService {
     Future<List<Map<String, Object?>>> Function(DateTime from, DateTime to)? restarts,
     this.restartSummary,
     this.readOnly = false,
+    this.telegram,
+    Map<String, Object?>? Function()? mqttTelegrams,
   }) : _linkFactory = readOnly ? ((c) => ReadOnlyLink((link ?? defaultLink)(c))) : link ?? defaultLink,
-       recorder = Recorder(data),
+       recorder = Recorder(data, clock: clock?.now),
        hunt = FaultHunt(data),
        availability = Availability(data) {
     final send = notify ?? ({required id, required title, required message}) async {};
@@ -274,12 +276,20 @@ class BusService {
       homeAssistant: homeAssistant,
       restarts: restarts,
     );
-    exporter = DataExporter(data, source: _ExportSource(this));
+    exporter = DataExporter(data, source: _ExportSource(this))..mqttTelegrams = mqttTelegrams;
   }
 
   /// Events for Home Assistant automations (see [HomeAssistant]);
   /// `null` on the box and in tests without Home Assistant.
   final Future<void> Function(String type, Map<String, Object?> data)? event;
+
+  /// Every recorded group telegram (history line), e.g. for the cycle watch
+  /// of the Home Assistant integration (cycle_watch.dart) and the MQTT
+  /// telegram stream ([MqttBridge.onTelegram]). Must be cheap.
+  /// [secure] is true for every KNX Data Secure telegram (also without a
+  /// keyring), [decrypted] when the server could decrypt it: receivers that
+  /// pass data on must not leak it by default.
+  final void Function(Map<String, Object?> line, {required bool secure, required bool decrypted})? telegram;
 
   void _fire(String type, Map<String, Object?> data) {
     final event = this.event;
@@ -581,7 +591,8 @@ class BusService {
           ..naks = busmon.naks
           ..busy = busmon.busy
           ..damaged = busmon.damaged
-          ..orphanAcks = busmon.orphanAcks;
+          ..orphanAcks = busmon.orphanAcks
+          ..seqGaps = busmon.seqGaps;
       }
       final base = _busmonDay!;
       final dir = Directory('${data.path}/status');
@@ -596,6 +607,7 @@ class BusService {
           'busy': busmon.busy - base.busy,
           'damaged': busmon.damaged - base.damaged,
           'orphanAcks': busmon.orphanAcks - base.orphanAcks,
+          'seqGaps': busmon.seqGaps - base.seqGaps,
         }),
       );
     } on Object catch (e) {
@@ -651,10 +663,14 @@ class BusService {
 
   BusConfig _merged(Map<String, Object?> changes) {
     final merged = config.toJson()..addAll(changes);
-    // Empty password fields from the app mean "leave unchanged".
+    // Empty password fields from the app mean "leave unchanged" – but only for
+    // the same gateway: IP Secure answers a foreign host with a MAC over the
+    // user password, which can be guessed offline there.
+    final sameHost = !changes.containsKey('host') || changes['host'] == config.host;
     final secure = {...config.secure, ...?(changes['secure'] as Map?)?.cast<String, Object?>()};
     for (final key in ['userPassword', 'deviceAuthentication']) {
-      if ((changes['secure'] as Map?)?[key] == '' && (config.secure[key] as String?)?.isNotEmpty == true) {
+      if (!sameHost && (changes['secure'] as Map?)?[key] == null) secure.remove(key);
+      if (sameHost && (changes['secure'] as Map?)?[key] == '' && (config.secure[key] as String?)?.isNotEmpty == true) {
         secure[key] = config.secure[key];
       }
     }
@@ -754,6 +770,8 @@ class BusService {
         problem = null;
         since = DateTime.now();
         if (!BusConfig.needsNoHost(config.mode)) _description ??= await describe(config.host, config.port);
+        // The module counts its sequence number from the start again.
+        busmon.resync();
         final sub = link.frames.listen(_onFrame);
         _setState('connected');
         stdout.writeln('Bus verbunden: ${link.label}');
@@ -868,9 +886,13 @@ class BusService {
     // and decrypt it themselves.
     final ds = _dataSecure;
     var plain = cemi;
-    if (ds != null && DataSecure.isSecure(cemi)) {
+    // Secured by the frame itself, whether or not a keyring can decrypt it.
+    final secured = DataSecure.isSecure(cemi);
+    var decryptedOk = false;
+    if (ds != null && secured) {
       final (result, decrypted) = ds.receive(cemi);
-      if (result == SecureResult.decrypted) _noteSequence(cemi);
+      decryptedOk = result == SecureResult.decrypted;
+      if (decryptedOk) _noteSequence(cemi);
       plain = decrypted;
     }
     final line = telegramJson(plain, now);
@@ -892,6 +914,7 @@ class BusService {
     if (watch != null) unawaited(watch.observe(line).catchError((Object e) => stderr.writeln('Uhr: $e')));
     recorder.add(line);
     exporter.add(line);
+    telegram?.call(line, secure: secured, decrypted: decryptedOk);
     unawaited(hunt.add(line, now).catchError((Object e) => stderr.writeln('Fehlerjagd: $e')));
     unawaited(alarms.check(line).catchError((Object e) => stderr.writeln('Alarm: $e')));
     unawaited(
@@ -1126,6 +1149,11 @@ class BusService {
 /// For every WebSocket upgrade of the server: without permessage-deflate (see
 /// [BusService.maxClientMessage]).
 const webSocketCompression = CompressionOptions.compressionOff;
+
+/// Ping of `/ws` and `/ws/bus`: a client that no longer reads (or answers)
+/// is closed after two intervals, instead of the server queueing the whole
+/// bus traffic for it in memory.
+const webSocketPing = Duration(seconds: 20);
 
 class _ExportSource implements ExportSource {
   _ExportSource(this.bus);

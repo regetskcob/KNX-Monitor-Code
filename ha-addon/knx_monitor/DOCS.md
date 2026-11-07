@@ -39,6 +39,30 @@ finished days are compressed. Retention (days), size limit and write interval
 are set in the app. Writing less often spares an SD card, but a power cut then
 loses the last block.
 
+Defaults: 7 days, at most 1,000 MB, written every 5 seconds. The add-on
+collects the telegrams of those 5 seconds and appends them in one go instead of
+writing each telegram on its own, which spares SD cards and SSDs alike.
+
+How much space the history needs:
+
+| | per telegram | per 1 million telegrams |
+| --- | --- | --- |
+| Today (plain file) | about 95 bytes | about 95 MB |
+| Finished days (compressed) | about 20 bytes | about 20 MB |
+
+For example, 20,000 telegrams a day take about 0.4 MB per finished day, about
+12 MB a month and about 150 MB a year; 100,000 a day about 60 MB a month. Measured
+with a mix of switching, 1-byte, 2-byte and 4-byte values; buses that repeat the
+same values a lot compress better. The day list shows the actual size, and the
+MQTT device reports it as "History size".
+
+Names, DPTs and units are not stored with the telegrams. The history keeps the
+raw telegram (time, sender, group address, data), and the app reads names and
+DPTs from the ETS project that is loaded now. After uploading a changed ETS
+project, already recorded telegrams show the new names and values too. Only
+PDF and CSV files exported earlier keep the names of that moment; an ETS file
+holds raw telegrams only and shows the names of whatever project opens it.
+
 Once a minute the add-on notes whether the bus was connected. Gaps in the
 history are explained in the day list ("bus disconnected for 3 min",
 "add-on not running for 11 h").
@@ -243,6 +267,102 @@ Blueprints for the key figures:
 Without a broker everything else keeps working; the device appears as soon as
 one is set up (the add-on checks every 5 minutes).
 
+## Every telegram to MQTT (preview)
+
+A first version for testing ([issue #11](https://github.com/regetskcob/KNX-Monitor/issues/11)):
+the add-on sends every group telegram as JSON to the MQTT broker, with the
+receive time and what the ETS project knows. Long-term analysis can then run in
+your own database (Node-RED, Telegraf, TimescaleDB, ioBroker, your own scripts).
+
+**Off by default.** Switch it on with the add-on option **Every telegram to
+MQTT** (`mqtt_telegrams`) and restart the add-on; Docker and the box use
+`MQTT_TELEGRAMS=true` (with `MQTT_HOST` and friends). Anyone who can read the
+broker sees the addresses, names and values of your installation.
+
+Topic: `knx_monitor/telegram/<main>/<middle>/<sub>`, e.g.
+`knx_monitor/telegram/1/2/3`; subscribe to a range with
+`knx_monitor/telegram/1/#`. QoS 0, not retained.
+
+```json
+{
+  "t": 1762521600123,
+  "ga": "1/2/3",
+  "ga_name": "Wohnen Deckenlicht Schalten",
+  "src": "1.1.14",
+  "type": "write",
+  "dpt": "1.001",
+  "value": true,
+  "raw": "01",
+  "repeat": false
+}
+```
+
+| Field | What |
+| --- | --- |
+| `t` | receive time in the add-on, Unix time in ms (the same as in the history) |
+| `ga`, `ga_name` | group address (always three levels) and its name from the ETS project or the app |
+| `src` | individual address of the sender |
+| `type` | `write`, `read` or `response` |
+| `dpt`, `value`, `unit` | datapoint type from the project, decoded value (`true`/`false` for DPT 1, otherwise a number), unit if known |
+| `raw` | payload as hex; missing for `read` |
+| `repeat` | repeated telegram; repeats are only sent with `MQTT_REPEATS=true` |
+| `secure` | `true` for a decrypted KNX Data Secure telegram (only sent on request, see below) |
+| `outgoing` | `true` for telegrams the add-on sent itself |
+
+Without an ETS project `ga_name`, `dpt`, `value` and `unit` are missing.
+While the broker is unreachable telegrams are not sent and not replayed; the
+history and the ETS file still have all of them. At most 500 telegrams per
+second are sent (a TP line carries about 50); beyond that they are dropped, so
+a flood on the bus cannot clog the broker connection.
+
+Security:
+
+- **KNX Data Secure telegrams are not sent** by default. The add-on decrypts
+  them for the history, but on the broker they would be plain text for every
+  MQTT user. Only with the option **KNX Secure telegrams to MQTT too**
+  (`mqtt_secure_telegrams`; Docker and box: `MQTT_SECURE_TELEGRAMS=true`) are
+  they sent, marked `"secure": true`. Secured telegrams the add-on cannot
+  decrypt (no keyring, key missing or invalid) are never sent; import the
+  keyring under Project → KNX Secure.
+- Mosquitto lets every MQTT user read every topic unless you set up ACLs.
+  Other add-ons and devices with MQTT credentials then see your telegrams;
+  restrict `knx_monitor/telegram/#` with an ACL if that matters.
+- With a broker outside the host (Docker, box) use TLS (`MQTT_SSL=true`),
+  otherwise the telegrams cross the network unencrypted.
+- Why a telegram stays off the broker is shown in three places: the app under
+  Tools → Data export (section "MQTT: every telegram", also in the web app of
+  Docker and the box) with sent, dropped and left-out counts and the reason;
+  the log, once per group address (add-on log, `docker logs`, box journal);
+  and the state topic `knx_monitor/state` with `telegrams_sent`,
+  `telegrams_dropped`, `telegrams_secure_skipped` and `telegrams_undecrypted`.
+- The stream only sends. The add-on subscribes to nothing under
+  `knx_monitor/telegram/`, so nothing on the broker can write to the bus
+  through it.
+
+Not in this preview yet (planned in the issue): settings in the app, address
+filters, sender device names, retained last values, a switch and counters on
+the MQTT device. Feedback is welcome in the issue.
+
+Telegraf example (to InfluxDB or TimescaleDB):
+
+```toml
+[[inputs.mqtt_consumer]]
+  servers = ["tcp://core-mosquitto:1883"]
+  topics = ["knx_monitor/telegram/#"]
+  data_format = "json_v2"
+  [[inputs.mqtt_consumer.json_v2]]
+    measurement_name = "knx"
+    timestamp_path = "t"
+    timestamp_format = "unix_ms"
+    [[inputs.mqtt_consumer.json_v2.tag]]
+      path = "ga"
+    [[inputs.mqtt_consumer.json_v2.tag]]
+      path = "ga_name"
+    [[inputs.mqtt_consumer.json_v2.field]]
+      path = "value"
+      type = "float"
+```
+
 ## KNX Monitor integration (without MQTT)
 
 Instead of the MQTT device, the add-on can be a device of its own integration:
@@ -251,12 +371,18 @@ install **KNX Monitor** from HACS (custom repository
 Home Assistant, and confirm "New device found: KNX Monitor". The add-on hands
 over address and access by itself; no MQTT broker is needed.
 
-The integration brings the same sensors and recording switch as the MQTT device,
-device triggers for watchers, alarms, faults and the bus connection, the services
+The integration brings the same sensors, recording switch and event entities as
+the MQTT device, device triggers for watchers (also one per watcher, with its
+name), alarms, faults and the bus connection, device conditions (bus connected or
+disconnected, recording on, alarm open, low space), the services
 `knx_monitor.create_report` and `knx_monitor.export_history` (ETS file in the
 `knx_monitor` folder of the configuration), a diagnostics download and repairs
-when the bus has been disconnected for more than 10 minutes or recording paused
-because the disk is full.
+when the bus has been disconnected for more than 10 minutes, recording paused
+because the disk is full, or a group address that usually sends regularly has
+stopped (with "Ignore"; it comes back by itself once the address sends again).
+The add-on checks the last 7 days of history for that every hour, with the same
+rule as the app's health check, and stays quiet while recording is off or the bus
+is disconnected.
 
 While it is set up, the add-on stops announcing its MQTT entities; remove the
 integration and they come back. The integration reaches only a few endpoints of

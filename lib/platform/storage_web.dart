@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:web/web.dart' as web;
 
+import 'login_web.dart';
 import 'storage.dart';
 
 AppStorage createStorage() => _AddonStorage();
@@ -12,6 +13,7 @@ class _AddonStorage implements AppStorage {
   Uri _url(String path) => Uri.parse(web.document.baseURI).removeFragment().resolve('api/files/${confinedPath(path)}');
 
   static void _check(http.Response r) {
+    loginIfExpired(r.statusCode);
     if (r.statusCode >= 300) throw http.ClientException('${r.statusCode} ${r.body}', r.request?.url);
   }
 

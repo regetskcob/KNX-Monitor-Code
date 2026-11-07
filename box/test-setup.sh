@@ -87,6 +87,7 @@ expect_state 1.0 v1
 [ -f "$root/etc/systemd/system/knx-box.service" ] || fail "Dienst nicht installiert"
 [ -x "$root/usr/local/lib/knx-box/firstboot.sh" ] || fail "Hilfsskripte fehlen"
 [ -x "$root/usr/local/lib/knx-box/secrets.sh" ] || fail "secrets.sh fehlt"
+[ -x "$root/usr/local/lib/knx-box/last-exit.sh" ] || fail "last-exit.sh fehlt"
 [ -f "$root/usr/local/lib/knx-box/box-common.sh" ] || fail "box-common.sh fehlt"
 [ -f "$root/etc/systemd/system/knx-box-secrets.path" ] || fail "Bitten werden nicht beobachtet"
 grep -q 'enable .*knx-box-secrets.path' "$tmp/calls" || fail "knx-box-secrets.path nicht eingeschaltet"
@@ -95,6 +96,9 @@ grep -q 'enable .*knx-box-reset.service' "$tmp/calls" || fail "knx-box-reset.ser
 [ -f "$root/etc/systemd/system/knx-box-lan-lock.service" ] || fail "Kabelsperre nicht installiert"
 grep -q 'enable .*knx-box-lan-lock.service' "$tmp/calls" || fail "Kabelsperre nicht eingeschaltet"
 grep -q '^SystemMaxUse=' "$root/etc/systemd/journald.conf.d/knx-box.conf" || fail "Journal nicht begrenzt"
+grep -q '^Storage=persistent' "$root/etc/systemd/journald.conf.d/knx-box.conf" || fail "Journal nur im Speicher"
+[ -f "$root/etc/systemd/system/knx-box-clock-save.timer" ] || fail "Uhrzeit wird nicht gemerkt"
+grep -q 'enable .*knx-box-clock-save.timer' "$tmp/calls" || fail "knx-box-clock-save.timer nicht eingeschaltet"
 # No certificate before the first boot: every box needs its own key.
 [ ! -e "$root/etc/knx-box-tls/key.pem" ] || fail "Zertifikat schon vor dem ersten Start"
 grep -q 'enable .*knx-box-firewall.service\|enable knx-box-firewall.service' "$tmp/calls" || fail "Firewall nicht eingeschaltet"

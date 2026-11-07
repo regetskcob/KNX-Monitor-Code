@@ -48,14 +48,27 @@ class WatchRuleSet {
       if (modified == _rulesTime) return;
       _rulesTime = modified;
       final json = jsonDecode(await _file.readAsString()) as Map<String, Object?>;
-      _rules = [
-        for (final r in (json['rules'] as List? ?? const []).cast<Map<String, Object?>>())
-          if (_Rule.parse(r) case final rule?) rule,
-      ];
+      // One broken rule (a paired device may store its own) must not switch
+      // off the others: each one on its own.
+      final rules = <_Rule>[];
+      var broken = 0;
+      for (final r in json['rules'] as List? ?? const []) {
+        try {
+          if (r is! Map<String, Object?>) {
+            broken++;
+          } else if (_Rule.parse(r) case final rule?) {
+            rules.add(rule);
+          }
+        } on Object {
+          broken++;
+        }
+      }
+      if (broken > 0) stderr.writeln('watch_rules.json: $broken Regel(n) unlesbar, übersprungen');
+      _rules = rules;
     } on Object catch (e) {
+      // Unreadable as a whole: keep the previous rules, and do not read the
+      // file again on every telegram until it changes (_rulesTime stays).
       stderr.writeln('watch_rules.json: $e');
-      _rules = const [];
-      _rulesTime = null;
     }
   }
 

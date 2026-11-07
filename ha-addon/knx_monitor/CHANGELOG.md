@@ -1,5 +1,61 @@
 # Changelog
 
+## 1.9.10
+
+- Preview for testers: every telegram to MQTT
+  ([#11](https://github.com/regetskcob/KNX-Monitor/issues/11)). With the new
+  add-on option "Every telegram to MQTT" (Docker and box: `MQTT_TELEGRAMS=true`)
+  each group telegram goes as JSON to `knx_monitor/telegram/<main>/<middle>/<sub>`,
+  with the receive time in ms, group address name, DPT, decoded value and unit
+  from the ETS project. Off by default; see the documentation section "Every
+  telegram to MQTT". KNX Data Secure telegrams are left out unless the option
+  "KNX Secure telegrams to MQTT too" is on, and never when they cannot be
+  decrypted; at most 500 telegrams per second. The app shows the stream's state
+  and the reason for left-out telegrams under Tools › Data export.
+- Home Assistant integration 1.1.0 ([#2](https://github.com/regetskcob/KNX-Monitor/issues/2)):
+  event entities for watchers and alarms, a device trigger per watcher, device
+  conditions (bus connected, recording on, alarm open, low space) and a repair
+  when a group address that usually sends regularly goes silent ("Ignore" hides
+  it until the address sends again). Without Supervisor (Home Assistant
+  Container) the integration connects to a KNX box or the Docker container
+  through a pairing link with "Manage". Needs this add-on version for the new
+  parts; older add-ons keep working with the old ones.
+- KNX box: survives a power cut more cleanly
+  ([#4](https://github.com/regetskcob/KNX-Monitor/issues/4)). Without a
+  real-time clock the clock starts from a stamp saved every 15 minutes instead of
+  the date of the first boot; until the time is confirmed, nothing is packed or
+  deleted by age. The system journal is kept, and the restart list shows why the
+  server ended (out of memory, ended by the system, watchdog).
+- Crash reports: after a crash the app shows a notice on every page and leads to
+  the diagnostics package, where "Report as issue" opens a prefilled GitHub form
+  with only version, platform, time and kind of crash. Tap the restart line to
+  see the recent restarts with reason and gap.
+- KNX box: new section "Raspberry Pi" in the box settings with the SoC
+  temperature, its maximum since start, and warnings for under-voltage and
+  thermal throttling.
+- KNX HAT (kBerry): the bus monitor now counts frames the module saw but did not
+  pass on (sequence gaps, ACKs without a data frame), and the app explains it:
+  the kBerry leaves out about every second data frame in bus monitor mode, so use
+  link layer mode for complete recording. Recovery after a module restart and
+  115200 baud were tested on a real line.
+- Security review for Docker: the UDP relay forwards only KNXnet/IP to gateway
+  addresses, without `LAN_ACCESS` the container listens on localhost only (a
+  reverse proxy on the same host needs `LAN_ACCESS=yes`), admin access is granted
+  only with the password, "lock out all" also ends browser sessions, the first
+  password needs 8 characters (`BOX_PASSWORD_FILE` for Docker secrets), and
+  several ways for paired devices to delete history or stall the server are
+  closed. The Docker template now starts read only (`READ_ONLY=0` to send) and
+  uses HTTPS port 8443; Docker takes the host's time instead of a box clock.
+  Details in the Docker README.
+- KNX box and Docker: own login page in the browser with the password only,
+  instead of the browser's dialog that also asked for a user name that did not
+  matter. "Abmelden" on the pairing page ends the session, and the web app
+  returns to the login page when the session has run out. Apps and tools such as
+  curl log in as before.
+- Hints in a telegram's detail sheet, findings, security notes, address, name
+  and product in the device sheet and the details for an issue report can be
+  selected and copied, for example for a question in a forum.
+
 ## 1.9.9
 
 - Docker: `LAN_ACCESS` now applies on every start. Setting `LAN_ACCESS=yes` after

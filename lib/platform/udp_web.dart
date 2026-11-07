@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:web/web.dart' as web;
 
+import 'login_web.dart';
 import 'udp.dart';
 
 /// UDP via the add-on server's relay (WebSocket "ws" next to the page).
@@ -74,6 +75,7 @@ Future<UdpEndpoint> openMulticast(String group, int port) async =>
 
 Future<List<int>> lookupIPv4(String host) async {
   final r = await http.get(_api('api/resolve').replace(queryParameters: {'host': host}));
+  loginIfExpired(r.statusCode);
   final ip = r.statusCode == 200 ? parseIPv4(r.body) : null;
   if (ip == null) throw UdpException('Host $host nicht gefunden');
   return ip;
@@ -87,6 +89,7 @@ Future<List<String>> localNetworkAddresses() async => throw UnsupportedError('Im
 Future<List<int>?> localNetworkAddress() async {
   try {
     final r = await http.get(_api('api/network'));
+    loginIfExpired(r.statusCode);
     if (r.statusCode != 200) return null;
     return parseIPv4((jsonDecode(r.body) as Map<String, Object?>)['ip'] as String? ?? '');
   } on Object {

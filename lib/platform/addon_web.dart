@@ -8,6 +8,7 @@ import 'package:web/web.dart' as web;
 
 import 'addon.dart';
 import 'box_link.dart';
+import 'login_web.dart';
 
 const addonAvailable = true;
 
@@ -49,17 +50,16 @@ Future<AddonSocket> openAddonBus() async {
   try {
     return await _openBus();
   } on AddonException catch (e) {
-    // The page cannot see the HTTP status of the WebSocket handshake. On the box it may be a
-    // missing login: the follow-up request makes the browser ask for the password, after which the
-    // session cookie applies.
+    // The page cannot see the HTTP status of the WebSocket handshake. On the box it may be an
+    // expired session: the follow-up request tells, and a 401 goes to the box's login page.
     final int status;
-    // Generous: as long as the browser asks for the password, the request stays open.
     try {
       status = (await http.get(_api('api/box')).timeout(const Duration(seconds: 60))).statusCode;
     } on Object {
       throw e;
     }
     if (status == 401) {
+      loginIfExpired(status);
       throw const AddonException('Anmeldung an der KNX-Box nötig. Seite neu laden und mit dem Box-Passwort anmelden.');
     }
     if (status == 403) throw const AddonException('Zugriff von der KNX-Box abgelehnt.');
@@ -86,6 +86,7 @@ Future<AddonSocket> _openBus() async {
 }
 
 Future<Object?> _decode(http.Response r) {
+  loginIfExpired(r.statusCode);
   if (r.statusCode >= 300) {
     throw Addon.errorOf(r.bodyBytes) ?? AddonException('Add-on: HTTP ${r.statusCode}', status: r.statusCode);
   }
@@ -122,6 +123,7 @@ Future<void> addonPutFile(String path, List<int> bytes) async {}
 Future<Uint8List?> addonDownload(String path, String fileName, {Duration? timeout}) async {
   final url = _api(path);
   final probe = await http.get(url.replace(queryParameters: {...url.queryParameters, 'check': '1'}));
+  loginIfExpired(probe.statusCode);
   if (probe.statusCode >= 300) {
     final text = utf8.decode(probe.bodyBytes, allowMalformed: true).trim();
     throw Addon.errorOf(probe.bodyBytes) ??

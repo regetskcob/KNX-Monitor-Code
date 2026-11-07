@@ -201,6 +201,171 @@ void main() {
     (code, body) = await call('POST', '/api/ha/report', token: ha.token);
     expect(code, HttpStatus.ok);
   });
+
+  test('watchers: id and name only, no conditions or addresses', () async {
+    await File('${data.path}/watch_rules.json').writeAsString(
+      jsonEncode({
+        'rules': [
+          {
+            'id': 'w1',
+            'address': 2305,
+            'label': '1/1/1 Fenster Bad = 1',
+            'name': 'Fenster Bad offen',
+            'check': {
+              'values': [1],
+              'small': true,
+            },
+          },
+          {
+            'id': 'w2',
+            'address': 2306,
+            'label': '1/1/2 Wind > 10',
+            'check': {'any': true},
+          },
+        ],
+      }),
+    );
+    final (code, body) = await call('GET', '/api/ha/watchers', token: ha.token);
+    expect(code, HttpStatus.ok);
+    expect(body, [
+      {'id': 'w1', 'name': 'Fenster Bad offen'},
+      {'id': 'w2', 'name': '1/1/2 Wind > 10'},
+    ]);
+  });
+
+  group('silent addresses', () {
+    // Seven days of history: the temperature every 5 minutes until a day ago,
+    // the humidity every 5 minutes until now, a switch three times.
+    const temperature = 0x0A03; // 1/2/3
+    const humidity = 0x0A04; // 1/2/4
+    const button = 0x0A05; // 1/2/5
+    late DateTime now;
+
+    Future<void> writeHistory() async {
+      final byDay = <String, StringBuffer>{};
+      void line(int ga, DateTime t, {int type = 2, bool own = false}) {
+        (byDay[Recorder.dayName(t)] ??= StringBuffer()).writeln(
+          jsonEncode({'t': t.microsecondsSinceEpoch, 's': 4402, 'd': ga, 'y': type, 'x': '0C1A', if (own) 'o': true}),
+        );
+      }
+
+      final start = now.subtract(const Duration(days: 7));
+      for (var t = start; t.isBefore(now); t = t.add(const Duration(minutes: 5))) {
+        if (t.isBefore(now.subtract(const Duration(days: 1)))) line(temperature, t);
+        line(humidity, t);
+      }
+      for (var i = 0; i < 3; i++) {
+        line(button, now.subtract(Duration(hours: 30 + i)));
+      }
+      final dir = Directory('${data.path}/history')..createSync(recursive: true);
+      for (final MapEntry(:key, :value) in byDay.entries) {
+        File('${dir.path}/$key.ndjson').writeAsStringSync('$value', mode: FileMode.append);
+      }
+    }
+
+    setUp(() async {
+      now = DateTime.now();
+      await writeHistory();
+      await File('${data.path}/catalog.json').writeAsString(
+        jsonEncode({
+          'groups': [
+            {'a': temperature, 'n': 'Temperatur Bad'},
+          ],
+        }),
+      );
+      // Recording on and connected for a week (no gateway in the test).
+      bus.config.enabled = true;
+      bus.state = 'connected';
+      bus.since = now.subtract(const Duration(days: 7));
+      await ha.cycles.check();
+    });
+
+    test('lists the sensor that stopped after day 6, with interval and last time', () async {
+      final (code, body) = await call('GET', '/api/ha/silent', token: ha.token);
+      expect(code, HttpStatus.ok);
+      final list = (body! as List).cast<Map<String, Object?>>();
+      expect(list, hasLength(1));
+      expect(list.single['address'], '1/2/3');
+      expect(list.single['interval_s'], 300);
+      final last = DateTime.parse(list.single['last']! as String);
+      expect(now.difference(last).inHours, inInclusiveRange(23, 24));
+      final (_, state) = await call('GET', '/api/ha/state', token: ha.token);
+      expect((state! as Map)['silent'], 1);
+      // Diagnostics: only how many.
+      final (_, diagnostics) = await call('GET', '/api/ha/diagnostics', token: ha.token);
+      expect((diagnostics! as Map)['silent'], 1);
+      expect(jsonEncode(diagnostics), isNot(contains('1/2/3')));
+    });
+
+    test('name from the catalog', () async {
+      final (_, body) = await call('GET', '/api/ha/silent', token: ha.token);
+      expect(((body! as List).single as Map)['name'], 'Temperatur Bad');
+    });
+
+    test('nothing while recording is off or the bus is gone', () async {
+      bus.config.enabled = false;
+      expect((await call('GET', '/api/ha/silent', token: ha.token)).$2, isEmpty);
+      bus.config.enabled = true;
+      bus.state = 'disconnected';
+      expect((await call('GET', '/api/ha/silent', token: ha.token)).$2, isEmpty);
+      expect(ha.state()['silent'], 0);
+      // Just reconnected: the sensor has not had its chance yet.
+      bus.state = 'connected';
+      bus.since = DateTime.now().subtract(const Duration(minutes: 5));
+      expect((await call('GET', '/api/ha/silent', token: ha.token)).$2, isEmpty);
+    });
+
+    test('leaves the list as soon as the address sends again', () async {
+      ha.cycles.observe(bus, {'t': now.microsecondsSinceEpoch, 'd': temperature, 'y': 2, 'x': '0C1A'});
+      expect((await call('GET', '/api/ha/silent', token: ha.token)).$2, isEmpty);
+    });
+
+    test('ignore is kept in cycle_watch.json and ends when it sends again', () async {
+      var (code, _) = await call('POST', '/api/ha/silent/ignore', token: ha.token, body: {'address': '1/2/4'});
+      expect(code, HttpStatus.notFound, reason: 'the humidity is not silent');
+      (code, _) = await call('POST', '/api/ha/silent/ignore', token: ha.token, body: {'address': 3});
+      expect(code, HttpStatus.badRequest);
+      (code, _) = await call('POST', '/api/ha/silent/ignore', token: ha.token, body: {'address': '1/2/3'});
+      expect(code, HttpStatus.ok);
+      expect((await call('GET', '/api/ha/silent', token: ha.token)).$2, isEmpty);
+      final file = File('${data.path}/cycle_watch.json');
+      expect(jsonDecode(file.readAsStringSync())['ignored'], contains('$temperature'));
+      // Still ignored after a restart and a new check.
+      ha.stop();
+      ha = create();
+      await ha.start(tick: const Duration(hours: 1));
+      await ha.cycles.check();
+      expect((await call('GET', '/api/ha/silent', token: ha.token)).$2, isEmpty);
+      // Sends again: no longer ignored, and reported again if it stops once more.
+      ha.cycles.observe(bus, {'t': now.microsecondsSinceEpoch, 'd': temperature, 'y': 2, 'x': '0C1A'});
+      await until(() => !file.readAsStringSync().contains('$temperature'));
+    });
+
+    test('a sender that came back while the server was down is not ignored any more', () async {
+      await call('POST', '/api/ha/silent/ignore', token: ha.token, body: {'address': '1/2/3'});
+      final day = Recorder.dayName(now);
+      File('${data.path}/history/$day.ndjson').writeAsStringSync(
+        '${jsonEncode({'t': now.microsecondsSinceEpoch, 's': 4402, 'd': temperature, 'y': 2, 'x': '0C1A'})}\n',
+        mode: FileMode.append,
+      );
+      await ha.cycles.check();
+      expect(jsonDecode(File('${data.path}/cycle_watch.json').readAsStringSync())['ignored'], isEmpty);
+    });
+  });
+
+  test('without token access (box, Docker): no token, the token check never passes', () async {
+    // The add-on's own announcement from setUp first.
+    await until(() => calls.any((c) => c.$2 == '/discovery'));
+    calls.clear();
+    ha.stop();
+    final box = HaIntegration(data, () => bus, version: '1.9.7', port: 8765, tokenAccess: false);
+    await box.start(tick: const Duration(hours: 1));
+    expect(box.token, isNull);
+    final token = jsonDecode(File('${data.path}/ha_integration.json').readAsStringSync()) as Map;
+    expect(token.containsKey('token'), isFalse);
+    expect(calls.where((c) => c.$2 == '/discovery'), isEmpty);
+    box.stop();
+  });
 }
 
 /// A claim request as the integration sends it, for [HaIntegration.serve] directly.

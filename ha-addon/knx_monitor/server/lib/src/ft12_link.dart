@@ -350,9 +350,14 @@ Uint8List? busmonToLData(Uint8List cemi) {
 }
 
 /// Counts in the KNX HAT's bus monitor what is only visible there:
-/// acknowledgements, rejected and corrupted frames. [orphanAcks] measures the
-/// open question from issue #1 that data frames may be missing before their
-/// acknowledgement.
+/// acknowledgements, rejected and corrupted frames.
+///
+/// Two counters measure frames the module saw but did not pass on (issue #1):
+/// [orphanAcks] are acknowledgements without a data frame directly before them,
+/// [seqGaps] are frames skipped by the sequence number in the bus monitor status
+/// (bits 0–2 of additional info 0x03). Measured on a kBerry (7.11.2026, Pi 4):
+/// about every second data frame is missing at 19200 and at 115200 baud, while
+/// the link layer delivers all of them; details in `docs/kberry.md`.
 class BusmonCounters {
   int data = 0;
   int acks = 0;
@@ -360,7 +365,16 @@ class BusmonCounters {
   int busy = 0;
   int damaged = 0;
   int orphanAcks = 0;
+  int seqGaps = 0;
   bool _dataPending = false;
+  int? _lastSeq;
+
+  /// After a new connection the module counts from the start again: neither the
+  /// sequence number nor a pending data frame carry over.
+  void resync() {
+    _lastSeq = null;
+    _dataPending = false;
+  }
 
   int get total => data + acks + naks + busy + damaged;
 
@@ -374,8 +388,19 @@ class BusmonCounters {
       return;
     }
     var status = 0;
+    var hasStatus = false;
     for (var i = 2; i + 1 < start; i += 2 + cemi[i + 1]) {
-      if (cemi[i] == 0x03 && cemi[i + 1] >= 1 && i + 2 < start) status = cemi[i + 2];
+      if (cemi[i] == 0x03 && cemi[i + 1] >= 1 && i + 2 < start) {
+        status = cemi[i + 2];
+        hasStatus = true;
+      }
+    }
+    if (hasStatus) {
+      final seq = status & 0x07;
+      final last = _lastSeq;
+      // The same number again: this interface does not number its frames.
+      if (last != null && seq != last) seqGaps += (seq - last - 1) & 0x07;
+      _lastSeq = seq;
     }
     if (status & 0xF8 != 0) {
       damaged++;
@@ -426,5 +451,6 @@ class BusmonCounters {
     'busy': busy,
     'damaged': damaged,
     'orphanAcks': orphanAcks,
+    'seqGaps': seqGaps,
   };
 }

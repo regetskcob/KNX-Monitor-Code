@@ -28,3 +28,17 @@ configuration:
       registers it as a dashboard resource. It shows the charts saved in
       the app. Turn off if you do not need the card or manage resources
       yourself.
+  mqtt_telegrams:
+    name: Every telegram to MQTT
+    description: >-
+      Preview: sends every telegram as JSON to knx_monitor/telegram/1/2/3,
+      with timestamp, name, DPT and value from the ETS project. Anyone who
+      can read the broker sees addresses, names and values of your
+      installation. Needs an MQTT broker (Mosquitto).
+  mqtt_secure_telegrams:
+    name: KNX Secure telegrams to MQTT too
+    description: >-
+      Only together with "Every telegram to MQTT". Also sends telegrams
+      protected by KNX Data Secure, decrypted, in plain text. Anyone who can
+      read the broker then sees exactly the values the encryption is meant
+      to protect. Off by default.

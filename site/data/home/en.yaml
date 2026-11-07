@@ -163,7 +163,7 @@ setup:
     - term: "Home Assistant"
       id: home-assistant
       title: "Home Assistant add-on"
-      text: "Lives in the sidebar and records around the clock, even with no browser open. All views share one tunnel, and alarms arrive as notifications."
+      text: "Lives in the sidebar and records around the clock, even with no browser open. All views share one tunnel, and alarms arrive as notifications. Out of the box it sends nothing to the bus, and the \"KNX Monitor\" integration turns it into a device with sensors and triggers."
 
 box:
   label: "KNX box"
@@ -211,7 +211,7 @@ mitreden:
     - { term: "Vote", value: "[See planned features](https://github.com/regetskcob/KNX-Monitor/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement+sort%3Areactions-%2B1-desc) and give a 👍 to what you need. The most wanted come first." }
     - { term: "Join in", value: "Tell us in a comment how you work today and which devices you use. That often shapes the scope, and sometimes leads to a test with your installation." }
     - { term: "Suggest", value: "Something missing or not working? [Report a bug or request a feature](https://github.com/regetskcob/KNX-Monitor/issues/new/choose)." }
-    - { term: "Open right now", value: "For example [DALI lighting through KNX](https://github.com/regetskcob/KNX-Monitor/issues/6), [a native ioBroker adapter](https://github.com/regetskcob/KNX-Monitor/issues/3) or [a native Home Assistant integration](https://github.com/regetskcob/KNX-Monitor/issues/2)." }
+    - { term: "Open right now", value: "For example [DALI lighting through KNX](https://github.com/regetskcob/KNX-Monitor/issues/6), [a native ioBroker adapter](https://github.com/regetskcob/KNX-Monitor/issues/3) or [every telegram to MQTT](https://github.com/regetskcob/KNX-Monitor/issues/11), which you can already test as a preview." }
     - { term: "Please don't", value: "attach ETS projects or full recordings in public: they can contain addresses, room names and passwords. A short excerpt as text is enough." }
   more: "All issues on GitHub"
 
@@ -225,7 +225,7 @@ faq:
       q: "What does KNX Monitor cost?"
       a: "The app is free and stays useful for everyday use. Plus costs €24.99 a year or €79 once, Pro €149 a year or €14.99 a month, with a free trial. The Home Assistant add-on and the Linux version are free for good. Try everything in the demo house first, Pro included. Cancel a subscription any time in your App Store or Google Play account."
     - q: "Which KNX interfaces are supported?"
-      a: "Any KNXnet/IP interface or IP router, for example a Gira X1. Tunnelling works over UDP or TCP; with an IP router you can also use routing, which needs no tunnel (not yet on iPhone and iPad, where multicast needs approval from Apple). USB and serial interfaces are not supported."
+      a: "Any KNXnet/IP interface or IP router, for example a Gira X1. Tunnelling works over UDP or TCP; with an IP router you can also use routing, which needs no tunnel (not yet on iPhone and iPad, where multicast needs approval from Apple). The app does not support USB and serial interfaces; the KNX box can connect the bus line directly through the kBerry plug-on module."
     - q: "Why can't I connect although the interface is reachable?"
       a: "IP interfaces only offer a few tunnels, often four or fewer. If visualisation, ETS or other apps use all of them, the interface refuses. Free a tunnel, configure an additional one in ETS, or use routing."
     - q: "Is KNX Secure supported?"
@@ -237,7 +237,7 @@ faq:
     - q: "How do I get the desktop version?"
       a: "Linux does everything the iPad app does. The download is in the [GitHub release](https://github.com/regetskcob/KNX-Monitor/releases/latest). Windows follows in the coming weeks; on the Mac, KNX Monitor comes through the App Store."
     - q: "What do I need for the KNX box?"
-      a: "A Raspberry Pi 4 or 5, ideally with a USB SSD and a real-time clock (Pi 5: battery, Pi 4: RTC module), an IP gateway or the kBerry plug-on module, plus the app: on iPhone, iPad and Android in the coming weeks, on Linux today. The box also sets its clock from the iPhone or the KNX time master. The ready-made image is in the [GitHub releases](https://github.com/regetskcob/KNX-Monitor/releases), everything else on the [KNX box page](https://knx-monitor.de/en/box/); it is a first preview."
+      a: "A Raspberry Pi 4 (tested) or 5, ideally with a USB SSD and a real-time clock (Pi 5: battery), an IP gateway or the kBerry plug-on module, plus the app: on iPhone, iPad and Android in the coming weeks, on Linux today. The box also sets its clock from the iPhone or the KNX time master. The ready-made image is in the [GitHub releases](https://github.com/regetskcob/KNX-Monitor/releases), everything else on the [KNX box page](https://knx-monitor.de/en/box/); it is a first preview."
 
 get:
   label: "Get it"

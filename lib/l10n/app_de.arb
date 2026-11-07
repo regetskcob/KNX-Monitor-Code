@@ -3621,7 +3621,7 @@
   "@connectHatBusmonitor": {
     "description": "Switch: HAT in bus monitor mode."
   },
-  "connectHatBusmonitorHelp": "Alle Frames mit Quittungen (ACK/NAK/BUSY) für den Busmonitor. Die Box hört dann nur: kein Lesen oder Schreiben aus der App.",
+  "connectHatBusmonitorHelp": "Alle Frames mit Quittungen (ACK/NAK/BUSY) für den Busmonitor. Die Box hört dann nur: kein Lesen oder Schreiben aus der App. Der kBerry gibt dabei etwa jeden zweiten Datenrahmen nicht aus; zum vollständigen Aufzeichnen Link Layer verwenden.",
   "@connectHatBusmonitorHelp": {
     "description": "Help for the HAT bus monitor switch."
   },
@@ -4624,6 +4624,68 @@
   "@boxClockSetNow": {
     "description": "Button"
   },
+  "boxHealth": "Raspberry Pi",
+  "@boxHealth": {
+    "description": "Box settings section: temperature and power supply"
+  },
+  "boxHealthTemp": "SoC {temp} °C, höchstens {max} °C seit dem Start",
+  "@boxHealthTemp": {
+    "description": "Current and highest SoC temperature",
+    "placeholders": {
+      "temp": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "boxHealthOk": "Keine Unterspannung, keine Drosselung",
+  "@boxHealthOk": {
+    "description": "Power and throttling fine"
+  },
+  "boxHealthUnderVoltage": "Unterspannung: Das Netzteil liefert zu wenig. Ein Netzteil mit 5,1 V und 3 A verwenden, beim Pi 5 mit 5 A.",
+  "@boxHealthUnderVoltage": {
+    "description": "Under-voltage right now"
+  },
+  "boxHealthThrottled": "Der Pi drosselt gerade wegen Hitze. Das Gehäuse braucht mehr Luft oder einen Kühlkörper.",
+  "@boxHealthThrottled": {
+    "description": "Thermal throttling right now"
+  },
+  "boxHealthBefore": "Seit dem Einschalten: {list}",
+  "@boxHealthBefore": {
+    "description": "Throttling seen since boot",
+    "placeholders": {
+      "list": {
+        "type": "String"
+      }
+    }
+  },
+  "boxHealthBeforeServer": "Seit dem Serverstart: {list}",
+  "@boxHealthBeforeServer": {
+    "description": "Throttling seen since the server started (hwmon fallback)",
+    "placeholders": {
+      "list": {
+        "type": "String"
+      }
+    }
+  },
+  "boxHealthFlagUnderVoltage": "Unterspannung",
+  "@boxHealthFlagUnderVoltage": {
+    "description": "Throttle flag"
+  },
+  "boxHealthFlagFreqCapped": "Takt begrenzt",
+  "@boxHealthFlagFreqCapped": {
+    "description": "Throttle flag"
+  },
+  "boxHealthFlagThrottled": "Gedrosselt",
+  "@boxHealthFlagThrottled": {
+    "description": "Throttle flag"
+  },
+  "boxHealthFlagSoftTempLimit": "Temperaturgrenze erreicht",
+  "@boxHealthFlagSoftTempLimit": {
+    "description": "Throttle flag"
+  },
   "boxClockFromKnx": "Uhr nach KNX-Zeitgeber stellen",
   "@boxClockFromKnx": {
     "description": "Switch"
@@ -5049,6 +5111,24 @@
   "busmonQuietHint": "Seit 15 Sekunden kein Frame. Ist die Linie gerade still, löst ein Taster oder „Lesen“ Verkehr aus. Manche IP-Schnittstellen liefern im Busmonitor-Modus nichts; dann hilft der Live-Monitor.",
   "@busmonQuietHint": {
     "description": "Hinweis, wenn der Busmonitor 15 s nichts empfängt"
+  },
+  "busmonOrphanAcks": "{count, plural, =1{1 Quittung} other{{count} Quittungen}} ohne Datenrahmen davor: Die Schnittstelle hat im Busmonitor nicht jeden Datenrahmen ausgegeben. Für die Aufzeichnung zählt der Live-Monitor.",
+  "@busmonOrphanAcks": {
+    "description": "Busmonitor: ACKs ohne vorausgehenden Datenrahmen (Gateway)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "busmonOrphanAcksHat": "{count, plural, =1{1 Quittung} other{{count} Quittungen}} ohne Datenrahmen davor: Der KNX-HAT (kBerry) gibt im Busmonitor etwa jeden zweiten Datenrahmen nicht aus. Vollständig zeichnet die Box im Link Layer auf, der Busmonitor zeigt Quittungen und Busfehler.",
+  "@busmonOrphanAcksHat": {
+    "description": "Busmonitor über den KNX-HAT der Box: ACKs ohne vorausgehenden Datenrahmen",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "menuMoreTools": "{count, plural, =1{1 weiteres Werkzeug im Expertenmodus} other{{count} weitere Werkzeuge im Expertenmodus}}",
   "@menuMoreTools": {
@@ -6845,6 +6925,18 @@
         "type": "int"
       },
       "errors": {
+        "type": "int"
+      }
+    }
+  },
+  "boxHatBusmonGaps": "{missing} Datenrahmen nicht ausgegeben (Folgenummer), {orphans} ACK ohne Rahmen. Bekannt beim kBerry: zum Aufzeichnen Link Layer wählen.",
+  "@boxHatBusmonGaps": {
+    "description": "KNX HAT test: frames the module saw but did not pass on.",
+    "placeholders": {
+      "missing": {
+        "type": "int"
+      },
+      "orphans": {
         "type": "int"
       }
     }
@@ -12432,5 +12524,256 @@
   "appLockRestart": "Zu viele Fehlversuche. Beende die App und öffne sie neu, dann kannst du es noch einmal versuchen.",
   "@appLockRestart": {
     "description": "App lock: after many failed attempts only a restart of the app allows further attempts."
+  },
+  "restartReasonOom": "Speicher voll",
+  "@restartReasonOom": {
+    "description": "Absturzerkennung: Grund (Server vom System wegen Speichermangel beendet)"
+  },
+  "restartReasonSignal": "vom System beendet",
+  "@restartReasonSignal": {
+    "description": "Absturzerkennung: Grund (Signal)"
+  },
+  "restartReasonSignalNamed": "vom System beendet ({signal})",
+  "@restartReasonSignalNamed": {
+    "description": "Absturzerkennung: Grund mit Signalname, z. B. SIGSEGV",
+    "placeholders": {
+      "signal": {
+        "type": "String"
+      }
+    }
+  },
+  "restartReasonWatchdog": "Watchdog",
+  "@restartReasonWatchdog": {
+    "description": "Absturzerkennung: Grund (systemd-Watchdog)"
+  },
+  "restartsTitle": "Neustarts des Servers",
+  "@restartsTitle": {
+    "description": "Absturzerkennung: Titel der Liste"
+  },
+  "restartsShow": "Neustarts anzeigen",
+  "@restartsShow": {
+    "description": "Absturzerkennung: Bedienhilfe der Statuszeile"
+  },
+  "restartsIntroBox": "Letzte 30 Tage. systemd startet den Server nach 3 s neu, die Aufzeichnung läuft dann weiter.",
+  "@restartsIntroBox": {
+    "description": "Absturzerkennung: Erklärung auf der KNX-Box"
+  },
+  "restartsIntro": "Letzte 30 Tage. Nach einem unerwarteten Ende läuft die Aufzeichnung weiter, sobald der Server wieder gestartet ist.",
+  "@restartsIntro": {
+    "description": "Absturzerkennung: Erklärung im Add-on oder Docker"
+  },
+  "restartsLastSeen": "zuletzt am Leben {time}",
+  "@restartsLastSeen": {
+    "description": "Absturzerkennung: Eintrag",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "restartsVersion": "Version {version}",
+  "@restartsVersion": {
+    "description": "Absturzerkennung: Eintrag",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "restartsGap": "Lücke {duration}",
+  "@restartsGap": {
+    "description": "Absturzerkennung: Eintrag, Dauer ohne Server",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "restartsGapUnknown": "Lücke unbekannt",
+  "@restartsGapUnknown": {
+    "description": "Absturzerkennung: Eintrag mit falscher Uhr beim Start"
+  },
+  "restartsErrorAdminOnly": "Fehlertext nur für Admins sichtbar",
+  "@restartsErrorAdminOnly": {
+    "description": "Absturzerkennung: Eintrag"
+  },
+  "restartsReasons": "Mögliche Gründe",
+  "@restartsReasons": {
+    "description": "Absturzerkennung: Kennung der Legende"
+  },
+  "restartsLegend": "Die Gründe kommen von systemd. Ohne diese Angabe, etwa im Add-on, steht „Grund unbekannt“.",
+  "@restartsLegend": {
+    "description": "Absturzerkennung: Legende"
+  },
+  "restartsShowHistory": "Im Verlauf zeigen",
+  "@restartsShowHistory": {
+    "description": "Absturzerkennung: Knopf"
+  },
+  "restartsEmpty": "Keine unerwarteten Neustarts in den letzten 30 Tagen.",
+  "@restartsEmpty": {
+    "description": "Absturzerkennung: leere Liste"
+  },
+  "restartsUnavailable": "Die Liste ist gerade nicht abrufbar.",
+  "@restartsUnavailable": {
+    "description": "Absturzerkennung: Fehler beim Laden"
+  },
+  "crashStreak": "{count}. unerwartetes Ende in Folge",
+  "@crashStreak": {
+    "description": "Absturzerkennung: mehrere Abstürze in Folge",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "crashStreakAfterConnect": "{count}. unerwartetes Ende in Folge, jedes Mal kurz nach dem Verbinden",
+  "@crashStreakAfterConnect": {
+    "description": "Absturzerkennung: mehrere Abstürze in Folge",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "crashStreakHint": "Vorschlag: einmal ohne automatisches Verbinden starten, um den Fehler einzugrenzen.",
+  "@crashStreakHint": {
+    "description": "Absturzerkennung: mehrere Abstürze in Folge"
+  },
+  "crashWithoutConnect": "Ohne Verbinden",
+  "@crashWithoutConnect": {
+    "description": "Absturzerkennung: Knopf, startet diesmal ohne automatisches Verbinden"
+  },
+  "crashBanner": "Unerwartet beendet am {time}. Bericht?",
+  "@crashBanner": {
+    "description": "Absturzerkennung: Banner in anderen Ansichten",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "crashBannerView": "Ansehen",
+  "@crashBannerView": {
+    "description": "Absturzerkennung: Banner, öffnet das Diagnosepaket"
+  },
+  "diagIssueTitle": "Öffentlich melden",
+  "@diagIssueTitle": {
+    "description": "Diagnosepaket: Karte für das öffentliche Issue"
+  },
+  "diagIssueIntro": "Im Issue stehen nur diese Angaben, kein Protokoll:",
+  "@diagIssueIntro": {
+    "description": "Diagnosepaket: Karte für das öffentliche Issue"
+  },
+  "diagIssueVersion": "Version",
+  "@diagIssueVersion": {
+    "description": "Diagnosepaket: Feld"
+  },
+  "diagIssuePlatform": "Plattform",
+  "@diagIssuePlatform": {
+    "description": "Diagnosepaket: Feld"
+  },
+  "diagIssueTime": "Zeitpunkt",
+  "@diagIssueTime": {
+    "description": "Diagnosepaket: Feld"
+  },
+  "diagIssueReason": "Grund",
+  "@diagIssueReason": {
+    "description": "Diagnosepaket: Feld"
+  },
+  "diagIssueReasonCrash": "unerwartet beendet",
+  "@diagIssueReasonCrash": {
+    "description": "Diagnosepaket: Grund ohne Bericht des Systems"
+  },
+  "diagIssueButton": "Als Issue melden",
+  "@diagIssueButton": {
+    "description": "Diagnosepaket: Knopf, öffnet GitHub"
+  },
+  "diagIssueHint": "Öffnet GitHub im Browser. Das Paket hängst du selbst an.",
+  "@diagIssueHint": {
+    "description": "Diagnosepaket: Hinweis zum Knopf"
+  },
+  "diagIssueFailed": "GitHub ließ sich nicht öffnen.",
+  "@diagIssueFailed": {
+    "description": "Diagnosepaket: Fehler"
+  },
+  "diagSystemCrashTitle": "Absturzbericht von {system} gefunden",
+  "@diagSystemCrashTitle": {
+    "description": "Diagnosepaket: Bericht des Betriebssystems, z. B. macOS",
+    "placeholders": {
+      "system": {
+        "type": "String"
+      }
+    }
+  },
+  "diagSystemCrashBody": "Ein Bericht des Systems passt zum Zeitpunkt ({time}). Übernommen werden nur Art des Fehlers und Modul, kein Pfad und kein Benutzername.",
+  "@diagSystemCrashBody": {
+    "description": "Diagnosepaket: Bericht des Betriebssystems",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "diagSystemCrashKind": "Art",
+  "@diagSystemCrashKind": {
+    "description": "Diagnosepaket: Bericht des Betriebssystems, Feld"
+  },
+  "diagSystemCrashModule": "Modul",
+  "@diagSystemCrashModule": {
+    "description": "Diagnosepaket: Bericht des Betriebssystems, Feld"
+  },
+  "diagSystemCrashInclude": "Ins Paket übernehmen",
+  "@diagSystemCrashInclude": {
+    "description": "Diagnosepaket: Bericht des Betriebssystems, Auswahl"
+  },
+  "diagContentSystemCrash": "Absturzbericht des Systems: Art und Modul",
+  "@diagContentSystemCrash": {
+    "description": "Diagnosepaket: Inhalt"
+  },
+  "dataExportMqtt": "MQTT: jedes Telegramm (Vorschau)",
+  "@dataExportMqtt": {
+    "description": "Datenexport: Abschnitt"
+  },
+  "dataExportMqttOff": "Aus. Einschalten im Add-on mit der Option „Jedes Telegramm an MQTT“, in Docker und auf der Box mit MQTT_TELEGRAMS=true.",
+  "@dataExportMqttOff": {
+    "description": "Datenexport: MQTT-Strom aus"
+  },
+  "dataExportMqttOn": "An: {sent} gesendet, {dropped} verworfen (seit dem Start)",
+  "@dataExportMqttOn": {
+    "description": "Datenexport: MQTT-Strom an",
+    "placeholders": {
+      "sent": {
+        "type": "int"
+      },
+      "dropped": {
+        "type": "int"
+      }
+    }
+  },
+  "dataExportMqttDisconnected": "Broker nicht verbunden. Telegramme werden verworfen, bis er wieder erreichbar ist; der Verlauf hat sie.",
+  "@dataExportMqttDisconnected": {
+    "description": "Datenexport: Broker getrennt"
+  },
+  "dataExportMqttSecureSkipped": "{count} KNX-Secure-Telegramme nicht gesendet. Sie gehen nur mit der Option „Auch KNX-Secure-Telegramme an MQTT“ (MQTT_SECURE_TELEGRAMS=true) hinaus, auf dem Broker sind sie Klartext.",
+  "@dataExportMqttSecureSkipped": {
+    "description": "Datenexport: Secure-Telegramme ausgelassen",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dataExportMqttUndecrypted": "{count} KNX-Secure-Telegramme nicht gesendet, weil der Server sie nicht entschlüsseln konnte (kein Keyring, Schlüssel fehlt oder ungültig). Keyring aus der ETS unter Projekt › KNX Secure importieren.",
+  "@dataExportMqttUndecrypted": {
+    "description": "Datenexport: Secure-Telegramme nicht entschlüsselt",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dataExportMqttSecureOn": "Auch KNX-Secure-Telegramme gehen entschlüsselt hinaus. Jeder, der den Broker lesen kann, sieht ihre Werte.",
+  "@dataExportMqttSecureOn": {
+    "description": "Datenexport: Secure-Telegramme an"
   }
 }

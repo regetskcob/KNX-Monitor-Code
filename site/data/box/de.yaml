@@ -10,7 +10,7 @@ need:
   title: "Was du brauchst."
   text: "Für die Vorbereitung am Schreibtisch rund eine halbe Stunde, ohne Vorkenntnisse in Linux."
   points:
-    - { term: "Raspberry Pi", value: "Pi 5 oder Pi 4 mit passendem Netzteil (Pi 5: 27 W USB-C), Details unter Hardware" }
+    - { term: "Raspberry Pi", value: "Pi 4 (getestet) oder Pi 5 mit passendem Netzteil (Pi 5: 27 W USB-C), Details unter Hardware" }
     - { term: "SD-Karte", value: "microSD ab 16 GB und ein Kartenleser für den Rechner" }
     - { term: "Rechner", value: "Windows, Mac oder Linux mit dem kostenlosen [Raspberry Pi Imager](https://www.raspberrypi.com/software/)" }
     - { term: "Netzwerkkabel", value: "Vom Pi zum Router oder Switch, an dem das KNX-IP-Gateway hängt; entfällt für den Bus mit dem kBerry" }
@@ -32,7 +32,7 @@ setup:
     - { term: "Mit Linux", value: "**[Linux-App laden](https://github.com/regetskcob/KNX-Monitor/releases/latest),** entpacken und im Ordner `bundle` `./install.sh` ausführen: Es installiert KNX Monitor ins App-Menü, der Download kann danach weg. Am Rechner ins WLAN „KNX-Box-…“ wechseln (WLAN-Passwort aus `knx-box.txt`). In der App „KNX-Box hinzufügen“ und den Inhalt von `knx-box-link.txt` einfügen; den Rest erledigt die App wie oben." }
   preview: "Aufkleber scannen, den Rest erledigt die App: WLAN, Kopplung, Uhr und Gateway. So sieht es bald auf iPhone, iPad und Android aus; heute geht es mit der Linux-App."
   preview_alt: "Die App richtet die KNX-Box ein: WLAN beitreten, Box erreichen, koppeln, Uhr stellen, Gateway finden, alles abgehakt"
-  alt: "Ohne App geht es auch: Der zweite QR-Code (`knx-box-wlan.png`) verbindet mit dem WLAN der Box, dann im Browser `knx-box.local` mit dem Box-Passwort öffnen (Benutzername beliebig)."
+  alt: "Ohne App geht es auch: Der zweite QR-Code (`knx-box-wlan.png`) verbindet mit dem WLAN der Box, dann im Browser `knx-box.local` öffnen und mit dem Box-Passwort anmelden."
 
 data:
   label: "Daten"
@@ -53,7 +53,7 @@ recording:
     - { term: "Dauerbetrieb", value: "Ein Tunnel bleibt offen, jedes Telegramm landet in einer Tagesdatei, auch wenn kein Gerät verbunden ist." }
     - { term: "Uhr", value: "**Ohne Internet:** Die Box stellt ihre Uhr nach dem iPhone oder iPad, das sich verbindet, oder nach dem KNX-Zeitgeber auf der Linie (DPT 19.001, 10.001 + 11.001)." }
     - { term: "Bis dahin", value: "Zeichnet die Box schon auf und ordnet die Zeit nachträglich zu. Oder sie wartet, wenn du „Erst aufzeichnen, wenn die Zeit stimmt“ einschaltest." }
-    - { term: "Stromausfall", value: "Nach dem Neustart verbindet sich die Box wieder und schreibt weiter; verloren gehen höchstens die letzten Sekunden." }
+    - { term: "Stromausfall", value: "Nach dem Neustart verbindet sich die Box wieder und schreibt weiter; verloren gehen höchstens die letzten Sekunden. Ohne Echtzeituhr startet die Uhr beim zuletzt gespeicherten Stand (höchstens etwa 15 Minuten zurück), bis sie gestellt ist; so lange packt und löscht die Box nichts nach Alter. Systemprotokoll und Grund des letzten Neustarts bleiben erhalten." }
     - { term: "Aufbewahrung", value: "Standardmäßig sieben Tage, bis zu zehn Jahre." }
     - { term: "Pausieren", value: "Gibt den Tunnel frei, etwa wenn die ETS den einzigen Platz am Gateway braucht." }
 
@@ -73,9 +73,10 @@ hardware:
   label: "Hardware"
   title: "Was in den Koffer gehört."
   points:
-    - { term: "Rechner", value: "Raspberry Pi 5 mit 2 oder 4 GB, ein Pi 4 geht auch" }
-    - { term: "Uhr", value: "Empfohlen: der RTC-Akku für den Pi 5 bzw. ein DS3231-Modul für den Pi 4. Dann stimmt die Zeit schon vor dem ersten iPhone." }
+    - { term: "Rechner", value: "Raspberry Pi 4 (getestet) oder Pi 5 mit 2 oder 4 GB; ein Pi 3 mit 64-Bit-System reicht für die Aufzeichnung" }
+    - { term: "Uhr", value: "Empfohlen für den Pi 5: der RTC-Akku. Dann stimmt die Zeit schon vor dem ersten iPhone. Der Pi 4 hat keine Uhr; ein DS3231-Modul richtet das Image nicht selbst ein." }
     - { term: "Strom", value: "Netzteil mit 27 W (USB-C); schwächere führen unter Last zu Abstürzen" }
+    - { term: "Kontrolle", value: "Die Box-Einstellungen zeigen unter „Raspberry Pi“ Temperatur und Höchstwert seit dem Start und warnen bei Unterspannung oder Drosselung, auch im geschlossenen Gehäuse ohne SSH." }
     - { term: "Speicher", value: "USB-SSD oder NVMe, 128 GB reichen für Jahre" }
     - { term: "Gehäuse", value: "**Vorschau:** [Gehäuse zum Drucken (STL, Zip)](/box/knx-box-case-vorschau.zip) für Pi 3B bis 5 mit kBerry: schlanker Deckel, Modulbrücke, USB-Abdeckung, ein Boden für die Hutschiene mit angeschraubtem Federclip (empfohlen: Variante 1, wird noch nachgebessert) und Proben für Einschmelzgewinde und Deckel. Bei 0,2 mm Schichthöhe drucken. Beschreibung im README.md darin. Die Passform ist erst am Modell geprüft." }
     - { term: "Rest", value: "Netzwerkkabel, die zwei Aufkleber vom Blatt; für den direkten Busanschluss das Aufsteckmodul kBerry" }
@@ -98,7 +99,11 @@ faq:
     - q: "Brauche ich einen PC?"
       a: "Einmal am Schreibtisch: zum Schreiben des Images, zum Lesen der SD-Karte und zum Ausdrucken des QR-Codes. Bis iPhone, iPad und Android erscheinen, koppelst du die Box mit der Linux-App; danach reicht auf der Baustelle das Handy oder Tablet."
     - q: "Brauche ich Home Assistant?"
-      a: "Nein. Die Box ist dieselbe Software wie das Home-Assistant-Add-on, nur als eigenes Gerät. Wer Home Assistant hat, nimmt besser das Add-on."
+      a: "Nein. Die Box ist dieselbe Software wie das Home-Assistant-Add-on, nur als eigenes Gerät. Wer Home Assistant OS hat, nimmt besser das Add-on. Mit Home Assistant Container bindet die Integration „KNX Monitor“ die Box ein."
+    - q: "Welcher Raspberry Pi reicht?"
+      a: "Getestet ist der Raspberry Pi 4. Ein Pi 3 mit 64-Bit-System sollte für die Daueraufzeichnung reichen, lange Auswertungen dauern dort aber länger. Pi 2 und der erste Pi Zero gehen nicht, es gibt nur 64-Bit-Builds."
+    - q: "SD-Karte oder SSD?"
+      a: "Beides geht, für den Verlauf über mehrere Monate ist eine SSD besser. Die Box schreibt die Telegramme gesammelt alle 5 Sekunden statt einzeln, das schont auch SD-Karten. Abgeschlossene Tage werden gepackt, rund 20 MB pro Million Telegramme."
     - q: "Belegt die Box einen Tunnel am Gateway?"
       a: "Über IP ja, genau einen, rund um die Uhr. Alle iPhones und iPads im WLAN der Box teilen sich diesen Tunnel. Braucht die ETS den einzigen freien Platz, pausierst du die Box. Direkt an der Linie mit dem kBerry entfällt das."
     - q: "Kommen Geräte im WLAN der Box ins Kundennetz?"

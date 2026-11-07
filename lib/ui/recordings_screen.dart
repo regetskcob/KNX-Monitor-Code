@@ -967,7 +967,7 @@ class _HistoryCardState extends State<_HistoryCard> {
                     builder: (context, snapshot) => switch (snapshot.data) {
                       final restarts? => Padding(
                         padding: const EdgeInsets.only(bottom: HzSpace.s8),
-                        child: ServerRestartsLine(restarts),
+                        child: ServerRestartsLine(restarts, showHistory: false),
                       ),
                       null => const SizedBox.shrink(),
                     },

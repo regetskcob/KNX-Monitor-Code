@@ -1,5 +1,5 @@
 name: KNX Monitor
-version: "1.9.9"
+version: "1.9.10"
 slug: knx_monitor
 description: KNX bus monitor, continuous recording, health check and commissioning in the sidebar
 url: https://knx-monitor.de
@@ -34,12 +34,16 @@ options:
   watcher_notifications: true
   notify_service: ""
   dashboard_card: true
+  mqtt_telegrams: false
+  mqtt_secure_telegrams: false
 schema:
   read_only: bool
   alarm_notifications: bool
   watcher_notifications: bool
   notify_service: str?
   dashboard_card: bool
+  mqtt_telegrams: bool
+  mqtt_secure_telegrams: bool
 ingress: true
 ingress_port: 8765
 # The user enables the watchdog in the add-on (default off). Then the

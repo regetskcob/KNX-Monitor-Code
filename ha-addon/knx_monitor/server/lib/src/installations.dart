@@ -300,11 +300,14 @@ class Installations {
 /// reconnects), and start a new [BusService] in the folder of the other
 /// installation. Alarm and catalog state start over with it.
 class InstallationService {
-  InstallationService(this.installations, this._createBus, {this.clock});
+  InstallationService(this.installations, this._createBus, {this.clock, this.onClockSet});
 
   final Installations installations;
   final BusService Function(Directory root, Map<String, Object?> installation) _createBus;
   final BoxClock? clock;
+
+  /// Further reaction to a set clock; stays in place across installation switches.
+  final void Function(DateTime time, int monoMicros)? onClockSet;
 
   late BusService bus;
   Future<void> _switching = Future.value();
@@ -327,6 +330,7 @@ class InstallationService {
     final inner = clock.onSet;
     clock.onSet = (time, mono) {
       inner?.call(time, mono);
+      onClockSet?.call(time, mono);
       for (final r in _unsynced) {
         unawaited(r.retime(time, mono));
       }

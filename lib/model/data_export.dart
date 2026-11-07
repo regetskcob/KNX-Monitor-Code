@@ -25,6 +25,33 @@ class DataExportState {
   String? get prometheusError => json['prometheusError'] as String?;
   String? get influxError => json['influxError'] as String?;
   String? get generatedToken => json['generatedToken'] as String?;
+
+  /// MQTT telegram stream (issue #11); `null` when the server has no broker.
+  MqttTelegramState? get mqttTelegrams => switch (json['mqttTelegrams']) {
+    final Map<Object?, Object?> m => MqttTelegramState(m.cast<String, Object?>()),
+    _ => null,
+  };
+}
+
+/// State of "every telegram to MQTT" on the server (`MqttBridge.telegramStatus`).
+@immutable
+class MqttTelegramState {
+  const MqttTelegramState(this.json);
+  final Map<String, Object?> json;
+
+  bool get enabled => json['enabled'] == true;
+  bool get connected => json['connected'] == true;
+
+  /// Whether decrypted KNX Data Secure telegrams are sent too.
+  bool get secure => json['secure'] == true;
+  int get sent => json['sent'] as int? ?? 0;
+  int get dropped => json['dropped'] as int? ?? 0;
+
+  /// Secured telegrams left out because [secure] is off.
+  int get secureSkipped => json['secureSkipped'] as int? ?? 0;
+
+  /// Secured telegrams left out because the server could not decrypt them.
+  int get undecrypted => json['undecrypted'] as int? ?? 0;
 }
 
 /// Talks to the server; replaceable in tests.

@@ -466,8 +466,9 @@ void main() {
       expect(listStatus, 200);
       expect(jsonDecode(list), [containsPair('self', true)]);
       expect((jsonDecode(list) as List).single, containsPair('admin', true));
-      // Ein Admin-Gerät darf auch neue Geräte koppeln.
-      expect((await send('/api/box/pair', method: 'POST', auth: 'Bearer $key', body: '{}')).$1, 200);
+      // Ein Admin-Zugang überlebt einen Passwortwechsel: neue nur mit dem
+      // Passwort selbst, nicht mit einem Token (verlorenes Tablet).
+      expect((await send('/api/box/pair', method: 'POST', auth: 'Bearer $key', body: '{}')).$1, 403);
     });
 
     test('Gerät aus /pair (ohne Admin) darf nicht verwalten', () async {

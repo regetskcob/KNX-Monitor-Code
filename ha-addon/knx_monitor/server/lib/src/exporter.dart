@@ -468,7 +468,12 @@ class DataExporter {
     return out.toString();
   }
 
+  /// State of the MQTT telegram stream (issue #11), set by the server when an
+  /// MQTT broker is configured; shown on the app's data export page.
+  Map<String, Object?>? Function()? mqttTelegrams;
+
   Map<String, Object?> status() => {
+    'mqttTelegrams': ?mqttTelegrams?.call(),
     'settings': settings.toJson(secrets: false),
     'prometheusRunning': _metrics != null,
     'prometheusError': prometheusError,

@@ -265,6 +265,42 @@ void main() {
     });
   });
 
+  test('Wiederanlauf nach Busspannungsausfall: Modul kommt mit anderer Baudrate zurück', () async {
+    // Feldtest 7.11.2026: Nach einem Neustart meldet der kBerry M_Reset.ind, der
+    // Server verbindet in 2 s neu. Ob das Modul danach bei 19200 oder bei der
+    // eingestellten Rate antwortet, hängt am Modul; der Server findet beide.
+    final data = await Directory.systemTemp.createTemp('knx_hat_restart');
+    var moduleBaud = 115200;
+    FakeKberry? current;
+    final bus = BusService(
+      data,
+      hatDevice: '/dev/null',
+      describe: (_, _) async => fail('kein Gateway zu beschreiben'),
+      link: (c) => Ft12CemiLink(
+        open: (baud) async => current = FakeKberry(baud: moduleBaud, lineBaud: baud),
+        busmonitor: c.hatBusmonitor,
+      ),
+    );
+    await bus.start();
+    try {
+      await bus.update({'enabled': true, 'mode': 'hat'});
+      await until(() => bus.state == 'connected');
+      final before = current!;
+      expect(before.lineBaud, 115200);
+      expect(before.commMode, 0x00);
+
+      moduleBaud = 19200;
+      before.restart();
+      await until(() => before.closed);
+      await until(() => bus.state == 'connected' && !identical(current, before) && current!.commMode == 0x00);
+      expect(current!.lineBaud, 19200);
+      expect(bus.status()['link'], 'KNX-HAT Link Layer 15.15.255');
+    } finally {
+      await bus.shutdown();
+      await data.delete(recursive: true);
+    }
+  });
+
   test('BusConfig: nur serielle Geräte, Adresse geprüft', () {
     expect(BusConfig.fromJson({'mode': 'hat', 'device': '/etc/passwd'}).device, '/dev/ttyAMA0');
     expect(BusConfig.fromJson({'mode': 'hat', 'device': '/dev/ttyUSB0'}).device, '/dev/ttyUSB0');

@@ -85,4 +85,24 @@ void main() {
     final line = jsonDecode(File('${history.path}/${Recorder.dayName(now)}.ndjson').readAsLinesSync().single) as Map;
     expect(line['t'], now.subtract(const Duration(seconds: 1)).microsecondsSinceEpoch);
   });
+
+  test('ohne Uhr: weder gepackt noch nach Alter gelöscht', () async {
+    final old = Recorder.dayName(DateTime.now().subtract(const Duration(days: 10)));
+    final yesterday = Recorder.dayName(DateTime.now().subtract(const Duration(days: 1)));
+    file('$old.ndjson.gz', '');
+    file('$yesterday.ndjson', '{"t":1}\n');
+    await (Recorder(data, retentionDays: 1)..timeKnown = (() => false)).start();
+    expect(names(), ['$old.ndjson.gz', '$yesterday.ndjson']..sort());
+  });
+
+  test('heute ist der Tag der Box-Uhr, nicht der Systemuhr', () async {
+    // Nach einem Stromausfall steht die Systemuhr noch auf dem ersten Start,
+    // die Box-Uhr schon richtig: der laufende Tag darf nicht gepackt werden.
+    final boxToday = DateTime.now().add(const Duration(days: 12));
+    final systemToday = Recorder.dayName(DateTime.now());
+    file('${Recorder.dayName(boxToday)}.ndjson', '{"t":1}\n');
+    file('$systemToday.ndjson', '{"t":1}\n');
+    await Recorder(data, retentionDays: 30, clock: () => boxToday).start();
+    expect(names(), ['$systemToday.ndjson.gz', '${Recorder.dayName(boxToday)}.ndjson']..sort());
+  });
 }

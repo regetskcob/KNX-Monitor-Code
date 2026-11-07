@@ -585,7 +585,8 @@ class _TelegramDetailsState extends State<TelegramDetails> {
                       children: [
                         IssueChips(issues: [issue], telegram: t),
                         const SizedBox(width: HzSpace.s8),
-                        Expanded(child: Text(issue.hint, style: theme.textTheme.bodyMedium)),
+                        // Selectable so the hint can be copied into a forum post or note.
+                        Expanded(child: SelectableText(issue.hint, style: theme.textTheme.bodyMedium)),
                       ],
                     ),
                   ),

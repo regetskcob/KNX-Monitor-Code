@@ -30,3 +30,17 @@ configuration:
       und meldet sie als Dashboard-Ressource an. Sie zeigt die in der App
       gespeicherten Diagramme. Ausschalten, wenn du die Karte nicht
       brauchst oder Ressourcen selbst pflegst.
+  mqtt_telegrams:
+    name: Jedes Telegramm an MQTT
+    description: >-
+      Test: schickt jedes Telegramm als JSON an knx_monitor/telegram/1/2/3,
+      mit Zeitstempel, Name, DPT und Wert aus dem ETS-Projekt. Jeder, der
+      den Broker lesen kann, sieht Adressen, Namen und Werte deiner Anlage.
+      Braucht einen MQTT-Broker (Mosquitto).
+  mqtt_secure_telegrams:
+    name: Auch KNX-Secure-Telegramme an MQTT
+    description: >-
+      Nur zusammen mit „Jedes Telegramm an MQTT“. Schickt auch mit KNX Data
+      Secure geschützte Telegramme, entschlüsselt und als Klartext. Jeder,
+      der den Broker lesen kann, sieht dann genau die Werte, die die
+      Verschlüsselung schützen soll. Standard aus.

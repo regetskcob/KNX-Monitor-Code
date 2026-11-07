@@ -10,7 +10,7 @@ need:
   title: "What you need."
   text: "About half an hour at your desk to prepare it, no Linux knowledge needed."
   points:
-    - { term: "Raspberry Pi", value: "Pi 5 or Pi 4 with a matching power supply (Pi 5: 27 W USB-C), details under Hardware" }
+    - { term: "Raspberry Pi", value: "Pi 4 (tested) or Pi 5 with a matching power supply (Pi 5: 27 W USB-C), details under Hardware" }
     - { term: "SD card", value: "microSD of 16 GB or more and a card reader for your computer" }
     - { term: "Computer", value: "Windows, Mac or Linux with the free [Raspberry Pi Imager](https://www.raspberrypi.com/software/)" }
     - { term: "Network cable", value: "From the Pi to the router or switch the KNX IP gateway is on; not needed for the bus with the kBerry" }
@@ -32,7 +32,7 @@ setup:
     - { term: "With Linux", value: "**[Get the Linux app](https://github.com/regetskcob/KNX-Monitor/releases/latest),** unpack it and run `./install.sh` in the `bundle` folder: it installs KNX Monitor to the app menu, then the download can go. On the computer, switch to the Wi-Fi \"KNX-Box-…\" (Wi-Fi password from `knx-box.txt`). In the app, \"Add KNX box\" and paste the contents of `knx-box-link.txt`; the app does the rest as above." }
   preview: "Scan the label, the app does the rest: Wi-Fi, pairing, clock and gateway. This is how it will look on iPhone, iPad and Android; today it works with the Linux app."
   preview_alt: "The app sets up the KNX box: join the Wi-Fi, reach the box, pair, set the clock, find the gateway, all checked"
-  alt: "It works without the app too: the second QR code (`knx-box-wlan.png`) joins the box's Wi-Fi, then open `knx-box.local` in a browser with the box password (any user name)."
+  alt: "It works without the app too: the second QR code (`knx-box-wlan.png`) joins the box's Wi-Fi, then open `knx-box.local` in a browser and sign in with the box password."
 
 data:
   label: "Data"
@@ -53,7 +53,7 @@ recording:
     - { term: "Always on", value: "One tunnel stays open, every telegram goes into a daily file, even with no device connected." }
     - { term: "Clock", value: "**Without internet:** the box sets its clock from the iPhone or iPad that connects, or from the KNX time master on the line (DPT 19.001, 10.001 + 11.001)." }
     - { term: "Until then", value: "The box already records and puts the time right afterwards. Or it waits, if you switch on \"Record only once the time is right\"." }
-    - { term: "Power cut", value: "After the restart the box reconnects and carries on; at most the last seconds are lost." }
+    - { term: "Power cut", value: "After the restart the box reconnects and carries on; at most the last seconds are lost. Without a real-time clock the clock starts from the last saved stamp (at most about 15 minutes behind) until it is set; until then the box packs and deletes nothing by age. The system journal and the reason for the last restart are kept." }
     - { term: "Retention", value: "Seven days by default, up to ten years." }
     - { term: "Pause", value: "Frees the tunnel, for example when ETS needs the gateway's only slot." }
 
@@ -73,9 +73,10 @@ hardware:
   label: "Hardware"
   title: "What goes into the case."
   points:
-    - { term: "Computer", value: "Raspberry Pi 5 with 2 or 4 GB; a Pi 4 works too" }
-    - { term: "Clock", value: "Recommended: the RTC battery for the Pi 5 or a DS3231 module for the Pi 4. Then the time is right even before the first iPhone." }
+    - { term: "Computer", value: "Raspberry Pi 4 (tested) or Pi 5 with 2 or 4 GB; a Pi 3 with a 64-bit system is enough for recording" }
+    - { term: "Clock", value: "Recommended for the Pi 5: the RTC battery. Then the time is right even before the first iPhone. The Pi 4 has no clock; the image does not set up a DS3231 module by itself." }
     - { term: "Power", value: "27 W power supply (USB-C); weaker ones crash under load" }
+    - { term: "Check", value: "Under \"Raspberry Pi\" the box settings show the temperature and its maximum since start and warn about under-voltage or throttling, even in a closed case without SSH." }
     - { term: "Storage", value: "USB SSD or NVMe, 128 GB last for years" }
     - { term: "Case", value: "**Preview:** [printable case (STL, zip)](/box/knx-box-case-vorschau.zip) for Pi 3B to 5 with the kBerry: slim lid, module bridge, USB cover, a DIN rail base with a screw-on spring clip (recommended: variant 1, still being refined) and test prints for the heat-set inserts and the lid. Print at 0.2 mm layer height. Description (German) in the README.md inside. The fit has only been checked on the model so far." }
     - { term: "The rest", value: "A network cable, the two labels from the sheet; for the direct bus connection the kBerry plug-on module" }
@@ -98,7 +99,11 @@ faq:
     - q: "Do I need a PC?"
       a: "Once at your desk: to write the image, read the SD card and print the QR code. Until iPhone, iPad and Android arrive, you pair the box with the Linux app; after that a phone or tablet is enough on site."
     - q: "Do I need Home Assistant?"
-      a: "No. The box runs the same software as the Home Assistant add-on, just as a device of its own. If you have Home Assistant, the add-on is the better choice."
+      a: "No. The box runs the same software as the Home Assistant add-on, just as a device of its own. If you run Home Assistant OS, the add-on is the better choice. With Home Assistant Container the \"KNX Monitor\" integration connects the box."
+    - q: "Which Raspberry Pi is enough?"
+      a: "The Raspberry Pi 4 is tested. A Pi 3 with the 64-bit OS should do for continuous recording, but long evaluations take longer there. Pi 2 and the first Pi Zero do not work, there are 64-bit builds only."
+    - q: "SD card or SSD?"
+      a: "Both work; for months of history an SSD is better. The box writes telegrams in batches every 5 seconds instead of one by one, which spares SD cards too. Finished days are compressed, about 20 MB per million telegrams."
     - q: "Does the box take up a tunnel on the gateway?"
       a: "Over IP yes, exactly one, around the clock. Every iPhone and iPad in the box's Wi-Fi shares that tunnel. If ETS needs the only free slot, pause the box. Straight on the line with the kBerry this goes away."
     - q: "Do devices in the box's Wi-Fi reach the customer's network?"

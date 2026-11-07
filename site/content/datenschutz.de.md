@@ -3,7 +3,7 @@ title: "Datenschutzerklärung"
 description: "Datenschutzerklärung für die App KNX Monitor, das Home-Assistant-Add-on und diese Website. Kurz: kein Tracking, Anlagendaten bleiben lokal, kein Konto."
 ---
 
-<p class="t-kennung hz-kennung">Stand: Oktober 2026</p>
+<p class="t-kennung hz-kennung">Stand: November 2026</p>
 
 > **Kurz gesagt:** Wir erheben so wenig wie möglich: kein Konto, keine Analyse, kein Tracking. Alles, was die App über deine Anlage verarbeitet, bleibt auf deinem Gerät bzw. deiner KNX-Box, außer du teilst es selbst. Ab Version 1.9.1 verschlüsseln die Apps ihre Dateien, und du kannst sie sperren und selbst sichern, jeweils mit den unten genannten Grenzen. Ausnahmen: In den Store-Versionen fragt die App beim Start RevenueCat nach deinem Stand, auch wenn du nichts gekauft hast; und unter Android sendet der QR-Scanner (Google ML Kit) technische Diagnosedaten an Google, siehe unten.
 
@@ -85,7 +85,7 @@ Für den Download der App gelten die Datenschutzbestimmungen von Apple bzw. Goog
 
 ## Das Home-Assistant-Add-on
 
-Das Add-on läuft auf deinem eigenen Home-Assistant-Host. Alle Daten (Projekt, Secure-Schlüssel, Telegramme, Langzeitverlauf, Aufnahmen, Einstellungen) liegen im Datenordner des Add-ons auf diesem Host, sind unverschlüsselt und Teil deiner Home-Assistant-Sicherungen (schütze diese mit einem Sicherungsschlüssel) und werden beim Deinstallieren des Add-ons entfernt. Verschlüsselung, App-Sperre und Sicherung der Apps gibt es im Add-on nicht, dort übernimmt das dein Home Assistant. Das Add-on zeichnet den Bus dauerhaft auf, solange es läuft. Der Zugriff erfolgt über die Home-Assistant-Oberfläche (Ingress) und wird von Home Assistant authentifiziert. Für Benachrichtigungen und das Mitlesen der KNX-Integration nutzt das Add-on die Schnittstelle von Home Assistant auf demselben Host. An uns sendet es nichts. Daten gehen nur an Ziele, die du selbst einrichtest, dort nach den Regeln dieser Anbieter: Mitteilungen an ntfy, einen Webhook oder Home Assistant, Messwerte an InfluxDB; Prometheus holt sie auf deine Anfrage ab. Für die Box gilt dasselbe.
+Das Add-on läuft auf deinem eigenen Home-Assistant-Host. Alle Daten (Projekt, Secure-Schlüssel, Telegramme, Langzeitverlauf, Aufnahmen, Einstellungen) liegen im Datenordner des Add-ons auf diesem Host, sind unverschlüsselt und Teil deiner Home-Assistant-Sicherungen (schütze diese mit einem Sicherungsschlüssel) und werden beim Deinstallieren des Add-ons entfernt. Verschlüsselung, App-Sperre und Sicherung der Apps gibt es im Add-on nicht, dort übernimmt das dein Home Assistant. Das Add-on zeichnet den Bus dauerhaft auf, solange es läuft. Der Zugriff erfolgt über die Home-Assistant-Oberfläche (Ingress) und wird von Home Assistant authentifiziert. Die Integration „KNX Monitor“ in deinem Home Assistant liest Zustände, Wächter und Hinweise mit einem eigenen Schlüssel; ohne Supervisor (Box, Docker) meldet sie sich als gekoppeltes Gerät an. Was sie liest, bleibt in deinem Home Assistant. Für Benachrichtigungen und das Mitlesen der KNX-Integration nutzt das Add-on die Schnittstelle von Home Assistant auf demselben Host. An uns sendet es nichts. Daten gehen nur an Ziele, die du selbst einrichtest, dort nach den Regeln dieser Anbieter: Mitteilungen an ntfy, einen Webhook oder Home Assistant, Messwerte an InfluxDB, Zustände und, wenn du „Jedes Telegramm an MQTT“ einschaltest, jedes Telegramm mit Adresse, Name und Wert an deinen MQTT-Broker; Prometheus holt sie auf deine Anfrage ab. Für die Box gilt dasselbe.
 
 ## Diese Website
 
@@ -99,7 +99,7 @@ Diese Website setzt keine Cookies, verwendet keine Analyse- oder Tracking-Werkze
 
 ### Support über GitHub Issues
 
-Support und Feedback laufen über GitHub Issues. Ein Issue ist öffentlich sichtbar und setzt ein Konto bei GitHub voraus; für die Verarbeitung dort gilt die [Datenschutzerklärung von GitHub](https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement). Wir nutzen deine Angaben im Issue nur, um deine Anfrage zu bearbeiten (Art. 6 Abs. 1 lit. b bzw. f DSGVO). Bitte veröffentliche dort keine vertraulichen Daten wie Passwörter oder dein ETS-Projekt.
+Support und Feedback laufen über GitHub Issues. Ein Issue ist öffentlich sichtbar und setzt ein Konto bei GitHub voraus; für die Verarbeitung dort gilt die [Datenschutzerklärung von GitHub](https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement). Wir nutzen deine Angaben im Issue nur, um deine Anfrage zu bearbeiten (Art. 6 Abs. 1 lit. b bzw. f DSGVO). Bitte veröffentliche dort keine vertraulichen Daten wie Passwörter oder dein ETS-Projekt. Nach einem Absturz kann die App ein Issue-Formular vorausfüllen; es enthält nur Version, Plattform, Zeit und Art des Absturzes, und du siehst es, bevor du es abschickst.
 
 ### Support per E-Mail und Diagnosepaket
 

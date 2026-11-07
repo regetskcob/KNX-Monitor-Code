@@ -212,7 +212,7 @@ class Recorder {
   /// space runs out long before the configured limit.
   Future<void> _freeUp() async {
     if (!await _dir.exists()) return;
-    final today = dayName(DateTime.now());
+    final today = dayName(_now());
     final candidates = <(String, File)>[];
     for (final f in await _unsyncedFiles()) {
       if (f.uri.pathSegments.last != _unsyncedName) candidates.add(('', f));
@@ -289,20 +289,26 @@ class Recorder {
 
   /// Packs completed days and cleans up according to retention. Runs at
   /// start (catches up on what a crash left behind) and once per hour.
+  /// Without a confirmed clock ([timeKnown]) no packing and no retention by
+  /// days, only the size limit: with the wrong date, "today" would be packed
+  /// early and retention would count from the wrong day.
   Future<void> maintain() => _writing = _writing.then((_) => _maintain()).catchError((Object e) {
     stderr.writeln('Verlauf aufräumen: $e');
   });
 
   Future<void> _maintain() async {
     if (!await _dir.exists()) return;
-    final today = dayName(DateTime.now());
+    final today = dayName(_now());
     await _recover();
-    for (final f in await _dayFiles()) {
-      final name = f.uri.pathSegments.last;
-      if (name.endsWith('.ndjson') && name != '$today.ndjson') await _gzip(f);
+    final known = timeKnown?.call() != false;
+    if (known) {
+      for (final f in await _dayFiles()) {
+        final name = f.uri.pathSegments.last;
+        if (name.endsWith('.ndjson') && name != '$today.ndjson') await _gzip(f);
+      }
     }
     await _markOrphans();
-    await _prune(today);
+    await _prune(today, byAge: known);
     // Measure even without telegrams: the status should show a full disk.
     _freeChecked = null;
     await _roomToWrite();
@@ -375,7 +381,7 @@ class Recorder {
   /// wrong); with it they would disappear at the first cleanup.
   Future<void> _markOrphans() async {
     if (timeKnown?.call() == false) return;
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = _now().millisecondsSinceEpoch;
     for (final f in await _unsyncedFiles()) {
       final name = f.uri.pathSegments.last;
       if (name == _unsyncedName) continue;
@@ -384,7 +390,7 @@ class Recorder {
     }
   }
 
-  Future<void> _prune(String today) async {
+  Future<void> _prune(String today, {required bool byAge}) async {
     final files = await _dayFiles();
     final unsynced = await _unsyncedFiles();
     if (!enabled) {
@@ -393,8 +399,9 @@ class Recorder {
       }
       return;
     }
-    final now = DateTime.now();
-    final cutoff = dayName(DateTime(now.year, now.month, now.day - (retentionDays - 1)));
+    final now = _now();
+    // Without a confirmed clock nothing counts as expired.
+    final cutoff = byAge ? dayName(DateTime(now.year, now.month, now.day - (retentionDays - 1))) : '';
     final kept = <(String, File)>[];
     for (final f in files) {
       final day = f.uri.pathSegments.last.substring(0, 10);
@@ -443,7 +450,7 @@ class Recorder {
     final groups = <int, int>{};
     final senders = <int, int>{};
     var total = 0;
-    final now = DateTime.now();
+    final now = _now();
     for (var back = days - 1; back >= 0; back--) {
       final day = dayName(DateTime(now.year, now.month, now.day - back));
       final d = await _dayStats(day);

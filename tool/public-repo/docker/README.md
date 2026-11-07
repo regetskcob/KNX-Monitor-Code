@@ -13,16 +13,21 @@ it is set up with one click and needs no password.
 
 1. Copy [`compose.yaml`](compose.yaml) to a folder on the host. Next to it
    create a file `.env` with your own password (at least 8 characters):
-   `BOX_PASSWORD=your-own-password`. Without it Compose refuses to start, as
-   the container is reachable from your network.
+   `BOX_PASSWORD=your-own-password`. Without it Compose refuses to start, and
+   so does the server with a shorter one.
 2. `docker compose up -d`
-3. Open `http://localhost:8765` on the host itself, sign in with any user name and
-   the password. To reach it from other devices, see
+3. Open `http://localhost:8765` on the host itself and sign in with the
+   password. To reach it from other devices, see
    [Access from your network](#access-from-your-network).
 4. Pick your KNX IP gateway (or enter its address), import your ETS project.
 
 The container uses the host network, because KNXnet/IP over UDP, the gateway
 search and routing need it. History, project and settings live in `./data`.
+
+Out of the box the container only reads the bus (`READ_ONLY=1` in
+`compose.yaml`): monitor, recording, watchers and evaluations work, but the app
+cannot switch devices or send values. To allow that, add `READ_ONLY=0` to `.env`
+and run `docker compose up -d`.
 
 The Linux app and, later, the other apps can connect to the container too:
 in the app "Add KNX box", enter `<host>:8765` and the password (needs
@@ -31,6 +36,46 @@ in the app "Add KNX box", enter `<host>:8765` and the password (needs
 Update: `compose.yaml` names a fixed version. Set `KNX_MONITOR_VERSION=x.y.z` in
 `.env` (or download the file again), then `docker compose pull && docker compose
 up -d`. The image is signed, see [Verify the image](#verify-the-image).
+
+## Security
+
+KNX itself has no authentication: whoever can send to your KNX IP gateway can
+switch every device in the house. KNX Monitor is built not to become that way in,
+but how you run it matters:
+
+- **Never forward the port to the internet** (router port forwarding, DMZ,
+  exposed host). From outside, use a VPN into your home network (WireGuard, the
+  VPN of your router, Tailscale) and open KNX Monitor as if you were at home.
+- **Read only unless you need to write.** `READ_ONLY=1` (default in
+  `compose.yaml`) means the server sends nothing to the bus, whatever happens to
+  the password or a paired device.
+- **Only the host by default.** Without `LAN_ACCESS=yes` the server listens on
+  `127.0.0.1` only, and only answers requests addressed to `localhost`. Open it
+  to the network only when you need it.
+- **A strong password**, at least 8 characters, better a long passphrase. It
+  is checked slowly on purpose, and repeated wrong attempts lock the sender out
+  for up to 15 minutes. Paired apps keep working during such a lockout.
+- **Keep the password out of the environment** if others can run `docker
+  inspect` or see your Portainer stacks: put it into a file and pass
+  `BOX_PASSWORD_FILE=/run/secrets/knx_password` (Compose `secrets:`) instead.
+  In `compose.yaml`, replace the `BOX_PASSWORD` line with that variable, since
+  the template otherwise insists on `BOX_PASSWORD` in `.env`. The same works
+  for `MQTT_PASSWORD_FILE`.
+- **Changing `BOX_PASSWORD` later has no effect**: it only sets the first
+  password. Change it in the app or on `/pair`; the log warns when the variable
+  no longer matches.
+- **Lost a phone or tablet?** Remove it in the app under box settings, or lock
+  out everything ("Alle sperren"): that also ends browser sessions. Changing the
+  password does not remove paired devices.
+- **Updates:** security fixes come with new versions. Watch the
+  [releases](https://github.com/regetskcob/KNX-Monitor/releases).
+- **Use KNX IP Secure and Data Secure** where your installation supports them;
+  plain KNXnet/IP can be read and written by every device in the network,
+  with or without KNX Monitor.
+
+`ALLOW_ALL=1` is for development and the project's own tests only. It turns off
+every login; the server refuses it together with a network `BIND` unless a
+second variable says so explicitly. Never copy it into a deployment.
 
 ## Access from your network
 
@@ -44,9 +89,11 @@ for example `-e LAN_ACCESS=yes`.
 telegrams cross your network unencrypted, and anyone in the network can read them
 or replace the app you load. So use it only in a network you trust, or:
 
-- put a reverse proxy with TLS in front of it, or
+- put a reverse proxy with TLS in front of it (the proxy makes the container
+  reachable from the network, so set `LAN_ACCESS=yes` for it; with
+  `LAN_ACCESS=no` the server refuses requests that do not name `localhost`), or
 - give the container your own certificate: `TLS_CERT` and `TLS_KEY` (PEM files, for
-  example under `./data/tls`) and `TLS_PORT`. Pairing links from `/pair` then carry
+  example under `./data/app/tls`) and `TLS_PORT` (default 8443). Pairing links from `/pair` then carry
   the certificate's fingerprint and the apps trust exactly this certificate. HTTP
   stays available on `PORT`; do not expose it beyond the host if you can avoid it.
 
@@ -85,15 +132,30 @@ same settings yourself, at least `BOX=1`, the password and the host network:
 docker run -d --name knx-monitor --restart unless-stopped --network host \
   --cap-drop ALL --cap-add DAC_OVERRIDE --cap-add FOWNER \
   --security-opt no-new-privileges:true \
-  -e BOX=1 -e BOX_PASSWORD='your-own-password' -e LAN_ACCESS=yes \
+  -e BOX=1 -e BOX_PASSWORD='your-own-password' -e LAN_ACCESS=yes -e READ_ONLY=1 \
   -e TZ=Europe/Berlin -v "$PWD/data:/data" \
   ghcr.io/regetskcob/knx-monitor:<version>
 ```
 
 `<version>` is the one in `compose.yaml`, or any newer one from the
-[releases](https://github.com/regetskcob/KNX-Monitor/releases). Leave out `-e LAN_ACCESS=yes` to allow only the host itself. To change a
+[releases](https://github.com/regetskcob/KNX-Monitor/releases). Without `-e LAN_ACCESS=yes` only the host itself gets in.
+To let the app send to the bus, use `-e READ_ONLY=0` instead of `-e READ_ONLY=1`. To change a
 setting later, remove the container and run it again with the new values;
 `./data` keeps history, project and paired devices.
+
+Bridge network instead of the host network (`-p 8765:8765` without
+`--network host`, the default in some NAS interfaces): the gateway search and
+routing do not work there, only a tunnel to the gateway's address. The server
+then never sees requests from `localhost`, so it needs `LAN_ACCESS=yes`. Publish
+the port on one address only, for example `-p 192.168.1.10:8765:8765`, and note
+that Docker's published ports bypass firewalls such as `ufw`.
+
+Space for the history: about 20 MB per million telegrams for finished days
+(compressed), about 95 MB per million for the current day; with the default
+retention of 7 days and 1,000 MB this stays small. Details in the
+[add-on docs](https://github.com/regetskcob/KNX-Monitor/blob/main/ha-addon/knx_monitor/DOCS.md#continuous-recording).
+Images exist for amd64 and arm64 only, so a Raspberry Pi needs the 64-bit OS
+(Pi 3 or newer).
 
 ## Settings
 
@@ -101,15 +163,37 @@ setting later, remove the container and run it again with the new values;
 | --- | --- |
 | `BOX=1` | Standalone mode with password (required outside Home Assistant). |
 | `BOX_PASSWORD` | Password for the browser and for pairing apps, at least 8 characters. Used on the first start; change it later in the app under box settings. |
+| `BOX_PASSWORD_FILE`, `MQTT_PASSWORD_FILE` | Read the password from a file instead (Docker secrets). A variable set directly wins. |
 | `BOX_NAME` | Name shown in the apps. |
 | `LAN_ACCESS=yes` | Reachable from your network, not only from the host (default `no`). Applies on every start (since 1.9.9). Plain HTTP unless you set up TLS, see above. |
-| `TLS_CERT`, `TLS_KEY`, `TLS_PORT` | Optional HTTPS with your own certificate (PEM files), default port 443. |
+| `TLS_CERT`, `TLS_KEY`, `TLS_PORT` | Optional HTTPS with your own certificate (PEM files), default port 8443. |
 | `KNX_MONITOR_VERSION` | Image version (default: the one this file was published for). |
 | `PORT` | Web port, default 8765. |
-| `READ_ONLY=1` | Read only: the server sends nothing to the bus, neither from the app nor through its relay, not even read requests. Recording and evaluations keep running (default off). |
+| `READ_ONLY=1` | Read only: the server sends nothing to the bus, neither from the app nor through its relay, not even read requests. Recording and evaluations keep running. On in `compose.yaml`, off without it. |
 | `TZ` | Time zone for the daily history files, e.g. `Europe/Berlin`. |
 | `MQTT_HOST`, `MQTT_PORT`, `MQTT_USER`, `MQTT_PASSWORD`, `MQTT_SSL` | Optional MQTT broker (port 1883 by default, `MQTT_SSL=true` for TLS). |
 | `MQTT_DISCOVERY=false` | Leave out the Home Assistant discovery topics (recommended for ioBroker). |
+
+## Home Assistant Container
+
+Without the Supervisor (Home Assistant Container) there is no add-on, but the
+[KNX Monitor integration](https://github.com/regetskcob/KNX-Monitor-HA) (1.1.0 or
+newer, through HACS) can still talk to this container:
+
+1. Set `LAN_ACCESS=yes` unless Home Assistant runs on the same host with host
+   networking.
+2. Open `http://<host>:8765/pair`, log in with the password, tick **Verwalten**
+   (the integration needs a device with admin rights) and create the link.
+3. In Home Assistant: *Settings → Devices & services → Add integration → KNX
+   Monitor*, enter the container's address (e.g. `192.168.1.20:8765`) and paste
+   the link (`knxmonitor://box?url=…&key=…`).
+
+You get the sensors, the recording switch, device conditions, the services and
+the repairs (bus lost, disk full, an address stopped sending). Event entities and
+device triggers need the add-on for now; use MQTT for those. Revoke the device on
+`/pair` and the integration loses access. With `TLS_CERT` the link carries the
+certificate's fingerprint and the integration accepts only that certificate;
+without it, the connection is not encrypted.
 
 ## ioBroker
 
@@ -155,15 +239,28 @@ message spoke of a box Wi-Fi that does not exist in Docker. On those versions,
 either open `http://localhost:8765/pair` on the host and allow access there, or
 update to 1.9.9 or later and restart.
 
-**Container stops right away, log says `BOX_PASSWORD fehlt`:** set `BOX_PASSWORD`
-(at least 8 characters). It is only needed on the first start; after that the
-stored password counts, and you change it in the app or on `/pair`.
+**Container stops right away, log says `BOX_PASSWORD fehlt` or `zu kurz`:** set
+`BOX_PASSWORD` (8 to 128 characters). It is only needed on the first start;
+after that the stored password counts, and you change it in the app or on `/pair`.
+
+**"Nur über http://localhost erreichbar"** (HTTP 403): with `LAN_ACCESS=no` the
+server only accepts requests to `localhost`, `127.0.0.1` or `[::1]`. Behind a
+reverse proxy, or to reach it under the host's name, set `LAN_ACCESS=yes`.
+
+**The app no longer switches anything, "Nur-Lesen ist an":** `compose.yaml`
+starts read only since 1.9.10. Add `READ_ONLY=0` to `.env` and run
+`docker compose up -d`.
+
+**HTTPS no longer answers on port 443:** since 1.9.10 the container's default
+`TLS_PORT` is 8443 (with `cap_drop: ALL` it cannot open ports below 1024).
+Set `TLS_PORT` explicitly to keep another port.
 
 ## Notes
 
 - 32-bit operating systems (armv7) are not supported; use a 64-bit OS.
 - No Home Assistant events or notifications here; use MQTT and your system's
-  automations instead.
+  automations instead (or the integration above for sensors, conditions and
+  repairs).
 - On its own the container sends nothing to the internet; data only goes to
   destinations you set up yourself (MQTT, ntfy, webhook, InfluxDB).
 - Data in `./data` is not encrypted by the container; protect the folder and its

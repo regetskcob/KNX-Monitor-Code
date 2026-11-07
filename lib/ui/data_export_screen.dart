@@ -175,6 +175,27 @@ class _DataExportScreenState extends State<DataExportScreen> {
     ),
   );
 
+  /// Read-only state of the MQTT telegram stream (issue #11): switched in the
+  /// add-on options or environment, so the page only reports, with a reason
+  /// for every telegram that stays off the broker.
+  List<Widget> _mqttLines(MqttTelegramState mqtt, TextStyle? muted) {
+    if (!mqtt.enabled) return [Text(s.dataExportMqttOff, style: muted)];
+    final lines = <Widget>[
+      HorizontStatusLine(
+        mqtt.connected ? HorizontStatus.positive : HorizontStatus.warning,
+        mqtt.connected ? s.dataExportMqttOn(mqtt.sent, mqtt.dropped) : s.dataExportMqttDisconnected,
+      ),
+      if (mqtt.secure) HorizontStatusLine(HorizontStatus.warning, s.dataExportMqttSecureOn),
+      if (mqtt.secureSkipped > 0)
+        HorizontStatusLine(HorizontStatus.info, s.dataExportMqttSecureSkipped(mqtt.secureSkipped)),
+      if (mqtt.undecrypted > 0)
+        HorizontStatusLine(HorizontStatus.warning, s.dataExportMqttUndecrypted(mqtt.undecrypted)),
+    ];
+    return [
+      for (final (i, line) in lines.indexed) ...[if (i > 0) const SizedBox(height: Gap.item), line],
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -264,6 +285,12 @@ class _DataExportScreenState extends State<DataExportScreen> {
                     OutlinedButton(onPressed: () => _grafana('influxdb'), child: Text(s.dataExportGrafanaInflux)),
                   ],
                 ),
+                if (st.mqttTelegrams case final mqtt?) ...[
+                  const SizedBox(height: Gap.section),
+                  Kennung(s.dataExportMqtt),
+                  const SizedBox(height: Gap.item),
+                  ..._mqttLines(mqtt, muted),
+                ],
               ],
             ),
     );

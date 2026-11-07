@@ -18,6 +18,7 @@ import 'package:knx_monitor/model/connection_options.dart';
 import 'package:knx_monitor/model/installation.dart';
 import 'package:knx_monitor/knx/knx_tunnel.dart';
 import 'package:knx_monitor/model/recording.dart';
+import 'package:knx_monitor/model/system_crash_report.dart';
 import 'package:knx_monitor/monitor_model.dart';
 import 'package:knx_monitor/model/telegram_log.dart';
 import 'package:knx_monitor/platform/storage.dart';
@@ -644,5 +645,53 @@ void main() {
     final source = find.text('Langzeitverlauf 21.10.2026');
     await pumpScreen(tester, const SupportPackageScreen(), until: source);
     expect(source, findsOneWidget);
+  });
+
+  testWidgets('Nach einem Absturz: Bericht des Systems mit Häkchen im Paket', (tester) async {
+    await setUpStorage(tester);
+    final occurred = DateTime.utc(2026, 11, 6, 13, 31);
+    String two(int v) => '$v'.padLeft(2, '0');
+    final at = occurred.add(const Duration(minutes: 1));
+    final ips =
+        '${jsonEncode({'app_name': 'KNX Monitor', 'bug_type': '309'})}\n'
+        '${jsonEncode({
+          'procName': 'KNX Monitor',
+          'captureTime': '${at.year}-${two(at.month)}-${two(at.day)} ${two(at.hour)}:${two(at.minute)}:00.00 +0000',
+          'exception': {'type': 'EXC_BAD_ACCESS', 'signal': 'SIGSEGV'},
+          'faultingThread': 0,
+          'threads': [
+            {
+              'frames': [
+                {'imageIndex': 0},
+              ],
+            },
+          ],
+          'usedImages': [
+            {'name': 'FlutterMacOS', 'path': '/Users/daniel/FlutterMacOS'},
+          ],
+        })}';
+    final card = find.text('Absturzbericht von macOS gefunden');
+    await pumpScreen(
+      tester,
+      SupportPackageScreen(
+        error: 'KNX Monitor wurde unerwartet beendet',
+        occurred: occurred.toLocal(),
+        crash: true,
+        systemReports: SystemCrashFinder(
+          platform: TargetPlatform.macOS,
+          executable: 'KNX Monitor',
+          macFiles: (_) async => [(name: 'KNX Monitor-1.ips', modified: at, read: () async => ips)],
+        ),
+      ),
+      until: card,
+    );
+    expect(card, findsOneWidget);
+    expect(find.text('EXC_BAD_ACCESS (SIGSEGV)'), findsOneWidget);
+    final content = find.text('Absturzbericht des Systems: Art und Modul');
+    expect(content, findsOneWidget);
+    await tester.tap(find.text('Ins Paket übernehmen'));
+    await tester.pump();
+    expect(content, findsNothing);
+    expect(find.text('Als Issue melden'), findsNothing, reason: 'erst nach dem Teilen');
   });
 }

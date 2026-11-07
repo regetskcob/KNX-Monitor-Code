@@ -32,10 +32,15 @@ const historyMaxAddresses = 12;
 
 const maxPerAddress = 4000;
 
+/// How far back the search for the value at the left edge goes (longer than
+/// any retention the settings allow).
+const historyMaxLookBack = Duration(days: 4000);
+
 /// Query parameters; a message if they are invalid.
 ({Map<int, (int, int?)?> addresses, DateTime from, DateTime to})? historyQuery(
   Map<String, String> q, {
   void Function(String error)? onError,
+  DateTime Function() now = DateTime.now,
 }) {
   final from = int.tryParse(q['from'] ?? '');
   final to = int.tryParse(q['to'] ?? '');
@@ -63,6 +68,10 @@ const maxPerAddress = 4000;
     error = 'from und to (Millisekunden) fehlen oder sind verdreht.';
   } else if (to - from > historyMaxRange.inMilliseconds) {
     error = 'Höchstens ${historyMaxRange.inDays} Tage.';
+  } else if (from > now().add(const Duration(days: 1)).millisecondsSinceEpoch) {
+    // Far in the future, the search for the value at the left edge would walk
+    // back day by day over millions of days (one request blocked recording).
+    error = 'from liegt in der Zukunft.';
   }
   if (error != null) {
     onError?.call(error);
@@ -123,9 +132,11 @@ Future<Map<int, List<Map<String, Object?>>>> historyTelegrams(
   final first = (await recorder.usage())['first'] as String?;
   if (missing.isNotEmpty && first != null) {
     final oldest = DateTime.parse(first);
+    // At most [historyMaxLookBack] back, whatever [from] is.
+    final limit = from.subtract(historyMaxLookBack);
     for (
       var d = DateTime(from.year, from.month, from.day - 2);
-      missing.isNotEmpty && !d.isBefore(oldest);
+      missing.isNotEmpty && !d.isBefore(oldest) && !d.isBefore(limit);
       d = DateTime(d.year, d.month, d.day - 1)
     ) {
       final day = await _dayCache(recorder).lines(recorder, Recorder.dayName(d), missing);

@@ -83,6 +83,9 @@ void main() {
       expect(busmon['repeated'], 1);
       expect(busmon['errors'], 1);
       expect(busmon['timestamps'], 1);
+      // The fake data frames carry a wrong checksum, so both ACKs follow a damaged frame.
+      expect(busmon['orphanAcks'], 2);
+      expect(busmon['seqGaps'], 0);
       expect(module.commMode, 0xF0, reason: 'am Ende wieder BAOS');
       expect(module.hostAcks, greaterThan(5), reason: 'jeder Datenrahmen quittiert');
       expect(module.closed, isTrue);

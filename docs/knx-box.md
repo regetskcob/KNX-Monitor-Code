@@ -46,6 +46,7 @@ NetworkManager 1.52 or newer), and the 3D-printed case as a whole.
 - [Services and logs](#services-and-logs)
 - [Updates and rollback](#updates-and-rollback)
 - [Crash watch](#crash-watch)
+- [Temperature and power supply](#temperature-and-power-supply)
 - [The case](#the-case)
 - [Tests](#tests)
 - [Limits](#limits)
@@ -164,7 +165,9 @@ Verification is described in [release-security.md](release-security.md).
 | Raspberry Pi 4 | Run on hardware, including the kBerry on a real bus. `setup.sh` adds `dtoverlay=disable-bt` under `[pi4]` so the PL011 UART is free for the HAT. |
 | Raspberry Pi 5 | Configured (`dtoverlay=uart0-pi5` under `[pi5]`), not verified on hardware. Has an RTC that needs the optional battery. |
 | Raspberry Pi 3 / 3B+ | Runs the arm64 image in principle and fits the case; not verified. `setup.sh` adds `dtoverlay=disable-bt` under `[pi3]` as for the Pi 4. |
-| Anything 32-bit only | Not supported: `setup.sh` refuses to run on anything but `aarch64`. |
+| Raspberry Pi 2, Pi Zero / Zero W, anything 32-bit only | Not supported: `setup.sh` refuses to run on anything but `aarch64`, and all builds are 64-bit (arm64). The Pi Zero 2 W is 64-bit but has only 512 MB RAM and is not tested. |
+
+In short: a Raspberry Pi 4 is the tested model; a Pi 3 with the 64-bit OS should work for continuous recording, but long evaluations (reports, charts over months) take longer there. Prefer an SSD over an SD card for months of history; the write interval (default 5 s) already bundles writes. Space needed: see "Continuous recording" in the [add-on docs](../ha-addon/knx_monitor/DOCS.md#continuous-recording), the box uses the same history.
 
 A Pi 4 has no RTC. `setup.sh` does not configure an external RTC module such as a
 DS3231; that would need its own `dtoverlay=i2c-rtc,…` line in `config.txt`.
@@ -346,7 +349,8 @@ scrubbed), it generates a random password and prints it once to the journal
 
 Inside `/var/lib/knx-box/`, the root holds only the server's own files:
 `access.json` (+ `.bak`), `installations.json`, the request files listed above,
-and the crash-watch files `running.json`, `restarts.ndjson`, `last-error.txt`.
+and the crash-watch files `running.json`, `restarts.ndjson`, `last-error.txt`,
+`last-exit.json`.
 Everything that belongs to an installation lives in `installations/<id>/`:
 
 | Path in `installations/<id>/` | Content |
@@ -483,7 +487,10 @@ today is kept).
 
 The journal is capped by `box/files/journald-knx-box.conf` so it can neither fill
 the card nor take the recorder's space: `SystemMaxUse=64M`, `SystemKeepFree=256M`,
-`RuntimeMaxUse=32M`.
+`RuntimeMaxUse=32M`. It also sets `Storage=persistent`: Raspberry Pi OS keeps the
+journal in memory only (`40-rpi-volatile-storage.conf`, which our drop-in
+overrides because it sorts later), so after a power cut nothing explained what had
+happened.
 
 ## Compression
 
@@ -495,7 +502,7 @@ What is and is not compressed on the box:
 | Today's history file | No | Plain NDJSON, appended to |
 | `unsynced-*.ndjson` (recorded without a known time) | No | Never compressed, also not after they become orphans |
 | Availability and bus-monitor status files | No | Plain NDJSON / JSON |
-| `restarts.ndjson`, `last-error.txt` | No | |
+| `restarts.ndjson`, `last-error.txt`, `last-exit.json` | No | |
 | Settings, catalog, keys, `access.json` | No | Plain JSON |
 | Web app in `/opt/knx-box/web` | No | Served as is |
 | HTTP responses | No | The server sets no `Content-Encoding`; packed days are decompressed on the fly |
@@ -532,6 +539,23 @@ A Raspberry Pi 4 has no real-time clock; a Pi 5 has one but only keeps time with
 the optional battery. Without internet, the system clock after boot can be wrong,
 and day files would get the wrong date. The box therefore tracks where its time
 comes from (`lib/src/box_clock.dart`).
+
+### Start time after a power cut
+
+At boot, systemd moves the clock forward to the time stamp of
+`/var/lib/systemd/timesync/clock`. Only `systemd-timesyncd` updates that file, and
+the box uses chrony, so without help every boot started at the date of the first
+boot. `knx-box-clock-save.timer` touches it every 15 minutes, and `settime.sh`
+does so whenever it sets the clock. After a power cut the clock therefore starts
+at most about 15 minutes behind the moment the box lost power, until a source
+below sets it.
+
+Until then the box counts its time as unknown. Maintenance does not pack day
+files and retention by days does not delete anything; only the size limit
+applies. "Today" for packing is the box clock (`BoxClock.now()`), not the system
+clock, which can still be wrong while the host has not applied a new time. The
+restart entry of this start (`restarts.ndjson`) is recomputed once the clock is
+set, so its `t` no longer lies before its own `lastSeen`.
 
 ### Sources
 
@@ -698,10 +722,14 @@ Wi-Fi and for older apps.
 
 ### Access control (summary)
 
-Browsers log in with HTTP Basic and the box password, then get a session cookie;
+Browsers log in on the box's own page `/login` with the box password only, then
+get a session cookie (`/logout`, button on `/pair`, ends it); tools such as curl
+may still use HTTP Basic;
 paired apps send a per-device bearer token. Devices paired with the box password
 are administrators; devices paired through a QR code on `/pair` may read and send
-group values but not manage the box or read the keyring. Login attempts are
+group values but not manage the box or read the keyring, unless "Verwalten" was
+ticked there (for the Home Assistant integration and ioBroker, which need
+`/api/ha/`). Login attempts are
 rate-limited per IP. `GET /healthz` answers without login and returns no data. The
 full model, including origin checks and roles, is in [security.md](security.md).
 
@@ -718,6 +746,7 @@ All units are in `box/files/` and installed to `/etc/systemd/system/` by `setup.
 | `knx-box-lan-lock.service` | oneshot | Loads `lan.nft` (cable closed) before `network-pre.target`, NetworkManager and SSH |
 | `knx-box-lan.service` + `.path` | oneshot | LAN access on boot and on every change of `lan-access` |
 | `knx-box-time.service` + `.path` | oneshot | Sets the clock on every change of `time-request.json` |
+| `knx-box-clock-save.service` + `.timer` | oneshot | Every 15 minutes: remembers the time for the next boot (see [Start time after a power cut](#start-time-after-a-power-cut)) |
 | `knx-box-secrets.service` + `.path` | oneshot | New Wi-Fi password, boot partition scrub |
 | `knx-box-reset.service` | oneshot | Password reset from `knx-box-reset.txt`, only when that file exists |
 
@@ -805,9 +834,16 @@ nothing is sent anywhere.
   card). A clean exit on `SIGTERM`/`SIGINT` deletes it.
 - If the next start finds the marker, the previous run ended unexpectedly. The
   reason is `error` if `last-error.txt` exists (an unhandled error, written
-  synchronously before the process exits with code 255, at most 8000 characters),
-  `host` if the boot ID changed (power loss, reboot), otherwise `unknown` (crash,
-  `SIGKILL`). The last sign of life is the marker's modification time.
+  synchronously before the process exits with code 255, at most 8000 characters).
+  Otherwise systemd's own reason is used: `ExecStopPost` (`box/files/last-exit.sh`)
+  writes `SERVICE_RESULT`, `EXIT_CODE` and `EXIT_STATUS` to `last-exit.json`,
+  which the next start reads and deletes (also after a clean stop, so it never
+  explains a later end). `oom-kill` becomes `oom`, `watchdog` stays `watchdog`,
+  `signal`, `core-dump` and `timeout` become `signal`, with the signal name
+  (`KILL`, `SEGV`, ...) in the entry's `signal` field. Without that, `host` if the
+  boot ID changed (power loss, reboot; `ExecStopPost` never ran), otherwise
+  `unknown`. Older apps show unknown reasons as "reason unknown". The last sign
+  of life is the marker's modification time.
 - Entries are appended to `restarts.ndjson` (at most 200 kept; the file is rewritten
   when it exceeds 256 KiB). The 30-day summary is part of the box status, the full
   list is at `GET /api/restarts` and goes into a diagnostics package only if the
@@ -818,6 +854,25 @@ nothing is sent anywhere.
 The shutdown handler gives cleanup 8 s (a hanging serial line to the HAT would
 otherwise let systemd kill the process after 20 s, which would count as a crash)
 and always marks the exit as clean.
+
+## Temperature and power supply
+
+`lib/src/box_health.dart` samples the Raspberry Pi once a minute and reports it as
+`health` in `/api/box`; the app shows it in the box settings under "Raspberry Pi".
+
+| Field | Meaning |
+| --- | --- |
+| `temp`, `maxTemp`, `maxAt`, `since` | SoC temperature in °C now and the highest value since the server started |
+| `throttled` | What is active now: `underVoltage`, `freqCapped`, `throttled`, `softTempLimit` |
+| `throttledBefore` | The same flags, seen at any time since power-on |
+
+The server runs with `DevicePolicy=closed`, so `vcgencmd` cannot reach `/dev/vcio`.
+The values come from sysfs instead: `/sys/class/thermal/thermal_zone0/temp`, the
+firmware driver's `get_throttled` (same bits as `vcgencmd get_throttled`, searched
+under `/sys/devices/platform`) and, if that is missing, the under-voltage alarm of
+the hwmon device `rpi_volt`. Without any of them (Docker, add-on) the field is
+absent. The kBerry is rated up to +45 °C and sits directly above the SoC, so a hot
+Pi also heats the module.
 
 ## The case
 

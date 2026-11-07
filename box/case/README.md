@@ -201,6 +201,7 @@ The plate of the fit test is thinner than the ceiling, so the terminal protrudes
 - About 11 mm remain between the top of the Pi and the underside of the kBerry.
 - The official Pi 5 Active Cooler very likely does not fit there.
 - Flat, adhesive passive heat sinks up to about 8 mm high on the SoC fit. An 8 mm heat sink is checked against the case.
+- The box settings in the app show the SoC temperature, its maximum since start, under-voltage and throttling ([docs/knx-box.md](../../docs/knx-box.md#temperature-and-power-supply)). Use them to check a case before relying on it.
 
 ## Printing
 

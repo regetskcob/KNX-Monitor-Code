@@ -2549,7 +2549,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get connectHatBusmonitorHelp =>
-      'Alle Frames mit Quittungen (ACK/NAK/BUSY) für den Busmonitor. Die Box hört dann nur: kein Lesen oder Schreiben aus der App.';
+      'Alle Frames mit Quittungen (ACK/NAK/BUSY) für den Busmonitor. Die Box hört dann nur: kein Lesen oder Schreiben aus der App. Der kBerry gibt dabei etwa jeden zweiten Datenrahmen nicht aus; zum vollständigen Aufzeichnen Link Layer verwenden.';
 
   @override
   String get filterOn => 'Filter einschalten';
@@ -3237,6 +3237,47 @@ class AppLocalizationsDe extends AppLocalizations {
   String get boxClockSetNow => 'Mit diesem Gerät stellen';
 
   @override
+  String get boxHealth => 'Raspberry Pi';
+
+  @override
+  String boxHealthTemp(String temp, String max) {
+    return 'SoC $temp °C, höchstens $max °C seit dem Start';
+  }
+
+  @override
+  String get boxHealthOk => 'Keine Unterspannung, keine Drosselung';
+
+  @override
+  String get boxHealthUnderVoltage =>
+      'Unterspannung: Das Netzteil liefert zu wenig. Ein Netzteil mit 5,1 V und 3 A verwenden, beim Pi 5 mit 5 A.';
+
+  @override
+  String get boxHealthThrottled =>
+      'Der Pi drosselt gerade wegen Hitze. Das Gehäuse braucht mehr Luft oder einen Kühlkörper.';
+
+  @override
+  String boxHealthBefore(String list) {
+    return 'Seit dem Einschalten: $list';
+  }
+
+  @override
+  String boxHealthBeforeServer(String list) {
+    return 'Seit dem Serverstart: $list';
+  }
+
+  @override
+  String get boxHealthFlagUnderVoltage => 'Unterspannung';
+
+  @override
+  String get boxHealthFlagFreqCapped => 'Takt begrenzt';
+
+  @override
+  String get boxHealthFlagThrottled => 'Gedrosselt';
+
+  @override
+  String get boxHealthFlagSoftTempLimit => 'Temperaturgrenze erreicht';
+
+  @override
   String get boxClockFromKnx => 'Uhr nach KNX-Zeitgeber stellen';
 
   @override
@@ -3542,6 +3583,18 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get busmonQuietHint =>
       'Seit 15 Sekunden kein Frame. Ist die Linie gerade still, löst ein Taster oder „Lesen“ Verkehr aus. Manche IP-Schnittstellen liefern im Busmonitor-Modus nichts; dann hilft der Live-Monitor.';
+
+  @override
+  String busmonOrphanAcks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count Quittungen', one: '1 Quittung');
+    return '$_temp0 ohne Datenrahmen davor: Die Schnittstelle hat im Busmonitor nicht jeden Datenrahmen ausgegeben. Für die Aufzeichnung zählt der Live-Monitor.';
+  }
+
+  @override
+  String busmonOrphanAcksHat(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count Quittungen', one: '1 Quittung');
+    return '$_temp0 ohne Datenrahmen davor: Der KNX-HAT (kBerry) gibt im Busmonitor etwa jeden zweiten Datenrahmen nicht aus. Vollständig zeichnet die Box im Link Layer auf, der Busmonitor zeigt Quittungen und Busfehler.';
+  }
 
   @override
   String menuMoreTools(int count) {
@@ -4822,6 +4875,11 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String boxHatBusmonCounts(int frames, int ack, int nak, int busy, int repeated, int errors) {
     return '$frames Frames: $ack ACK, $nak NAK, $busy BUSY, $repeated Wiederholungen, $errors mit Fehlern';
+  }
+
+  @override
+  String boxHatBusmonGaps(int missing, int orphans) {
+    return '$missing Datenrahmen nicht ausgegeben (Folgenummer), $orphans ACK ohne Rahmen. Bekannt beim kBerry: zum Aufzeichnen Link Layer wählen.';
   }
 
   @override
@@ -9088,4 +9146,175 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get appLockRestart =>
       'Zu viele Fehlversuche. Beende die App und öffne sie neu, dann kannst du es noch einmal versuchen.';
+
+  @override
+  String get restartReasonOom => 'Speicher voll';
+
+  @override
+  String get restartReasonSignal => 'vom System beendet';
+
+  @override
+  String restartReasonSignalNamed(String signal) {
+    return 'vom System beendet ($signal)';
+  }
+
+  @override
+  String get restartReasonWatchdog => 'Watchdog';
+
+  @override
+  String get restartsTitle => 'Neustarts des Servers';
+
+  @override
+  String get restartsShow => 'Neustarts anzeigen';
+
+  @override
+  String get restartsIntroBox =>
+      'Letzte 30 Tage. systemd startet den Server nach 3 s neu, die Aufzeichnung läuft dann weiter.';
+
+  @override
+  String get restartsIntro =>
+      'Letzte 30 Tage. Nach einem unerwarteten Ende läuft die Aufzeichnung weiter, sobald der Server wieder gestartet ist.';
+
+  @override
+  String restartsLastSeen(String time) {
+    return 'zuletzt am Leben $time';
+  }
+
+  @override
+  String restartsVersion(String version) {
+    return 'Version $version';
+  }
+
+  @override
+  String restartsGap(String duration) {
+    return 'Lücke $duration';
+  }
+
+  @override
+  String get restartsGapUnknown => 'Lücke unbekannt';
+
+  @override
+  String get restartsErrorAdminOnly => 'Fehlertext nur für Admins sichtbar';
+
+  @override
+  String get restartsReasons => 'Mögliche Gründe';
+
+  @override
+  String get restartsLegend =>
+      'Die Gründe kommen von systemd. Ohne diese Angabe, etwa im Add-on, steht „Grund unbekannt“.';
+
+  @override
+  String get restartsShowHistory => 'Im Verlauf zeigen';
+
+  @override
+  String get restartsEmpty => 'Keine unerwarteten Neustarts in den letzten 30 Tagen.';
+
+  @override
+  String get restartsUnavailable => 'Die Liste ist gerade nicht abrufbar.';
+
+  @override
+  String crashStreak(int count) {
+    return '$count. unerwartetes Ende in Folge';
+  }
+
+  @override
+  String crashStreakAfterConnect(int count) {
+    return '$count. unerwartetes Ende in Folge, jedes Mal kurz nach dem Verbinden';
+  }
+
+  @override
+  String get crashStreakHint => 'Vorschlag: einmal ohne automatisches Verbinden starten, um den Fehler einzugrenzen.';
+
+  @override
+  String get crashWithoutConnect => 'Ohne Verbinden';
+
+  @override
+  String crashBanner(String time) {
+    return 'Unerwartet beendet am $time. Bericht?';
+  }
+
+  @override
+  String get crashBannerView => 'Ansehen';
+
+  @override
+  String get diagIssueTitle => 'Öffentlich melden';
+
+  @override
+  String get diagIssueIntro => 'Im Issue stehen nur diese Angaben, kein Protokoll:';
+
+  @override
+  String get diagIssueVersion => 'Version';
+
+  @override
+  String get diagIssuePlatform => 'Plattform';
+
+  @override
+  String get diagIssueTime => 'Zeitpunkt';
+
+  @override
+  String get diagIssueReason => 'Grund';
+
+  @override
+  String get diagIssueReasonCrash => 'unerwartet beendet';
+
+  @override
+  String get diagIssueButton => 'Als Issue melden';
+
+  @override
+  String get diagIssueHint => 'Öffnet GitHub im Browser. Das Paket hängst du selbst an.';
+
+  @override
+  String get diagIssueFailed => 'GitHub ließ sich nicht öffnen.';
+
+  @override
+  String diagSystemCrashTitle(String system) {
+    return 'Absturzbericht von $system gefunden';
+  }
+
+  @override
+  String diagSystemCrashBody(String time) {
+    return 'Ein Bericht des Systems passt zum Zeitpunkt ($time). Übernommen werden nur Art des Fehlers und Modul, kein Pfad und kein Benutzername.';
+  }
+
+  @override
+  String get diagSystemCrashKind => 'Art';
+
+  @override
+  String get diagSystemCrashModule => 'Modul';
+
+  @override
+  String get diagSystemCrashInclude => 'Ins Paket übernehmen';
+
+  @override
+  String get diagContentSystemCrash => 'Absturzbericht des Systems: Art und Modul';
+
+  @override
+  String get dataExportMqtt => 'MQTT: jedes Telegramm (Vorschau)';
+
+  @override
+  String get dataExportMqttOff =>
+      'Aus. Einschalten im Add-on mit der Option „Jedes Telegramm an MQTT“, in Docker und auf der Box mit MQTT_TELEGRAMS=true.';
+
+  @override
+  String dataExportMqttOn(int sent, int dropped) {
+    return 'An: $sent gesendet, $dropped verworfen (seit dem Start)';
+  }
+
+  @override
+  String get dataExportMqttDisconnected =>
+      'Broker nicht verbunden. Telegramme werden verworfen, bis er wieder erreichbar ist; der Verlauf hat sie.';
+
+  @override
+  String dataExportMqttSecureSkipped(int count) {
+    return '$count KNX-Secure-Telegramme nicht gesendet. Sie gehen nur mit der Option „Auch KNX-Secure-Telegramme an MQTT“ (MQTT_SECURE_TELEGRAMS=true) hinaus, auf dem Broker sind sie Klartext.';
+  }
+
+  @override
+  String dataExportMqttUndecrypted(int count) {
+    return '$count KNX-Secure-Telegramme nicht gesendet, weil der Server sie nicht entschlüsseln konnte (kein Keyring, Schlüssel fehlt oder ungültig). Keyring aus der ETS unter Projekt › KNX Secure importieren.';
+  }
+
+  @override
+  String get dataExportMqttSecureOn =>
+      'Auch KNX-Secure-Telegramme gehen entschlüsselt hinaus. Jeder, der den Broker lesen kann, sieht ihre Werte.';
 }

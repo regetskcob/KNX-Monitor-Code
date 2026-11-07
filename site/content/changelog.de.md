@@ -6,6 +6,18 @@ slug: "changelog"
 ---
 Was die letzten Versionen von KNX Monitor gebracht haben, neueste zuerst. App, Home-Assistant-Add-on und KNX-Box haben eine gemeinsame Versionsnummer. Jede Version liegt auf [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant zeigt das Add-on dieselben Hinweise vor einem Update (auf Englisch).
 
+## 1.9.10 – 7.11.2026
+
+- Vorschau für Tester: jedes Telegramm an MQTT ([#11](https://github.com/regetskcob/KNX-Monitor/issues/11)). Mit der neuen Add-on-Option „Jedes Telegramm an MQTT“ (Docker und Box: `MQTT_TELEGRAMS=true`) geht jedes Gruppentelegramm als JSON an `knx_monitor/telegram/1/2/3`, mit Zeit, Name, DPT, Wert und Einheit aus dem ETS-Projekt. Standard aus. KNX-Secure-Telegramme nur mit eigener Option, höchstens 500 pro Sekunde. Rückmeldung bitte im Issue.
+- Home-Assistant-Integration 1.1.0 ([#2](https://github.com/regetskcob/KNX-Monitor/issues/2)): Ereignis-Entitäten, ein Gerätetrigger je Wächter, Bedingungen (Bus verbunden, Aufzeichnung an, Alarm offen, wenig Speicher) und ein Reparaturhinweis, wenn eine sonst regelmäßige Gruppenadresse verstummt. Ohne Supervisor (Home Assistant Container) verbindet sie sich mit KNX-Box oder Docker über einen Kopplungslink mit „Verwalten“.
+- KNX-Box übersteht Stromausfälle sauberer ([#4](https://github.com/regetskcob/KNX-Monitor/issues/4)): Ohne Echtzeituhr startet die Uhr beim zuletzt gespeicherten Stand statt beim Datum des ersten Starts, bis dahin wird nichts nach Alter gepackt oder gelöscht. Das Systemprotokoll bleibt, die Neustartliste nennt den Grund.
+- Nach einem Absturz zeigt die App einen Hinweis und führt zum Diagnosepaket; „Als Issue melden“ öffnet ein vorausgefülltes Formular nur mit Version, Plattform, Zeit und Art des Absturzes.
+- KNX-Box: In den Box-Einstellungen zeigt „Raspberry Pi“ Temperatur, Höchstwert seit dem Start und Warnungen bei Unterspannung oder Drosselung.
+- KNX-HAT (kBerry): Der Busmonitor zählt jetzt Rahmen, die das Modul gesehen, aber nicht weitergegeben hat, und die App erklärt es: Der kBerry gibt im Busmonitor etwa jeden zweiten Datenrahmen nicht aus, vollständig zeichnet die Box im Link Layer auf. Wiederanlauf nach Modul-Neustart und 115200 Baud an einer echten Linie getestet.
+- Sicherheitsprüfung für Docker: Das UDP-Relais leitet nur KNXnet/IP an Gateway-Adressen weiter, ohne `LAN_ACCESS` hört der Container nur auf localhost (ein Reverse Proxy auf demselben Rechner braucht `LAN_ACCESS=yes`), Verwaltungsrechte gibt es nur mit dem Passwort, „Alle aussperren“ beendet auch Browser-Sitzungen, das erste Passwort braucht 8 Zeichen (`BOX_PASSWORD_FILE` für Docker Secrets), und gekoppelte Geräte können den Verlauf nicht mehr löschen oder den Server blockieren. Die Docker-Vorlage startet jetzt nur lesend (`READ_ONLY=0` zum Senden) und nutzt HTTPS auf Port 8443. Einzelheiten in der Docker-Anleitung.
+- KNX-Box und Docker: eigene Anmeldeseite im Browser nur mit Passwort, statt des Browserfensters, das auch nach einem bedeutungslosen Benutzernamen fragte. „Abmelden“ auf der Kopplungsseite beendet die Sitzung, und ist sie abgelaufen, führt die Web-App selbst zurück zur Anmeldung. Apps und Werkzeuge wie curl melden sich weiter wie bisher an.
+- Hinweise im Detailblatt eines Telegramms, Befunde, Sicherheitshinweise, Adresse, Name und Produkt im Geräteblatt sowie die Angaben für einen Fehlerbericht lassen sich markieren und kopieren, etwa für eine Frage im Forum.
+
 ## 1.9.9 – 6.11.2026
 
 - Docker: `LAN_ACCESS` gilt jetzt bei jedem Start. Ein nachträglich gesetztes `LAN_ACCESS=yes` blieb bisher wirkungslos. Meldungen, Anmeldedialog und Einstellungsseite sprechen vom Zugriff aus dem Netzwerk und vom Passwort statt vom WLAN der Box, das es in Docker nicht gibt.
@@ -59,8 +71,7 @@ Was die letzten Versionen von KNX Monitor gebracht haben, neueste zuerst. App, H
 
 ## 1.9.2 – 1.11.2026
 
-- Neu für alle, die planen oder bauen: der Hausplan, ganz ohne Gateway. Du gehst deinen Alltag durch, daraus entstehen Raumbuch und Grundriss fürs Gespräch mit dem Fachbetrieb. Leuchten und Steckdosen legst du als schaltbar, dimmbar oder mit Dauerstrom fest, die App rechnet den Kanalbedarf aus und gibt die Geräteliste als CSV und PDF aus.
-- Mit Plus: alle Ebenen samt Außenbereich, Prüfungen wie der Taster im Türaufschlag, Fristen je Bauart, Angebots-Check, PDF mit Maßen und DXF. Der Katalog ist nach bestem Wissen zusammengestellt und ersetzt keine Elektroplanung.
+- Neu für alle, die planen oder bauen: der Hausplan, ganz ohne Gateway, im Home-Assistant-Add-on, im Browser der KNX-Box und in der Linux-App. Du gehst deinen Alltag durch, daraus entstehen Raumbuch und Grundriss fürs Gespräch mit dem Fachbetrieb. Leuchten und Steckdosen legst du als schaltbar, dimmbar oder mit Dauerstrom fest, die App rechnet den Kanalbedarf aus und gibt die Geräteliste als CSV und PDF aus. Dazu kommen alle Ebenen samt Außenbereich, Prüfungen wie der Taster im Türaufschlag, Fristen je Bauart, Angebots-Check, PDF mit Maßen und DXF. Der Katalog ist nach bestem Wissen zusammengestellt und ersetzt keine Elektroplanung.
 - Vor dem Schreiben auf den Bus erscheint ein Hinweis, dass das ein Eingriff in die Anlage ist. Du kannst ihn ausblenden und auf der Startseite wieder einschalten; das Ausblenden steht mit Datum im Diagnosepaket.
 - Sicherheit in den Apps: Kopplungslinks warnen bei fremden Adressen, Sicherungen enthalten keine Kauf-Schlüssel mehr, die Verschlüsselung ist rund zehnmal schneller.
 - KNX-Box und Add-on: HTTPS, Pflichtwechsel des Passworts vom Aufkleber, getrennte Rollen und mehr Schutz gegen kaputte Telegramme und volle Datenträger.

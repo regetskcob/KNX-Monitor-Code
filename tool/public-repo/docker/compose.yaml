@@ -1,15 +1,16 @@
 # KNX Monitor as a Docker container, without Home Assistant (ioBroker, NAS,
 # Proxmox, any Linux host). Put your own password into a file .env next to
-# this one (BOX_PASSWORD=...), then: docker compose up -d
+# this one (BOX_PASSWORD=..., at least 8 characters), then: docker compose up -d
 #
 # Out of the box it answers only on the host itself: http://localhost:8765, any
-# user name and that password. For access from your network add LAN_ACCESS=yes
-# to .env, and read "Access from your network" in README.md first.
+# user name and that password, and it only reads the bus (READ_ONLY). For access
+# from your network add LAN_ACCESS=yes to .env, and read "Security" in README.md
+# first. Never forward the port to the internet; use a VPN to reach it from outside.
 services:
   knx-monitor:
     # A fixed version, so an update only happens when you decide. Newer version:
     # KNX_MONITOR_VERSION=x.y.z in .env, or download this file again.
-    image: ghcr.io/regetskcob/knx-monitor:${KNX_MONITOR_VERSION:-1.9.9}
+    image: ghcr.io/regetskcob/knx-monitor:${KNX_MONITOR_VERSION:-1.9.10}
     container_name: knx-monitor
     restart: unless-stopped
     # Host network: KNXnet/IP over UDP, gateway search and routing need it.
@@ -26,24 +27,30 @@ services:
     security_opt: ["no-new-privileges:true"]
     environment:
       BOX: "1"                       # standalone mode with password
-      # No default on purpose: the container is reachable from your network.
+      # No default on purpose. Only used on the first start; change it later in
+      # the app or on /pair. To read it from a file instead (Docker secrets,
+      # not visible in "docker inspect"), replace this line with
+      # BOX_PASSWORD_FILE: "/run/secrets/knx_password", see README.md.
       BOX_PASSWORD: "${BOX_PASSWORD:?Set BOX_PASSWORD in .env (at least 8 characters)}"
       BOX_NAME: "KNX Monitor"
       # no = only from the host itself. yes = from your whole network, see README.md.
       LAN_ACCESS: "${LAN_ACCESS:-no}"
-      # Optional: HTTPS with your own certificate (mount it under ./data).
-      # TLS_CERT: "/data/tls/cert.pem"
-      # TLS_KEY: "/data/tls/key.pem"
+      # Optional: HTTPS with your own certificate. Inside ./data/app the files
+      # are readable only for the container (folder mode 0700).
+      # TLS_CERT: "/data/app/tls/cert.pem"
+      # TLS_KEY: "/data/app/tls/key.pem"
       # TLS_PORT: "8443"
       PORT: "8765"
-      # 1 = read only: the server sends nothing to the bus, not even read requests.
-      # READ_ONLY: "1"
+      # 1 = read only: the server sends nothing to the bus, not even read requests;
+      # recording, watchers and evaluations keep running. READ_ONLY=0 in .env lets
+      # the app switch devices and send values.
+      READ_ONLY: "${READ_ONLY:-1}"
       TZ: "Europe/Berlin"
       # Optional: MQTT, for example the ioBroker MQTT adapter as broker.
       # MQTT_HOST: "192.168.1.10"
       # MQTT_PORT: "1883"
       # MQTT_USER: "knx-monitor"
-      # MQTT_PASSWORD: "secret"
+      # MQTT_PASSWORD: "secret"     # or MQTT_PASSWORD_FILE
       # MQTT_DISCOVERY: "false"      # no Home Assistant discovery topics
     volumes:
       - ./data:/data                 # history, project, settings

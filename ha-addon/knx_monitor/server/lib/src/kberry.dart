@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'ft12.dart';
-import 'ft12_link.dart' show Ft12CemiLink;
+import 'ft12_link.dart' show BusmonCounters, Ft12CemiLink;
 
 import 'package:knx/knx.dart' show hexOf;
 
@@ -214,7 +214,14 @@ class KberryProbe {
 /// TP encoding (ACK 0xCC, NAK 0x0C, BUSY 0xC0, NAK+BUSY 0x00), data telegrams,
 /// repetitions (repeat bit in the control field cleared), frames with error
 /// bits in the bus monitor status (additional info 0x03) and with a timestamp.
+/// [BusmonCounters] adds what the module saw but did not pass on: `orphanAcks`
+/// (acknowledgement without a data frame before it) and `seqGaps` (frames
+/// skipped by the sequence number).
 Map<String, Object?> classifyBusmon(List<Uint8List> frames) {
+  final gaps = BusmonCounters();
+  for (final f in frames) {
+    gaps.add(f);
+  }
   var ack = 0, nak = 0, busy = 0, nakBusy = 0, data = 0, repeated = 0, other = 0, errors = 0, timestamps = 0;
   for (final f in frames) {
     if (f.length < 2) {
@@ -265,6 +272,8 @@ Map<String, Object?> classifyBusmon(List<Uint8List> frames) {
     'other': other,
     'errors': errors,
     'timestamps': timestamps,
+    'orphanAcks': gaps.orphanAcks,
+    'seqGaps': gaps.seqGaps,
   };
 }
 

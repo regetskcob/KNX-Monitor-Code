@@ -467,8 +467,9 @@ In this mode sending is impossible; `send` throws.
 `BusService._handleFrame` (`server/lib/src/bus.dart`):
 
 - forwards every raw `0x2B` frame to WebSocket clients, which render the bus monitor view,
-- counts it in `BusmonCounters` (data, ACK, NAK, BUSY, damaged, and *orphan ACKs*: an ACK
-  with no data frame directly before it),
+- counts it in `BusmonCounters` (data, ACK, NAK, BUSY, damaged, *orphan ACKs*: an ACK
+  with no data frame directly before it, and *sequence gaps*: frames skipped by the sequence
+  number in the status byte; the count starts again after every reconnect),
 - converts error-free standard data frames with a valid checksum into `L_Data.ind` with
   `busmonToLData` (`ft12_link.dart`), so recording, watchers and the group monitor work as
   with a tunnel. ACKs, damaged frames (status bits 3–7 set or bad checksum), extended frames
@@ -484,12 +485,49 @@ every bus frame, including every one-byte ACK, carries cEMI header, additional i
 framing (roughly 15–20 bytes of overhead). At bus loads well above 50 % this may become tight.
 This is an estimate, not a measurement.
 
-### Observed gaps
+### Missing data frames (measured 7 November 2026)
 
-On a Pi 4 the sequence number in the monitor status occasionally skips, and some ACKs arrive
-without a preceding data frame. The raw protocol log shows that the module does not send those
-frames; the host does not discard anything. The `orphanAcks` counter quantifies this. The cause
-is open; comparing with a gateway's bus monitor and trying 115200 baud are the next steps.
+In bus monitor mode the kBerry leaves out about **every second data frame**. The
+acknowledgement that follows it arrives, and the sequence number in the status byte skips the
+missing frame, so the module saw it and did not pass it on.
+
+Measured on the test box (Pi 4, kBerry firmware as delivered, line 1.1 with about 30 group
+telegrams per minute), with a small Python tool that talks FT1.2 through termios and
+acknowledges every frame at once, and in parallel a KNXnet/IP tunnel to a Gira X1 on the same
+line as the reference:
+
+| Run | Data frames on the bus (tunnel) | Delivered by the kBerry | ACK without data frame | Sequence gaps |
+|---|---|---|---|---|
+| Bus monitor, 19200 baud, 60 s | 31 | 19 | 11 | 10 |
+| Bus monitor, 115200 baud, 60 s | 16 | 6 | 10 | 9 |
+| Link layer, 19200 baud, 120 s (box recording) | 31 | 31 | – | – |
+
+What this rules out:
+
+- **Not the host.** The Python tool acknowledges within a millisecond, the Dart server shows
+  the same rate, and the raw log contains no damaged or skipped bytes.
+- **Not the bandwidth.** 115200 baud does not help, and frames go missing after more than a
+  second of silence on the line as well.
+- **Not the frame.** The same telegram (source, destination, value) arrives in one run and is
+  missing in another; group reads, responses and writes are all affected.
+- **Not reception.** In link layer mode the module delivers every group telegram the gateway
+  sees.
+
+A likely explanation is that the module's bus monitor path keeps only one frame at a time and
+the acknowledgement, 1.5 ms after the end of the data frame, overwrites it. This is an
+inference from the pattern, not confirmed by Weinzierl. The module offers no other mode that
+would help (PID 64 = `0x000B`: link layer, bus monitor, transport layer; raw mode is rejected).
+
+Consequences in KNX Monitor:
+
+- **Record in link layer mode.** It is the default and complete. The bus monitor is for
+  acknowledgements, NAK/BUSY, repetitions and damaged frames; recording, watchers and the group
+  monitor see only about half of the telegrams there. The connection settings say so next to
+  the switch.
+- `BusmonCounters` reports `orphanAcks` and `seqGaps` in the status (`busmon`) and per day; the
+  `hat` probe reports both in the `busmonitor` step.
+- The app's bus monitor shows a notice from the first acknowledgement without a data frame.
+  Missing frames are counted, never invented.
 
 ## 9. Diagnostics: the `hat` probe
 
@@ -504,7 +542,7 @@ returns a JSON report. Steps (`kberrySteps`):
 | `modes` | Read PID 64; reports `linkLayer`, `busmonitor`, `transportLayer` | `warn` without bus monitor |
 | `commMode` | Read PID 52 | `warn` without answer |
 | `linkLayer` | PID 52 = `0x00`, collect `L_Data.ind` for the listen time | `warn` if nothing heard |
-| `busmonitor` | PID 52 = `0x01`, collect and classify `L_Busmon.ind` (`classifyBusmon`: ACK, NAK, BUSY, NAK+BUSY, data, repeated, error bits, timestamps) | `ok` only if at least one ACK was seen |
+| `busmonitor` | PID 52 = `0x01`, collect and classify `L_Busmon.ind` (`classifyBusmon`: ACK, NAK, BUSY, NAK+BUSY, data, repeated, error bits, timestamps, ACKs without a data frame, sequence gaps) | `ok` only if at least one ACK was seen; gaps are reported, not graded, because every kBerry has them |
 | `restore` | PID 52 = `0xF0` | `warn` if rejected |
 
 The module is always returned to BAOS mode, also after an exception, and the line is closed.
@@ -557,8 +595,14 @@ The app shows this as a test page (`lib/ui/box_hat_screen.dart`).
   (`server/test/busmon_counters_test.dart`). Supporting the add-on would require replacing
   `stty` with termios calls via `dart:ffi` (or shipping `stty`) and testing UART access under
   Home Assistant OS.
-- **No baud-rate switching.** The code only detects 19200 or 115200; it never sets item 13.
-  Whether 115200 can be set while in cEMI mode is not yet verified.
+- **Baud rate.** The code detects 19200 or 115200 on every connect and never sets the rate
+  itself. Setting it works in BAOS mode with `SetServerItem.Req` for server item 13 (`0x01`
+  19200, `0x02` 115200): `F0 02 00 0D 00 01 00 0D 01 02`, answered with `F0 82 00 0D 00 00 00`,
+  after which the module answers only at the new rate. Tested on 7 November 2026: the setting
+  survives a module restart (`M_Reset.req`), the server finds the new rate by itself, and link
+  layer and bus monitor work at 115200. It does not reduce the missing data frames (section 8).
+  Whether a real loss of bus voltage resets the rate to 19200 is not tested; the server would
+  find either rate.
 - **Pi 3 untested on a bus.** `setup.sh` configures it like the Pi 4 (`dtoverlay=disable-bt`);
   the case fits a Pi 3B/3B+.
 - **Pi 5 untested on a bus.** The overlay and `ttyAMA0` mapping follow the Raspberry Pi
@@ -575,9 +619,13 @@ The app shows this as a test page (`lib/ui/box_hat_screen.dart`).
   opens its own bus monitor. With the kBerry there is only one interface; the bus monitor comes
   from the server (`hatBusmonitor`), and link layer and monitor cannot run at the same time.
 - **Module restart.** After an ETS download or bus voltage loss the module sends
-  `M_Reset.ind` and returns to BAOS mode; the link drops and reconnects. Whether reconnection
-  always succeeds without a restart of Pi and bus power supply (one community report needed
-  both) has not been tested.
+  `M_Reset.ind` and returns to BAOS mode; the link drops and reconnects at once, trying both
+  baud rates. Field test on 7 November 2026: a cEMI `M_Reset.req` written beside the running
+  server made it report „KNX-HAT neu gestartet“ and reconnect within 2 s, recording continued.
+  A power cut of box and bus together (6/7 November 2026, about 8 hours) was also survived. A
+  loss of bus voltage alone while the Pi keeps running has not been tested on the bus yet (one
+  community report needed a restart of Pi and bus power supply); `ft12_link_test.dart` covers
+  the restart with a changed baud rate.
 - **Shutdown can hang on a stuck line.** The server's signal handler limits cleanup to 8 s so
   that systemd does not kill it hard (`server/bin/server.dart`).
 - **Common field failures** reported by others: reversed bus polarity, console or Bluetooth

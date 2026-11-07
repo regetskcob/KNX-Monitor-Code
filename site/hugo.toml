@@ -40,7 +40,7 @@ disableKinds = ["taxonomy", "term", "rss", "section"]
   legalUrl = "https://www.regetskcob.de/legal/"
   supportMail = "support@knx-monitor.de"
   # KNX Box image (as on the landing page).
-  boxUrl = "https://github.com/regetskcob/KNX-Monitor/releases/tag/box-v1.9.6"
+  boxUrl = "https://github.com/regetskcob/KNX-Monitor/releases/tag/box-v1.9.10"
   # For the draft pages (store graphics, headers, buy page; layouts baseof, store,
   # header, appheader, kaufen with partials in _partials/drafts/).
   ogImage = "images/og.png"
@@ -107,7 +107,7 @@ disableKinds = ["taxonomy", "term", "rss", "section"]
     [[module.imports.mounts]]
       source = 'icons'
       target = 'data/horizont_icons'
-      includeFiles = ['*.json']
+      files = ['*.json']
     [[module.imports.mounts]]
       source = 'web/css'
       target = 'assets/css/horizont'

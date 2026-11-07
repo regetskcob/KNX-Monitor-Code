@@ -33,8 +33,15 @@ class CrashWatch {
   File get _file => File('${data.path}/restarts.ndjson');
   File get _errorFile => File('${data.path}/last-error.txt');
 
+  /// systemd's reason for the last end (box only, `box/files/last-exit.sh`).
+  File get _exitFile => File('${data.path}/last-exit.json');
+
   final _entries = <Map<String, Object?>>[];
   Timer? _touch;
+
+  /// Entry recorded at this start and the time since then, for [retime].
+  Map<String, Object?>? _detected;
+  final _sinceDetected = Stopwatch();
 
   /// How often the marker gets "still alive"; time of the last sign of life.
   static const touchInterval = Duration(minutes: 1);
@@ -46,7 +53,8 @@ class CrashWatch {
   Future<void> start() async {
     try {
       await _load();
-      await _detect();
+      final exit = await _readExit();
+      await _detect(exit);
     } on Object catch (e) {
       _log('Neustarts: $e');
     }
@@ -91,7 +99,35 @@ class CrashWatch {
     if (_entries.length > keep) _entries.removeRange(0, _entries.length - keep);
   }
 
-  Future<void> _detect() async {
+  /// Read and removed at every start: after a clean stop it is there as well
+  /// (`success`), and it must not explain a later end.
+  Future<Map<String, Object?>?> _readExit() async {
+    final file = _exitFile;
+    try {
+      if (!await file.exists()) return null;
+      return (jsonDecode(await file.readAsString()) as Map).cast<String, Object?>();
+    } on Object {
+      return null;
+    } finally {
+      // Also a broken one: otherwise it would be read again at every start.
+      try {
+        if (await file.exists()) await file.delete();
+      } on Object {
+        // Read-only or full storage: try again next start.
+      }
+    }
+  }
+
+  /// Reason from systemd's `SERVICE_RESULT`; `null` if it does not tell more
+  /// than the other signs (exit code, success, unknown values).
+  static String? exitReason(Map<String, Object?>? exit) => switch (exit?['result']) {
+    'oom-kill' => 'oom',
+    'watchdog' => 'watchdog',
+    'signal' || 'core-dump' || 'timeout' => 'signal',
+    _ => null,
+  };
+
+  Future<void> _detect(Map<String, Object?>? exit) async {
     final marker = _marker;
     if (!await marker.exists()) return;
     final seen = await marker.lastModified();
@@ -112,19 +148,26 @@ class CrashWatch {
       // Continue without an error text.
     }
     final boot = await _readBootId();
+    // The own error text says most; then what systemd saw; a new boot ID
+    // without either means the device itself restarted (power, reboot).
+    final fromSystem = exitReason(exit);
     final reason = error != null
         ? 'error'
-        : (boot != null && previous['boot'] is String && previous['boot'] != boot)
-        ? 'host'
-        : 'unknown';
+        : fromSystem ?? ((boot != null && previous['boot'] is String && previous['boot'] != boot) ? 'host' : 'unknown');
+    final code = exit?['code'];
+    final status = exit?['status'];
     final entry = {
       't': _now().millisecondsSinceEpoch,
       'lastSeen': seen.millisecondsSinceEpoch,
       'reason': reason,
       'version': ?previous['version'],
       'error': ?error,
+      // Signal name (KILL, SEGV, ...) when systemd reports one.
+      if ((code == 'killed' || code == 'dumped') && status is String && status.isNotEmpty) 'signal': status,
     };
     _entries.add(entry);
+    _detected = entry;
+    _sinceDetected.start();
     if (_entries.length > keep) _entries.removeRange(0, _entries.length - keep);
     // Rewrite the whole file if it got too long; otherwise append.
     await _file.writeAsString('${jsonEncode(entry)}\n', mode: FileMode.append, flush: true);
@@ -132,6 +175,20 @@ class CrashWatch {
       await _file.writeAsString(_entries.map((e) => '${jsonEncode(e)}\n').join(), flush: true);
     }
     _log('Server wurde unerwartet beendet (Grund: $reason, zuletzt am Leben: $seen)');
+  }
+
+  /// The box clock was set to [time] (box without an RTC): the entry of this
+  /// start still carries the wrong clock of the boot, which put it before its
+  /// own [lastSeen]. Recomputed from the time elapsed since then.
+  Future<void> retime(DateTime time) async {
+    final entry = _detected;
+    if (entry == null) return;
+    entry['t'] = time.subtract(_sinceDetected.elapsed).millisecondsSinceEpoch;
+    try {
+      await _file.writeAsString(_entries.map((e) => '${jsonEncode(e)}\n').join(), flush: true);
+    } on Object catch (e) {
+      _log('Neustarts: Zeit nicht korrigiert: $e');
+    }
   }
 
   /// Unhandled error: write to disk immediately, the process ends afterwards.
@@ -158,7 +215,7 @@ class CrashWatch {
   List<Map<String, Object?>> between(DateTime from, DateTime to) => [
     for (final e in _entries)
       if ((e['t']! as int) >= from.millisecondsSinceEpoch && (e['t']! as int) < to.millisecondsSinceEpoch)
-        {'t': e['t'], 'lastSeen': e['lastSeen'], 'reason': e['reason']},
+        {'t': e['t'], 'lastSeen': e['lastSeen'], 'reason': e['reason'], 'signal': ?e['signal']},
   ];
 
   /// For the status: number in the last 30 days and the most recent one;
@@ -173,7 +230,7 @@ class CrashWatch {
     final last = recent.last;
     return {
       'count': recent.length,
-      'last': {'t': last['t'], 'lastSeen': last['lastSeen'], 'reason': last['reason']},
+      'last': {'t': last['t'], 'lastSeen': last['lastSeen'], 'reason': last['reason'], 'signal': ?last['signal']},
     };
   }
 

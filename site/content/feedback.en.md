@@ -37,6 +37,8 @@ A ZIP file that KNX Monitor puts together for you. Before sending you see exactl
 
 If you write in a forum or in a [GitHub issue](https://github.com/regetskcob/KNX-Monitor/issues), a note "sent a diagnostics package by e-mail" is enough there. Please do not attach the package there: both are public.
 
+**After a crash** KNX Monitor shows a notice at the next start that leads to the diagnostics package. There, "Report as issue" opens a prefilled form on GitHub with only version, platform, time and kind of crash. On the KNX box, tap the line with the unexpected restarts to see the recent restarts with their reason.
+
 We open the package in KNX Monitor, reproduce the fault and use it only for that. Once your request is done, we delete it. More in the [privacy policy](/en/privacy/).
 
 ## Not using KNX Monitor yet?

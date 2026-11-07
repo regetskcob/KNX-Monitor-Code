@@ -18,7 +18,10 @@ import 'package:knx_monitor_server/files.dart';
 ///
 /// Environment: PORT (8765), WEB_DIR (/app/web), DATA_DIR (/data/app),
 /// ALLOW_ALL=1 allows access outside of Ingress (development only; listens on
-/// 127.0.0.1 unless BIND sets the address, e.g. BIND=0.0.0.0 in a container).
+/// 127.0.0.1, a network BIND only together with ALLOW_ALL_EXPOSED=1, as the CI's
+/// throwaway container behind -p, see refuseToStart).
+/// BOX_PASSWORD_FILE and MQTT_PASSWORD_FILE: the password from a file (Docker
+/// secrets) instead of the environment.
 /// BOX=1: KNX box without Home Assistant – access with the box password or
 /// device access instead of Ingress (BOX_PASSWORD for the first password, BOX_NAME;
 /// LAN_ACCESS=yes allows access over the cable, otherwise only from the box
@@ -28,6 +31,10 @@ import 'package:knx_monitor_server/files.dart';
 /// instead of cable and box Wi-Fi.
 /// MQTT_HOST (+ MQTT_PORT, MQTT_USER, MQTT_PASSWORD, MQTT_SSL): MQTT device
 /// without Supervisor, e.g. in a Docker container next to ioBroker.
+/// MQTT_TELEGRAMS=true: every telegram as JSON to knx_monitor/telegram/…
+/// (in the add-on: option mqtt_telegrams); MQTT_REPEATS=true includes repeats,
+/// MQTT_SECURE_TELEGRAMS=true decrypted KNX Data Secure telegrams (option
+/// mqtt_secure_telegrams).
 ///
 /// `server sheet <folder>`: writes the box sheet as knx-box-de.pdf and
 /// knx-box-en.pdf (firstboot.sh). The values come from BOX_NAME, WLAN_SSID,
@@ -40,7 +47,13 @@ import 'package:knx_monitor_server/files.dart';
 /// `server hat [seconds]`: checks the KNX HAT (kBerry on /dev/ttyAMA0, see
 /// docs/kberry.md) and writes the report as JSON; run via SSH on the box.
 Future<void> main(List<String> args) async {
-  final env = Platform.environment;
+  final Map<String, String> env;
+  try {
+    env = withSecretFiles(Platform.environment);
+  } on ContainerEnvException catch (e) {
+    stderr.writeln('KNX Monitor: $e');
+    exit(78); // EX_CONFIG
+  }
   if (args.isNotEmpty && args.first == 'sheet') {
     await _writeSheets(args.length > 1 ? args[1] : '.', env);
     return;
@@ -97,19 +110,19 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
   _readOnly = HomeAssistant.instance.available ? await _flag('read_only') : env['READ_ONLY'] == '1';
   if (_readOnly) stdout.writeln('KNX Monitor: Nur-Lesen, es geht nichts auf den Bus');
   // Docker without BOX_PASSWORD: the server would invent a password and could
-  // only tell it through the log, which other tools collect. Refuse instead
-  // (only on the very first start; later the stored password counts).
+  // only tell it through the log, which other tools collect. Refuse instead,
+  // also a password that is too short (only on the very first start; later
+  // the stored password counts). And ALLOW_ALL open to the network, see
+  // refuseToStart.
   final sticker = env['BOX_STICKER'] == '1';
-  if (env['BOX'] == '1' &&
-      !sticker &&
-      (env['BOX_PASSWORD'] ?? '').isEmpty &&
-      !await File('${data.path}/access.json').exists() &&
-      !await File('${data.path}/access.json.bak').exists()) {
-    stderr.writeln(
-      'KNX-Box: BOX_PASSWORD fehlt. Bitte ein eigenes Passwort setzen (mindestens 8 Zeichen), '
-      'z. B. in .env neben compose.yaml: BOX_PASSWORD=...',
-    );
+  final stored = await File('${data.path}/access.json').exists() || await File('${data.path}/access.json.bak').exists();
+  final refusal = refuseToStart(env, firstStart: !stored);
+  if (refusal != null) {
+    stderr.writeln('KNX Monitor: $refusal');
     exit(78); // EX_CONFIG
+  }
+  if (allowAll && env['BOX'] != '1') {
+    stderr.writeln('KNX Monitor: ALLOW_ALL=1 – keine Anmeldung, jeder Zugriff darf auf den Bus. Nur für Tests.');
   }
   // Standalone without the real box (Docker): see the doc comment of main.
   final docker = env['BOX'] == '1' && !sticker;
@@ -127,6 +140,20 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
           fromWlan: env['BOX_STICKER'] == '1' ? BoxAccess.wlanPeer : (peer) => peer.isLoopback,
         )
       : null;
+  // The variable only counts on the first start; changing it later would
+  // look like a new password while the old one stays valid.
+  if (box != null && docker && stored && (env['BOX_PASSWORD'] ?? '').isNotEmpty) {
+    unawaited(
+      box.verifyPassword(env['BOX_PASSWORD']!).then((same) {
+        if (!same) {
+          stderr.writeln(
+            'KNX Monitor: BOX_PASSWORD weicht vom gespeicherten Passwort ab und wird ignoriert. '
+            'Das Passwort in der App oder unter /pair ändern.',
+          );
+        }
+      }),
+    );
+  }
   if (box != null && docker) {
     stdout.writeln(
       box.lanAccess
@@ -138,32 +165,49 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
 
   // Box: set the clock without internet (iPhone, KNX time sender); the request is
   // carried out on the host by knx-box-time.path (DATA_DIR is /var/lib/knx-box there).
-  final clock = box == null ? null : BoxClock(requestFile: File('${data.path}/time-request.json'));
+  // In Docker the host keeps the time (NTP); there is nobody to carry out a
+  // request, and a clock the app may set would let any paired device move the
+  // history's time stamps and with them the retention (deleting everything).
+  final clock = box == null || docker ? null : BoxClock(requestFile: File('${data.path}/time-request.json'));
   // Each installation has its own bus connection, catalog and history; on first
   // start, the previous data folder becomes the installation "default".
   // In the add-on with an MQTT broker: device "KNX Monitor" (see below).
   MqttBridge? mqtt;
+  // Access for the KNX Monitor integration (created below).
+  HaIntegration? ha;
   final installations = InstallationService(
     await Installations.open(data),
-    (root, installation) => BusService(
-      root,
-      notify: _busNotify,
-      event: (type, data) async {
-        mqtt?.onEvent(type, data);
-        await HomeAssistant.instance.fire(type, data);
-      },
-      clock: clock,
-      installation: installation,
-      hatDevice: box == null ? null : BusConfig.defaultHatDevice,
-      homeAssistant: HomeAssistant.instance.available ? _sendNotification : null,
-      restarts: (from, to) async => crash.between(from, to),
-      restartSummary: crash.summary,
-      readOnly: _readOnly,
-    ),
+    (root, installation) {
+      late final BusService bus;
+      return bus = BusService(
+        root,
+        notify: _busNotify,
+        event: (type, data) async {
+          mqtt?.onEvent(type, data);
+          await HomeAssistant.instance.fire(type, data);
+        },
+        clock: clock,
+        installation: installation,
+        hatDevice: box == null ? null : BusConfig.defaultHatDevice,
+        homeAssistant: HomeAssistant.instance.available ? _sendNotification : null,
+        restarts: (from, to) async => crash.between(from, to),
+        restartSummary: crash.summary,
+        readOnly: _readOnly,
+        mqttTelegrams: () => mqtt?.telegramStatus(),
+        telegram: (line, {required secure, required decrypted}) {
+          ha?.cycles.observe(bus, line);
+          mqtt?.onTelegram(line, bus.exporter.source, secure: secure, decrypted: decrypted);
+        },
+      );
+    },
     clock: clock,
+    // The restart entry of this start carries the wrong clock of the boot.
+    onClockSet: (time, _) => unawaited(crash.retime(time)),
   );
+  final health = box == null ? null : (BoxHealth()..start());
   box?.status = () => {
-    'clock': clock!.status(),
+    'clock': ?clock?.status(),
+    'health': ?health?.status(),
     'waiting': installations.bus.recorder.waiting,
     'installation': installations.info,
     'restarts': ?crash.summary(),
@@ -175,15 +219,18 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
     unawaited(HomeAssistant.instance.refreshKnx());
     Timer.periodic(const Duration(minutes: 10), (_) => HomeAssistant.instance.refreshKnx());
   }
-  // In the add-on: access for the KNX Monitor integration (ha_integration.dart).
-  // While it is set up, it provides the entities instead of the MQTT device.
+  // Access for the KNX Monitor integration (ha_integration.dart). While it is
+  // set up, it provides the entities instead of the MQTT device. In the add-on
+  // with the token from the Supervisor's discovery; on the box and in Docker
+  // (Home Assistant Container) with a paired admin device instead (see _handle).
   final mqttDiscovery = env['MQTT_DISCOVERY'] != 'false';
-  final ha = HomeAssistant.instance.available
+  ha = HomeAssistant.instance.available || box != null
       ? HaIntegration(
           data,
           () => installations.bus,
-          version: env['ADDON_VERSION'] ?? 'dev',
+          version: env['ADDON_VERSION'] ?? BusService.version ?? 'dev',
           port: port,
+          tokenAccess: HomeAssistant.instance.available,
           onClaim: (claimed) => mqtt?.setDiscovery(mqttDiscovery && !claimed),
         )
       : null;
@@ -192,12 +239,26 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
   // otherwise (Docker, box) with MQTT_HOST and friends.
   final envBroker = MqttBroker.fromEnvironment(env);
   if (HomeAssistant.instance.available || envBroker != null) {
+    // Every telegram to knx_monitor/telegram/… (issue #11): add-on option
+    // mqtt_telegrams, Docker and box MQTT_TELEGRAMS=true. Off by default.
+    final telegrams =
+        env['MQTT_TELEGRAMS'] == 'true' || (HomeAssistant.instance.available && await _on('mqtt_telegrams'));
     mqtt = MqttBridge(
       () => installations.bus,
       version: env['ADDON_VERSION'] ?? 'dev',
       broker: envBroker != null ? () async => envBroker : null,
       discovery: mqttDiscovery && !(ha?.claimed ?? false),
+      telegrams: telegrams
+          ? TelegramStream(
+              repeats: env['MQTT_REPEATS'] == 'true',
+              // KNX Data Secure telegrams only on request: the broker gets them in plain text.
+              secure:
+                  env['MQTT_SECURE_TELEGRAMS'] == 'true' ||
+                  (HomeAssistant.instance.available && await _on('mqtt_secure_telegrams')),
+            )
+          : null,
     );
+    if (telegrams) stdout.writeln('MQTT: jedes Telegramm an knx_monitor/telegram/…');
     unawaited(mqtt.start());
   }
   // Dashboard card "KNX Monitor Diagramm" (can be disabled: option dashboard_card).
@@ -244,10 +305,12 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
   );
 
   // ALLOW_ALL turns off every access check, so only this machine may connect,
-  // unless BIND names an address (BIND=0.0.0.0 in a container behind -p).
+  // unless BIND names an address (refuseToStart: only with ALLOW_ALL_EXPOSED).
+  // Docker without LAN access listens on loopback only, so the port is not
+  // even open on the network (the access check stays as the second layer).
   final bind = env['BIND'] != null
       ? InternetAddress(env['BIND']!)
-      : allowAll
+      : allowAll || (box != null && box.container && !box.lanAccess)
       ? InternetAddress.loopbackIPv4
       : InternetAddress.anyIPv4;
   // On loopback a web page could still reach the open server through DNS
@@ -267,9 +330,10 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
     };
     final tls = await BoxTls.load(env['TLS_CERT'], env['TLS_KEY']);
     if (tls != null) {
-      final tlsPort = int.tryParse(env['TLS_PORT'] ?? '') ?? 443;
+      // Docker drops all capabilities: no port below 1024.
+      final tlsPort = int.tryParse(env['TLS_PORT'] ?? '') ?? (box.container ? 8443 : 443);
       try {
-        accept(await HttpServer.bindSecure(InternetAddress.anyIPv4, tlsPort, tls.context));
+        accept(await HttpServer.bindSecure(bind, tlsPort, tls.context));
         box.tlsFingerprint = tls.fingerprint;
         box.tlsPort = tlsPort;
         stdout.writeln('KNX Monitor: HTTPS auf Port $tlsPort');
@@ -304,10 +368,6 @@ var _inHomeAssistant = false;
 /// `ALLOW_ALL=1` on loopback: only requests to a local host name (set in [_serve]).
 var _localHostOnly = false;
 
-/// `Host` header of a request to this machine itself: localhost, 127.0.0.1 or
-/// [::1], with or without port.
-final _localHost = RegExp(r'^(localhost|127\.0\.0\.1|\[::1\])(:\d{1,5})?$', caseSensitive: false);
-
 const _methods = {'GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'};
 
 Future<void> _handle(
@@ -338,7 +398,7 @@ Future<void> _handle(
     // setup.sh on the box: a response below 300 without login, but without data,
     // so that it reveals nothing on the network either.
     if (request.uri.path == healthPath) return await answerHealth(response);
-    if (_localHostOnly && !_localHost.hasMatch(request.headers.value(HttpHeaders.hostHeader) ?? '')) {
+    if (_localHostOnly && !BoxAccess.localHostName(request.headers.value(HttpHeaders.hostHeader))) {
       response
         ..statusCode = HttpStatus.forbidden
         ..write('Nur über localhost erreichbar.');
@@ -366,6 +426,18 @@ Future<void> _handle(
       if (role == null || await box.handle(request, role)) return;
       admin = role == BoxRole.admin;
       maySend = role.maySend;
+      // The integration without Supervisor: only a paired device with admin
+      // rights (bearer token), not the password or a browser session, and
+      // never a device without admin rights.
+      if (HaIntegration.handles(request.uri.path)) {
+        if (!admin || box.deviceIdOf(request) == null) {
+          response
+            ..statusCode = HttpStatus.forbidden
+            ..write('Nur mit einem gekoppelten Gerät mit Admin-Recht.');
+          return await response.close();
+        }
+        ha?.touch();
+      }
       // What a device without admin rights stores is marked with its id.
       if (!admin) owner = box.deviceIdOf(request);
     } else if (!allowAll && (!_inHomeAssistant || peer != _ingressPeer)) {
@@ -381,7 +453,9 @@ Future<void> _handle(
     if (await serveReports(request, bus.report, admin: admin)) return;
     // Read access like the history below, therefore before the export settings (admin).
     if (path != etsXmlPath && await serveExport(request, bus.exporter, admin: admin)) return;
-    if (path == '/api/box/time' && bus.clock != null) return await _boxTime(request, bus.clock!, admin: admin);
+    if (path == '/api/box/time' && bus.clock != null) {
+      return await _boxTime(request, bus.clock!, admin: admin, maySend: maySend);
+    }
     if (path == '/ws') return await _relay(request);
     if (path == '/ws/bus') {
       if (!bus.acceptsClient) {
@@ -391,7 +465,8 @@ Future<void> _handle(
         return await response.close();
       }
       return await bus.serve(
-        await WebSocketTransformer.upgrade(request, compression: webSocketCompression),
+        await WebSocketTransformer.upgrade(request, compression: webSocketCompression)
+          ..pingInterval = webSocketPing,
         admin: admin,
         maySend: maySend,
       );
@@ -434,10 +509,20 @@ Future<void> _handle(
         owner: owner,
       );
     }
-    if (path == '/api/network') return await sendJson(response, {'ip': await _lanAddress()});
-    if (path == '/api/discover' && discovery != null) return await sendJson(response, await discovery.run());
+    // Only the admin sets up the connection: for others no map of the
+    // networks (gateway search, own address, name lookup).
+    if (path == '/api/network') return await sendJson(response, {'ip': admin ? await _lanAddress() : null});
+    if (path == '/api/discover' && discovery != null) {
+      return await sendJson(response, admin ? await discovery.run() : const <Object?>[]);
+    }
     if (path == '/api/box/hat' && hat != null) return await _hat(request, hat, bus, admin: admin);
-    if (path == '/api/resolve') return await _resolve(request);
+    if (path == '/api/resolve') {
+      if (!admin) {
+        response.statusCode = HttpStatus.forbidden;
+        return await response.close();
+      }
+      return await _resolve(request);
+    }
     if (path == '/api/notify' && request.method == 'POST') return await _notify(request);
     await _static(request, web);
   } on BodyBudgetException {
@@ -477,17 +562,24 @@ Future<void> _relay(HttpRequest request) async {
     await request.response.close();
     return;
   }
-  final ws = await WebSocketTransformer.upgrade(request, compression: webSocketCompression);
+  final ws = await WebSocketTransformer.upgrade(request, compression: webSocketCompression)
+    // A browser that stopped reading would let packets pile up in memory.
+    ..pingInterval = webSocketPing;
   _relays.add(ws);
   unawaited(ws.done.whenComplete(() => _relays.remove(ws)));
   final udp = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
   // Open tunnels (gateway → channel), to disconnect them when the browser closes.
   final tunnels = <(InternetAddress, int), int>{};
+  // Addresses this relay sent to: only they may answer (any port, a gateway's
+  // data endpoint may differ from its control endpoint). Other hosts on the
+  // network cannot inject packets into the admin's browser.
+  final peers = <InternetAddress>{};
   udp.listen((e) {
     if (e != RawSocketEvent.read) return;
     final dg = udp.receive();
     if (dg == null || dg.address.type != InternetAddressType.IPv4) return;
     final p = dg.data;
+    if (!relayPacketWellFormed(p) || !(peers.contains(dg.address) || relaySearchResponse(p))) return;
     if (p.length >= 8 && p[2] == 0x02 && p[3] == 0x06 && p[7] == 0) {
       tunnels[(dg.address, dg.port)] = p[6]; // CONNECT_RESPONSE ok
     } else if (p.length >= 8 && p[2] == 0x02 && (p[3] == 0x09 || p[3] == 0x0A)) {
@@ -508,11 +600,14 @@ Future<void> _relay(HttpRequest request) async {
         if (message is! List<int> || message.length < 6) return;
         final address = InternetAddress.fromRawAddress(Uint8List.fromList(message.sublist(0, 4)));
         final port = (message[4] << 8) | message[5];
-        // Only KNXnet/IP packets (header 06 10) and only into the local network – the relay
-        // must not be a UDP stepping stone into the internet.
-        if (message.length >= 8 && message[6] == 0x06 && message[7] == 0x10 && _isLocalTarget(address)) {
-          if (_readOnly && !relayMaySendReadOnly(message.sublist(6))) return;
-          udp.send(message.sublist(6), address, port);
+        // Only complete KNXnet/IP packets and only to where a gateway can be
+        // (relay_policy.dart): the relay must be neither a UDP stepping stone into
+        // the internet nor a UDP proxy to other services in the home network.
+        final packet = message.sublist(6);
+        if (relayPacketWellFormed(packet) && relayTargetAllowed(address, port)) {
+          if (_readOnly && !relayMaySendReadOnly(packet)) return;
+          if (peers.length < 64) peers.add(address);
+          udp.send(packet, address, port);
           // The app disconnects itself → nothing left to clean up.
           if (message.length >= 10 && message[8] == 0x02 && message[9] == 0x09) tunnels.remove((address, port));
         }
@@ -528,21 +623,6 @@ Future<void> _relay(HttpRequest request) async {
   udp.close();
 }
 
-/// Targets that can be a KNX gateway: private networks (RFC 1918), CGNAT/VPN
-/// (100.64/10, e.g. Tailscale), link-local, loopback, the KNXnet/IP multicast
-/// address (search, routing) and broadcast.
-bool _isLocalTarget(InternetAddress address) {
-  final [a, b, c, d] = address.rawAddress;
-  return a == 10 ||
-      a == 127 ||
-      (a == 172 && b >= 16 && b < 32) ||
-      (a == 192 && b == 168) ||
-      (a == 100 && b >= 64 && b < 128) ||
-      (a == 169 && b == 254) ||
-      (a == 224 && b == 0 && c == 23 && d == 12) ||
-      (a == 255 && b == 255 && c == 255 && d == 255);
-}
-
 // --- Box clock -----------------------------------------------------------------
 
 /// `POST /api/box/time` `{epochMs, force?}`: offers the time of the iPhone/iPad.
@@ -551,8 +631,13 @@ bool _isLocalTarget(InternetAddress address) {
 ///
 /// `force` requires admin rights: otherwise any device could change a clock that
 /// is already set, and with it the timing of the entire history.
-Future<void> _boxTime(HttpRequest request, BoxClock clock, {required bool admin}) async {
+Future<void> _boxTime(HttpRequest request, BoxClock clock, {required bool admin, required bool maySend}) async {
   if (request.method == 'GET') return sendJson(request.response, clock.status());
+  // A viewer changes nothing, the clock neither.
+  if (request.method == 'POST' && !maySend) {
+    request.response.statusCode = HttpStatus.forbidden;
+    return request.response.close();
+  }
   if (request.method != 'POST') {
     request.response.statusCode = HttpStatus.methodNotAllowed;
     return request.response.close();
@@ -825,6 +910,16 @@ Future<bool> _flag(String key) async {
   }
 }
 
+/// Add-on option that is off unless set to `true` (unlike [_flag]).
+Future<bool> _on(String key) async {
+  try {
+    final options = jsonDecode(await File('/data/options.json').readAsString()) as Map<String, Object?>;
+    return options[key] == true;
+  } on Object {
+    return false;
+  }
+}
+
 Future<String?> _option(String key) async {
   try {
     final options = jsonDecode(await File('/data/options.json').readAsString()) as Map<String, Object?>;
@@ -931,8 +1026,12 @@ Future<void> _static(HttpRequest request, Directory web) async {
     // Ingress path as <base href>, so that all relative URLs end up under Ingress.
     // The header comes from the Supervisor; still, only accept path characters, since
     // it is written unescaped into the HTML.
-    final header = request.headers.value('X-Ingress-Path') ?? '';
-    final ingress = RegExp(r'^[A-Za-z0-9/_-]*$').hasMatch(header) ? header : '';
+    // Only from the Ingress proxy itself, and only "/segment/segment": "//host"
+    // would load every script from another host.
+    final header = _inHomeAssistant && request.connectionInfo?.remoteAddress.address == _ingressPeer
+        ? request.headers.value('X-Ingress-Path') ?? ''
+        : '';
+    final ingress = RegExp(r'^(/[A-Za-z0-9_-]+)*$').hasMatch(header) ? header : '';
     final html = (await file.readAsString()).replaceFirst('<base href="/">', '<base href="$ingress/">');
     response.write(html);
     return response.close();

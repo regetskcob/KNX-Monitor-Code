@@ -90,6 +90,11 @@ class _ConnectScreenState extends State<ConnectScreen> {
   /// switch).
   late bool _attaching = Addon.embedded && !_autoOpened;
 
+  /// Several unexpected ends in a row: the monitor did not open by itself
+  /// ([CrashGuard.holdAutoConnect]); it follows once the notice is hidden,
+  /// not after "Ohne Verbinden" (without connecting).
+  bool _heldAutoOpen = false;
+
   /// Notice "KNX integration found" dismissed (per browser).
   bool _haHintDismissed = true;
   static const _haHintKey = 'ha_knx_hint_dismissed';
@@ -131,17 +136,33 @@ class _ConnectScreenState extends State<ConnectScreen> {
   Widget _crashNotice(BuildContext context) => ListenableBuilder(
     listenable: CrashGuard.instance,
     builder: (context, _) {
-      final when = CrashGuard.instance.unclean;
+      final guard = CrashGuard.instance;
+      final when = guard.unclean;
       if (when == null) return const SizedBox.shrink();
       return Padding(
         padding: const EdgeInsets.only(bottom: Gap.section),
         child: CrashNotice(
           time: when,
+          consecutive: guard.consecutive,
+          afterConnecting: guard.afterConnecting,
           onReport: () async {
-            await showSupportPackage(context, error: s.crashTitle, occurred: when);
-            CrashGuard.instance.dismiss();
+            setState(() => _heldAutoOpen = false);
+            await showSupportPackage(context, error: s.crashTitle, occurred: when, crash: true);
+            guard.dismiss();
           },
-          onDismiss: CrashGuard.instance.dismiss,
+          onDismiss: () {
+            guard.dismiss();
+            if (_heldAutoOpen) {
+              setState(() => _heldAutoOpen = false);
+              unawaited(_openShared());
+            }
+          },
+          onWithoutConnect: _heldAutoOpen
+              ? () {
+                  setState(() => _heldAutoOpen = false);
+                  guard.dismiss();
+                }
+              : null,
         ),
       );
     },
@@ -193,7 +214,11 @@ class _ConnectScreenState extends State<ConnectScreen> {
       if (Addon.box != null && config['mode'] == 'hat') await _adoptHat(config);
       if (autoOpen && config['enabled'] == true) {
         _autoOpened = true;
-        await _openShared();
+        if (CrashGuard.instance.holdAutoConnect) {
+          if (mounted) setState(() => _heldAutoOpen = true);
+        } else {
+          await _openShared();
+        }
       }
     } on AddonException catch (e) {
       // Box: show the reason (Wi-Fi, access). Add-on: older version without
@@ -607,6 +632,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
     final tunnel = SharedTunnel(host: config['host'] as String? ?? '', port: config['port'] as int? ?? 3671);
     try {
       await tunnel.connect();
+      CrashGuard.instance.connected();
     } on KnxException catch (e) {
       // Server reachable, bus not (yet): open the monitor anyway; the server
       // keeps connecting and the view shows the reason.
@@ -712,6 +738,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
     }
     try {
       await tunnel.connect();
+      CrashGuard.instance.connected();
     } on KnxException catch (e) {
       if (mounted) {
         setState(() {
@@ -1614,12 +1641,33 @@ class _PairDialogState extends State<_PairDialog> {
 /// Continuous recording in the add-on: status, open monitor, pause/resume. "KNX
 /// Monitor wurde unerwartet beendet" (quit unexpectedly) with the way to the
 /// diagnostics bundle.
+///
+/// From [CrashGuard.streakNotice] ends in a row it says so and, with
+/// [onWithoutConnect], offers to stay on this screen once instead of opening the
+/// monitor by itself.
 class CrashNotice extends StatelessWidget {
-  const CrashNotice({super.key, required this.time, required this.onReport, required this.onDismiss});
+  const CrashNotice({
+    super.key,
+    required this.time,
+    required this.onReport,
+    required this.onDismiss,
+    this.consecutive = 1,
+    this.afterConnecting = false,
+    this.onWithoutConnect,
+  });
 
   final DateTime time;
   final VoidCallback onReport;
   final VoidCallback onDismiss;
+
+  /// Unexpected ends in a row.
+  final int consecutive;
+
+  /// Each of them shortly after connecting.
+  final bool afterConnecting;
+
+  /// Start once without connecting automatically.
+  final VoidCallback? onWithoutConnect;
 
   @override
   Widget build(BuildContext context) {
@@ -1637,16 +1685,32 @@ class CrashNotice extends StatelessWidget {
               Expanded(child: Text(s.crashTitle, style: theme.textTheme.titleSmall)),
             ],
           ),
+          if (consecutive >= CrashGuard.streakNotice) ...[
+            const SizedBox(height: Gap.item),
+            Text(
+              afterConnecting ? s.crashStreakAfterConnect(consecutive) : s.crashStreak(consecutive),
+              style: theme.textTheme.bodyMedium?.copyWith(color: hz.warning, fontWeight: FontWeight.w600),
+            ),
+          ],
           const SizedBox(height: Gap.item),
           Text(
             s.crashBody('${formatDate(time)} ${formatTime(time, seconds: false)}'),
             style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted),
           ),
+          if (onWithoutConnect != null) ...[
+            const SizedBox(height: Gap.item),
+            Text(s.crashStreakHint, style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted)),
+          ],
           const SizedBox(height: Gap.item),
           Wrap(
             spacing: Gap.item,
+            runSpacing: Gap.item,
             children: [
-              OutlinedButton(onPressed: onReport, child: Text(s.crashReport)),
+              if (onWithoutConnect case final withoutConnect?) ...[
+                FilledButton(onPressed: withoutConnect, child: Text(s.crashWithoutConnect)),
+                OutlinedButton(onPressed: onReport, child: Text(s.crashReport)),
+              ] else
+                OutlinedButton(onPressed: onReport, child: Text(s.crashReport)),
               TextButton(onPressed: onDismiss, child: Text(s.crashDismiss)),
             ],
           ),

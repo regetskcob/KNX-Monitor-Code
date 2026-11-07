@@ -6,8 +6,10 @@ import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 
 import 'bus.dart';
+import 'exporter.dart';
 import 'key_figures.dart';
 import 'ha.dart';
+import 'telegram_stream.dart';
 
 /// Access to the MQTT broker as the Supervisor reports it under
 /// `/services/mqtt` (usually the Mosquitto add-on).
@@ -76,7 +78,9 @@ abstract interface class MqttSink {
   /// Connects with a "last will": if the connection drops, the broker sets
   /// [willTopic] to [willPayload].
   Future<void> connect({required String willTopic, required String willPayload});
-  void publish(String topic, String payload, {bool retain = false});
+
+  /// Sends [payload]; [atMostOnce] uses QoS 0 (the telegram stream), else QoS 1.
+  void publish(String topic, String payload, {bool retain = false, bool atMostOnce = false});
   void subscribe(String topic);
   Stream<(String, String)> get messages;
   Future<void> close();
@@ -117,10 +121,18 @@ class MqttClientSink implements MqttSink {
   }
 
   @override
-  void publish(String topic, String payload, {bool retain = false}) {
+  void publish(String topic, String payload, {bool retain = false, bool atMostOnce = false}) {
     final builder = MqttClientPayloadBuilder()..addUTF8String(payload);
-    _client.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!, retain: retain);
+    _client.publishMessage(
+      topic,
+      atMostOnce ? MqttQos.atMostOnce : MqttQos.atLeastOnce,
+      builder.payload!,
+      retain: retain,
+    );
   }
+
+  /// Whether the client is connected right now (between reconnects it is not).
+  bool get isConnected => _client.connectionStatus?.state == MqttConnectionState.connected;
 
   @override
   void subscribe(String topic) => _client.subscribe(topic, MqttQos.atLeastOnce);
@@ -158,8 +170,10 @@ class MqttBridge {
     this.interval = const Duration(seconds: 60),
     this.retry = const Duration(minutes: 5),
     bool discovery = true,
+    this.telegrams,
     DateTime Function() clock = DateTime.now,
-  }) : _sinkFactory = sink ?? MqttClientSink.new,
+  }) : _clock = clock,
+       _sinkFactory = sink ?? MqttClientSink.new,
        _broker = broker ?? brokerFromSupervisor,
        _discoveryOn = discovery,
        _figures = KeyFigures(currentBus, clock: clock);
@@ -169,6 +183,44 @@ class MqttBridge {
   final String version;
   final Duration interval;
   final Duration retry;
+
+  /// Every telegram to `knx_monitor/telegram/…` (issue #11); `null` = off.
+  /// Switched on by the add-on option `mqtt_telegrams` or MQTT_TELEGRAMS=true.
+  final TelegramStream? telegrams;
+
+  /// Telegrams sent to the broker since the start.
+  int telegramsSent = 0;
+
+  /// Telegrams not sent because the broker was not connected or refused them.
+  /// Nothing is replayed; the history and the ETS file have them.
+  int telegramsDropped = 0;
+
+  Map<String, Object?>? _lastTelegram;
+
+  /// Upper limit of telegrams sent per second. A TP line carries about 50; the
+  /// cap keeps a flood (forged routing frames, a looping device) from filling
+  /// the broker connection's send buffer. Beyond it telegrams count as dropped.
+  static const maxTelegramsPerSecond = 500;
+
+  final DateTime Function() _clock;
+  int _second = 0;
+  int _inSecond = 0;
+
+  /// Secured telegrams left out because sending them is not switched on.
+  int telegramsSecureSkipped = 0;
+
+  /// Secured telegrams left out because the server could not decrypt them
+  /// (no keyring, wrong key, invalid MAC, replay).
+  int telegramsUndecrypted = 0;
+
+  /// Group addresses already named in the log per reason, so the log says it
+  /// once per address instead of on every telegram (at most [_maxNoted]).
+  final _noted = <String>{};
+  static const _maxNoted = 200;
+
+  /// Last telegram sent as topic and payload (for the example in the docs and
+  /// for diagnosis); `null` before the first one.
+  Map<String, Object?>? get lastTelegram => _lastTelegram;
 
   /// Whether to send Home Assistant discovery; off (MQTT_DISCOVERY=false) for
   /// systems like ioBroker that would only create superfluous data points
@@ -273,6 +325,86 @@ class MqttBridge {
     }
   }
 
+  /// Telegram line in history format from the bus of the active installation
+  /// ([BusService] calls it for every group telegram). Never throws.
+  /// [secure]: a KNX Data Secure telegram (see [TelegramStream.secure]);
+  /// [decrypted]: the server could decrypt it. A secured telegram that could
+  /// not be decrypted (no key, invalid MAC, replay) is never sent: it would
+  /// carry ciphertext under the "secure" marker that promises decrypted data.
+  void onTelegram(Map<String, Object?> line, ExportSource source, {bool secure = false, bool decrypted = false}) {
+    final stream = telegrams;
+    if (stream == null) return;
+    if (secure && !decrypted) {
+      telegramsUndecrypted++;
+      _note('undecrypted', line);
+      return;
+    }
+    if (secure && !stream.secure) {
+      telegramsSecureSkipped++;
+      _note('secure', line);
+      return;
+    }
+    try {
+      final message = stream.message(line, source, secure: secure);
+      if (message == null) return;
+      final second = _clock().millisecondsSinceEpoch ~/ 1000;
+      if (second != _second) {
+        _second = second;
+        _inSecond = 0;
+      }
+      if (++_inSecond > maxTelegramsPerSecond) {
+        telegramsDropped++;
+        return;
+      }
+      final sink = _sink;
+      if (sink == null || (sink is MqttClientSink && !sink.isConnected)) {
+        telegramsDropped++;
+        return;
+      }
+      final (topic, payload) = message;
+      sink.publish(topic, payload, atMostOnce: true);
+      telegramsSent++;
+      _lastTelegram = {'topic': topic, 'payload': payload};
+    } on Object catch (_) {
+      // A broker hiccup must not disturb the recording.
+      telegramsDropped++;
+    }
+  }
+
+  /// Tells the user once per group address and reason why a telegram stays
+  /// off the broker (add-on log, `docker logs`, box journal).
+  void _note(String reason, Map<String, Object?> line) {
+    final group = line['d'];
+    if (group is! int || _noted.length >= _maxNoted) return;
+    final ga = TelegramStream.formatGroup3(group);
+    if (!_noted.add('$reason $ga')) return;
+    stdout.writeln(switch (reason) {
+      'secure' =>
+        'MQTT: KNX-Secure-Telegramm an $ga nicht gesendet. Secure-Telegramme gehen nur mit der '
+            'Option „Auch KNX-Secure-Telegramme an MQTT“ (MQTT_SECURE_TELEGRAMS=true) an den Broker, '
+            'dort sind sie Klartext.',
+      _ =>
+        'MQTT: KNX-Secure-Telegramm an $ga nicht gesendet, weil es sich nicht entschlüsseln ließ '
+            '(kein Keyring, Schlüssel fehlt oder ungültig). Keyring aus der ETS in der App unter Projekt › '
+            'KNX Secure importieren.',
+    });
+  }
+
+  /// State of the telegram stream for the app (`GET /api/export`,
+  /// [DataExporter.mqttTelegrams]); `null` while the stream is off.
+  Map<String, Object?> telegramStatus() => {
+    'enabled': telegrams != null,
+    if (telegrams case final t?) ...{
+      'connected': connected,
+      'secure': t.secure,
+      'repeats': t.repeats,
+      'sent': telegramsSent,
+      'dropped': telegramsDropped,
+      'secureSkipped': telegramsSecureSkipped,
+      'undecrypted': telegramsUndecrypted,
+    },
+  };
+
   Future<void> _onMessage((String, String) m) async {
     final (topic, payload) = m;
     if (topic == '$base/recording/set') {
@@ -298,7 +430,16 @@ class MqttBridge {
   void _publishState() {
     final sink = _sink;
     if (sink == null) return;
-    final state = _figures.state();
+    final state = {
+      ..._figures.state(),
+      // Telegram stream (issue #11): counters for systems without the app.
+      if (telegrams != null) ...{
+        'telegrams_sent': telegramsSent,
+        'telegrams_dropped': telegramsDropped,
+        'telegrams_secure_skipped': telegramsSecureSkipped,
+        'telegrams_undecrypted': telegramsUndecrypted,
+      },
+    };
     sink.publish('$base/state', jsonEncode(state), retain: true);
     // The same values individually, for systems without Home Assistant
     // discovery (ioBroker creates one data point per topic). Only on change.

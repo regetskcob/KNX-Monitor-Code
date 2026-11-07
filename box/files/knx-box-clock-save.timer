@@ -1,0 +1,11 @@
+[Unit]
+Description=KNX Monitor Box: Uhrzeit regelmäßig merken
+
+# A power cut loses at most this much time until the clock is set again.
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

@@ -18,6 +18,8 @@ Environment=TLS_CERT=/etc/knx-box-tls/cert.pem TLS_KEY=/etc/knx-box-tls/key.pem 
 # BOX_NAME, on the very first start BOX_PASSWORD (afterwards access.json applies).
 EnvironmentFile=/etc/knx-box/env
 ExecStart=/opt/knx-box/server
+# Why it ended (out of memory, signal, watchdog), for the next start.
+ExecStopPost=-/usr/local/lib/knx-box/last-exit.sh
 StateDirectory=knx-box
 StateDirectoryMode=0750
 AmbientCapabilities=CAP_NET_BIND_SERVICE

@@ -38,8 +38,10 @@ import 'theme/tokens.dart';
 import 'ui/common.dart';
 import 'ui/app_lock_screen.dart';
 import 'ui/connect_screen.dart';
+import 'ui/crash_banner.dart';
 import 'ui/handover_screen.dart' show openIncomingFile;
 import 'ui/plan_screen.dart' show PlanNoticeGate;
+import 'ui/support_package_screen.dart' show showSupportPackage;
 import 'ui/splash.dart';
 import 'model/watch_rules.dart';
 import 'model/account.dart';
@@ -160,6 +162,16 @@ class _KnxMonitorAppState extends State<KnxMonitorApp> {
   bool _ready = false;
   final _navigator = GlobalKey<NavigatorState>();
 
+  /// Pages above the connect screen show the crash notice as a banner.
+  final _routes = PageRouteTracker();
+
+  Future<void> _reportCrash(DateTime when) async {
+    final context = _navigator.currentState?.overlay?.context;
+    if (context == null) return;
+    await showSupportPackage(context, error: s.crashTitle, occurred: when, crash: true);
+    CrashGuard.instance.dismiss();
+  }
+
   /// From now on stores and UI are in place: waiting files may open.
   void _openIncomingFiles() {
     IncomingFiles.instance.attach((file) async {
@@ -186,6 +198,7 @@ class _KnxMonitorAppState extends State<KnxMonitorApp> {
       listenable: LocaleController.instance,
       builder: (context, _) => MaterialApp(
         navigatorKey: _navigator,
+        navigatorObservers: [_routes],
         title: 'KNX Monitor',
         debugShowCheckedModeBanner: false,
         scrollBehavior: const AppScrollBehavior(),
@@ -209,7 +222,9 @@ class _KnxMonitorAppState extends State<KnxMonitorApp> {
                 ? Brightness.light
                 : Brightness.dark,
           ),
-          child: AppLockGate(child: child!),
+          child: AppLockGate(
+            child: CrashBannerHost(routes: _routes, onReport: _reportCrash, child: child!),
+          ),
         ),
         home: Builder(
           builder: (context) => AnimatedSwitcher(

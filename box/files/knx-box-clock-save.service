@@ -1,0 +1,19 @@
+[Unit]
+Description=KNX Monitor Box: Uhrzeit für den nächsten Start merken
+
+# Without an RTC, systemd starts the clock at the time stamp of
+# /var/lib/systemd/timesync/clock. Only systemd-timesyncd updates it, the box
+# uses chrony: without this the clock started at the date of the first boot
+# after every power cut (wrong day for the history until the time was set).
+[Service]
+Type=oneshot
+ExecStartPre=/usr/bin/mkdir -p /var/lib/systemd/timesync
+ExecStart=/usr/bin/touch /var/lib/systemd/timesync/clock
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/systemd
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+# The file belongs to systemd-timesync.
+CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_FOWNER

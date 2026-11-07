@@ -639,7 +639,7 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
                   const SizedBox(height: Gap.section),
                 ],
                 if (_info?['restarts'] case final Map<dynamic, dynamic> restarts) ...[
-                  ServerRestartsLine(restarts.cast<String, Object?>()),
+                  ServerRestartsLine(restarts.cast<String, Object?>(), box: true),
                   const SizedBox(height: Gap.section),
                 ],
                 if (_lowSpace) ...[
@@ -657,48 +657,55 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
                   ),
                   const SizedBox(height: Gap.section),
                 ],
-                Kennung(s.boxClock),
-                const SizedBox(height: Gap.item),
-                HorizontStatusLine(
-                  synced ? HorizontStatus.positive : HorizontStatus.warning,
-                  clockSourceText(clock['source'] as String?),
-                ),
-                for (final MapEntry(:key, :value) in offsets.entries)
-                  Padding(
-                    padding: const EdgeInsets.only(top: HzSpace.s4),
-                    child: HorizontStatusLine(
-                      HorizontStatus.warning,
-                      s.boxClockOffset(clockSourceText(key), formatOffset((value as num?)?.toInt() ?? 0)),
+                if (_info?['health'] case final Map<dynamic, dynamic> health) ...[
+                  BoxHealthSection(health.cast<String, Object?>()),
+                  const SizedBox(height: Gap.section),
+                ],
+                // Docker has no box clock: the host keeps the time.
+                if (_info == null || _info?['clock'] != null) ...[
+                  Kennung(s.boxClock),
+                  const SizedBox(height: Gap.item),
+                  HorizontStatusLine(
+                    synced ? HorizontStatus.positive : HorizontStatus.warning,
+                    clockSourceText(clock['source'] as String?),
+                  ),
+                  for (final MapEntry(:key, :value) in offsets.entries)
+                    Padding(
+                      padding: const EdgeInsets.only(top: HzSpace.s4),
+                      child: HorizontStatusLine(
+                        HorizontStatus.warning,
+                        s.boxClockOffset(clockSourceText(key), formatOffset((value as num?)?.toInt() ?? 0)),
+                      ),
+                    ),
+                  if (waiting > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: HzSpace.s4),
+                      child: Text(s.boxWaiting(waiting), style: muted),
+                    ),
+                  const SizedBox(height: Gap.inner),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(AppIcons.dateTime, size: 18),
+                      label: Text(s.boxClockSetNow),
+                      onPressed: _info == null ? null : _setTime,
                     ),
                   ),
-                if (waiting > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(top: HzSpace.s4),
-                    child: Text(s.boxWaiting(waiting), style: muted),
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(s.boxClockFromKnx),
+                    subtitle: SwitchHint(s.boxClockFromKnxHint),
+                    value: _config['clockFromKnx'] != false,
+                    onChanged: _info == null ? null : (v) => _configure({'clockFromKnx': v}),
                   ),
-                const SizedBox(height: Gap.inner),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(AppIcons.dateTime, size: 18),
-                    label: Text(s.boxClockSetNow),
-                    onPressed: _info == null ? null : _setTime,
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(s.boxRecordOnlyWithTime),
+                    subtitle: SwitchHint(s.boxRecordOnlyWithTimeHint),
+                    value: _config['recordOnlyWithTime'] == true,
+                    onChanged: _info == null ? null : (v) => _configure({'recordOnlyWithTime': v}),
                   ),
-                ),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(s.boxClockFromKnx),
-                  subtitle: SwitchHint(s.boxClockFromKnxHint),
-                  value: _config['clockFromKnx'] != false,
-                  onChanged: _info == null ? null : (v) => _configure({'clockFromKnx': v}),
-                ),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(s.boxRecordOnlyWithTime),
-                  subtitle: SwitchHint(s.boxRecordOnlyWithTimeHint),
-                  value: _config['recordOnlyWithTime'] == true,
-                  onChanged: _info == null ? null : (v) => _configure({'recordOnlyWithTime': v}),
-                ),
+                ],
                 const SizedBox(height: Gap.section),
                 Kennung(s.boxDevices, count: _admin ? _devices.length : null),
                 const SizedBox(height: Gap.item),
@@ -817,6 +824,78 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// SoC temperature and throttling of the box's Raspberry Pi (`health` in
+/// `/api/box`, server `box_health.dart`).
+class BoxHealthSection extends StatelessWidget {
+  const BoxHealthSection(this.health, {super.key});
+
+  final Map<String, Object?> health;
+
+  /// From here the temperature is shown as a warning (the firmware starts
+  /// throttling at 80 °C) and as critical.
+  static const warnFrom = 70.0;
+  static const criticalFrom = 80.0;
+
+  static String _degrees(num value) => value.toStringAsFixed(1).replaceAll('.', decimalSeparator);
+
+  static String _flag(Object? flag) => switch (flag) {
+    'underVoltage' => s.boxHealthFlagUnderVoltage,
+    'freqCapped' => s.boxHealthFlagFreqCapped,
+    'throttled' => s.boxHealthFlagThrottled,
+    'softTempLimit' => s.boxHealthFlagSoftTempLimit,
+    _ => '$flag',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).textTheme.bodySmall?.copyWith(color: context.hz.textMuted);
+    final temp = health['temp'] as num?;
+    final max = health['maxTemp'] as num? ?? temp;
+    final now = (health['throttled'] as List?) ?? const [];
+    final before = (health['throttledBefore'] as List?) ?? const [];
+    // Bit 'throttled' is also set by under-voltage: only call it heat when the
+    // soft temperature limit is active or the SoC is at the firmware's threshold.
+    final hot = now.contains('softTempLimit') || (now.contains('throttled') && (temp ?? 0) >= criticalFrom);
+    final lines = <Widget>[
+      if (temp != null)
+        HorizontStatusLine(
+          temp >= criticalFrom || hot
+              ? HorizontStatus.critical
+              : temp >= warnFrom
+              ? HorizontStatus.warning
+              : HorizontStatus.positive,
+          s.boxHealthTemp(_degrees(temp), _degrees(max!)),
+        ),
+      if (now.contains('underVoltage')) HorizontStatusLine(HorizontStatus.critical, s.boxHealthUnderVoltage),
+      if (hot) HorizontStatusLine(HorizontStatus.critical, s.boxHealthThrottled),
+      if (health.containsKey('throttled') && now.isEmpty && before.isEmpty)
+        HorizontStatusLine(HorizontStatus.positive, s.boxHealthOk),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Kennung(s.boxHealth),
+        const SizedBox(height: Gap.item),
+        for (final (i, line) in lines.indexed)
+          Padding(
+            padding: EdgeInsets.only(top: i == 0 ? 0 : HzSpace.s4),
+            child: line,
+          ),
+        if (before.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: HzSpace.s4),
+            child: Text(
+              (health['throttledSince'] == 'serverStart' ? s.boxHealthBeforeServer : s.boxHealthBefore)(
+                before.map(_flag).join(', '),
+              ),
+              style: muted,
+            ),
+          ),
+      ],
     );
   }
 }

@@ -6,13 +6,14 @@ import 'package:knx_monitor/theme/app_theme.dart';
 import 'package:knx_monitor/ui/data_export_screen.dart';
 
 class _FakeClient extends DataExportClient {
-  _FakeClient(this.settings, {this.generated});
+  _FakeClient(this.settings, {this.generated, this.mqtt});
   Map<String, Object?> settings;
   final String? generated;
+  final Map<String, Object?>? mqtt;
   final saved = <Map<String, Object?>>[];
 
   @override
-  Future<DataExportState> load() async => DataExportState({'settings': settings});
+  Future<DataExportState> load() async => DataExportState({'settings': settings, 'mqttTelegrams': ?mqtt});
 
   @override
   Future<DataExportState> save(Map<String, Object?> changes) async {
@@ -77,5 +78,42 @@ void main() {
     await tester.tap(find.text('Schließen'));
     await tester.pumpAndSettle();
     expect(find.text('neues-token'), findsNothing);
+  });
+
+  testWidgets('MQTT telegram stream: no section without broker, reasons for left-out secure telegrams', (tester) async {
+    tall(tester);
+    await tester.pumpWidget(app(DataExportScreen(client: _FakeClient(const {}))));
+    await tester.pumpAndSettle();
+    expect(find.text('MQTT: jedes Telegramm (Vorschau)'), findsNothing);
+
+    await tester.pumpWidget(
+      app(
+        DataExportScreen(
+          key: const ValueKey('off'),
+          client: _FakeClient(const {}, mqtt: {'enabled': false}),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('MQTT_TELEGRAMS=true'), findsOneWidget);
+
+    await tester.pumpWidget(
+      app(
+        DataExportScreen(
+          key: const ValueKey('on'),
+          client: _FakeClient(
+            const {},
+            mqtt: {'enabled': true, 'connected': true, 'sent': 120, 'dropped': 0, 'secureSkipped': 7, 'undecrypted': 3},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('120 gesendet'), findsOneWidget);
+    expect(find.textContaining('7 KNX-Secure-Telegramme nicht gesendet. Sie gehen nur mit der Option'), findsOneWidget);
+    expect(
+      find.textContaining('3 KNX-Secure-Telegramme nicht gesendet, weil der Server sie nicht entschlüsseln'),
+      findsOneWidget,
+    );
   });
 }

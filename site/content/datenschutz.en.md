@@ -4,7 +4,7 @@ slug: "privacy"
 description: "Privacy policy for the KNX Monitor app, the Home Assistant add-on and this website. In short: no tracking, installation data stays local, no account."
 ---
 
-<p class="t-kennung hz-kennung">Last updated: October 2026</p>
+<p class="t-kennung hz-kennung">Last updated: November 2026</p>
 
 > **In short:** We collect as little as possible: no account, no analytics, no tracking. Everything the app processes about your installation stays on your device or your KNX box unless you share it yourself. From version 1.9.1 the apps encrypt their files, and you can lock them and back them up yourself, each with the limits named below. Exceptions: in the store versions the app asks RevenueCat for your status when it starts, even if you have never bought anything; and on Android the QR scanner (Google ML Kit) sends technical diagnostic data to Google, see below.
 
@@ -86,7 +86,7 @@ Downloading the app is subject to the privacy policies of Apple or Google. If yo
 
 ## The Home Assistant add-on
 
-The add-on runs on your own Home Assistant host. All data (project, Secure keys, telegrams, long-term history, recordings, settings) is kept in the add-on's data folder on that host, is unencrypted and part of your Home Assistant backups (protect them with a backup encryption key) and is removed when you uninstall the add-on. The apps' encryption, app lock and backup do not exist in the add-on; your Home Assistant takes care of that there. The add-on records the bus continuously while it is running. Access goes through the Home Assistant interface (ingress) and is authenticated by Home Assistant. For notifications and for reading the KNX integration, the add-on uses the Home Assistant API on the same host. It sends nothing to us. Data only goes to destinations you set up yourself, under those providers’ rules: notifications to ntfy, a webhook or Home Assistant, measurements to InfluxDB; Prometheus fetches them when you request it. The same applies to the box.
+The add-on runs on your own Home Assistant host. All data (project, Secure keys, telegrams, long-term history, recordings, settings) is kept in the add-on's data folder on that host, is unencrypted and part of your Home Assistant backups (protect them with a backup encryption key) and is removed when you uninstall the add-on. The apps' encryption, app lock and backup do not exist in the add-on; your Home Assistant takes care of that there. The add-on records the bus continuously while it is running. Access goes through the Home Assistant interface (ingress) and is authenticated by Home Assistant. The "KNX Monitor" integration in your Home Assistant reads states, watchers and hints with a key of its own; without Supervisor (box, Docker) it signs in as a paired device. What it reads stays in your Home Assistant. For notifications and for reading the KNX integration, the add-on uses the Home Assistant API on the same host. It sends nothing to us. Data only goes to destinations you set up yourself, under those providers’ rules: notifications to ntfy, a webhook or Home Assistant, measurements to InfluxDB, states and, if you turn on "Every telegram to MQTT", every telegram with address, name and value to your MQTT broker; Prometheus fetches them when you request it. The same applies to the box.
 
 ## This website
 
@@ -100,7 +100,7 @@ This website sets no cookies, uses no analytics or tracking tools and embeds no 
 
 ### Support via GitHub Issues
 
-Support and feedback go through GitHub Issues. An issue is publicly visible and requires a GitHub account; processing there is governed by [GitHub's privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement). We use what you write in an issue only to handle your request (Art. 6(1)(b) or (f) GDPR). Please don't post confidential data such as passwords or your ETS project there.
+Support and feedback go through GitHub Issues. An issue is publicly visible and requires a GitHub account; processing there is governed by [GitHub's privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement). We use what you write in an issue only to handle your request (Art. 6(1)(b) or (f) GDPR). Please don't post confidential data such as passwords or your ETS project there. After a crash the app can prefill an issue form; it only holds version, platform, time and kind of crash, and you see it before you submit it.
 
 ### Support by e-mail and diagnostics package
 

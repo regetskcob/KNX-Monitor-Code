@@ -6,6 +6,18 @@ slug: "changelog"
 ---
 What the latest versions of KNX Monitor brought, newest first. App, Home Assistant add-on and KNX box share one version number. Every version is on [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant the add-on shows the same notes before an update.
 
+## 1.9.10 – 7 Nov 2026
+
+- Preview for testers: every telegram to MQTT ([#11](https://github.com/regetskcob/KNX-Monitor/issues/11)). With the new add-on option "Every telegram to MQTT" (Docker and box: `MQTT_TELEGRAMS=true`) each group telegram goes as JSON to `knx_monitor/telegram/1/2/3`, with time, name, DPT, value and unit from the ETS project. Off by default. KNX Secure telegrams only with a separate option, at most 500 per second. Feedback in the issue, please.
+- Home Assistant integration 1.1.0 ([#2](https://github.com/regetskcob/KNX-Monitor/issues/2)): event entities, a device trigger per watcher, conditions (bus connected, recording on, alarm open, low space) and a repair when a group address that usually sends regularly goes silent. Without Supervisor (Home Assistant Container) it connects to a KNX box or Docker through a pairing link with "Manage".
+- The KNX box survives power cuts more cleanly ([#4](https://github.com/regetskcob/KNX-Monitor/issues/4)): without a real-time clock the clock starts from the last saved stamp instead of the date of the first boot, and until then nothing is packed or deleted by age. The system journal is kept, and the restart list names the reason.
+- After a crash the app shows a notice and leads to the diagnostics package; "Report as issue" opens a prefilled form with only version, platform, time and kind of crash.
+- KNX box: in the box settings, "Raspberry Pi" shows the temperature, its maximum since start and warnings for under-voltage or throttling.
+- KNX HAT (kBerry): the bus monitor now counts frames the module saw but did not pass on, and the app explains it: the kBerry leaves out about every second data frame in bus monitor mode, so the box records completely in link layer mode. Recovery after a module restart and 115200 baud were tested on a real line.
+- Security review for Docker: the UDP relay forwards only KNXnet/IP to gateway addresses, without `LAN_ACCESS` the container listens on localhost only (a reverse proxy on the same host needs `LAN_ACCESS=yes`), admin access is granted only with the password, "lock out all" also ends browser sessions, the first password needs 8 characters (`BOX_PASSWORD_FILE` for Docker secrets), and paired devices can no longer delete history or stall the server. The Docker template now starts read only (`READ_ONLY=0` to send) and uses HTTPS on port 8443. Details in the Docker README.
+- KNX box and Docker: own login page in the browser with the password only, instead of the browser's dialog that also asked for a user name that did not matter. "Abmelden" (log out) on the pairing page ends the session, and the web app returns to the login page when the session has run out. Apps and tools such as curl log in as before.
+- Hints in a telegram's detail sheet, findings, security notes, address, name and product in the device sheet and the details for an issue report can be selected and copied, for example for a question in a forum.
+
 ## 1.9.9 – 6 Nov 2026
 
 - Docker: `LAN_ACCESS` now applies on every start. Setting `LAN_ACCESS=yes` later used to have no effect. Messages, the login dialog and the settings page speak of network access and the password instead of the box Wi-Fi, which does not exist in Docker.
@@ -59,8 +71,7 @@ What the latest versions of KNX Monitor brought, newest first. App, Home Assista
 
 ## 1.9.2 – 1 Nov 2026
 
-- New for anyone planning or building: the home plan, no gateway needed. You go through your everyday life, and that becomes a room book and floor plan for talking to your contractor. You set lights and sockets as switchable, dimmable or permanently powered; the app works out the channel demand and exports the device list as CSV and PDF.
-- With Plus: all levels including the outdoor area, checks such as a button inside a door swing, deadlines per construction type, offer check, PDF with dimensions and DXF. The catalog is compiled to the best of our knowledge and does not replace electrical planning.
+- New for anyone planning or building: the home plan, no gateway needed, in the Home Assistant add-on, in the KNX Box browser and in the Linux app. You go through your everyday life, and that becomes a room book and floor plan for talking to your contractor. You set lights and sockets as switchable, dimmable or permanently powered; the app works out the channel demand and exports the device list as CSV and PDF. It also covers all levels including the outdoor area, checks such as a button inside a door swing, deadlines per construction type, offer check, PDF with dimensions and DXF. The catalog is compiled to the best of our knowledge and does not replace electrical planning.
 - Before writing to the bus, a notice says that this is an intervention in the installation. You can hide it and turn it back on from the start page; hiding it is recorded with the date in the diagnostics package.
 - Security in the apps: pairing links warn about unknown addresses, backups no longer contain purchase keys, encryption is about ten times faster.
 - KNX Box and add-on: HTTPS, mandatory change of the sticker password, separate roles and more protection against broken telegrams and full disks.

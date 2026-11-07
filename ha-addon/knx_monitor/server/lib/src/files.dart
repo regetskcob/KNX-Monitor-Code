@@ -53,12 +53,20 @@ const _maxMerged = 8 * 1024 * 1024;
 /// Upper limit per upload without admin rights.
 const _maxDeviceUpload = 1024 * 1024;
 
-bool _isKeyring(String name) => name == _adminOnly || name.startsWith('$_adminOnly.');
+// Compared in lower case: on a case-insensitive data folder (Docker Desktop
+// on macOS or Windows, some NAS shares) `Secure_Keys.json` is the keyring.
+bool _isKeyring(String name) {
+  final n = name.toLowerCase();
+  return n == _adminOnly || n.startsWith('$_adminOnly.');
+}
 
 /// Whether [name] belongs to the server. Backups and set-aside copies
 /// (`access.json.bak`, `installations.json.corrupt-…`) contain the same
 /// secrets too.
-bool _isPrivate(String name) => _private.any((p) => name == p || name.startsWith('$p.'));
+bool _isPrivate(String name) {
+  final n = name.toLowerCase();
+  return _private.any((p) => n == p || n.startsWith('$p.'));
+}
 
 bool _deviceMayWrite(HttpRequest request, String relative) =>
     request.method == 'PUT' && _deviceWritable.containsKey(relative);
@@ -92,7 +100,7 @@ Future<void> serveFile(
     response.statusCode = HttpStatus.methodNotAllowed;
     return response.close();
   }
-  if (_isPrivate(relative.split('/').first) || relative.endsWith('.tmp')) {
+  if (_isPrivate(relative.split('/').first) || relative.toLowerCase().endsWith('.tmp')) {
     response.statusCode = HttpStatus.forbidden;
     return response.close();
   }

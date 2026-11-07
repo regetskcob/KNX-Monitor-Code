@@ -249,21 +249,22 @@ class _DeviceTrafficState extends State<DeviceTraffic> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          // Header selectable so address, name and product can be copied.
+                          SelectableText(
                             formatIndividual(widget.address),
                             style: context
                                 .mono(theme.textTheme.bodyMedium)
                                 .copyWith(color: hz.textMuted, fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: HzSpace.s4),
-                          Text(
+                          SelectableText(
                             device?.name ?? unknownDeviceName(widget.address),
                             style: (wide ? theme.textTheme.titleLarge : theme.textTheme.titleMedium)?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                           const SizedBox(height: HzSpace.s4),
-                          Text(
+                          SelectableText(
                             [
                               ?device?.product,
                               s.devLineHops(

@@ -389,11 +389,26 @@ The web app cannot open UDP sockets, so the server relays KNXnet/IP packets for
 it over the WebSocket `/ws` (`ha-addon/knx_monitor/server/bin/server.dart`,
 `_relay`):
 
-- Only packets with the KNXnet/IP header `06 10` are forwarded.
-- Only to IPv4 targets that can be a KNX gateway (`_isLocalTarget`): RFC 1918
-  networks, `100.64.0.0/10` (CGNAT, VPNs such as Tailscale), link-local,
-  loopback, the KNXnet/IP multicast address `224.0.23.12`, and
-  `255.255.255.255`. The relay is not a UDP hop into the internet.
+Rules in `ha-addon/knx_monitor/server/lib/src/relay_policy.dart`, tests in
+`server/test/docker_hardening_test.dart`:
+
+- Only complete KNXnet/IP packets are forwarded, in both directions
+  (`relayPacketWellFormed`): header `06 10`, a service type from an explicit
+  list (core, device management, tunnelling, routing, secure) and a total
+  length equal to the packet's length. Other UDP protocols do not pass, even
+  if they happen to start with `06 10` (a DNS query with that transaction ID
+  would need as many questions as it has bytes).
+- Only to IPv4 targets that can be a KNX gateway (`relayTargetAllowed`): RFC
+  1918 networks, `100.64.0.0/10` (CGNAT, VPNs such as Tailscale), link-local,
+  the KNXnet/IP multicast address `224.0.23.12`, and `255.255.255.255`.
+  Loopback only on port 3671: with the host network the container shares the
+  host's loopback, where services often trust local senders. The relay is
+  neither a UDP hop into the internet nor a UDP proxy to other services.
+- Packets are handed back only from addresses the relay sent to (any port,
+  since a gateway's data endpoint may differ from its control endpoint), plus
+  search responses from any gateway. Other hosts on the network cannot inject
+  packets into the admin's browser, and only those addresses can register a
+  tunnel that is disconnected when the tab closes.
 - Read-only mode filters services as described above.
 - On the box, role `device` gets no access to `/ws` at all
   (`BoxAccess.guard`), because the raw relay could carry any telegram.
@@ -401,6 +416,9 @@ it over the WebSocket `/ws` (`ha-addon/knx_monitor/server/bin/server.dart`,
   WebSockets are closed (`onAccessChanged`).
 - When the browser tab closes, the server sends `DISCONNECT_REQUEST` for tunnels
   that are still open.
+- `/ws` and `/ws/bus` ping every 20 seconds (`webSocketPing`); a client that
+  stops reading or answering is closed instead of the server queueing the bus
+  traffic for it in memory.
 - `/ws` and `/ws/bus` are upgraded without permessage-deflate
   (`webSocketCompression`): 300 KiB of compressed data used to unpack into
   almost 800 MiB. A client message larger than 64 KiB
@@ -418,6 +436,10 @@ whose peer address is the Supervisor's Ingress proxy `172.30.32.2`; everything
 else gets 403. Home Assistant authenticates the user before Ingress forwards the
 request. Ingress users have the admin role.
 
+The `X-Ingress-Path` header is written into `index.html` as `<base href>` only
+inside Home Assistant, only from the Ingress peer and only in the form
+`/segment/segment` (a `//host` would load every script from another host).
+
 The peer address is trusted only when the server runs inside Home Assistant,
 recognised by `SUPERVISOR_TOKEN`. In a Docker network without `BOX=1`,
 `172.30.32.2` can be any container; there every request gets 403, and the
@@ -429,8 +451,12 @@ Exceptions:
   (`server/lib/src/http.dart`), for the Supervisor watchdog.
 - `ALLOW_ALL=1` disables the check. It is meant for development and tests
   (`server/test/server_process_test.dart`, CI smoke test) and must not be set in
-  production. With it the server listens on 127.0.0.1 only, unless `BIND`
-  names an address (the CI starts the container with `BIND=0.0.0.0`). On
+  production; the server says so on stderr at every start. With it the server
+  listens on 127.0.0.1 only. A `BIND` other than loopback is refused (exit 78)
+  unless `ALLOW_ALL_EXPOSED=1` is set as well (`refuseToStart` in
+  `server/lib/src/container_env.dart`): the CI starts its throwaway container
+  that way, and a command copied from it without the second variable fails
+  instead of opening bus and relay to the network. On
   loopback it also answers only requests whose `Host` is `localhost`,
   `127.0.0.1` or `[::1]` (with any port), so a web page cannot reach it through
   DNS rebinding. With a non-loopback `BIND` the developer chose to expose it,
@@ -442,8 +468,7 @@ Every response carries `X-Content-Type-Options: nosniff` and
 also carries `X-Frame-Options: DENY` and `Content-Security-Policy:
 frame-ancestors 'none'`, so no other page can show the box in a frame
 (clickjacking). The add-on cannot send them: Home Assistant shows it in a frame
-through Ingress. The `X-Ingress-Path` header is written into
-`index.html` only if it consists of path characters.
+through Ingress.
 
 
 The KNX Monitor integration reaches the add-on with its own token on
@@ -455,6 +480,20 @@ add-ons cannot read it, also not with the `admin` role. Afterwards the token
 lives in the integration's config entry like any other integration secret; the
 integration's diagnostics redact it.
 
+Without Supervisor (KNX Box, Docker; `BOX=1`) there is no discovery and no such
+token: the server does not create one (`HaIntegration.tokenAccess`), and one left
+from an earlier start in the add-on is removed. Instead `/api/ha/*` takes a paired
+device with admin rights, sent as `Authorization: Bearer` (the token from a
+pairing link created on `/pair` with "Verwalten", or from `POST /api/box/pair`).
+The request first passes `BoxAccess.guard` like any other (network access, rate
+limit, constant-time hash comparison), then `bin/server.dart` lets only that
+role and kind of credential through: the box password, a browser session and
+devices without admin rights get 403. The integration (`config_flow.py`, step
+`manual`) sends the token only to the address entered by the user, does not
+follow redirects, and with a fingerprint in the link (`fp`, `TLS_CERT`) speaks
+HTTPS and accepts only that certificate (`aiohttp.Fingerprint`). Without a
+certificate the token crosses the network in plain text, like the app's.
+
 ### KNX Box and Docker: password, pairing, roles
 
 `BOX=1` switches the server to standalone mode with its own authentication
@@ -463,16 +502,20 @@ Tests: `server/test/box_access_test.dart`, `server/test/box_security_test.dart`.
 
 | Credential | Used by | Stored as | Role |
 |---|---|---|---|
-| Box password | Browser (HTTP Basic, any user name), then a session cookie | PBKDF2-HMAC-SHA256, 40,000 rounds, 16-byte salt, in `access.json` | `admin` |
+| Box password | Browser on the login page `/login` (password only), then a session cookie; tools also as HTTP Basic (any user name) | PBKDF2-HMAC-SHA256, 40,000 rounds, 16-byte salt, in `access.json` | `admin` |
 | Device token (32 random bytes) from `/pair` in the browser | App, `Authorization: Bearer` | SHA-256 in `access.json` | `device` |
-| Device token from `POST /api/box/pair` (requires admin) | App paired with the box password | SHA-256 | `admin` |
+| Device token from `POST /api/box/pair` (requires the box password itself as HTTP Basic, not a session or token) | App paired with the box password | SHA-256 | `admin` |
 | Device token from `/pair` with "Nur ansehen" | App or browser that only looks | SHA-256, `viewOnly` | `viewer` |
+| Device token from `/pair` with "Verwalten" | Home Assistant integration, ioBroker | SHA-256, `admin` | `admin` |
 
 - The password hash is computed in a separate isolate. Hashes stored by older
   boxes with more rounds are re-hashed after the next successful login.
 - Comparisons of hashes and tokens run in constant time (`_equal`).
 - Failed logins per peer address: four are free, from the fifth on 30 seconds,
-  doubling up to 15 minutes. At most three password checks run at the same time
+  doubling up to 15 minutes. A valid device token is checked before the
+  lockout, so paired apps keep working while one sender is locked out (behind
+  a reverse proxy or NAT that is everyone); a wrong token is refused during
+  the lockout and counts as a failed attempt. At most three password checks run at the same time
   per peer and four over all peers, so parallel requests, also from many
   addresses, cannot exhaust the Pi. A valid device token does not reset the
   counter; only the correct password does. A flood of new peer addresses does
@@ -488,12 +531,29 @@ Tests: `server/test/box_access_test.dart`, `server/test/box_security_test.dart`.
 - Session cookie `knx_box_session`: 32 random bytes, stored as SHA-256, valid
   12 hours, at most 32 sessions, kept in memory only. Flags `HttpOnly;
   SameSite=Strict`, plus `Secure` over HTTPS.
+- Login page (`BoxAccess._loginOrLogout`, tests in
+  `server/test/login_page_test.dart`): browsers get the page `/login` with a
+  password field only, instead of the browser's own Basic dialog. A page
+  request without a session is redirected there (`?next=` keeps the target,
+  limited to local paths by `safeNext`); the browser's other requests get 401
+  without `WWW-Authenticate`, so no dialog appears, and the web app then opens
+  the login page itself. Requests without `Sec-Fetch-*` headers (curl, scripts)
+  still get the Basic challenge. `POST /login` and `POST /logout` must come
+  from the box's own form (`Origin` equal to `Host`), and the login goes
+  through the same lockout and concurrency limits as Basic. `/logout` (button
+  on `/pair`) deletes the session. With the sticker password still valid, the
+  login leads to `/pair` first.
 - Cross-site protection: a request with an `Origin` header must match the
   `Host`. Requests authenticated only by the cookie must be same-site
   (`Sec-Fetch-Site`) and state-changing requests and WebSockets must carry an
   `Origin`.
-- Changing the password or revoking a device clears sessions and cached logins
-  and closes open WebSockets.
+- Changing the password or locking out all devices ("Alle sperren") clears
+  sessions and cached logins; every change of access closes open WebSockets.
+  Changing the password does not revoke paired devices (except after the
+  sticker password, see below): remove a lost device, or lock out all.
+- Admin device tokens survive a password change, so they are only issued
+  against the password itself (`POST /api/box/pair` with HTTP Basic): a
+  borrowed browser session or a lost admin tablet cannot mint a lasting one.
 - Changing the password and locking out all devices need the current
   password, also with an admin token or a session (a lost tablet must not lock
   the owner out); a wrong one counts as a failed login. Only the required
@@ -514,9 +574,11 @@ the connection to an own tunnel and writes no files at all. The server reports
 | Send to the bus | any `L_Data.req` | group values only (section 5) | no |
 | Raw relay `/ws`, `/pair`, `/api/box/*` (devices, password, Wi-Fi, LAN access) | yes | no | no |
 | Change the bus connection (`/api/bus`), report, export and maintenance date (`/api/report/maintenance`), force the box clock, check the KNX HAT | yes | no | no |
+| Gateway search (`/api/discover`), own network address (`/api/network`), name lookup (`/api/resolve`) | yes | empty result or 403 | empty result or 403 |
+| Offer the time to an unset box clock (`/api/box/time`, not in Docker) | yes | yes | no |
 | Other installations (`/api/installations`, `?installation=`, `/api/installations/<id>/files/`) | all, and manage them | only the active one; others answer 403 | like `device` |
 | Read `secure_keys.json` | yes | no | no |
-| Write files over `/api/files/` | all except server-owned ones | own entries in `charts.json` and `watch_rules.json` (at most 1 MiB) | nothing |
+| Write files over `/api/files/` | all except server-owned ones | own entries in `charts.json` and `watch_rules.json` (at most 1 MiB); a broken rule is skipped on its own, the others keep working | nothing |
 | Error texts of restarts (`/api/restarts`) | yes | time and reason | time and reason |
 
 Writes of a `device` to `charts.json` and `watch_rules.json` are merged by the
@@ -532,7 +594,14 @@ app that shares its own list removes entries of devices.
 Server-owned files such as `access.json`, `server.json` (gateway and IP Secure
 credentials), `report_settings.json`, `export.json` and
 `secure_sequence.json` are never served or accepted over `/api/files/`, for
-any role (`server/lib/src/files.dart`, `_private`).
+any role (`server/lib/src/files.dart`, `_private`). Names are compared in
+lower case: on a case-insensitive data folder (Docker Desktop on macOS or
+Windows, some NAS shares) `Secure_Keys.json` is the keyring.
+
+When the gateway's host changes, stored IP Secure passwords are only kept if
+the request brings them again (`BusService._merged`): IP Secure answers a
+foreign host with a MAC over the user password, which could be guessed
+offline there.
 
 Limits against overload, for all roles:
 
@@ -542,7 +611,10 @@ Limits against overload, for all roles:
   (`bodyBudget` in `server/lib/src/http.dart`); beyond that the server answers
   503 with `Retry-After`. A single request may always use its own limit.
 - `/api/bus/availability` evaluates at most 400 days; a negative, reversed or
-  longer period answers 400, like the history queries.
+  longer period answers 400, like the history queries. A history query that
+  starts more than a day in the future answers 400 as well, and the search
+  for the value at a chart's left edge goes back at most 4,000 days (it used
+  to walk back day by day from any start, millions of days in one request).
 - The gateway search `/api/discover` sends to every address of every network:
   only one runs at a time, and its result is reused for 10 seconds.
 - Files are written to a temporary file with a random name and renamed;
@@ -599,7 +671,24 @@ Limits against overload, for all roles:
 The Docker template (`tool/public-repo/docker/compose.yaml`) runs the same
 server with `BOX=1`, requires `BOX_PASSWORD` (Compose refuses to start without
 it, and so does the server on its first start, instead of inventing a password
-and printing it to the log), and answers only on the host itself (loopback) unless `LAN_ACCESS=yes`.
+and printing it to the log; shorter than 8 or longer than 128 characters is
+refused as well), and answers only on the host itself unless `LAN_ACCESS=yes`.
+The template starts read only (`READ_ONLY=1`, `READ_ONLY=0` in `.env` to send).
+
+Without `LAN_ACCESS=yes` the server listens on `127.0.0.1` only, HTTP and
+HTTPS, and accepts only requests whose `Host` is `localhost`, `127.0.0.1` or
+`[::1]` (`BoxAccess.guard`): a web page that rebinds its own name to
+127.0.0.1 gets 403 before the login page. A reverse proxy on the same host
+that passes its own host name therefore needs `LAN_ACCESS=yes`, which is
+correct: it makes the container reachable from the network.
+
+`BOX_PASSWORD_FILE` and `MQTT_PASSWORD_FILE` read the password from a file
+(Docker secrets), so it is not in `docker inspect` (`withSecretFiles`). A
+`BOX_PASSWORD` that no longer matches the stored password is ignored, and the
+log says so. In Docker the server has no box clock: the host keeps the time,
+and no paired device can move the history's time stamps (and with them the
+retention). Without `TLS_PORT`, HTTPS uses port 8443, since the template drops
+the capability for ports below 1024.
 In Docker (`BOX=1` without `BOX_STICKER=1`) `LAN_ACCESS` applies on every start and
 cannot be switched in the app, so the container's settings are the only place
 that opens it to the network; the password is required either way. The box Wi-Fi range `10.42.0.0/24` counts only on the real box, since in
@@ -735,6 +824,21 @@ Collected from the sections above, and in `tool/public-repo/SECURITY.md`:
   certificate is configured.
 - The box hotspot uses WPA2-PSK only; WPA3 (SAE) is not offered, since support
   in access point mode on the Pi's Wi-Fi chip is unverified.
+- The MQTT bridge accepts the command to pause or resume recording from
+  anyone who may publish to its topic on the broker. Protect the broker with
+  a user and password (some ioBroker and Mosquitto setups allow anonymous
+  clients).
+- KNXnet/IP routing and plain tunnelling have no sender authentication: a
+  device in the network can inject telegrams into the recording, watchers and
+  alarms, or disconnect a UDP tunnel. Use a TCP or IP Secure tunnel where the
+  gateway offers one.
+- The Docker image runs the server as root inside the container (existing data
+  folders belong to root). The template drops all capabilities except
+  `DAC_OVERRIDE` and `FOWNER` and sets `no-new-privileges`; a plain `docker
+  run` without those options keeps Docker's defaults, including `NET_RAW`.
+- Behind a reverse proxy every client has the proxy's address: one sender's
+  lockout after wrong passwords locks out every browser login (paired apps
+  keep working).
 - The write confirmation in the app is a safeguard against mistakes, not access
   control. Plain KNXnet/IP and KNX TP have no authentication; use KNX IP Secure
   and Data Secure where the installation supports them.

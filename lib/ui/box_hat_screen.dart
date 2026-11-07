@@ -227,7 +227,7 @@ class _BoxHatScreenState extends State<BoxHatScreen> {
         return count('frames') == 0 ? s.boxHatNothing : s.boxHatFrames(count('frames'), count('seconds'));
       case 'busmonitor':
         if (count('frames') == 0) return s.boxHatNothing;
-        return s.boxHatBusmonCounts(
+        final counts = s.boxHatBusmonCounts(
           count('frames'),
           count('ack'),
           count('nak'),
@@ -235,6 +235,9 @@ class _BoxHatScreenState extends State<BoxHatScreen> {
           count('repeated'),
           count('errors'),
         );
+        // Older boxes do not report the gaps.
+        if (count('seqGaps') == 0 && count('orphanAcks') == 0) return counts;
+        return '$counts\n${s.boxHatBusmonGaps(count('seqGaps'), count('orphanAcks'))}';
     }
     return null;
   }

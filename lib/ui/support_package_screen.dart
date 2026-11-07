@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:horizont/horizont.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../catalog_store.dart';
 import '../export/diagnostics_bundle.dart';
@@ -13,12 +14,15 @@ import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
 import '../model/write_notice.dart';
 import '../model/annotation.dart';
+import '../model/crash_issue.dart';
 import '../model/export_history.dart';
 import '../model/history_store.dart';
 import '../model/installation.dart';
 import '../model/recording.dart';
 import '../model/send_scheduler.dart';
+import '../model/system_crash_report.dart';
 import '../model/telegram_log.dart';
+import '../platform/os_info.dart';
 import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
@@ -28,7 +32,9 @@ import 'recordings_screen.dart';
 import 'telegram_row.dart';
 
 /// Opens "Diagnosepaket" (diagnostics package), from the menu (with a running
-/// session) or directly from an error message ([error], [occurred]).
+/// session) or directly from an error message ([error], [occurred]). With
+/// [crash] after an unexpected end of the app: with the system's crash report
+/// and the way to a public issue.
 Future<void> showSupportPackage(
   BuildContext context, {
   KnxTunnel? tunnel,
@@ -37,8 +43,10 @@ Future<void> showSupportPackage(
   String? error,
   DateTime? occurred,
   DateTime? since,
+  bool crash = false,
 }) => Navigator.of(context).push(
   MaterialPageRoute<void>(
+    settings: const RouteSettings(name: SupportPackageScreen.routeName),
     builder: (_) => SupportPackageScreen(
       tunnel: tunnel,
       log: log,
@@ -46,6 +54,7 @@ Future<void> showSupportPackage(
       error: error,
       occurred: occurred,
       since: since,
+      crash: crash,
     ),
   ),
 );
@@ -56,7 +65,30 @@ const _ranges = <int?>[null, 5, 15, 60];
 /// Diagnostics package for support: describe the problem, choose the recording
 /// and time span, see what is inside (and remove names if needed), share.
 class SupportPackageScreen extends StatefulWidget {
-  const SupportPackageScreen({super.key, this.tunnel, this.log, this.session, this.error, this.occurred, this.since});
+  const SupportPackageScreen({
+    super.key,
+    this.tunnel,
+    this.log,
+    this.session,
+    this.error,
+    this.occurred,
+    this.since,
+    this.crash = false,
+    this.systemReports,
+    this.openUrl,
+  });
+
+  /// Name of its route: the crash banner stays away from it.
+  static const routeName = 'diagnostics';
+
+  /// After an unexpected end of the app ([occurred] = last in the foreground).
+  final bool crash;
+
+  /// Where the system's crash report comes from (tests).
+  final SystemCrashFinder? systemReports;
+
+  /// Opens the issue in the browser (tests); by default `url_launcher`.
+  final Future<bool> Function(Uri uri)? openUrl;
 
   /// From "Fehler melden" (report a fault): the session from this point until
   /// now instead of a time span around the error.
@@ -86,6 +118,13 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
     error: widget.error,
   );
   final _recordings = RecordingStore.instance;
+
+  /// The system's crash report matching the unexpected end (macOS, Windows).
+  SystemCrashReport? _system;
+  bool _includeSystem = true;
+
+  /// Shared or saved: now the public issue can follow.
+  bool _exported = false;
 
   /// Days in the long-term history (a source even without a recording).
   List<HistoryDay> _days = const [];
@@ -127,7 +166,19 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
     super.initState();
     widget.log?.addListener(_grew);
     _loadSources();
+    if (widget.crash) unawaited(_findSystemReport());
   }
+
+  Future<void> _findSystemReport() async {
+    final report = await (widget.systemReports ?? SystemCrashFinder.forDevice()).find(_occurred);
+    if (report != null && mounted) setState(() => _system = report);
+  }
+
+  /// Kind and module only, and only if the user keeps the tick.
+  Map<String, Object?> _withSystem(Map<String, Object?> technical) => switch (_system) {
+    final report? when _includeSystem => {...technical, 'systemCrash': report.toJson()},
+    _ => technical,
+  };
 
   Future<void> _loadSources() async {
     await _recordings.load();
@@ -250,6 +301,8 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
       technical,
       _older,
       AnnotationStore.instance.all.length,
+      _system,
+      _includeSystem,
     );
     if (_preview == null || _previewKey != key) {
       _previewKey = key;
@@ -281,7 +334,7 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
       problem: withText ? _problem.text : '',
       expected: withText ? _expected.text : null,
       keepNames: _keepNames,
-      technical: technical,
+      technical: _withSystem(technical),
       log: appLogLines(),
       knownNames: knownPrivateNames(tunnel: widget.tunnel),
     );
@@ -311,12 +364,46 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
       } else {
         await saveBytes(context, bytes, name, mimeType: 'application/zip');
       }
+      if (mounted) setState(() => _exported = true);
     } on Exception catch (e) {
       debugPrint('Diagnosepaket: $e');
       if (mounted) showHorizontMessage(context, s.exportFailedGeneric, status: HorizontStatus.critical);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// What goes into the public issue: nothing from the log.
+  CrashIssue _issue(Map<String, Object?> technical) {
+    final app = (technical['app'] as Map?) ?? const {};
+    String platform;
+    try {
+      platform = issuePlatform;
+    } on Object {
+      platform = kIsWeb ? 'Browser' : defaultTargetPlatform.name;
+    }
+    return (
+      version: app['version'] as String? ?? '?',
+      platform: platform,
+      time: _dateTime(_occurred),
+      reason: switch (_system) {
+        final report? when _includeSystem => report.kind,
+        _ => s.diagIssueReasonCrash,
+      },
+    );
+  }
+
+  Future<void> _reportIssue(CrashIssue issue) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final colors = context.hz;
+    final uri = crashIssueUrl(issue);
+    try {
+      final open = widget.openUrl ?? (u) => launchUrl(u, mode: LaunchMode.externalApplication);
+      if (await open(uri)) return;
+    } on Object catch (e) {
+      debugPrint('GitHub nicht geöffnet: $e');
+    }
+    messenger.showSnackBar(horizontMessageSnackBar(colors, s.diagIssueFailed, status: HorizontStatus.warning));
   }
 
   static bool get _shares =>
@@ -410,6 +497,14 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
                 subtitle: Text(s.diagShotsHint),
                 value: _includeShots,
                 onChanged: (v) => setState(() => _includeShots = v),
+              ),
+            ],
+            if (_system case final report?) ...[
+              const SizedBox(height: Gap.section),
+              SystemCrashCard(
+                report: report,
+                included: _includeSystem,
+                onChanged: (v) => setState(() => _includeSystem = v),
               ),
             ],
           ];
@@ -507,6 +602,7 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
                       // so its comments carry no image references either.
                       shots: _includeShots ? _shotIds.length.clamp(0, maxShotsPerPackage) : 0,
                       shotsLeftOut: _includeShots ? 0 : _shotIds.length,
+                      systemCrash: _system != null && _includeSystem,
                     ),
             ),
             Align(
@@ -515,12 +611,20 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
             ),
             const SizedBox(height: Gap.section),
             Builder(
-              builder: (buttonContext) => FilledButton.icon(
-                onPressed: package == null || _busy ? null : () => _export(rectOf(buttonContext)),
-                icon: Icon(_shares ? AppIcons.share : AppIcons.save),
-                label: Text(_shares ? s.diagShare : (kIsWeb ? s.diagDownload : s.diagSave)),
-              ),
+              builder: (buttonContext) {
+                final onPressed = package == null || _busy ? null : () => _export(rectOf(buttonContext));
+                final icon = Icon(_shares ? AppIcons.share : AppIcons.save);
+                final label = Text(_shares ? s.diagShare : (kIsWeb ? s.diagDownload : s.diagSave));
+                // After a crash and once shared, the issue is the next step.
+                return widget.crash && _exported
+                    ? OutlinedButton.icon(onPressed: onPressed, icon: icon, label: label)
+                    : FilledButton.icon(onPressed: onPressed, icon: icon, label: label);
+              },
             ),
+            if (widget.crash && _exported && snapshot.data != null) ...[
+              const SizedBox(height: Gap.section),
+              CrashIssueCard(issue: _issue(snapshot.data!), onReport: _reportIssue),
+            ],
           ];
           return ListView(
             padding: EdgeInsets.fromLTRB(side, Gap.page.top, side, Gap.page.bottom),
@@ -559,7 +663,10 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
 
 /// What is in the package, and what is not.
 class _Contents extends StatelessWidget {
-  const _Contents({required this.package, this.shots = 0, this.shotsLeftOut = 0});
+  const _Contents({required this.package, this.shots = 0, this.shotsLeftOut = 0, this.systemCrash = false});
+
+  /// Kind and module of the system's crash report are in it.
+  final bool systemCrash;
 
   final DiagnosticsPackage package;
 
@@ -597,6 +704,7 @@ class _Contents extends StatelessWidget {
         if (WriteNotice.instance.dismissedAt case final at?)
           line(AppIcons.info, s.diagContentWriteNotice(at.toLocal().toIso8601String().substring(0, 10))),
         if (package.log.isNotEmpty) line(AppIcons.diagnostics, s.diagContentLog(package.log.length)),
+        if (systemCrash) line(AppIcons.diagnostics, s.diagContentSystemCrash),
         if (package.recording.annotations.isNotEmpty || shots > 0)
           line(AppIcons.annotation, s.diagContentAnnotations(package.recording.annotations.length, shots)),
         if (shotsLeftOut > 0) line(AppIcons.annotation, s.diagContentShotsOut(shotsLeftOut)),
@@ -604,6 +712,89 @@ class _Contents extends StatelessWidget {
         Text(s.diagExcluded, style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted)),
         const SizedBox(height: HzSpace.s4),
         Text(s.diagNotFiltered, style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted)),
+      ],
+    );
+  }
+}
+
+/// The system's crash report found for the unexpected end: only kind and
+/// module, and only with the tick.
+class SystemCrashCard extends StatelessWidget {
+  const SystemCrashCard({super.key, required this.report, required this.included, required this.onChanged});
+
+  final SystemCrashReport report;
+  final bool included;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodySmall?.copyWith(color: context.hz.textMuted);
+    final local = report.time.toLocal();
+    return SectionCard(
+      soft: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(s.diagSystemCrashTitle(report.system), style: theme.textTheme.titleSmall),
+          const SizedBox(height: HzSpace.s4),
+          Text(s.diagSystemCrashBody(formatTime(local, millis: false)), style: muted),
+          const SizedBox(height: HzSpace.s8),
+          HorizontFact(term: s.diagSystemCrashKind, value: report.kind, measured: true, selectable: true),
+          if (report.module case final module?)
+            HorizontFact(term: s.diagSystemCrashModule, value: module, measured: true, selectable: true),
+          CheckboxListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            title: Text(s.diagSystemCrashInclude),
+            value: included,
+            onChanged: (v) => onChanged(v ?? false),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Öffentlich melden" (report publicly): exactly the fields that go into the
+/// address of the new issue, then the button.
+class CrashIssueCard extends StatelessWidget {
+  const CrashIssueCard({super.key, required this.issue, required this.onReport});
+
+  final CrashIssue issue;
+  final ValueChanged<CrashIssue> onReport;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodySmall?.copyWith(color: context.hz.textMuted);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionCard(
+          soft: true,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(s.diagIssueTitle, style: theme.textTheme.titleSmall),
+              const SizedBox(height: HzSpace.s4),
+              Text(s.diagIssueIntro, style: muted),
+              const SizedBox(height: HzSpace.s8),
+              HorizontFact(term: s.diagIssueVersion, value: issue.version, measured: true, selectable: true),
+              HorizontFact(term: s.diagIssuePlatform, value: issue.platform, selectable: true),
+              HorizontFact(term: s.diagIssueTime, value: issue.time, measured: true, selectable: true),
+              HorizontFact(term: s.diagIssueReason, value: issue.reason, selectable: true),
+            ],
+          ),
+        ),
+        const SizedBox(height: Gap.inner),
+        FilledButton.icon(
+          onPressed: () => onReport(issue),
+          icon: const Icon(HorizontSymbols.openInNew),
+          label: Text(s.diagIssueButton),
+        ),
+        const SizedBox(height: HzSpace.s4),
+        Text(s.diagIssueHint, style: muted),
       ],
     );
   }

@@ -86,7 +86,7 @@ jobs:
         run: |
           set -e
           mkdir -p "$RUNNER_TEMP/data"
-          run() { docker run -d --name smoke -e ALLOW_ALL=1 -e BIND=0.0.0.0 -e TZ=Europe/Berlin -p 8765:8765 -v "$RUNNER_TEMP/data:/data" knx-monitor-smoke; }
+          run() { docker run -d --name smoke -e ALLOW_ALL=1 -e ALLOW_ALL_EXPOSED=1 -e BIND=0.0.0.0 -e TZ=Europe/Berlin -p 8765:8765 -v "$RUNNER_TEMP/data:/data" knx-monitor-smoke; }
           wait_up() { for i in $(seq 1 30); do curl -sf http://localhost:8765/api/bus >/dev/null && return 0; sleep 1; done; docker logs smoke; return 1; }
           run; wait_up
           curl -sf -X PUT -H 'Content-Type: application/json' -d '{"retentionDays": 30}' http://localhost:8765/api/bus | grep -q '"retentionDays":30'
@@ -108,12 +108,16 @@ jobs:
           # cable": blocked as long as LAN_ACCESS does not allow it.
           run() { docker run -d --name box -e BOX=1 -e BOX_PASSWORD=ci-box-pass -e BOX_NAME=KNX-Box-CI -e LAN_ACCESS=yes -e TZ=Europe/Berlin -p 8766:8765 -v "$RUNNER_TEMP/box:/data" knx-monitor-smoke; }
           code() { curl -s -o /dev/null -m 5 -w '%{http_code}' "$@"; }
-          # Without permission: 403, even with the correct password.
+          # Without LAN_ACCESS the container listens on its own loopback only, so
+          # the published port answers nothing, not even with the correct password.
           mkdir -p "$RUNNER_TEMP/box-closed"
           docker run -d --name box-closed -e BOX=1 -e BOX_PASSWORD=ci-box-pass -e TZ=Europe/Berlin -p 8767:8765 -v "$RUNNER_TEMP/box-closed:/data" knx-monitor-smoke
-          for i in $(seq 1 30); do [ "$(code http://localhost:8767/)" = 403 ] && break; sleep 1; done
-          test "$(code http://localhost:8767/)" = 403
-          test "$(code -u x:ci-box-pass http://localhost:8767/api/bus)" = 403
+          # "Port 8765" is logged after the bind, so the server is listening by then.
+          for i in $(seq 1 30); do docker logs box-closed 2>&1 | grep -q 'KNX Monitor: Port 8765' && break; sleep 1; done
+          docker logs box-closed 2>&1 | grep -q 'KNX Monitor: Port 8765'
+          docker logs box-closed 2>&1 | grep -q 'nur am Rechner selbst erreichbar'
+          test "$(code http://localhost:8767/ || true)" = 000
+          test "$(code -u x:ci-box-pass http://localhost:8767/api/bus || true)" = 000
           sudo grep -qx no "$RUNNER_TEMP/box-closed/app/lan-access"
           docker stop -t 10 box-closed && docker rm box-closed
           wait_up() { for i in $(seq 1 30); do [ "$(code http://localhost:8766/)" = 401 ] && return 0; sleep 1; done; docker logs box; return 1; }
@@ -142,14 +146,15 @@ jobs:
           test ${#admin} = 43
           test "$(code -H "Authorization: Bearer $admin" http://localhost:8766/api/box/devices)" = 200
           test "$(code -H "Authorization: Bearer $key" http://localhost:8766/api/box/devices)" = 403
-          # Clock: status in /api/box, accept the time from the iPhone. On the runner
-          # the container sees the runner's RTC: the clock counts as reliable and is correct,
-          # so "ok" is right. Only with "set" is a time request ready for the host.
-          curl -sf -H "Authorization: Bearer $key" http://localhost:8766/api/box | grep -q '"clock"'
-          res=$(curl -sf -H "Authorization: Bearer $key" -H 'Content-Type: application/json' \
+          # Clock: Docker keeps the host's time (#214). No box clock in /api/box and no
+          # /api/box/time, so no paired device can move the history's time stamps.
+          curl -sf -H "Authorization: Bearer $key" http://localhost:8766/api/box > "$RUNNER_TEMP/box.json"
+          # (`! grep` would not stop `set -e`.)
+          if grep -q '"clock"' "$RUNNER_TEMP/box.json"; then exit 1; fi
+          res=$(code -H "Authorization: Bearer $admin" -H 'Content-Type: application/json' \
             -d "{\"epochMs\": $(date +%s)000}" http://localhost:8766/api/box/time)
-          echo "$res" | grep -qE '"result":"(set|ok)"'
-          if echo "$res" | grep -q '"result":"set"'; then sudo test -f "$RUNNER_TEMP/box/app/time-request.json"; fi
+          [[ $res = 404 || $res = 405 ]]
+          sudo test ! -e "$RUNNER_TEMP/box/app/time-request.json"
           # /api/files/ hands out the server's own files to nobody.
           for f in access.json server.json box-password.txt lan-access; do
             test "$(code -H "Authorization: Bearer $key" http://localhost:8766/api/files/$f)" = 403

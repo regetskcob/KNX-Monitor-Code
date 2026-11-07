@@ -1,0 +1,57 @@
+# Opened from the app ("Als Issue melden" in the diagnostics package after an
+# unexpected end, lib/model/crash_issue.dart). The app fills the fields by id
+# from the address: version, platform, time, reason. Keep the ids in sync.
+name: Unerwartet beendet / Crash
+description: KNX Monitor wurde unerwartet beendet · KNX Monitor ended unexpectedly
+title: "Unerwartet beendet: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke für die Meldung! Die App hat nur Version, Plattform, Zeitpunkt und Grund eingetragen, kein Protokoll. Das **Diagnosepaket** (`.zip`) hängst du bitte unten selbst an. Es ist bereinigt, enthält aber Telegramme und je nach Auswahl Namen: Schau es vorher an. Bitte **kein** ETS-Projekt (`.knxproj`) öffentlich anhängen.
+
+        <details>
+        <summary>🇬🇧 English</summary>
+
+        Thanks for reporting! The app only filled in version, platform, time and reason, no log. Please attach the **diagnostics package** (`.zip`) below yourself. It is scrubbed but contains telegrams and, depending on your choice, names: have a look first. Please do **not** attach an ETS project (`.knxproj`) publicly.
+
+        </details>
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: App-Version · app version
+      placeholder: "1.9.10"
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Plattform / Platform
+      description: System und Version · system and version
+      placeholder: "macOS 15.1, Windows 11 Pro, Android, iOS 18.1 …"
+    validations:
+      required: true
+  - type: input
+    id: time
+    attributes:
+      label: Zeitpunkt / Time
+      description: Zuletzt im Vordergrund vor dem Ende · last in the foreground before the end
+      placeholder: "06.11.2026 14:32"
+  - type: input
+    id: reason
+    attributes:
+      label: Grund / Reason
+      description: Art des Fehlers laut System, sonst „unerwartet beendet“ · kind of error according to the system, otherwise "ended unexpectedly"
+      placeholder: "EXC_BAD_ACCESS (SIGSEGV)"
+  - type: textarea
+    id: what
+    attributes:
+      label: Was hast du gerade gemacht? / What were you doing?
+      description: Zum Beispiel verbunden, Datei geöffnet, Aufzeichnung exportiert · e.g. connected, opened a file, exported a recording
+  - type: textarea
+    id: package
+    attributes:
+      label: Diagnosepaket / Diagnostics package
+      description: Die `.zip`-Datei hier hineinziehen · drag the `.zip` file here

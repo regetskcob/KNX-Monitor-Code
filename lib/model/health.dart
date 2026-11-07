@@ -222,26 +222,12 @@ List<HealthFinding> readFindings({
 
 /// Cycle watcher: addresses that send regularly according to the history (median
 /// interval ≤ 6 h, at least 6 telegrams) but have now been silent for longer
-/// than three times that (at least 15 min).
-List<HealthFinding> cycleFindings(Iterable<Telegram> telegrams, DateTime now) {
-  final times = <int, List<DateTime>>{};
-  for (final t in telegrams) {
-    if (t.outgoing || t.type == TelegramType.read) continue;
-    (times[t.destination] ??= []).add(t.time);
-  }
-  final result = <HealthFinding>[];
-  for (final MapEntry(key: ga, value: list) in times.entries) {
-    if (list.length < 6) continue;
-    list.sort();
-    final gaps = [for (var i = 1; i < list.length; i++) list[i].difference(list[i - 1])]..sort();
-    final median = gaps[gaps.length ~/ 2];
-    if (median > const Duration(hours: 6) || median < const Duration(seconds: 1)) continue;
-    final silent = now.difference(list.last);
-    final limit = median * 3 < const Duration(minutes: 15) ? const Duration(minutes: 15) : median * 3;
-    if (silent > limit) result.add(HealthFinding(FindingKind.overdue, ga, since: list.last, interval: median));
-  }
-  return result;
-}
+/// than three times that (at least 15 min). The rule itself is shared with the
+/// add-on server ([cycleSilencesOf] in package:knx).
+List<HealthFinding> cycleFindings(Iterable<Telegram> telegrams, DateTime now) => [
+  for (final s in cycleSilencesOf(telegrams, now))
+    HealthFinding(FindingKind.overdue, s.address, since: s.last, interval: s.interval),
+];
 
 /// Plausible range per measured quantity (DPT); `null` = no check.
 (double, double)? plausibleRange(Dpt dpt) => switch ((dpt.main, dpt.sub)) {

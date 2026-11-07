@@ -177,6 +177,31 @@ void main() {
       expect((await call('PUT', 'api/export', device, body: '{}')).$1, HttpStatus.forbidden);
     }, timeout: const Timeout(Duration(minutes: 2)));
 
+    test('Home-Assistant-Schnittstelle: nur gekoppeltes Gerät mit Admin-Recht', () async {
+      final (status, body) = await call('GET', 'api/ha/state', admin);
+      expect(status, 200);
+      expect((jsonDecode(body) as Map).keys, containsAll(['connected', 'recording', 'claimed', 'silent']));
+      expect((await call('GET', 'api/ha/watchers', admin)).$2, '[]');
+      expect((await call('GET', 'api/ha/silent', admin)).$2, '[]');
+      // Without admin rights, with the password or a wrong token: no.
+      expect((await call('GET', 'api/ha/state', device)).$1, HttpStatus.forbidden);
+      final page = (await call('POST', 'pair', password, body: 'name=Flur&viewOnly=1')).$2;
+      final viewer = 'Bearer ${RegExp(r'key=([A-Za-z0-9_-]+)').firstMatch(page)![1]}';
+      expect((await call('GET', 'api/ha/state', viewer)).$1, HttpStatus.forbidden);
+      expect((await call('POST', 'api/ha/recording', device, body: '{"on":false}')).$1, HttpStatus.forbidden);
+      expect((await call('GET', 'api/ha/state', password)).$1, HttpStatus.forbidden);
+      expect((await call('GET', 'api/ha/state', 'Bearer falsch')).$1, HttpStatus.unauthorized);
+      // The pairing page hands out a device with admin rights when asked to.
+      final managed = (await call('POST', 'pair', password, body: 'name=Home+Assistant&admin=1')).$2;
+      final ha = 'Bearer ${RegExp(r'key=([A-Za-z0-9_-]+)').firstMatch(managed)![1]}';
+      expect((await call('GET', 'api/ha/state', ha)).$1, 200);
+      expect((await call('POST', 'api/ha/claim', ha)).$2, '{"claimed":true}');
+      // Admin and view only together: admin wins, view only is dropped.
+      final both = (await call('POST', 'pair', password, body: 'name=Beides&admin=1&viewOnly=1')).$2;
+      final key = 'Bearer ${RegExp(r'key=([A-Za-z0-9_-]+)').firstMatch(both)![1]}';
+      expect((await call('GET', 'api/ha/state', key)).$1, 200);
+    }, timeout: const Timeout(Duration(minutes: 2)));
+
     test('Roh-Relay nur mit Admin-Recht', () async {
       expect((await call('GET', 'ws', device)).$1, HttpStatus.forbidden);
     }, timeout: const Timeout(Duration(minutes: 2)));
@@ -415,6 +440,68 @@ void main() {
     expect('${result.stderr}', contains('BOX_PASSWORD fehlt'));
     expect('${result.stdout}', isNot(contains('Passwort')));
     expect(File('${data.path}/access.json').existsSync(), isFalse);
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
+  Future<ProcessResult> run(Map<String, String> env) => Process.run(
+    'dart',
+    ['run', 'bin/server.dart'],
+    environment: {'PORT': '$port', 'DATA_DIR': data.path, 'WEB_DIR': web.path, ...env},
+  );
+
+  test('Docker mit zu kurzem Passwort startet nicht', () async {
+    final result = await run({'BOX': '1', 'BOX_PASSWORD': '1234'});
+    expect(result.exitCode, 78);
+    expect('${result.stderr}', contains('zu kurz'));
+    expect(File('${data.path}/access.json').existsSync(), isFalse);
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('ALLOW_ALL ins Netzwerk nur mit ALLOW_ALL_EXPOSED', () async {
+    final result = await run({'ALLOW_ALL': '1', 'BIND': '0.0.0.0'});
+    expect(result.exitCode, 78);
+    expect('${result.stderr}', contains('ALLOW_ALL_EXPOSED'));
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('Docker ohne LAN_ACCESS lauscht nur auf Loopback, Passwort aus Datei', () async {
+    final secrets = Directory.systemTemp.createTempSync('knx_secret');
+    addTearDown(() => secrets.deleteSync(recursive: true));
+    final secret = File('${secrets.path}/box_password')..writeAsStringSync('datei-pass\n');
+    await start(env: {'BOX': '1', 'BOX_PASSWORD_FILE': secret.path});
+    final lan = (await NetworkInterface.list(type: InternetAddressType.IPv4))
+        .expand((i) => i.addresses)
+        .where((a) => !a.isLoopback)
+        .firstOrNull;
+    if (lan != null) {
+      await expectLater(
+        Socket.connect(lan, port, timeout: const Duration(seconds: 2)),
+        throwsA(isA<SocketException>()),
+      );
+    }
+    final client = HttpClient();
+    addTearDown(client.close);
+    final request = await client.getUrl(Uri.parse('http://127.0.0.1:$port/api/bus'));
+    request.headers.set(HttpHeaders.authorizationHeader, 'Basic ${base64.encode(utf8.encode('x:datei-pass'))}');
+    final response = await request.close();
+    await response.drain<void>();
+    expect(response.statusCode, 200);
+    // Die Box-Uhr gibt es im Container nicht: die Zeit kommt vom Host.
+    final time = await client.postUrl(Uri.parse('http://127.0.0.1:$port/api/box/time'));
+    time.headers.set(HttpHeaders.authorizationHeader, 'Basic ${base64.encode(utf8.encode('x:datei-pass'))}');
+    time.write('{"epochMs":4102444700000}');
+    final answer = await time.close();
+    await answer.drain<void>();
+    expect(answer.statusCode, 404);
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('X-Ingress-Path nur vom Ingress-Proxy', () async {
+    await start(env: {'BOX': '1', 'BOX_PASSWORD': 'test-pass', 'LAN_ACCESS': 'yes'});
+    final client = HttpClient();
+    addTearDown(client.close);
+    final request = await client.getUrl(Uri.parse('http://127.0.0.1:$port/'));
+    request.headers
+      ..set(HttpHeaders.authorizationHeader, 'Basic ${base64.encode(utf8.encode('x:test-pass'))}')
+      ..set('X-Ingress-Path', '//evil.example');
+    final response = await request.close();
+    expect(await utf8.decodeStream(response), contains('<base href="/">'));
   }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('config.yaml zeigt den Watchdog auf das Lebenszeichen', () async {

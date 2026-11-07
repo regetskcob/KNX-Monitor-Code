@@ -10,6 +10,9 @@ class FakeSink implements MqttSink {
   final published = <(String, String, bool)>[];
   final subscribed = <String>[];
   final retained = <String, String>{};
+
+  /// Topics sent with QoS 0 (the telegram stream).
+  final atMostOnce = <String>[];
   (String, String)? will;
   final _messages = StreamController<(String, String)>.broadcast();
 
@@ -18,9 +21,10 @@ class FakeSink implements MqttSink {
       will = (willTopic, willPayload);
 
   @override
-  void publish(String topic, String payload, {bool retain = false}) {
+  void publish(String topic, String payload, {bool retain = false, bool atMostOnce = false}) {
     published.add((topic, payload, retain));
     if (retain) retained[topic] = payload;
+    if (atMostOnce) this.atMostOnce.add(topic);
   }
 
   @override

@@ -82,8 +82,9 @@ dart test
 ALLOW_ALL=1 PORT=8766 WEB_DIR=$PWD/../../../build/web DATA_DIR=/tmp/knx-data dart run bin/server.dart
 ```
 
-`ALLOW_ALL=1` turns off the Home Assistant Ingress check; use it on your own
-machine only. To install a local build into Home Assistant:
+`ALLOW_ALL=1` turns off every access check; use it on your own machine only.
+It listens on 127.0.0.1, and the server refuses a network `BIND` with it
+unless `ALLOW_ALL_EXPOSED=1` is set too (only for throwaway CI containers). To install a local build into Home Assistant:
 `tool/build_ha_addon.sh hassio@homeassistant.local` (copies the add-on over
 SSH to `/addons`; then **Check for updates** in the add-on store).
 

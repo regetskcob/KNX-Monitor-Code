@@ -4559,7 +4559,7 @@ abstract class AppLocalizations {
   /// Help for the HAT bus monitor switch.
   ///
   /// In de, this message translates to:
-  /// **'Alle Frames mit Quittungen (ACK/NAK/BUSY) für den Busmonitor. Die Box hört dann nur: kein Lesen oder Schreiben aus der App.'**
+  /// **'Alle Frames mit Quittungen (ACK/NAK/BUSY) für den Busmonitor. Die Box hört dann nur: kein Lesen oder Schreiben aus der App. Der kBerry gibt dabei etwa jeden zweiten Datenrahmen nicht aus; zum vollständigen Aufzeichnen Link Layer verwenden.'**
   String get connectHatBusmonitorHelp;
 
   /// Tooltip: re-enable filter.
@@ -5702,6 +5702,72 @@ abstract class AppLocalizations {
   /// **'Mit diesem Gerät stellen'**
   String get boxClockSetNow;
 
+  /// Box settings section: temperature and power supply
+  ///
+  /// In de, this message translates to:
+  /// **'Raspberry Pi'**
+  String get boxHealth;
+
+  /// Current and highest SoC temperature
+  ///
+  /// In de, this message translates to:
+  /// **'SoC {temp} °C, höchstens {max} °C seit dem Start'**
+  String boxHealthTemp(String temp, String max);
+
+  /// Power and throttling fine
+  ///
+  /// In de, this message translates to:
+  /// **'Keine Unterspannung, keine Drosselung'**
+  String get boxHealthOk;
+
+  /// Under-voltage right now
+  ///
+  /// In de, this message translates to:
+  /// **'Unterspannung: Das Netzteil liefert zu wenig. Ein Netzteil mit 5,1 V und 3 A verwenden, beim Pi 5 mit 5 A.'**
+  String get boxHealthUnderVoltage;
+
+  /// Thermal throttling right now
+  ///
+  /// In de, this message translates to:
+  /// **'Der Pi drosselt gerade wegen Hitze. Das Gehäuse braucht mehr Luft oder einen Kühlkörper.'**
+  String get boxHealthThrottled;
+
+  /// Throttling seen since boot
+  ///
+  /// In de, this message translates to:
+  /// **'Seit dem Einschalten: {list}'**
+  String boxHealthBefore(String list);
+
+  /// Throttling seen since the server started (hwmon fallback)
+  ///
+  /// In de, this message translates to:
+  /// **'Seit dem Serverstart: {list}'**
+  String boxHealthBeforeServer(String list);
+
+  /// Throttle flag
+  ///
+  /// In de, this message translates to:
+  /// **'Unterspannung'**
+  String get boxHealthFlagUnderVoltage;
+
+  /// Throttle flag
+  ///
+  /// In de, this message translates to:
+  /// **'Takt begrenzt'**
+  String get boxHealthFlagFreqCapped;
+
+  /// Throttle flag
+  ///
+  /// In de, this message translates to:
+  /// **'Gedrosselt'**
+  String get boxHealthFlagThrottled;
+
+  /// Throttle flag
+  ///
+  /// In de, this message translates to:
+  /// **'Temperaturgrenze erreicht'**
+  String get boxHealthFlagSoftTempLimit;
+
   /// Switch
   ///
   /// In de, this message translates to:
@@ -6169,6 +6235,18 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Seit 15 Sekunden kein Frame. Ist die Linie gerade still, löst ein Taster oder „Lesen“ Verkehr aus. Manche IP-Schnittstellen liefern im Busmonitor-Modus nichts; dann hilft der Live-Monitor.'**
   String get busmonQuietHint;
+
+  /// Busmonitor: ACKs ohne vorausgehenden Datenrahmen (Gateway)
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Quittung} other{{count} Quittungen}} ohne Datenrahmen davor: Die Schnittstelle hat im Busmonitor nicht jeden Datenrahmen ausgegeben. Für die Aufzeichnung zählt der Live-Monitor.'**
+  String busmonOrphanAcks(int count);
+
+  /// Busmonitor über den KNX-HAT der Box: ACKs ohne vorausgehenden Datenrahmen
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Quittung} other{{count} Quittungen}} ohne Datenrahmen davor: Der KNX-HAT (kBerry) gibt im Busmonitor etwa jeden zweiten Datenrahmen nicht aus. Vollständig zeichnet die Box im Link Layer auf, der Busmonitor zeigt Quittungen und Busfehler.'**
+  String busmonOrphanAcksHat(int count);
 
   /// Zeile im Menü ohne Expertenmodus; Tippen schaltet ihn ein
   ///
@@ -8119,6 +8197,12 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'{frames} Frames: {ack} ACK, {nak} NAK, {busy} BUSY, {repeated} Wiederholungen, {errors} mit Fehlern'**
   String boxHatBusmonCounts(int frames, int ack, int nak, int busy, int repeated, int errors);
+
+  /// KNX HAT test: frames the module saw but did not pass on.
+  ///
+  /// In de, this message translates to:
+  /// **'{missing} Datenrahmen nicht ausgegeben (Folgenummer), {orphans} ACK ohne Rahmen. Bekannt beim kBerry: zum Aufzeichnen Link Layer wählen.'**
+  String boxHatBusmonGaps(int missing, int orphans);
 
   /// KNX HAT test: no frames received while listening.
   ///
@@ -15301,6 +15385,288 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Zu viele Fehlversuche. Beende die App und öffne sie neu, dann kannst du es noch einmal versuchen.'**
   String get appLockRestart;
+
+  /// Absturzerkennung: Grund (Server vom System wegen Speichermangel beendet)
+  ///
+  /// In de, this message translates to:
+  /// **'Speicher voll'**
+  String get restartReasonOom;
+
+  /// Absturzerkennung: Grund (Signal)
+  ///
+  /// In de, this message translates to:
+  /// **'vom System beendet'**
+  String get restartReasonSignal;
+
+  /// Absturzerkennung: Grund mit Signalname, z. B. SIGSEGV
+  ///
+  /// In de, this message translates to:
+  /// **'vom System beendet ({signal})'**
+  String restartReasonSignalNamed(String signal);
+
+  /// Absturzerkennung: Grund (systemd-Watchdog)
+  ///
+  /// In de, this message translates to:
+  /// **'Watchdog'**
+  String get restartReasonWatchdog;
+
+  /// Absturzerkennung: Titel der Liste
+  ///
+  /// In de, this message translates to:
+  /// **'Neustarts des Servers'**
+  String get restartsTitle;
+
+  /// Absturzerkennung: Bedienhilfe der Statuszeile
+  ///
+  /// In de, this message translates to:
+  /// **'Neustarts anzeigen'**
+  String get restartsShow;
+
+  /// Absturzerkennung: Erklärung auf der KNX-Box
+  ///
+  /// In de, this message translates to:
+  /// **'Letzte 30 Tage. systemd startet den Server nach 3 s neu, die Aufzeichnung läuft dann weiter.'**
+  String get restartsIntroBox;
+
+  /// Absturzerkennung: Erklärung im Add-on oder Docker
+  ///
+  /// In de, this message translates to:
+  /// **'Letzte 30 Tage. Nach einem unerwarteten Ende läuft die Aufzeichnung weiter, sobald der Server wieder gestartet ist.'**
+  String get restartsIntro;
+
+  /// Absturzerkennung: Eintrag
+  ///
+  /// In de, this message translates to:
+  /// **'zuletzt am Leben {time}'**
+  String restartsLastSeen(String time);
+
+  /// Absturzerkennung: Eintrag
+  ///
+  /// In de, this message translates to:
+  /// **'Version {version}'**
+  String restartsVersion(String version);
+
+  /// Absturzerkennung: Eintrag, Dauer ohne Server
+  ///
+  /// In de, this message translates to:
+  /// **'Lücke {duration}'**
+  String restartsGap(String duration);
+
+  /// Absturzerkennung: Eintrag mit falscher Uhr beim Start
+  ///
+  /// In de, this message translates to:
+  /// **'Lücke unbekannt'**
+  String get restartsGapUnknown;
+
+  /// Absturzerkennung: Eintrag
+  ///
+  /// In de, this message translates to:
+  /// **'Fehlertext nur für Admins sichtbar'**
+  String get restartsErrorAdminOnly;
+
+  /// Absturzerkennung: Kennung der Legende
+  ///
+  /// In de, this message translates to:
+  /// **'Mögliche Gründe'**
+  String get restartsReasons;
+
+  /// Absturzerkennung: Legende
+  ///
+  /// In de, this message translates to:
+  /// **'Die Gründe kommen von systemd. Ohne diese Angabe, etwa im Add-on, steht „Grund unbekannt“.'**
+  String get restartsLegend;
+
+  /// Absturzerkennung: Knopf
+  ///
+  /// In de, this message translates to:
+  /// **'Im Verlauf zeigen'**
+  String get restartsShowHistory;
+
+  /// Absturzerkennung: leere Liste
+  ///
+  /// In de, this message translates to:
+  /// **'Keine unerwarteten Neustarts in den letzten 30 Tagen.'**
+  String get restartsEmpty;
+
+  /// Absturzerkennung: Fehler beim Laden
+  ///
+  /// In de, this message translates to:
+  /// **'Die Liste ist gerade nicht abrufbar.'**
+  String get restartsUnavailable;
+
+  /// Absturzerkennung: mehrere Abstürze in Folge
+  ///
+  /// In de, this message translates to:
+  /// **'{count}. unerwartetes Ende in Folge'**
+  String crashStreak(int count);
+
+  /// Absturzerkennung: mehrere Abstürze in Folge
+  ///
+  /// In de, this message translates to:
+  /// **'{count}. unerwartetes Ende in Folge, jedes Mal kurz nach dem Verbinden'**
+  String crashStreakAfterConnect(int count);
+
+  /// Absturzerkennung: mehrere Abstürze in Folge
+  ///
+  /// In de, this message translates to:
+  /// **'Vorschlag: einmal ohne automatisches Verbinden starten, um den Fehler einzugrenzen.'**
+  String get crashStreakHint;
+
+  /// Absturzerkennung: Knopf, startet diesmal ohne automatisches Verbinden
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne Verbinden'**
+  String get crashWithoutConnect;
+
+  /// Absturzerkennung: Banner in anderen Ansichten
+  ///
+  /// In de, this message translates to:
+  /// **'Unerwartet beendet am {time}. Bericht?'**
+  String crashBanner(String time);
+
+  /// Absturzerkennung: Banner, öffnet das Diagnosepaket
+  ///
+  /// In de, this message translates to:
+  /// **'Ansehen'**
+  String get crashBannerView;
+
+  /// Diagnosepaket: Karte für das öffentliche Issue
+  ///
+  /// In de, this message translates to:
+  /// **'Öffentlich melden'**
+  String get diagIssueTitle;
+
+  /// Diagnosepaket: Karte für das öffentliche Issue
+  ///
+  /// In de, this message translates to:
+  /// **'Im Issue stehen nur diese Angaben, kein Protokoll:'**
+  String get diagIssueIntro;
+
+  /// Diagnosepaket: Feld
+  ///
+  /// In de, this message translates to:
+  /// **'Version'**
+  String get diagIssueVersion;
+
+  /// Diagnosepaket: Feld
+  ///
+  /// In de, this message translates to:
+  /// **'Plattform'**
+  String get diagIssuePlatform;
+
+  /// Diagnosepaket: Feld
+  ///
+  /// In de, this message translates to:
+  /// **'Zeitpunkt'**
+  String get diagIssueTime;
+
+  /// Diagnosepaket: Feld
+  ///
+  /// In de, this message translates to:
+  /// **'Grund'**
+  String get diagIssueReason;
+
+  /// Diagnosepaket: Grund ohne Bericht des Systems
+  ///
+  /// In de, this message translates to:
+  /// **'unerwartet beendet'**
+  String get diagIssueReasonCrash;
+
+  /// Diagnosepaket: Knopf, öffnet GitHub
+  ///
+  /// In de, this message translates to:
+  /// **'Als Issue melden'**
+  String get diagIssueButton;
+
+  /// Diagnosepaket: Hinweis zum Knopf
+  ///
+  /// In de, this message translates to:
+  /// **'Öffnet GitHub im Browser. Das Paket hängst du selbst an.'**
+  String get diagIssueHint;
+
+  /// Diagnosepaket: Fehler
+  ///
+  /// In de, this message translates to:
+  /// **'GitHub ließ sich nicht öffnen.'**
+  String get diagIssueFailed;
+
+  /// Diagnosepaket: Bericht des Betriebssystems, z. B. macOS
+  ///
+  /// In de, this message translates to:
+  /// **'Absturzbericht von {system} gefunden'**
+  String diagSystemCrashTitle(String system);
+
+  /// Diagnosepaket: Bericht des Betriebssystems
+  ///
+  /// In de, this message translates to:
+  /// **'Ein Bericht des Systems passt zum Zeitpunkt ({time}). Übernommen werden nur Art des Fehlers und Modul, kein Pfad und kein Benutzername.'**
+  String diagSystemCrashBody(String time);
+
+  /// Diagnosepaket: Bericht des Betriebssystems, Feld
+  ///
+  /// In de, this message translates to:
+  /// **'Art'**
+  String get diagSystemCrashKind;
+
+  /// Diagnosepaket: Bericht des Betriebssystems, Feld
+  ///
+  /// In de, this message translates to:
+  /// **'Modul'**
+  String get diagSystemCrashModule;
+
+  /// Diagnosepaket: Bericht des Betriebssystems, Auswahl
+  ///
+  /// In de, this message translates to:
+  /// **'Ins Paket übernehmen'**
+  String get diagSystemCrashInclude;
+
+  /// Diagnosepaket: Inhalt
+  ///
+  /// In de, this message translates to:
+  /// **'Absturzbericht des Systems: Art und Modul'**
+  String get diagContentSystemCrash;
+
+  /// Datenexport: Abschnitt
+  ///
+  /// In de, this message translates to:
+  /// **'MQTT: jedes Telegramm (Vorschau)'**
+  String get dataExportMqtt;
+
+  /// Datenexport: MQTT-Strom aus
+  ///
+  /// In de, this message translates to:
+  /// **'Aus. Einschalten im Add-on mit der Option „Jedes Telegramm an MQTT“, in Docker und auf der Box mit MQTT_TELEGRAMS=true.'**
+  String get dataExportMqttOff;
+
+  /// Datenexport: MQTT-Strom an
+  ///
+  /// In de, this message translates to:
+  /// **'An: {sent} gesendet, {dropped} verworfen (seit dem Start)'**
+  String dataExportMqttOn(int sent, int dropped);
+
+  /// Datenexport: Broker getrennt
+  ///
+  /// In de, this message translates to:
+  /// **'Broker nicht verbunden. Telegramme werden verworfen, bis er wieder erreichbar ist; der Verlauf hat sie.'**
+  String get dataExportMqttDisconnected;
+
+  /// Datenexport: Secure-Telegramme ausgelassen
+  ///
+  /// In de, this message translates to:
+  /// **'{count} KNX-Secure-Telegramme nicht gesendet. Sie gehen nur mit der Option „Auch KNX-Secure-Telegramme an MQTT“ (MQTT_SECURE_TELEGRAMS=true) hinaus, auf dem Broker sind sie Klartext.'**
+  String dataExportMqttSecureSkipped(int count);
+
+  /// Datenexport: Secure-Telegramme nicht entschlüsselt
+  ///
+  /// In de, this message translates to:
+  /// **'{count} KNX-Secure-Telegramme nicht gesendet, weil der Server sie nicht entschlüsseln konnte (kein Keyring, Schlüssel fehlt oder ungültig). Keyring aus der ETS unter Projekt › KNX Secure importieren.'**
+  String dataExportMqttUndecrypted(int count);
+
+  /// Datenexport: Secure-Telegramme an
+  ///
+  /// In de, this message translates to:
+  /// **'Auch KNX-Secure-Telegramme gehen entschlüsselt hinaus. Jeder, der den Broker lesen kann, sieht ihre Werte.'**
+  String get dataExportMqttSecureOn;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

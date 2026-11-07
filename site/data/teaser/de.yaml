@@ -59,6 +59,7 @@ addon:
     - { term: "Exporte", value: "Eine Seite für PDF, CSV, ETS-Datei, Berichte und ein ZIP mit allem" }
     - { term: "Experten", value: "Busmonitor mit Rohframes, Topologie, Abgleich mit dem ETS-Projekt, Inbetriebnahme-Checkliste" }
     - { term: "Verbindung", value: "Tunneling, Routing und KNX IP Secure" }
+    - { term: "Home Assistant", value: "Von Haus aus nur lesend; [Integration](https://github.com/regetskcob/KNX-Monitor-HA) mit Sensoren, Auslösern und Reparaturhinweisen, Ereignisse, Blueprints und MQTT" }
 apps:
   kennung: "03 — Bald als App"
   title: "Bald auch ohne Home Assistant, direkt am Gateway."
@@ -94,7 +95,7 @@ roadmap:
     - { term: "Bald", value: "**iPhone, iPad, Mac und Windows** im App Store und als Download für Windows", when: [android] }
     - { term: "Bald", value: "**Mac und Windows** im App Store und als Download für Windows", when: [both] }
     - { term: "Ausblick", value: "**Bauherren-Paket**: vom Alltagswunsch über Raumbuch und Grundriss bis zu den Unterlagen für den Elektriker. [Mehr dazu](/bauherren/)" }
-    - { term: "In Zukunft", value: "**KNX-Box**: ein Raspberry Pi als Telegramm-Schreiber vor Ort, zeichnet auf der Baustelle tagelang auf, ohne Home Assistant und ohne Internet. Bis die übrigen Apps erscheinen, richtest du sie mit der Linux-App ein" }
+    - { term: "Vorschau", value: "**[KNX-Box](/box/)**: ein Raspberry Pi als Telegramm-Schreiber vor Ort, zeichnet auf der Baustelle tagelang auf, ohne Home Assistant und ohne Internet. Bis die übrigen Apps erscheinen, richtest du sie mit der Linux-App ein" }
     - { term: "Apps", value: "Kostenlos nutzbar, mehr Werkzeuge mit Plus und Pro. In der Beta ist alles frei.", commerce: false }
 # Ab Abschnitt 05 die Landingpage: Funktionen, Expertenmodus, ETS-Projekt,
 # Verbindung, KNX-Box, Datenschutz und FAQ aus site/data/home und

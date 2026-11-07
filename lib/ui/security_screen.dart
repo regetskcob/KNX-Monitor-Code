@@ -183,7 +183,7 @@ class _Finding extends StatelessWidget {
             children: [
               Text(finding.title, style: theme.textTheme.titleSmall),
               const SizedBox(height: HzSpace.s4),
-              Text(finding.text, style: theme.textTheme.bodyMedium),
+              SelectableText(finding.text, style: theme.textTheme.bodyMedium),
             ],
           ),
         ),
