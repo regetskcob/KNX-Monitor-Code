@@ -1,17 +1,17 @@
 # Security
 
-How KNX Monitor protects the user's data and the KNX installation, written for
+How Busclear protects the user's data and the KNX installation, written for
 people who audit the code. Every statement points at the code that implements
 it; where the protection ends, the section says so.
 
-KNX Monitor comes in four forms that share one Dart code base:
+Busclear comes in four forms that share one Dart code base:
 
 | Form | Code | Where data lives |
 |---|---|---|
 | Native apps (iOS, iPadOS, Android, macOS, Windows, Linux) | `lib/` | App data directory, system keychain |
 | Home Assistant add-on (web app plus Dart server) | `lib/` (web build), `ha-addon/knx_monitor/server/` | Add-on data folder `/data/app` |
 | Docker container (same server, standalone) | `ha-addon/knx_monitor/server/` | Mounted `/data` |
-| KNX Box (Raspberry Pi image with the same server) | `ha-addon/knx_monitor/server/`, `box/` | SD card or SSD, `/var/lib/knx-box` |
+| Busclear Box (Raspberry Pi image with the same server) | `ha-addon/knx_monitor/server/`, `box/` | SD card or SSD, `/var/lib/knx-box` |
 
 Paths starting with `server/` are short for `ha-addon/knx_monitor/server/`.
 
@@ -26,7 +26,7 @@ Release and supply chain security has its own document:
 3. [App lock](#3-app-lock)
 4. [KNX Secure](#4-knx-secure)
 5. [Writing to the bus](#5-writing-to-the-bus)
-6. [Access to the add-on, Docker and the KNX Box](#6-access-to-the-add-on-docker-and-the-knx-box)
+6. [Access to the add-on, Docker and the Busclear Box](#6-access-to-the-add-on-docker-and-the-knx-box)
 7. [Outbound connections and what leaves the device](#7-outbound-connections-and-what-leaves-the-device)
 8. [Known limits](#8-known-limits)
 9. [Reporting a vulnerability](#reporting-a-vulnerability)
@@ -95,7 +95,7 @@ All encryption and decryption run in a persistent background isolate
 | | Data in the web app: it is stored by the add-on or box server (section 6). |
 
 Secrets that are not files never touch the data directory: KNX Secure keyrings,
-the KNX Box pairing (device token, Wi-Fi password) and the app lock state are
+the Busclear Box pairing (device token, Wi-Fi password) and the app lock state are
 stored in the keychain directly (`lib/knx/secure/keyring_store.dart`,
 `lib/model/box_connection.dart`, `lib/platform/key_vault.dart`).
 
@@ -157,7 +157,7 @@ Hardening on restore, all before anything is written:
 | GCM tag | Wrong password or tampering. |
 | ZIP limits: 512 MiB in total and per entry, 200,000 entries, checked from the central directory before extraction (`decodeZipLimited`) | Zip bombs. |
 | Every path relative, no `..`, `.`, empty segments, backslashes, NUL or drive letters; not `shared_preferences.json` or `nicht-lesbar/` (`FullBackup.safePath`) | Path traversal, overwriting plugin settings. |
-| Settings keys filtered with the same rule as on export (`FullBackup.keepsOut`) | A file cannot set the app lock, device identifiers or the consent to share a keyring with a KNX Box. |
+| Settings keys filtered with the same rule as on export (`FullBackup.keepsOut`) | A file cannot set the app lock, device identifiers or the consent to share a keyring with a Busclear Box. |
 | Keyrings only under keys starting with `knx_keyring:` | A file cannot write arbitrary keychain entries. |
 
 Limits: the decrypted ZIP holds the project and the KNX Secure keys in plain
@@ -172,7 +172,7 @@ Code: `lib/model/app_lock.dart`, `lib/platform/key_vault.dart`,
 The app lock covers the user interface when the app starts or returns from the
 background after a chosen timeout (immediately, 1, 5 or 15 minutes). The bus
 connection and alarms keep running behind it. It exists in the native apps only;
-in the web app the Home Assistant login or the KNX Box password decides
+in the web app the Home Assistant login or the Busclear Box password decides
 (`AppLock.available`).
 
 Two modes:
@@ -221,7 +221,7 @@ Limits:
 
 ## 4. KNX Secure
 
-KNX Monitor implements KNX IP Secure tunnelling (AN159) and KNX Data Secure for
+Busclear implements KNX IP Secure tunnelling (AN159) and KNX Data Secure for
 group communication (AN158) itself, using AES from `pointycastle` and an
 X25519 implementation in Dart. The structure follows xknx (MIT); the
 implementation is checked against the examples of the KNX Association and xknx.
@@ -259,7 +259,7 @@ Where the keyring lives:
 - **Native apps:** in the keychain, one entry per installation
   (`knx_keyring:<id>`), with `first_unlock_this_device`: no iCloud keychain
   sync, no migration through device backups. It leaves the device only in a
-  full backup (section 2), or on a KNX Box after an explicit question per box
+  full backup (section 2), or on a Busclear Box after an explicit question per box
   and certificate (`lib/model/box_keyring_consent.dart`,
   `test/backup_hardening_test.dart`, group "Keyring zur Box").
 - **Add-on and box:** as the file `secure_keys.json` in the data folder of the
@@ -333,7 +333,7 @@ diagnostics packages. Tests: `test/write_notice_test.dart`,
 `test/write_path_test.dart`.
 
 This is a user interface safeguard, not an access control: anyone with network
-access to an unencrypted gateway can send telegrams without KNX Monitor.
+access to an unencrypted gateway can send telegrams without Busclear.
 
 ### Read-only mode of the server
 
@@ -343,7 +343,7 @@ access to an unencrypted gateway can send telegrams without KNX Monitor.
 | Where | Default |
 |---|---|
 | Home Assistant add-on | Option `read_only`, **on** (`ha-addon/knx_monitor/config.yaml`) |
-| Docker, KNX Box | `READ_ONLY=1`, off |
+| Docker, Busclear Box | `READ_ONLY=1`, off |
 
 With read-only on:
 
@@ -368,7 +368,7 @@ accepts only the command to start or stop recording, never bus telegrams
 `BusService._clientSend` (`server/lib/src/bus.dart`). Test:
 `server/test/robust_frames_test.dart`.
 
-On the KNX Box and in Docker, a device paired without the box password (role
+On the Busclear Box and in Docker, a device paired without the box password (role
 `device`) may send over `/ws/bus` only frames for which `deviceMaySend` is true:
 
 - a complete `L_Data.req` whose length byte matches the frame exactly,
@@ -426,7 +426,7 @@ Rules in `ha-addon/knx_monitor/server/lib/src/relay_policy.dart`, tests in
   assembles a message before handing it over, so one such message is still
   held in memory, but no longer more than was actually sent.
 
-## 6. Access to the add-on, Docker and the KNX Box
+## 6. Access to the add-on, Docker and the Busclear Box
 
 ### Home Assistant add-on: Ingress only
 
@@ -464,14 +464,14 @@ Exceptions:
 - The optional Prometheus endpoint uses its own port (see section 7).
 
 Every response carries `X-Content-Type-Options: nosniff` and
-`Referrer-Policy: no-referrer`. In box mode (KNX Box, Docker) every response
+`Referrer-Policy: no-referrer`. In box mode (Busclear Box, Docker) every response
 also carries `X-Frame-Options: DENY` and `Content-Security-Policy:
 frame-ancestors 'none'`, so no other page can show the box in a frame
 (clickjacking). The add-on cannot send them: Home Assistant shows it in a frame
 through Ingress.
 
 
-The KNX Monitor integration reaches the add-on with its own token on
+The Busclear integration reaches the add-on with its own token on
 `/api/ha/*` only. The add-on hands the token to Home Assistant through the
 Supervisor discovery (`POST /discovery`). Reading discovery messages
 (`GET /discovery`) is restricted by the Supervisor to Home Assistant Core
@@ -480,7 +480,7 @@ add-ons cannot read it, also not with the `admin` role. Afterwards the token
 lives in the integration's config entry like any other integration secret; the
 integration's diagnostics redact it.
 
-Without Supervisor (KNX Box, Docker; `BOX=1`) there is no discovery and no such
+Without Supervisor (Busclear Box, Docker; `BOX=1`) there is no discovery and no such
 token: the server does not create one (`HaIntegration.tokenAccess`), and one left
 from an earlier start in the add-on is removed. Instead `/api/ha/*` takes a paired
 device with admin rights, sent as `Authorization: Bearer` (the token from a
@@ -494,7 +494,7 @@ follow redirects, and with a fingerprint in the link (`fp`, `TLS_CERT`) speaks
 HTTPS and accepts only that certificate (`aiohttp.Fingerprint`). Without a
 certificate the token crosses the network in plain text, like the app's.
 
-### KNX Box and Docker: password, pairing, roles
+### Busclear Box and Docker: password, pairing, roles
 
 `BOX=1` switches the server to standalone mode with its own authentication
 (`ha-addon/knx_monitor/server/lib/src/box_access.dart`, `BoxAccess.guard`).
@@ -621,7 +621,7 @@ Limits against overload, for all roles:
   writes to the same file run one after another (`writeAtomic` in
   `server/lib/src/atomic_file.dart`), so parallel requests cannot interleave.
 
-### KNX Box specifics
+### Busclear Box specifics
 
 - **Network:** by default the box answers only clients in its own Wi-Fi
   (`10.42.0.0/24`) and itself. Access over Ethernet must be enabled explicitly
@@ -713,7 +713,7 @@ unreadable after an update.
 | From | To | When |
 |---|---|---|
 | App | KNX gateway (KNXnet/IP, UDP or TCP) | When the user connects |
-| App | KNX Box or Docker server | When paired |
+| App | Busclear Box or Docker server | When paired |
 | Web app | Its own server (Ingress, box) | Always |
 | Server | KNX gateway, or the KNX HAT on the box | Always while recording |
 | Server | Home Assistant Supervisor API (`http://supervisor/`) | Add-on: notifications, KNX integration status, MQTT broker lookup |
@@ -804,7 +804,7 @@ Collected from the sections above, and in `tool/public-repo/SECURITY.md`:
   as the same user.
 - Without a usable keychain (Linux without libsecret) the app's files stay
   unencrypted. Settings such as the gateway address are never encrypted.
-- Add-on, Docker and KNX Box store their data unencrypted, including the KNX
+- Add-on, Docker and Busclear Box store their data unencrypted, including the KNX
   Secure keyring (`secure_keys.json`) and IP Secure credentials (`server.json`).
   Whoever holds the box's SD card can read everything on it, and whoever can
   plug a drive labelled `KNXBOXDATA` into the box before a restart can replace
@@ -812,7 +812,7 @@ Collected from the sections above, and in `tool/public-repo/SECURITY.md`:
 - Home Assistant backups of the add-on (`backup: hot` in
   `ha-addon/knx_monitor/config.yaml`) contain the add-on's data folder as it is:
   `secure_keys.json`, `server.json`, the tokens for notifications, InfluxDB and
-  the KNX Monitor integration, in plain text. Whoever can read a backup can read
+  the Busclear integration, in plain text. Whoever can read a backup can read
   them; Home Assistant can encrypt backups with its own key.
 - The add-on maps the Home Assistant configuration writable
   (`homeassistant_config`, `read_only: false`), because it places the
@@ -851,6 +851,6 @@ Collected from the sections above, and in `tool/public-repo/SECURITY.md`:
 Please do not open a public issue for security problems. Use GitHub's
 [private vulnerability reporting](https://github.com/regetskcob/KNX-Monitor/security/advisories/new)
 on the repository `regetskcob/KNX-Monitor`. Only the latest release of the app,
-the add-on and the KNX Box receives security fixes. Scope and known limits are
+the add-on and the Busclear Box receives security fixes. Scope and known limits are
 listed in `tool/public-repo/SECURITY.md`, which is published as `SECURITY.md` in
 that repository.

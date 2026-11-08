@@ -1,5 +1,5 @@
 [Unit]
-Description=KNX Monitor Box: Uhrzeit regelmäßig merken
+Description=Busclear Box: Uhrzeit regelmäßig merken
 
 # A power cut loses at most this much time until the clock is set again.
 [Timer]

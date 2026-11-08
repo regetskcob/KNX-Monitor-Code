@@ -1,15 +1,15 @@
-# KNX Monitor
+# Busclear
 
 Bus monitor and diagnostics for KNX: a Flutter app for iPhone, iPad, Android,
 macOS, Windows, Linux and the browser, a Home Assistant add-on that records the
-bus around the clock, and the KNX Box, a Raspberry Pi that records on site.
+bus around the clock, and the Busclear Box, a Raspberry Pi that records on site.
 Everything that speaks KNX is written here in plain Dart: KNXnet/IP tunnelling
 and routing, cEMI, KNX IP Secure, KNX Data Secure, the ETS project parser and
 an FT1.2 link to the kBerry module. German and English.
 
-![KNX Monitor on the iPad: overview with values per group address](site/assets/images/ipad-overview-en.png)
+![Busclear on the iPad: overview with values per group address](site/assets/images/ipad-overview-en.png)
 
-- **Website:** <https://knx-monitor.de>
+- **Website:** <https://busclear.de>
 - **Releases, Home Assistant add-on repository, issues:**
   [regetskcob/KNX-Monitor](https://github.com/regetskcob/KNX-Monitor). Bugs,
   ideas and questions go there.
@@ -31,14 +31,14 @@ an FT1.2 link to the kBerry module. German and English.
 | Devices and charts | Actuators drawn as DIN-rail devices with live channel LEDs, charts for several addresses, statistics heatmap |
 | Connection | Tunnelling over UDP or TCP, routing, KNX IP Secure, KNX Data Secure with the ETS keyring |
 | Home Assistant | Permanent recording, alarms and watchers as notifications and events, MQTT device, blueprints, dashboard card, Prometheus and InfluxDB export, read-only mode |
-| KNX Box | Raspberry Pi image with its own Wi-Fi, IP gateway or kBerry on TP, set up from the app |
+| Busclear Box | Raspberry Pi image with its own Wi-Fi, IP gateway or kBerry on TP, set up from the app |
 
 A demo house is built in, so everything can be tried without a gateway.
 
 Some features of the apps from the App Store and Google Play are part of paid
 tiers there. The account with sync between devices, the solution for
 electrical contractors and the home planning package are commercial parts of
-KNX Monitor and not in this repository; the app builds and runs without them.
+Busclear and not in this repository; the app builds and runs without them.
 
 ## Documentation
 
@@ -50,7 +50,7 @@ or here in [docs/](docs/README.md), where it is written. Start with
 | --- | --- |
 | How the pieces fit together | [architecture.md](docs/architecture.md) |
 | Add-on server, permanent recording, protocol to the views | [addon-recording.md](docs/addon-recording.md) |
-| KNX Box: image, storage, compression, time, network | [knx-box.md](docs/knx-box.md) |
+| Busclear Box: image, storage, compression, time, network | [knx-box.md](docs/knx-box.md) |
 | kBerry on the Raspberry Pi, FT1.2 and cEMI, reusable | [kberry.md](docs/kberry.md) |
 | Encryption, backups, KNX Secure, access, what leaves the device | [security.md](docs/security.md) |
 | Backup file format | [backup-format.md](docs/backup-format.md) |
@@ -97,7 +97,7 @@ docker build -t knx-monitor --build-arg BUILD_VERSION="$(sed -n 's/^version: "\(
 
 Then use `image: knx-monitor` in the [compose file](tool/public-repo/docker/compose.yaml).
 
-**KNX Box image:** see [docs/knx-box.md](docs/knx-box.md). **Releases:**
+**Busclear Box image:** see [docs/knx-box.md](docs/knx-box.md). **Releases:**
 [docs/releasing.md](docs/releasing.md).
 
 **Everything CI checks, in one command:** `tool/release.sh verify` (layout,
@@ -111,9 +111,9 @@ websites).
 | `lib/` | The app: `knx/` protocol (no UI), `model/` state and rules, `platform/` platform specifics, `export/` PDF and other exports, `ui/` screens, `l10n/` texts (German is the template), `theme/` |
 | `test/`, `integration_test/` | Unit, widget and golden tests (`test/goldens/`); on-device tours |
 | `ha-addon/knx_monitor/` | Home Assistant add-on: Dockerfile, Dart server in `server/`, dashboard card |
-| `box/` | KNX Box: setup, systemd units, pi-gen image, printable case (`box/case/`) |
+| `box/` | Busclear Box: setup, systemd units, pi-gen image, printable case (`box/case/`) |
 | `third_party/` | Patched plugins, each with `README.vendored.md` |
-| `site/` | Website knx-monitor.de (Hugo) |
+| `site/` | Website busclear.de (Hugo) |
 | `docs/` | Technical documentation, index in [docs/README.md](docs/README.md) |
 | `tool/` | Release, deployment and build scripts; `werkbank/` is shared tooling (MIT), `public_source/` builds this public tree |
 

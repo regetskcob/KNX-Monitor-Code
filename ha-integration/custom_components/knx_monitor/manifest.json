@@ -1,6 +1,6 @@
 {
   "domain": "knx_monitor",
-  "name": "KNX Monitor",
+  "name": "Busclear",
   "after_dependencies": [
     "hassio"
   ],

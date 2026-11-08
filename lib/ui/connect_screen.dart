@@ -27,6 +27,7 @@ import '../platform/storage.dart';
 import '../platform/native_bridge.dart';
 import 'box_screens.dart';
 import 'connection_options_panel.dart';
+import 'tap_points_panel.dart';
 import '../catalog_store.dart';
 import '../model/commissioning.dart';
 import '../model/health.dart';
@@ -45,6 +46,7 @@ import 'recordings_screen.dart';
 import '../theme/app_icons.dart';
 import 'common.dart';
 import 'home_plan/home_plan_screen.dart';
+import '../knx/multi_tunnel.dart';
 import '../model/installation.dart';
 import 'installation_list.dart';
 import '../model/cloud_sync.dart';
@@ -231,7 +233,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
     }
   }
 
-  // --- KNX-Box (nativ) ----------------------------------------------------------
+  // --- Busclear Box (nativ) ----------------------------------------------------------
 
   /// Pairing link from the QR code: ask, then connect via the box. If the
   /// monitor is currently running, the link waits until it is closed.
@@ -530,7 +532,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
     await _loadAddon(autoOpen: true, report: true);
   }
 
-  /// "KNX-Box hinzufügen" (add KNX box): scan the QR code, paste it on desktop.
+  /// "Busclear Box hinzufügen" (add KNX box): scan the QR code, paste it on desktop.
   Future<void> _addBox() async {
     if (!await unlock(context, Feature.box) || !mounted) return;
     if (canScanBox) {
@@ -710,7 +712,13 @@ class _ConnectScreenState extends State<ConnectScreen> {
       // It switches continuous recording and fault hunting over only once the
       // new connection is up; otherwise the previous one stays.
       try {
-        _addon = await Addon.configure(await options.toAddonAsked(host: host, port: port), probe: true);
+        final taps = InstallationStore.instance.active.taps;
+        _addon = await Addon.configure({
+          ...await options.toAddonAsked(host: host, port: port),
+          // Further tap points (issue #8): the server holds and merges them. Only sent when this
+          // device has some, so that another device without them does not clear the box's.
+          if (taps.isNotEmpty) 'taps': [for (final t in taps) t.toAddon()],
+        }, probe: true);
       } on AddonException catch (e) {
         if (mounted) {
           setState(() {
@@ -724,7 +732,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
       tunnel = SharedTunnel(host: host, port: port);
     } else {
       try {
-        tunnel = options.create(host, port);
+        tunnel = withTapPoints(options.create(host, port), InstallationStore.instance.active, host);
       } on KnxException catch (e) {
         if (mounted) {
           setState(() {
@@ -1123,6 +1131,8 @@ class _ConnectScreenState extends State<ConnectScreen> {
                       hat: (_addon?['hat'] as Map?)?['present'] == true,
                     ),
                   ),
+                  const SizedBox(height: Gap.section),
+                  TapPointsPanel(enabled: !_busy),
                 ],
               ),
       ),

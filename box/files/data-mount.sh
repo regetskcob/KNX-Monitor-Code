@@ -22,7 +22,7 @@ for _ in 1 2 3 4 5 6; do
   sleep 0.5
 done
 if [ ! -e "$dev" ]; then
-  echo "KNX-Box: keine Datenpartition KNXBOXDATA, Daten auf der SD-Karte"
+  echo "Busclear Box: keine Datenpartition KNXBOXDATA, Daten auf der SD-Karte"
   exit 0
 fi
 
@@ -30,14 +30,14 @@ fi
 rc=0
 fsck.ext4 -p "$dev" || rc=$?
 if [ "$rc" -gt 1 ]; then
-  echo "KNX-Box: Prüfung von KNXBOXDATA fehlgeschlagen ($rc), Daten auf der SD-Karte" >&2
+  echo "Busclear Box: Prüfung von KNXBOXDATA fehlgeschlagen ($rc), Daten auf der SD-Karte" >&2
   exit 0
 fi
 install -d -m 0750 "$dir"
 # nosuid,nodev,noexec: whoever plugs in a drive labelled KNXBOXDATA decides its
 # content, so it must not bring set-uid programs, device nodes or executables.
 if ! mount -t ext4 -o noatime,commit=5,nosuid,nodev,noexec "$dev" "$dir"; then
-  echo "KNX-Box: KNXBOXDATA lässt sich nicht einhängen, Daten auf der SD-Karte" >&2
+  echo "Busclear Box: KNXBOXDATA lässt sich nicht einhängen, Daten auf der SD-Karte" >&2
   exit 0
 fi
-echo "KNX-Box: Daten auf KNXBOXDATA"
+echo "Busclear Box: Daten auf KNXBOXDATA"

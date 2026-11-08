@@ -24,7 +24,7 @@ configuration:
   dashboard_card:
     name: Dashboard card
     description: >-
-      Puts the “KNX Monitor chart” card into /config/www/knx-monitor/ and
+      Puts the “Busclear chart” card into /config/www/knx-monitor/ and
       registers it as a dashboard resource. It shows the charts saved in
       the app. Turn off if you do not need the card or manage resources
       yourself.
@@ -42,3 +42,25 @@ configuration:
       protected by KNX Data Secure, decrypted, in plain text. Anyone who can
       read the broker then sees exactly the values the encryption is meant
       to protect. Off by default.
+  mqtt_raw:
+    name: Send raw data too
+    description: >-
+      Only together with "Every telegram to MQTT". Adds the complete cEMI
+      frame as hex, the frame kind, priority, acknowledge request and a
+      checksum (key) to spot duplicate telegrams. Off by default.
+  mqtt_raw_only:
+    name: Raw data only
+    description: >-
+      Like "Send raw data too", but without name, device name, DPT, value
+      and unit from the ETS project, for databases that decode the values
+      themselves. Off by default.
+  mqtt_filter:
+    name: Only these group addresses to MQTT
+    description: >-
+      Empty: all. Otherwise three-level addresses or ranges separated by
+      commas, e.g. 1/#,3/2/#,4/1/7. Other telegrams stay off the broker.
+  mqtt_installation:
+    name: Installation ID (inst)
+    description: >-
+      Sent as inst in every MQTT message to tell several servers apart in
+      one database. Empty: the ID of the active installation.

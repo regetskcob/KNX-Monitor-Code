@@ -199,7 +199,7 @@ class _KnxMonitorAppState extends State<KnxMonitorApp> {
       builder: (context, _) => MaterialApp(
         navigatorKey: _navigator,
         navigatorObservers: [_routes],
-        title: 'KNX Monitor',
+        title: 'Busclear',
         debugShowCheckedModeBanner: false,
         scrollBehavior: const AppScrollBehavior(),
         // In the add-on (Ingress) with Home Assistant's neutral colours.

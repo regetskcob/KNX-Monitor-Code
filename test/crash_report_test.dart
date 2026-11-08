@@ -17,7 +17,7 @@ import 'package:knx_monitor/ui/server_restarts.dart';
 import 'package:knx_monitor/ui/support_package_screen.dart' show CrashIssueCard, SystemCrashCard;
 
 /// Shortened from a real macOS 15 report: header line, then the body.
-String ips({String proc = 'KNX Monitor', String capture = '2026-11-06 14:32:07.4410 +0100'}) =>
+String ips({String proc = 'Busclear', String capture = '2026-11-06 14:32:07.4410 +0100'}) =>
     '${jsonEncode({'app_name': proc, 'timestamp': '2026-11-06 14:32:08.00 +0100', 'app_version': '1.9.9', 'slice_uuid': '1c3a1b0e-0000-4000-8000-000000000000', 'build_version': '42', 'platform': 1, 'bundleID': 'de.regetskcob.knx-monitor', 'share_with_app_devs': 0, 'is_first_party': 0, 'bug_type': '309', 'os_version': 'macOS 15.1 (24B83)', 'roots_installed': 0, 'name': proc, 'incident_id': 'D2A1C5E4-0000-4000-8000-000000000000'})}\n${const JsonEncoder.withIndent('  ').convert({
       'uptime': 86000,
       'procRole': 'Foreground',
@@ -35,7 +35,7 @@ String ips({String proc = 'KNX Monitor', String capture = '2026-11-06 14:32:07.4
       'procStartAbsTime': 2000000000,
       'procExitAbsTime': 2100000000,
       'procName': proc,
-      'procPath': '/Applications/KNX Monitor.app/Contents/MacOS/KNX Monitor',
+      'procPath': '/Applications/Busclear.app/Contents/MacOS/Busclear',
       'bundleInfo': {'CFBundleShortVersionString': '1.9.9', 'CFBundleVersion': '42'},
       'parentProc': 'launchd',
       'parentPid': 1,
@@ -61,14 +61,14 @@ String ips({String proc = 'KNX Monitor', String capture = '2026-11-06 14:32:07.4
         },
       ],
       'usedImages': [
-        {'source': 'P', 'arch': 'arm64', 'base': 4295000000, 'size': 16384, 'uuid': '00000000-0000-4000-8000-000000000001', 'path': '/Applications/KNX Monitor.app/Contents/MacOS/KNX Monitor', 'name': 'KNX Monitor'},
-        {'source': 'P', 'arch': 'arm64', 'base': 4300000000, 'size': 40000000, 'uuid': '00000000-0000-4000-8000-000000000002', 'path': '/Users/daniel/Applications/KNX Monitor.app/Contents/Frameworks/FlutterMacOS.framework/Versions/A/FlutterMacOS', 'name': 'FlutterMacOS'},
+        {'source': 'P', 'arch': 'arm64', 'base': 4295000000, 'size': 16384, 'uuid': '00000000-0000-4000-8000-000000000001', 'path': '/Applications/Busclear.app/Contents/MacOS/Busclear', 'name': 'Busclear'},
+        {'source': 'P', 'arch': 'arm64', 'base': 4300000000, 'size': 40000000, 'uuid': '00000000-0000-4000-8000-000000000002', 'path': '/Users/daniel/Applications/Busclear.app/Contents/Frameworks/FlutterMacOS.framework/Versions/A/FlutterMacOS', 'name': 'FlutterMacOS'},
       ],
     })}';
 
 /// `wevtutil qe Application /f:xml` prints events one after the other.
 const windowsXml = '''
-<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Application Error' Guid='{a0e9b465-b939-57d7-b27d-95d8e925ff57}'/><EventID>1000</EventID><Version>0</Version><Level>2</Level><Task>100</Task><TimeCreated SystemTime='2026-11-06T13:32:09.1234567Z'/><Computer>BUERO-PC</Computer></System><EventData><Data Name='AppName'>knx_monitor.exe</Data><Data Name='AppVersion'>1.9.9.0</Data><Data Name='AppTimeStamp'>6543a1b2</Data><Data Name='ModuleName'>flutter_windows.dll</Data><Data Name='ModuleVersion'>0.0.0.0</Data><Data Name='ModuleTimeStamp'>65000000</Data><Data Name='ExceptionCode'>c0000005</Data><Data Name='FaultingOffset'>00000000001a2b3c</Data><Data Name='ProcessId'>0x105c</Data><Data Name='ProcessCreationTime'>0x1db30</Data><Data Name='AppPath'>C:\\Users\\daniel\\AppData\\Local\\KNX Monitor\\knx_monitor.exe</Data><Data Name='ModulePath'>C:\\Users\\daniel\\AppData\\Local\\KNX Monitor\\flutter_windows.dll</Data><Data Name='IntegratorReportId'>x</Data><Data Name='PackageFullName'></Data><Data Name='PackageRelativeAppId'></Data></EventData></Event>
+<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Application Error' Guid='{a0e9b465-b939-57d7-b27d-95d8e925ff57}'/><EventID>1000</EventID><Version>0</Version><Level>2</Level><Task>100</Task><TimeCreated SystemTime='2026-11-06T13:32:09.1234567Z'/><Computer>BUERO-PC</Computer></System><EventData><Data Name='AppName'>knx_monitor.exe</Data><Data Name='AppVersion'>1.9.9.0</Data><Data Name='AppTimeStamp'>6543a1b2</Data><Data Name='ModuleName'>flutter_windows.dll</Data><Data Name='ModuleVersion'>0.0.0.0</Data><Data Name='ModuleTimeStamp'>65000000</Data><Data Name='ExceptionCode'>c0000005</Data><Data Name='FaultingOffset'>00000000001a2b3c</Data><Data Name='ProcessId'>0x105c</Data><Data Name='ProcessCreationTime'>0x1db30</Data><Data Name='AppPath'>C:\\Users\\daniel\\AppData\\Local\\Busclear\\knx_monitor.exe</Data><Data Name='ModulePath'>C:\\Users\\daniel\\AppData\\Local\\Busclear\\flutter_windows.dll</Data><Data Name='IntegratorReportId'>x</Data><Data Name='PackageFullName'></Data><Data Name='PackageRelativeAppId'></Data></EventData></Event>
 <Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Application Error'/><EventID>1000</EventID><TimeCreated SystemTime='2026-11-06T13:30:00.0000000Z'/></System><EventData><Data>explorer.exe</Data><Data>10.0</Data><Data>0</Data><Data>ntdll.dll</Data><Data>10.0</Data><Data>0</Data><Data>c0000374</Data></EventData></Event>
 ''';
 
@@ -77,7 +77,7 @@ void main() {
 
   group('Absturzbericht macOS', () {
     test('liest Art und Modul, keinen Pfad', () {
-      final r = SystemCrashReport.parseIps(ips(), executable: 'KNX Monitor')!;
+      final r = SystemCrashReport.parseIps(ips(), executable: 'Busclear')!;
       expect(r.system, 'macOS');
       expect(r.kind, 'EXC_BAD_ACCESS (SIGSEGV)');
       expect(r.module, 'FlutterMacOS');
@@ -88,7 +88,7 @@ void main() {
     });
 
     test('fremde App und kaputte Datei geben nichts', () {
-      expect(SystemCrashReport.parseIps(ips(proc: 'Safari'), executable: 'KNX Monitor'), isNull);
+      expect(SystemCrashReport.parseIps(ips(proc: 'Safari'), executable: 'Busclear'), isNull);
       expect(SystemCrashReport.parseIps('kein json'), isNull);
       expect(SystemCrashReport.parseIps('{}\n{}'), isNull);
     });
@@ -97,7 +97,7 @@ void main() {
       final lastSeen = DateTime.utc(2026, 11, 6, 13, 31, 30);
       final finder = SystemCrashFinder(
         platform: TargetPlatform.macOS,
-        executable: 'KNX Monitor',
+        executable: 'Busclear',
         macFiles: (exe) async => [
           (name: '$exe-2026-11-06-143207.ips', modified: DateTime.utc(2026, 11, 6, 13, 32, 8), read: () async => ips()),
           (
@@ -115,7 +115,7 @@ void main() {
     test('ohne Zugriff (Sandbox) und auf Linux kein Bericht', () async {
       final sandboxed = SystemCrashFinder(
         platform: TargetPlatform.macOS,
-        executable: 'KNX Monitor',
+        executable: 'Busclear',
         macFiles: (_) async => throw const FileSystemExceptionStub(),
       );
       expect(await sandboxed.find(DateTime.now()), isNull);
@@ -150,8 +150,8 @@ void main() {
 
   group('Prozess läuft noch', () {
     test('ps: macOS mit Pfad, Linux auf 15 Zeichen gekürzt', () {
-      expect(commandMatches('/Applications/KNX Monitor.app/Contents/MacOS/KNX Monitor', 'KNX Monitor'), isTrue);
-      expect(commandMatches('/usr/bin/vim', 'KNX Monitor'), isFalse);
+      expect(commandMatches('/Applications/Busclear.app/Contents/MacOS/Busclear', 'Busclear'), isTrue);
+      expect(commandMatches('/usr/bin/vim', 'Busclear'), isFalse);
       expect(commandMatches('knx_monitor', 'knx_monitor'), isTrue);
       expect(commandMatches('knx_monitor_lon', 'knx_monitor_longer_name'), isTrue);
     });

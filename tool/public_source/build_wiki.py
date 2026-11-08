@@ -89,7 +89,7 @@ def main() -> None:
     for md in sources:
         body = rewrite(md.read_text(encoding="utf-8"), pages, md, root)
         if md.name == "README.md":
-            body = re.sub(r"^# .*\n", "# KNX Monitor\n", body, count=1)
+            body = re.sub(r"^# .*\n", "# Busclear\n", body, count=1)
             (wiki / "_Sidebar.md").write_text(sidebar(body, titles), encoding="utf-8")
         else:
             # GitHub shows the page name as the title already.

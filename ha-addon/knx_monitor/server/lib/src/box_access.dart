@@ -240,7 +240,7 @@ class BoxAccess {
         _required = false;
         _stickerChecked = true;
         await _save();
-        stdout.writeln('KNX-Box: Passwort von der SD-Karte übernommen');
+        stdout.writeln('Busclear Box: Passwort von der SD-Karte übernommen');
       }
     } on Object catch (e) {
       stderr.writeln('password-reset: $e');
@@ -494,7 +494,7 @@ class BoxAccess {
 
   /// Text in the browser's login dialog (if it shows one).
   String get realm =>
-      container ? 'KNX Monitor: Benutzername beliebig, Passwort' : 'KNX-Box: Benutzername beliebig, Box-Passwort';
+      container ? 'Busclear: Benutzername beliebig, Passwort' : 'Busclear Box: Benutzername beliebig, Box-Passwort';
 
   /// "Box-Passwort", in Docker just "Passwort" (there is no box).
   String get _passwordWord => container ? 'Passwort' : 'Box-Passwort';
@@ -761,7 +761,7 @@ class BoxAccess {
         _strikes.remove(soonest);
       }
     }
-    stderr.writeln('KNX-Box: Fehlversuch $count von $peer');
+    stderr.writeln('Busclear Box: Fehlversuch $count von $peer');
   }
 
   /// Concurrent logins with the same credentials are computed only once.
@@ -1391,7 +1391,7 @@ class BoxAccess {
 
   String _containerLanSection() =>
       '<section><h2>Zugriff aus dem Netzwerk</h2><p class="hint">'
-      '${_lanAccess ? 'Frei: Geräte im Netzwerk erreichen KNX Monitor (mit Passwort).' : 'Aus: Nur am Rechner mit dem Container selbst erreichbar.'} '
+      '${_lanAccess ? 'Frei: Geräte im Netzwerk erreichen Busclear (mit Passwort).' : 'Aus: Nur am Rechner mit dem Container selbst erreichbar.'} '
       '$_containerLan</p></section>';
 
   static String _date(DateTime d) =>

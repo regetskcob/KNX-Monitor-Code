@@ -41,7 +41,7 @@ void main() {
       connection: 'IP Secure · 192.168.1.20:3671 · knx.fritz.box',
       appVersion: '1.9.0',
     );
-    expect(text, contains('- KNX Monitor 1.9.0'));
+    expect(text, contains('- Busclear 1.9.0'));
     expect(text, contains('- Verbindung: IP Secure · <ip> · <host>'));
     expect(text, isNot(contains('192.168')));
     expect(text, contains('| Zeit | Absender | GA | Name | Art | Wert |'));
@@ -65,7 +65,7 @@ void main() {
       pseudonymize: true,
       appVersion: '1.9.0',
     );
-    expect(text, startsWith('[B]Mitschnitt aus KNX Monitor[/B]'));
+    expect(text, startsWith('[B]Mitschnitt aus Busclear[/B]'));
     expect('[CODE]'.allMatches(text).length, 3);
     expect('[/CODE]'.allMatches(text).length, 3);
     expect(text, isNot(contains('Müller')));

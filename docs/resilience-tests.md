@@ -90,7 +90,7 @@ offers it to nobody.
    `/addons/knx_monitor`. *Add-on Store › ⋮ › Check for updates*, install the
    **local** add-on, set the gateway, import a project, enable continuous
    recording and collect a day of history. Local add-ons have their own data
-   folder; an installed regular KNX Monitor stays untouched.
+   folder; an installed regular Busclear stays untouched.
 3. Put the new `config.yaml` (version `1.10.0-test1`) on top, *Check for
    updates*, update with backup. Check: gateway connected, catalog present,
    history complete up to the update, gap only for the duration of the

@@ -1,4 +1,4 @@
-# KNX Monitor in Docker (ioBroker, NAS, Proxmox)
+# Busclear in Docker (ioBroker, NAS, Proxmox)
 
 The server behind the Home Assistant add-on and the KNX box also runs as a
 plain Docker container: bus monitor and diagnostics in the browser,
@@ -6,7 +6,7 @@ continuous recording, watchers and alarms, and optionally an MQTT connection
 for ioBroker or any other system. Images for amd64 and arm64 (Raspberry Pi 4/5
 with a 64-bit OS) under one name: `ghcr.io/regetskcob/knx-monitor`.
 
-Using Home Assistant? Take the [add-on](https://knx-monitor.de/addon/) instead,
+Using Home Assistant? Take the [add-on](https://busclear.de/addon/) instead,
 it is set up with one click and needs no password.
 
 ## Start
@@ -40,12 +40,12 @@ up -d`. The image is signed, see [Verify the image](#verify-the-image).
 ## Security
 
 KNX itself has no authentication: whoever can send to your KNX IP gateway can
-switch every device in the house. KNX Monitor is built not to become that way in,
+switch every device in the house. Busclear is built not to become that way in,
 but how you run it matters:
 
 - **Never forward the port to the internet** (router port forwarding, DMZ,
   exposed host). From outside, use a VPN into your home network (WireGuard, the
-  VPN of your router, Tailscale) and open KNX Monitor as if you were at home.
+  VPN of your router, Tailscale) and open Busclear as if you were at home.
 - **Read only unless you need to write.** `READ_ONLY=1` (default in
   `compose.yaml`) means the server sends nothing to the bus, whatever happens to
   the password or a paired device.
@@ -71,7 +71,7 @@ but how you run it matters:
   [releases](https://github.com/regetskcob/KNX-Monitor/releases).
 - **Use KNX IP Secure and Data Secure** where your installation supports them;
   plain KNXnet/IP can be read and written by every device in the network,
-  with or without KNX Monitor.
+  with or without Busclear.
 
 `ALLOW_ALL=1` is for development and the project's own tests only. It turns off
 every login; the server refuses it together with a network `BIND` unless a
@@ -173,11 +173,16 @@ Images exist for amd64 and arm64 only, so a Raspberry Pi needs the 64-bit OS
 | `TZ` | Time zone for the daily history files, e.g. `Europe/Berlin`. |
 | `MQTT_HOST`, `MQTT_PORT`, `MQTT_USER`, `MQTT_PASSWORD`, `MQTT_SSL` | Optional MQTT broker (port 1883 by default, `MQTT_SSL=true` for TLS). |
 | `MQTT_DISCOVERY=false` | Leave out the Home Assistant discovery topics (recommended for ioBroker). |
+| `MQTT_TELEGRAMS=true` | Every group telegram as JSON to `knx_monitor/telegram/…`, for your own database. Fields and options: [telegram stream](https://github.com/regetskcob/KNX-Monitor/blob/main/ha-addon/knx_monitor/DOCS.md#every-telegram-to-mqtt-preview). |
+| `MQTT_REPEATS=true`, `MQTT_SECURE_TELEGRAMS=true` | Telegram stream: include repeated telegrams, and decrypted KNX Data Secure telegrams. |
+| `MQTT_RAW=true`, `MQTT_RAW_ONLY=true` | Telegram stream: add the raw data (cEMI frame, priority, key), or send only raw data without names and values. |
+| `MQTT_FILTER` | Telegram stream: only these group addresses, e.g. `1/#,3/2/#,4/1/7`. |
+| `MQTT_INSTALLATION` | Telegram stream: installation ID in `inst`, to tell several servers apart in one database. |
 
 ## Home Assistant Container
 
 Without the Supervisor (Home Assistant Container) there is no add-on, but the
-[KNX Monitor integration](https://github.com/regetskcob/KNX-Monitor-HA) (1.1.0 or
+[Busclear integration](https://github.com/regetskcob/KNX-Monitor-HA) (1.1.0 or
 newer, through HACS) can still talk to this container:
 
 1. Set `LAN_ACCESS=yes` unless Home Assistant runs on the same host with host
@@ -219,7 +224,7 @@ without it, the connection is not encrypted.
 To pause or resume the recording, set `mqtt.0.knx_monitor.recording.set` to
 `ON` or `OFF`.
 
-Watchers are set up in KNX Monitor under Tools › Watchers; each hit updates
+Watchers are set up in Busclear under Tools › Watchers; each hit updates
 `event.watcher`, so a script or Blockly trigger on that state can switch,
 notify or log.
 

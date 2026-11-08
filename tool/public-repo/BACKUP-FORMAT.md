@@ -1,7 +1,7 @@
 # Backup file format (`.knxbackup`)
 
 So that you can get at your data without our app too. Applies to backups created
-by the KNX Monitor apps from version 1.9.1.
+by the Busclear apps from version 1.9.1.
 
 The file is JSON:
 
@@ -28,7 +28,7 @@ Important files: `installations.json` (list of installations),
 `installations/<id>/catalog.json` (project), `installations/<id>/history/YYYY-MM-DD.ndjson`
 (one telegram per line).
 
-Not included: app lock and the history on a KNX Box.
+Not included: app lock and the history on a Busclear Box.
 
 The decrypted ZIP holds your keys and project in plain text, so treat it like the
 keyring itself.

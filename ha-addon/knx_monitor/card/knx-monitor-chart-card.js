@@ -1,4 +1,4 @@
-// KNX Monitor – dashboard card "KNX Monitor Diagramm" (custom:knx-monitor-chart-card).
+// Busclear – dashboard card "Busclear Diagramm" (custom:knx-monitor-chart-card).
 //
 // Shows a chart saved in the app on the Home Assistant dashboard.
 // The add-on puts this file into /config/www/knx-monitor/ on every start
@@ -27,34 +27,34 @@ const SERIES = {
 
 const TEXT = {
   de: {
-    name: 'KNX Monitor Diagramm',
-    description: 'Ein in KNX Monitor gespeichertes Diagramm, direkt aus dem Busverlauf.',
+    name: 'Busclear Diagramm',
+    description: 'Ein in Busclear gespeichertes Diagramm, direkt aus dem Busverlauf.',
     chart: 'Diagramm',
     hours: 'Zeitraum',
     title: 'Titel (optional)',
     range: { 1: '1 h', 6: '6 h', 24: '24 h', 168: '7 T' },
     loading: 'Lade …',
     noChart: 'Wähle in den Karteneinstellungen ein Diagramm.',
-    noCharts: 'Noch keine Diagramme. Lege sie im KNX Monitor unter „Diagramme“ an.',
-    notFound: (n) => `Das Diagramm „${n}“ gibt es im KNX Monitor nicht mehr.`,
-    locked: 'Diagramme im Dashboard gehören zu KNX Monitor Plus.',
+    noCharts: 'Noch keine Diagramme. Lege sie im Busclear unter „Diagramme“ an.',
+    notFound: (n) => `Das Diagramm „${n}“ gibt es im Busclear nicht mehr.`,
+    locked: 'Diagramme im Dashboard gehören zu Busclear Plus.',
     empty: 'Keine Werte in diesem Zeitraum.',
-    error: (d) => `KNX Monitor nicht erreichbar (${d}).`,
+    error: (d) => `Busclear nicht erreichbar (${d}).`,
   },
   en: {
-    name: 'KNX Monitor chart',
-    description: 'A chart saved in KNX Monitor, straight from the bus history.',
+    name: 'Busclear chart',
+    description: 'A chart saved in Busclear, straight from the bus history.',
     chart: 'Chart',
     hours: 'Time range',
     title: 'Title (optional)',
     range: { 1: '1 h', 6: '6 h', 24: '24 h', 168: '7 d' },
     loading: 'Loading …',
     noChart: 'Choose a chart in the card settings.',
-    noCharts: 'No charts yet. Create them in KNX Monitor under “Charts”.',
-    notFound: (n) => `The chart “${n}” no longer exists in KNX Monitor.`,
-    locked: 'Charts on dashboards are part of KNX Monitor Plus.',
+    noCharts: 'No charts yet. Create them in Busclear under “Charts”.',
+    notFound: (n) => `The chart “${n}” no longer exists in Busclear.`,
+    locked: 'Charts on dashboards are part of Busclear Plus.',
     empty: 'No values in this time range.',
-    error: (d) => `KNX Monitor not reachable (${d}).`,
+    error: (d) => `Busclear not reachable (${d}).`,
   },
 };
 
@@ -543,7 +543,7 @@ if (!customElements.get(CARD)) {
     name: t.name,
     description: t.description,
     preview: false,
-    documentationURL: 'https://knx-monitor.de',
+    documentationURL: 'https://busclear.de',
   });
-  console.info(`%c KNX Monitor %c chart card ${VERSION} `, 'background:#437F18;color:#fff', '');
+  console.info(`%c Busclear %c chart card ${VERSION} `, 'background:#437F18;color:#fff', '');
 }

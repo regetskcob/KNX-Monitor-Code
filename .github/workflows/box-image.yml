@@ -1,4 +1,4 @@
-# Builds the KNX Monitor Box: bundle (server for arm64, web app, setup.sh) and
+# Builds the Busclear Box: bundle (server for arm64, web app, setup.sh) and
 # a finished Raspberry Pi OS image (pi-gen). See docs/knx-box.md.
 #
 # Trigger: tag "box-v<version>" (version as in ha-addon/knx_monitor/config.yaml)

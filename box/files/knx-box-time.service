@@ -1,5 +1,5 @@
 [Unit]
-Description=KNX Monitor Box: Uhrzeit stellen
+Description=Busclear Box: Uhrzeit stellen
 
 [Service]
 Type=oneshot

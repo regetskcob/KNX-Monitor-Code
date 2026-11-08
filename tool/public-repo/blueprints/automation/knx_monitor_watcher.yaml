@@ -1,8 +1,8 @@
 blueprint:
-  name: KNX Monitor – watcher fired
+  name: Busclear – watcher fired
   description: >-
-    Runs your actions when a KNX Monitor watcher fires (event
-    `knx_monitor_watcher`). Watchers are set up in KNX Monitor under
+    Runs your actions when a Busclear watcher fires (event
+    `knx_monitor_watcher`). Watchers are set up in Busclear under
     Tools › Watchers. The event data holds `name`, `address`, `source`,
     `value` (for number rules), `raw` and `installation`, for example
     `{{ trigger.event.data.name }}`.
@@ -14,7 +14,7 @@ blueprint:
   input:
     watcher:
       name: Watcher
-      description: Name of the watcher (as shown in KNX Monitor). Leave empty for all watchers.
+      description: Name of the watcher (as shown in Busclear). Leave empty for all watchers.
       default: ""
       selector:
         text: {}

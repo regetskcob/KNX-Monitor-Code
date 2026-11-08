@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.10.0
+
+- KNX Monitor is now **Busclear**, and the KNX box is now the **Busclear Box**.
+  Same add-on, same features: your projects, recordings, settings and
+  automations stay as they are. Existing entities keep their IDs
+  (`knx_monitor_…`), the add-on slug and the MQTT topics stay the same, and the
+  box keeps its Wi-Fi name `KNX-Box-…`. The website is now
+  [busclear.de](https://busclear.de) (knx-monitor.de redirects), support mail
+  support@busclear.de.
+- Tap points ([#8](https://github.com/regetskcob/KNX-Monitor/issues/8)): up to
+  eight connections per installation, e.g. one interface per line, merged into
+  one history. The add-on and the box hold them (`taps` in the bus settings);
+  each telegram keeps where it was seen first and the other sightings with
+  offset and hop count. The app shows the lines as chips, a notice when one tap
+  point drops, and the path through the installation in the telegram details.
+- New add-on option "Installation ID" (`mqtt_installation`) for `inst` in the
+  telegram stream; MQTT messages carry `taps` and `tap_names` (stable names,
+  `main` for the normal connection) when there are further tap points.
+- Every telegram to MQTT, traceability and raw data
+  ([#11](https://github.com/regetskcob/KNX-Monitor/issues/11)): each message
+  now carries `seq` (running number per server start, a gap means a lost
+  message), `boot` (id of the server start), `inst` (installation id, or
+  `MQTT_INSTALLATION`), `ts` (ISO 8601 UTC with microseconds), `hop` (hop
+  count), `src_name` (device name of the sender from the ETS project) and
+  `project` (state of the ETS project). New options "Send raw data too"
+  (`MQTT_RAW=true`: cEMI frame, frame kind, priority, acknowledge request and a
+  dedup `key`), "Raw data only" (`MQTT_RAW_ONLY=true`: without names, DPT,
+  value and unit) and "Only these group addresses to MQTT"
+  (`MQTT_FILTER=1/#,3/2/#,4/1/7`).
+- Docker guide: the telegram stream variables (`MQTT_TELEGRAMS`, `MQTT_RAW`,
+  `MQTT_FILTER` and the others) are now in the settings table. Every release
+  now starts the published `compose.yaml` and the `docker run` example, and
+  checks that settings changed later apply on the next start.
+
 ## 1.9.10
 
 - Preview for testers: every telegram to MQTT

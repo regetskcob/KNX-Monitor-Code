@@ -1,9 +1,9 @@
 # ENTWURF (RFC 9116). Vor dem Livegang: siehe Notion Dokumente: „Recht & Datenschutz: Übersicht“. Policy zeigt auf
-# eine Seite, die noch Entwurf ist. Nur unter https://knx-monitor.de/.well-known/ wirksam,
+# eine Seite, die noch Entwurf ist. Nur unter https://busclear.de/.well-known/ wirksam,
 # dafür nach site/static/.well-known/ kopieren und Canonical beibehalten.
-Contact: mailto:support@knx-monitor.de
+Contact: mailto:support@busclear.de
 Contact: https://github.com/regetskcob/KNX-Monitor/security/advisories/new
 Expires: 2027-09-30T22:00:00Z
 Preferred-Languages: de, en
-Canonical: https://knx-monitor.de/.well-known/security.txt
-Policy: https://knx-monitor.de/sicherheit/
+Canonical: https://busclear.de/.well-known/security.txt
+Policy: https://busclear.de/sicherheit/

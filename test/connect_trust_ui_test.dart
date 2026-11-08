@@ -77,7 +77,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Diese Box ist nicht im lokalen Netz'), findsOneWidget);
     expect(find.textContaining('evil.example'), findsOneWidget);
-    expect(find.text('Mit KNX-Box verbinden?'), findsNothing);
+    expect(find.text('Mit Busclear Box verbinden?'), findsNothing);
     await tester.tap(find.text('Abbrechen'));
     await tester.pumpAndSettle();
     expect(find.text('Diese Box ist nicht im lokalen Netz'), findsNothing);
@@ -88,7 +88,7 @@ void main() {
     BoxConnection.instance.incoming.value = BoxLink.parse('knxmonitor://box?url=http://10.42.0.1/&name=Meine%20Box');
     await tester.pumpAndSettle();
     expect(find.text('Diese Box ist nicht im lokalen Netz'), findsNothing);
-    expect(find.text('Mit KNX-Box verbinden?'), findsOneWidget);
+    expect(find.text('Mit Busclear Box verbinden?'), findsOneWidget);
     // Adresse eigenständig und vor dem Namen, der Name als Angabe des Links.
     expect(find.text('10.42.0.1'), findsOneWidget);
     expect(find.text('Name im Link: Meine Box'), findsOneWidget);
@@ -105,7 +105,7 @@ void main() {
     await open(tester);
     BoxConnection.instance.incoming.value = BoxLink.parse('knxmonitor://box?url=http://10.42.0.1/&fp=${'A' * 43}');
     await tester.pumpAndSettle();
-    expect(find.text('Mit KNX-Box verbinden?'), findsOneWidget);
+    expect(find.text('Mit Busclear Box verbinden?'), findsOneWidget);
     expect(find.textContaining('Unverschlüsselt (HTTP)'), findsNothing);
     await tester.tap(find.text('Abbrechen'));
     await tester.pumpAndSettle();

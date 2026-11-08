@@ -468,6 +468,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
                 error: _tunnel.error.value ?? s.monitorConnectionLost,
               ),
             ),
+            _TapBanner(tunnel: _tunnel),
             const _SecureBanner(),
             const _AckBanner(),
             const SiteNotesBanner(),
@@ -781,7 +782,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             title: s.aboutLicenses,
             onTap: () => showLicensePage(
               context: context,
-              applicationName: 'KNX Monitor',
+              applicationName: 'Busclear',
               applicationIcon: const Padding(
                 padding: EdgeInsets.symmetric(vertical: HzSpace.s8),
                 child: SenderLine(),
@@ -1145,6 +1146,41 @@ class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixi
       builder: (context, child) =>
           Opacity(opacity: 0.4 + 0.6 * Motion.curve.transform(_controller.value), child: child),
       child: Icon(widget.icon, size: 14, color: widget.color),
+    );
+  }
+}
+
+/// One tap point dropped while others keep running (issue #8). The overall connection banner
+/// stays quiet then; this one names the tap point.
+class _TapBanner extends StatelessWidget {
+  const _TapBanner({required this.tunnel});
+
+  final KnxTunnel tunnel;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder(
+      valueListenable: tunnel.tapPoints,
+      builder: (context, points, _) {
+        final active = points.where((p) => !p.paused).toList();
+        final live = active.where((p) => p.connected).length;
+        final down = active.where((p) => !p.connected && p.state == TunnelState.disconnected).toList();
+        final show = live > 0 && down.isNotEmpty;
+        return AnimatedSize(
+          duration: Motion.of(context),
+          curve: Motion.curve,
+          child: !show
+              ? const SizedBox(width: double.infinity)
+              : _Banner(
+                  status: HorizontStatus.warning,
+                  text: [
+                    s.tapDown(down.map((p) => p.name).join(', '), live, active.length),
+                    ?down.first.error,
+                    s.tapDownHint,
+                  ].join(' · '),
+                ),
+        );
+      },
     );
   }
 }

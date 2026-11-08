@@ -5,13 +5,14 @@
   frame, so the page itself never needs to play in real time.
 
   Front matter: layout: reel, reel: live | diagnose | inbetrieb | ha | box |
-  karte | schreiben | topologie | anlernen | durchklingeln | bauherren | grundriss, seconds.
+  karte | schreiben | topologie | anlernen | durchklingeln | bauherren | grundriss |
+  umbenennung, seconds.
   Safe zone: Instagram covers ~250 px at the top and ~400 px at the bottom,
   so text stays between 260 and 1500.
 */ -}}
 {{- $p := .Params -}}
 {{- $d := index site.Data.teaser "de" -}}
-{{- $end := index (dict "live" 13.0 "diagnose" 13.8 "inbetrieb" 13.6 "ha" 13.6 "box" 13.8 "karte" 13.4 "schreiben" 13.6 "topologie" 17.0 "anlernen" 13.6 "durchklingeln" 13.6 "bauherren" 13.6 "grundriss" 13.6) $p.reel -}}
+{{- $end := index (dict "live" 13.0 "diagnose" 13.8 "inbetrieb" 13.6 "ha" 13.6 "box" 13.8 "karte" 13.4 "schreiben" 13.6 "topologie" 17.0 "anlernen" 13.6 "durchklingeln" 13.6 "bauherren" 13.6 "grundriss" 13.6 "umbenennung" 11.4) $p.reel -}}
 <!doctype html>
 <html lang="de" data-product="knx" data-theme="light">
 {{ partial "head.html" (dict "page" . "title" .Title "description" "Entwurf") }}
@@ -184,6 +185,12 @@
   .r-check > div.is-warn .r-box { animation: none; }
   .r-check > div.is-warn .r-box::after { content: "!"; color: var(--text); }
   .r-steps.is-tones b { font: 400 64px/0.9 var(--font-sans); }
+
+  /* Rename: the old name struck through, the new one below. */
+  .r-names { position: absolute; left: 80px; right: 80px; top: 640px; }
+  .r-old { position: relative; display: inline-block; font: 300 132px/1.1 var(--font-serif); color: var(--text-muted); }
+  .r-old::after { content: ""; position: absolute; left: -12px; top: 54%; height: 10px; width: calc(100% + 24px); border-radius: 5px; background: var(--accent); animation: grow .6s cubic-bezier(.4,0,.2,1) var(--s) both; }
+  .r-new { margin-top: 70px; font: 400 168px/1 var(--font-serif); letter-spacing: -0.01em; }
 </style>
 
 <div class="r">
@@ -193,7 +200,7 @@
   {{- /* 0–8 s: board and telegrams, 8–12.5 s: the app, then the end card. */}}
   <div class="r-scene">
     <div class="r-top">
-      <div class="r-kennung in out" style="--d:.2s;--o:7.6s">KNX Monitor · Busmonitor</div>
+      <div class="r-kennung in out" style="--d:.2s;--o:7.6s">Busclear · Busmonitor</div>
       <h1 class="r-title in out" style="--d:.35s;--o:7.6s">Was passiert gerade auf deinem Bus?</h1>
     </div>
     <div class="r-rows">
@@ -221,7 +228,7 @@
     (dict "t" "Leseanfragen ohne Antwort" "s" "1/4/3 · Lesen-Flag fehlt?") }}
   <div class="r-scene">
     <div class="r-top">
-      <div class="r-kennung in out" style="--d:.2s;--o:8.6s">KNX Monitor · Diagnose</div>
+      <div class="r-kennung in out" style="--d:.2s;--o:8.6s">Busclear · Diagnose</div>
       <h1 class="r-title in out" style="--d:.35s;--o:8.6s">Dein Bus weiß, was kaputt ist.</h1>
     </div>
     <div class="r-cards">
@@ -238,7 +245,7 @@
     <div class="r-stand in out" style="--d:9.4s;--o:13.3s;bottom:426px">{{ partial "horizont/device.html" (dict "device" "iphone" "width" 400 "src" .RelPermalink "alt" "Gesundheit") }}</div>
     {{- end }}
   </div>
-  {{ partial "reel-end.html" (dict "at" 13.8 "title" "Fehler finden, bevor jemand anruft." "text" "KNX Monitor: Busmonitor und Diagnose für KNX.") }}
+  {{ partial "reel-end.html" (dict "at" 13.8 "title" "Fehler finden, bevor jemand anruft." "text" "Busclear: Busmonitor und Diagnose für KNX.") }}
 {{- else if eq $p.reel "inbetrieb" }}
   {{- $rows := slice
     (dict "a" "1/4/3" "n" "Status Licht Küche" "v" "Aus")
@@ -249,7 +256,7 @@
     (dict "a" "4/0/0" "n" "Außentemperatur" "v" "11,5 °C") }}
   <div class="r-scene">
     <div class="r-top">
-      <div class="r-kennung in out" style="--d:.2s;--o:8.4s">KNX Monitor · Inbetriebnahme</div>
+      <div class="r-kennung in out" style="--d:.2s;--o:8.4s">Busclear · Inbetriebnahme</div>
       <h1 class="r-title in out" style="--d:.35s;--o:8.4s">Abhaken statt abschreiben.</h1>
     </div>
     <div class="r-check in out" style="--d:1s;--o:8.5s">
@@ -278,7 +285,7 @@
 {{- else if eq $p.reel "ha" }}
   <div class="r-scene">
     <div class="r-top">
-      <div class="r-kennung in out" style="--d:.2s;--o:8.2s">KNX Monitor · Home Assistant</div>
+      <div class="r-kennung in out" style="--d:.2s;--o:8.2s">Busclear · Home Assistant</div>
       <h1 class="r-title in out" style="--d:.35s;--o:8.2s">Dein Bus als Trigger für Automationen.</h1>
     </div>
     <div class="r-panel in out" style="--d:1s;--o:8.3s">
@@ -302,7 +309,7 @@
   {{- $hours := slice "22:00" "23:00" "00:00" "01:00" "02:00" "03:00" "04:00" "05:00" "06:00" }}
   <div class="r-scene">
     <div class="r-top">
-      <div class="r-kennung in out" style="--d:.2s;--o:8.2s">KNX-Box · Raspberry Pi</div>
+      <div class="r-kennung in out" style="--d:.2s;--o:8.2s">Busclear Box · Raspberry Pi</div>
       <h1 class="r-title in out" style="--d:.35s;--o:8.2s">Der Fehler kommt nur nachts?</h1>
     </div>
     <div class="r-clock in out" style="--d:1s;--o:8.3s">
@@ -331,12 +338,12 @@
       <div class="in out" style="--d:10.6s;--o:13.3s"><b>3</b><span>Mit der App koppeln, morgens auswerten</span></div>
     </div>
   </div>
-  {{ partial "reel-end.html" (dict "at" 13.8 "title" "Die KNX-Box." "text" "Ein Raspberry Pi, der den Bus tagelang aufzeichnet. Eigenes WLAN, kein Internet nötig. Image und Anleitung kostenlos.") }}
+  {{ partial "reel-end.html" (dict "at" 13.8 "title" "Die Busclear Box." "text" "Ein Raspberry Pi, der den Bus tagelang aufzeichnet. Eigenes WLAN, kein Internet nötig. Image und Anleitung kostenlos.") }}
 {{- else if eq $p.reel "karte" }}
   {{- $recv := slice (dict "a" "1.1.30" "n" "EG WZ Glastaster" "y" 390) (dict "a" "1.1.31" "n" "EG KÜ Glastaster" "y" 510) (dict "a" "1.1.32" "n" "OG BZ Taster" "y" 630) (dict "a" "1.1.33" "n" "OG SZ Taster" "y" 750) }}
   <div class="r-scene">
     <div class="r-top">
-      <div class="r-kennung in out" style="--d:.2s;--o:7.8s">KNX Monitor · Kommunikationskarte</div>
+      <div class="r-kennung in out" style="--d:.2s;--o:7.8s">Busclear · Kommunikationskarte</div>
       <h1 class="r-title in out" style="--d:.35s;--o:7.8s">Wer redet hier mit wem?</h1>
     </div>
     <div class="r-map in out" style="--d:0s;--o:7.9s">
@@ -365,7 +372,7 @@
 {{- else if eq $p.reel "schreiben" }}
   <div class="r-scene">
     <div class="r-top">
-      <div class="r-kennung in out" style="--d:.2s;--o:8.2s">KNX Monitor · Lesen und Schreiben</div>
+      <div class="r-kennung in out" style="--d:.2s;--o:8.2s">Busclear · Lesen und Schreiben</div>
       <h1 class="r-title in out" style="--d:.35s;--o:8.2s">Testen, ohne die ETS zu öffnen.</h1>
     </div>
     <div class="r-panel in out" style="--d:.9s;--o:8.3s">
@@ -399,7 +406,7 @@
     (dict "a" "1.1.20" "n" "IP-Schnittstelle" "h" "Hop 6") }}
   <div class="r-scene">
     <div class="r-top">
-      <div class="r-kennung in out" style="--d:.2s;--o:7.8s">KNX Monitor · Topologie</div>
+      <div class="r-kennung in out" style="--d:.2s;--o:7.8s">Busclear · Topologie</div>
       <h1 class="r-title in out" style="--d:.35s;--o:7.8s">Deine Anlage, Linie für Linie.</h1>
     </div>
     <div class="r-line-card in out" style="--d:1s;--o:7.9s">
@@ -443,7 +450,7 @@
 {{- else if eq $p.reel "anlernen" }}
   <div class="r-scene">
     <div class="r-top">
-      <div class="r-kennung in out" style="--d:.2s;--o:8.2s">KNX Monitor · Anlernen</div>
+      <div class="r-kennung in out" style="--d:.2s;--o:8.2s">Busclear · Anlernen</div>
       <h1 class="r-title in out" style="--d:.35s;--o:8.2s">Kein ETS-Projekt? Drück einen Taster.</h1>
     </div>
     <div class="r-panel in out" style="--d:1s;--o:8.3s">
@@ -485,7 +492,7 @@
     (dict "a" "3/4/0" "n" "Status Dimmen Essen" "v" "62 %") }}
   <div class="r-scene">
     <div class="r-top">
-      <div class="r-kennung in out" style="--d:.2s;--o:8.4s">KNX Monitor · Durchklingeln</div>
+      <div class="r-kennung in out" style="--d:.2s;--o:8.4s">Busclear · Durchklingeln</div>
       <h1 class="r-title in out" style="--d:.35s;--o:8.4s">Durchklingeln, ganz allein.</h1>
     </div>
     <div class="r-check in out" style="--d:1s;--o:8.5s">
@@ -592,8 +599,31 @@
     <p class="r-text in out" style="position:absolute;left:80px;right:80px;top:1240px;margin:0;--d:11.2s;--o:13.1s">Beispielhaus. Mit Höhen und Abständen, als PDF, CSV und DXF.</p>
   </div>
   {{ partial "reel-end.html" (dict "at" 13.6 "title" "Der Hausplan." "text" "Grundriss, Raumbuch und Unterlagen für deinen Elektriker. Kommt mit der nächsten Version.") }}
+{{- else if eq $p.reel "umbenennung" }}
+  {{- /* 0–5.6 s: old name struck through, new name; 5.9–10.9 s: what stays; then the end card. */}}
+  <div class="r-scene">
+    <div class="r-top">
+      <div class="r-kennung in out" style="--d:.2s;--o:5.4s">Neuer Name</div>
+    </div>
+    <div class="r-names">
+      <div class="r-old in out" style="--d:.4s;--o:5.5s;--s:1.6s">KNX Monitor</div>
+      <div class="r-new pop out" style="--d:2.6s;--o:5.6s;animation:pop .45s cubic-bezier(.3,1.5,.5,1) 2.6s both, leave .5s ease-in 5.6s forwards">Busclear</div>
+      <p class="r-text in out" style="--d:3.3s;--o:5.6s">Busmonitor und Diagnose für KNX.</p>
+    </div>
+  </div>
+  <div class="r-scene">
+    <div class="r-top">
+      <h1 class="r-title in out" style="--d:5.9s;--o:10.8s">Was bleibt?</h1>
+    </div>
+    <div class="r-cards">
+      <div class="r-card in out" style="--d:6.5s;--o:10.85s"><b>1</b><strong>Gleiche App, gleiche Funktionen</strong><span class="r-text" style="margin:0;font-size:32px">Nur der Name ist neu.</span></div>
+      <div class="r-card in out" style="--d:7.3s;--o:10.9s"><b>2</b><strong>Deine Daten bleiben</strong><span class="r-text" style="margin:0;font-size:32px">Projekte, Aufzeichnungen, Automationen.</span></div>
+      <div class="r-card in out" style="--d:8.1s;--o:10.95s"><b>3</b><strong>knx-monitor.de leitet weiter</strong><span class="r-text" style="margin:0;font-size:32px">Neu: busclear.de und @busclear.app</span></div>
+    </div>
+  </div>
+  {{ partial "reel-end.html" (dict "at" 11.4 "title" "Busclear." "text" "Busmonitor für KNX. Gleiche App, neuer Name.") }}
 {{- end }}
-  <div class="r-foot in out" style="--d:0s;--o:{{ sub $end 0.4 }}s">{{ partial "horizont/app-icon.html" (dict "product" "knx" "size" 52) }} knx-monitor.de</div>
+  <div class="r-foot in out" style="--d:0s;--o:{{ sub $end 0.4 }}s">{{ partial "horizont/app-icon.html" (dict "product" "knx" "size" 52) }} busclear.de</div>
 </div>
 </body>
 </html>

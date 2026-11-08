@@ -43,6 +43,7 @@
 #                                      Package.resolved changed (commit them via PR)
 #   werkbank push [git push args]      git push, then mark HEAD verified on GitHub
 #                                      (status werkbank/verify) when verify passed for it
+#   werkbank push-tag <tag>            push the tag, mark the tagged commit the same way
 #   werkbank doctor                    which tools and keys are there
 #
 # Works from any directory: a copy in tool/werkbank/ always acts on its own
@@ -83,6 +84,7 @@ case "$cmd" in
   site-deploy) wb_site_deploy "$@" ;;
   resolved) wb_resolved_guard && say "Package.resolved unchanged" ;;
   push) wb_push "$@" ;;
+  push-tag) wb_push_tag "$@" ;;
   doctor) wb_doctor ;;
-  *) sed -n '2,49p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 2 ;;
+  *) sed -n '2,50p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac

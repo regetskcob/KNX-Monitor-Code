@@ -1,6 +1,6 @@
 # Documentation
 
-Technical documentation of KNX Monitor. Users of the Home Assistant add-on find
+Technical documentation of Busclear. Users of the Home Assistant add-on find
 their guide in [ha-addon/knx_monitor/DOCS.md](../ha-addon/knx_monitor/DOCS.md).
 The same documents are published as the
 [wiki](https://github.com/regetskcob/KNX-Monitor-Code/wiki), generated from
@@ -38,7 +38,7 @@ this folder on every release; changes go here.
 ## KNX and ETS
 
 - [group-addresses.md](group-addresses.md): naming schemes the app recognises.
-- [ets-round-trip.md](ets-round-trip.md): taking changes from KNX Monitor
+- [ets-round-trip.md](ets-round-trip.md): taking changes from Busclear
   back into the ETS project.
 
 ## Project

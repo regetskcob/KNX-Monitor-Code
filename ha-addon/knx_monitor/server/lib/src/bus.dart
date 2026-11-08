@@ -49,6 +49,7 @@ class BusConfig {
     this.device = defaultHatDevice,
     this.hatAddress,
     this.hatBusmonitor = false,
+    this.taps = const [],
   });
 
   /// Serial port of the KNX HAT (kBerry on GPIO 14/15).
@@ -102,6 +103,42 @@ class BusConfig {
   /// no sending (no reads/writes from the app, no time request).
   bool hatBusmonitor;
 
+  /// Further tap points (issue #8): each `{name, mode: udp|tcp|routing, host, port, tunnelAddress?,
+  /// windowMs?, paused?}`. The server holds them next to the main connection and merges the
+  /// telegrams ([TapMerger]). Empty for most installations.
+  List<Map<String, Object?>> taps;
+
+  /// At most this many further tap points (8 in all, as in the app).
+  static const maxTaps = 7;
+
+  /// Usable tap point entries only, with known keys and clamped values.
+  static List<Map<String, Object?>> cleanTaps(Object? raw) {
+    if (raw is! List) return const [];
+    final out = <Map<String, Object?>>[];
+    for (final t in raw) {
+      if (t is! Map || out.length >= maxTaps) continue;
+      final mode = t['mode'];
+      final host = t['host'];
+      if (mode is! String || !const {'udp', 'tcp', 'routing'}.contains(mode)) continue;
+      if (host is! String || (host.isEmpty && mode != 'routing')) continue;
+      final port = t['port'];
+      final window = t['windowMs'];
+      out.add({
+        'name': t['name'] is String ? t['name'] : host,
+        'mode': mode,
+        'host': host,
+        'port': port is int && port >= 1 && port <= 65535 ? port : 3671,
+        'tunnelAddress': switch (t['tunnelAddress']) {
+          final String a when parseIndividual(a) != null => a,
+          _ => null,
+        },
+        if (window is int && window > 0) 'windowMs': window.clamp(10, 5000),
+        if (t['paused'] == true) 'paused': true,
+      });
+    }
+    return out;
+  }
+
   /// Modes without a gateway address.
   static const _withoutHost = {'routing', 'ha', 'hat'};
 
@@ -131,6 +168,10 @@ class BusConfig {
         if (value != null && value is! String) return '$key: Text erwartet.';
       } else if (key == 'secure' && value != null && value is! Map) {
         return 'secure: Objekt erwartet.';
+      } else if (key == 'taps' &&
+          value != null &&
+          (value is! List || value.length > maxTaps || value.any((t) => t is! Map))) {
+        return 'taps: Liste mit höchstens $maxTaps Messpunkten erwartet.';
       }
     }
     return null;
@@ -161,6 +202,7 @@ class BusConfig {
     },
     hatAddress: parseIndividual(j['hatAddress'] as String?) == null ? null : j['hatAddress'] as String?,
     hatBusmonitor: j['hatBusmonitor'] == true,
+    taps: cleanTaps(j['taps']),
   );
 
   Map<String, Object?> toJson({bool secrets = true}) => {
@@ -181,6 +223,7 @@ class BusConfig {
     'device': device,
     'hatAddress': hatAddress,
     'hatBusmonitor': hatBusmonitor,
+    'taps': taps,
     // Passwords never leave the server; the app only sees whether there are any.
     'secure': secrets
         ? secure
@@ -350,6 +393,19 @@ class BusService {
 
   BusConfig config = BusConfig();
   BusLink? _link;
+
+  /// Links of the further tap points (issue #8) by tap number (1 = first further one).
+  final _tapLinks = <int, BusLink>{};
+
+  /// State per further tap point: `{state, error, address}`.
+  final _tapState = <int, Map<String, Object?>>{};
+
+  /// Merges main connection and tap points; `null` without further tap points.
+  TapMerger? _merger;
+  Timer? _mergeFlush;
+
+  /// Data Secure flags of a telegram until the merger releases it (keyed by its raw frame).
+  final _secureOf = Expando<(bool, bool)>();
   String state = 'disconnected';
   String? error;
 
@@ -490,7 +546,7 @@ class BusService {
         _broadcastState();
       };
       _knxTime = KnxTimeWatch(clock, dptOf: alarms.dptMainOf);
-      stdout.writeln('KNX-Box: Uhr ${clock.source.name}');
+      stdout.writeln('Busclear Box: Uhr ${clock.source.name}');
     }
     _applyStorage();
     await _loadSequences();
@@ -630,7 +686,7 @@ class BusService {
     // The HAT belongs to the box: the add-on image has neither `stty` nor UART
     // access (docs/kberry.md). Otherwise only an endless loop of failed attempts would remain.
     if (next.mode == 'hat' && config.mode != 'hat' && hatDevice == null) {
-      throw const BusProbeException('KNX-HAT gibt es nur auf der KNX-Box.', problem: 'unsupported');
+      throw const BusProbeException('KNX-HAT gibt es nur auf der Busclear Box.', problem: 'unsupported');
     }
     final reconnect = [
       'enabled',
@@ -644,6 +700,7 @@ class BusService {
       'device',
       'hatAddress',
       'hatBusmonitor',
+      'taps',
     ].any((k) => jsonEncode(next.toJson()[k]) != jsonEncode(config.toJson()[k]));
     final ready = probe && reconnect && _canConnect(next) && _yieldedTo == null ? await _probe(next) : null;
     configLost = false;
@@ -696,6 +753,7 @@ class BusService {
     final old = _link;
     _link = null;
     if (old != null) await old.close();
+    await _closeTaps();
     _setState('connecting');
     final link = _linkFactory(next);
     try {
@@ -715,12 +773,112 @@ class BusService {
     final old = _link;
     _link = null;
     if (old != null) unawaited(old.close());
+    unawaited(_closeTaps());
     if (_yieldedTo != null || !_canConnect(config)) {
       if (ready != null) unawaited(ready.close());
       _setState(_yieldedTo != null ? 'yielded' : 'disconnected');
       return;
     }
     unawaited(_run(generation, ready: ready));
+    _startTaps(generation);
+  }
+
+  /// Starts the further tap points of [config] (issue #8), each in its own reconnect loop.
+  void _startTaps(int generation) {
+    final taps = config.taps;
+    final active = [
+      for (final (i, t) in taps.indexed)
+        if (t['paused'] != true) i + 1,
+    ];
+    _merger = active.isEmpty
+        ? null
+        : TapMerger(
+            windows: {
+              for (final (i, t) in taps.indexed)
+                if (t['windowMs'] case final int ms) i + 1: Duration(milliseconds: ms),
+            },
+          );
+    _updateMergerTaps();
+    for (final i in active) {
+      unawaited(_runTap(generation, i, taps[i - 1]));
+    }
+  }
+
+  Future<void> _closeTaps() async {
+    final links = [..._tapLinks.values];
+    _tapLinks.clear();
+    _tapState.clear();
+    _mergeFlush?.cancel();
+    final m = _merger;
+    if (m != null) {
+      for (final t in m.flushAll()) {
+        _processMerged(t);
+      }
+    }
+    for (final l in links) {
+      await l.close();
+    }
+  }
+
+  void _updateMergerTaps() {
+    final m = _merger;
+    if (m == null) return;
+    m.taps = (state == 'connected' ? 1 : 0) + _tapState.values.where((t) => t['state'] == 'connected').length;
+    if (m.taps < 1) m.taps = 1;
+  }
+
+  void _setTapState(int i, Map<String, Object?> next) {
+    _tapState[i] = next;
+    _updateMergerTaps();
+    _broadcastState();
+  }
+
+  Future<void> _runTap(int generation, int i, Map<String, Object?> t) async {
+    var failures = 0;
+    var reported = false;
+    final mode = t['mode']! as String;
+    final c = BusConfig(
+      enabled: true,
+      mode: mode,
+      host: t['host']! as String,
+      port: t['port']! as int,
+      tunnelAddress: t['tunnelAddress'] as String?,
+      routingAddress: config.routingAddress,
+    );
+    while (_current(generation)) {
+      _setTapState(i, {'state': 'connecting'});
+      final link = _linkFactory(c);
+      try {
+        await link.connect();
+        if (!_current(generation)) {
+          await link.close();
+          return;
+        }
+        _tapLinks[i] = link;
+        failures = 0;
+        reported = false;
+        final sub = link.frames.listen((f) => _onFrame(f, tap: i));
+        _setTapState(i, {'state': 'connected', 'address': link.address});
+        stdout.writeln('Messpunkt ${t['name']} verbunden: ${link.label}');
+        final reason = await link.lost;
+        await sub.cancel();
+        if (!_current(generation)) return;
+        _tapLinks.remove(i);
+        stdout.writeln('Messpunkt ${t['name']} getrennt: $reason');
+        _setTapState(i, {'state': 'disconnected', 'error': reason});
+      } on Object catch (e) {
+        await link.close();
+        if (!_current(generation)) return;
+        if (!reported) {
+          stdout.writeln('Messpunkt ${t['name']} nicht erreichbar: $e – versuche weiter');
+          reported = true;
+        }
+        _setTapState(i, {'state': 'disconnected', 'error': '$e'});
+        final seconds = const [1, 2, 4, 8, 15, 30, 60][failures.clamp(0, 6)];
+        failures++;
+        await Future<void>.delayed(Duration(seconds: seconds));
+      }
+    }
   }
 
   /// Releases or takes back the tunnel for a view's bus monitor.
@@ -736,6 +894,7 @@ class BusService {
       final old = _link;
       _link = null;
       if (old != null) await old.close();
+      await _closeTaps();
       error = null;
       _setState('yielded');
       stdout.writeln('Tunnel für den Busmonitor freigegeben');
@@ -810,6 +969,7 @@ class BusService {
     if (state == next) return;
     final was = state == 'connected';
     state = next;
+    _updateMergerTaps();
     _broadcastState();
     // Report only real changes, not every connection attempt.
     if (was != (next == 'connected')) {
@@ -856,21 +1016,23 @@ class BusService {
 
   /// Whatever comes from the bus must never stop the server: frames can be
   /// forged (UDP), and a listener error would otherwise end the process.
-  void _onFrame(Uint8List frame) {
+  void _onFrame(Uint8List frame, {int tap = 0}) {
     try {
-      _handleFrame(frame);
+      _handleFrame(frame, tap: tap);
     } on Object catch (e) {
       stderr.writeln('Frame verworfen: $e');
     }
   }
 
-  void _handleFrame(Uint8List frame) {
+  void _handleFrame(Uint8List frame, {int tap = 0}) {
     final now = clock?.now() ?? DateTime.now();
+    // Further tap points (issue #8) as 0x04 with the tap number; older apps ignore it.
+    final head = tap == 0 ? const [0x01] : [0x04, tap];
     for (final c in _clients) {
-      c.send([0x01, ...frame]);
+      c.send([...head, ...frame]);
     }
     var cemi = frame;
-    if (frame.isNotEmpty && frame[0] == 0x2B) {
+    if (tap == 0 && frame.isNotEmpty && frame[0] == 0x2B) {
       // KNX HAT in bus monitor mode: the views get the raw frame for the
       // bus monitor; data telegrams additionally go to them, the recorder and
       // the watchers as if from the tunnel. Acknowledgements and corrupt frames end here.
@@ -881,6 +1043,8 @@ class BusService {
       for (final c in _clients) {
         c.send([0x01, ...cemi]);
       }
+    } else if (frame.isNotEmpty && frame[0] == 0x2B) {
+      return;
     }
     // Record secured telegrams decrypted; the views get the original frame
     // and decrypt it themselves.
@@ -895,8 +1059,49 @@ class BusService {
       if (decryptedOk) _noteSequence(cemi);
       plain = decrypted;
     }
-    final line = telegramJson(plain, now);
-    if (line == null) return;
+    final merger = _merger;
+    if (merger == null) {
+      final line = telegramJson(plain, now);
+      if (line != null) _process(line, now, secured: secured, decrypted: decryptedOk);
+      return;
+    }
+    final t = Telegram.fromCemi(plain, time: now);
+    if (t == null) return;
+    _secureOf[t.raw] = (secured, decryptedOk);
+    for (final ready in merger.add(tap, t)) {
+      _processMerged(ready);
+    }
+    _scheduleMergeFlush();
+  }
+
+  void _scheduleMergeFlush() {
+    _mergeFlush?.cancel();
+    final due = _merger?.nextDue;
+    if (due == null) return;
+    var wait = due.difference(clock?.now() ?? DateTime.now());
+    if (wait.isNegative) wait = Duration.zero;
+    _mergeFlush = Timer(wait, () {
+      final ready = _merger?.flush(clock?.now() ?? DateTime.now()) ?? const <Telegram>[];
+      for (final t in ready) {
+        _processMerged(t);
+      }
+      _scheduleMergeFlush();
+    });
+  }
+
+  void _processMerged(Telegram t) {
+    try {
+      final (secured, decrypted) = _secureOf[t.raw] ?? (false, false);
+      _process(t.toJson(), t.time, secured: secured, decrypted: decrypted);
+    } on Object catch (e) {
+      stderr.writeln('Telegramm verworfen: $e');
+    }
+  }
+
+  /// One telegram (merged if there are tap points) in history format: counters, clock, recorder,
+  /// export, MQTT, fault hunt, alarms, watchers.
+  void _process(Map<String, Object?> line, DateTime now, {required bool secured, required bool decrypted}) {
+    final decryptedOk = decrypted;
     _beatCount++;
     lastTelegram = now;
     if (line['rp'] == true) repeats++;
@@ -951,6 +1156,18 @@ class BusService {
     'lastLost': lastLost?.millisecondsSinceEpoch,
     'link': _link?.label,
     'address': _link?.address,
+    if (config.taps.isNotEmpty)
+      'taps': [
+        for (final (i, t) in config.taps.indexed)
+          {
+            'name': t['name'],
+            if (t['windowMs'] != null) 'windowMs': t['windowMs'],
+            if (t['paused'] == true) 'paused': true,
+            'state': t['paused'] == true ? 'paused' : (_tapState[i + 1]?['state'] ?? 'disconnected'),
+            'error': ?_tapState[i + 1]?['error'],
+            'address': ?_tapState[i + 1]?['address'],
+          },
+      ],
     'description': _description == null ? null : hexOf(_description!),
     'today': today,
     'written': recorder.written,
@@ -1143,6 +1360,7 @@ class BusService {
     await hunt.close();
     await exporter.stop();
     await _link?.close();
+    await _closeTaps();
   }
 }
 

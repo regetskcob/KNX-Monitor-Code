@@ -263,7 +263,7 @@ Future<Uint8List> buildRecoveryKeyPdf(String code, {String? email}) async {
   final fonts = await PdfFonts.load();
   return pdfDocument(
     title: s.recoveryTitle,
-    project: 'KNX Monitor',
+    project: 'Busclear',
     fonts: fonts,
     content: [
       pw.Text(s.recoveryPdfIntro, style: pdfStyle(PdfPt.body)),
@@ -289,7 +289,7 @@ Future<Uint8List> buildAuthenticatorKeyPdf({required String secret, required Str
   final fonts = await PdfFonts.load();
   return pdfDocument(
     title: s.accountMfaPdfTitle,
-    project: 'KNX Monitor',
+    project: 'Busclear',
     fonts: fonts,
     content: [
       pw.Text(s.accountMfaPdfIntro, style: pdfStyle(PdfPt.body)),

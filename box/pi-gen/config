@@ -1,7 +1,7 @@
-# pi-gen configuration of the KNX Monitor Box (build-image.sh adds
+# pi-gen configuration of the Busclear Box (build-image.sh adds
 # FIRST_USER_PASS and IMG_DATE). See https://github.com/RPi-Distro/pi-gen.
 IMG_NAME="knx-box"
-PI_GEN_RELEASE="KNX Monitor Box"
+PI_GEN_RELEASE="Busclear Box"
 RELEASE="trixie"
 TARGET_HOSTNAME="knx-box"
 LOCALE_DEFAULT="de_DE.UTF-8"

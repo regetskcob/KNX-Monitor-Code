@@ -603,7 +603,7 @@ String formatFlags(ComFlags f) {
 /// and on the about page. Like [HorizontLockup] on one baseline, but the text
 /// wraps in narrow sidebars and with large text.
 /// Versions for support and bug reports, at the very bottom of the menu: the
-/// app, plus the server in the add-on or via the box, e.g. "KNX Monitor 1.7.9
+/// app, plus the server in the add-on or via the box, e.g. "Busclear 1.7.9
 /// (13) · Add-on 1.7.9". Selectable for copying.
 class VersionLine extends StatefulWidget {
   const VersionLine({super.key});

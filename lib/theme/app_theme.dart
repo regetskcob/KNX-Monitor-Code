@@ -3,7 +3,7 @@ import 'package:horizont/horizont.dart';
 
 import 'brand.dart';
 
-/// Light/dark theme from Horizont, product KNX Monitor (accent "Bus") in the soft variant.
+/// Light/dark theme from Horizont, product Busclear (accent "Bus") in the soft variant.
 ///
 /// Everything essential (hand-set scheme, typography, components, platform feel) comes from the
 /// package. In the Home Assistant add-on ([homeAssistant]) the app takes over Home Assistant's

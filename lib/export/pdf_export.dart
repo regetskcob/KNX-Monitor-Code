@@ -1247,7 +1247,7 @@ Future<Uint8List> pdfDocument({
 }) {
   final now = DateTime.now();
   final head = _letterhead;
-  final doc = pw.Document(title: title, author: head?.author ?? 'KNX Monitor', creator: 'KNX Monitor');
+  final doc = pw.Document(title: title, author: head?.author ?? 'Busclear', creator: 'Busclear');
   doc.addPage(
     pw.MultiPage(
       // Long exports (telegrams, findings) need more than the default 20 pages; beyond that the
@@ -1310,7 +1310,7 @@ Future<Uint8List> pdfDocument({
                       '${head.name}$metaSeparator${head.contactLine}',
                       style: pdfStyle(PdfPt.small, color: pdfMuted),
                     ),
-                  // "Erstellt mit KNX Monitor" (created with KNX Monitor) stays, even under the
+                  // "Erstellt mit Busclear" (created with Busclear) stays, even under the
                   // letterhead.
                   pw.Text(
                     s.pdfFooterCreated(pdfDate(now), _clock(now).substring(0, 5)),

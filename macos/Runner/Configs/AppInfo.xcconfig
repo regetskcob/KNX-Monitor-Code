@@ -5,7 +5,7 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = KNX Monitor
+PRODUCT_NAME = Busclear
 
 // The application's bundle identifier (gleich wie iOS)
 PRODUCT_BUNDLE_IDENTIFIER = de.regetskcob.knx-monitor

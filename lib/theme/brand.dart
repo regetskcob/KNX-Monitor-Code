@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:horizont/horizont.dart';
 
 /// Product name (not translated).
-const appName = 'KNX Monitor';
+const appName = 'Busclear';
 
-/// The brand: KNX Monitor in Horizont, accent "Bus".
+/// The brand: Busclear in Horizont, accent "Bus".
 abstract final class Brand {
   /// The product whose accent, glyph and icon the app carries.
   static const product = HorizontProduct.knx;

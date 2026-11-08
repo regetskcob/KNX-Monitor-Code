@@ -4,7 +4,7 @@ The Home Assistant add-on runs with host networking and access to the Home
 Assistant API. Whoever can push an image to `ghcr.io/regetskcob/*-knx-monitor`
 controls the KNX bus of every installation that updates. The path from source
 to image is therefore protected in several layers. The same applies to the
-Docker image and the KNX Box image.
+Docker image and the Busclear Box image.
 
 Part of this is checked by a test, so a change to a workflow that drops a
 protection fails CI: `ha-addon/knx_monitor/server/test/supply_chain_test.dart`.
@@ -12,7 +12,7 @@ protection fails CI: `ha-addon/knx_monitor/server/test/supply_chain_test.dart`.
 ## Workflows
 
 Workflows: `.github/workflows/addon.yml` (add-on and Docker images),
-`.github/workflows/box-image.yml` (KNX Box package and Raspberry Pi image),
+`.github/workflows/box-image.yml` (Busclear Box package and Raspberry Pi image),
 `.github/workflows/ci.yml` (checks).
 
 - **Actions pinned to commit SHAs.** Every `uses:` names a full 40-character
@@ -36,7 +36,7 @@ Workflows: `.github/workflows/addon.yml` (add-on and Docker images),
   `FROM scratch` with only the compiled server, the Dart runtime files, time zone
   data and the web app. Dependencies are fetched with
   `dart pub get --enforce-lockfile`, and the Flutter builds in CI with
-  `flutter pub get --enforce-lockfile`. Dependabot raises the digest. The KNX Box
+  `flutter pub get --enforce-lockfile`. Dependabot raises the digest. The Busclear Box
   image is built with pi-gen at a fixed tag and a verified commit
   (`box-image.yml`, `box/build-image.sh`, `PI_GEN_COMMIT`); a mismatch aborts
   the build. The pi-gen version is raised by hand.
@@ -56,7 +56,7 @@ are not signed.
 |---|---|---|
 | Add-on images `ghcr.io/regetskcob/{aarch64,amd64}-knx-monitor` | cosign (OCI) | – |
 | Docker image `ghcr.io/regetskcob/knx-monitor` | cosign (OCI) | – |
-| KNX Box package and image | `*.sigstore.json` bundles | `SHA256SUMS.txt` |
+| Busclear Box package and image | `*.sigstore.json` bundles | `SHA256SUMS.txt` |
 | Linux desktop release | – | `SHA256SUMS.txt` |
 
 If signing fails, the workflow run fails and `latest` is not moved. `latest`
@@ -81,7 +81,7 @@ cosign verify ghcr.io/regetskcob/knx-monitor:<version> \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --certificate-identity-regexp '^https://github.com/regetskcob/KNX-Monitor-Source/\.github/workflows/addon\.yml@refs/tags/addon-v'
 
-# KNX Box package and image
+# Busclear Box package and image
 cosign verify-blob knx-box-<version>.tar.gz --bundle knx-box-<version>.tar.gz.sigstore.json \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --certificate-identity-regexp '^https://github.com/regetskcob/KNX-Monitor-Source/\.github/workflows/box-image\.yml@refs/tags/box-v'

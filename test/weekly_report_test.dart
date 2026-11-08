@@ -99,9 +99,9 @@ void main() {
     final box = weeklyReport(
       [run(Duration.zero, const [])],
       now,
-      basis: const ReportBasis(continuous: true, listened: Duration.zero, days: 0, server: 'KNX-Box'),
+      basis: const ReportBasis(continuous: true, listened: Duration.zero, days: 0, server: 'Busclear Box'),
     );
-    expect(box.basisText, 'Grundlage: Die KNX-Box hört rund um die Uhr mit; dazu 1 Prüfung diese Woche.');
+    expect(box.basisText, 'Grundlage: Die Busclear Box hört rund um die Uhr mit; dazu 1 Prüfung diese Woche.');
     final none = weeklyReport(const [], now, basis: partial);
     expect(none.light, HealthLight.unknown);
     expect(none.summary, 'Diese Woche wurde noch nicht geprüft.');
@@ -135,12 +135,12 @@ void main() {
       '„Fensterkontakt Bad“ meldet sich nicht mehr (3/0/1)\n'
       '„Adresse 9/7/9“ ist ungewöhnlich lange still\n'
       '„Gerät 1.1.5“ muss oft wiederholen – Leitung oder Gerät prüfen lassen\n'
-      '… und 2 weitere. Einzelheiten in KNX Monitor unter „Gesundheit“',
+      '… und 2 weitere. Einzelheiten in Busclear unter „Gesundheit“',
     );
     expect(
       notificationBody([HealthFinding(FindingKind.newSilent, window)]),
       '„Fensterkontakt Bad“ meldet sich nicht mehr (3/0/1)\n'
-      'Einzelheiten in KNX Monitor unter „Gesundheit“',
+      'Einzelheiten in Busclear unter „Gesundheit“',
     );
   });
 

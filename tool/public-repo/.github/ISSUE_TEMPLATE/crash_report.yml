@@ -2,7 +2,7 @@
 # unexpected end, lib/model/crash_issue.dart). The app fills the fields by id
 # from the address: version, platform, time, reason. Keep the ids in sync.
 name: Unerwartet beendet / Crash
-description: KNX Monitor wurde unerwartet beendet · KNX Monitor ended unexpectedly
+description: Busclear wurde unerwartet beendet · Busclear ended unexpectedly
 title: "Unerwartet beendet: "
 labels: [bug]
 body:

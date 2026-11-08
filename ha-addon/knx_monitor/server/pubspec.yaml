@@ -1,5 +1,5 @@
 name: knx_monitor_server
-description: Home Assistant add-on server for KNX Monitor (web app, UDP relay, file storage).
+description: Home Assistant add-on server for Busclear (web app, UDP relay, file storage).
 publish_to: none
 version: 1.0.0
 

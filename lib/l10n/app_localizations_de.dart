@@ -979,7 +979,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String pdfFooterCreated(String date, String time) {
-    return 'Erstellt mit KNX Monitor · $date $time Uhr';
+    return 'Erstellt mit Busclear · $date $time Uhr';
   }
 
   @override
@@ -2169,9 +2169,9 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '… und $count weitere. Einzelheiten in KNX Monitor unter „Gesundheit“',
-      one: '… und 1 weiterer. Einzelheiten in KNX Monitor unter „Gesundheit“',
-      zero: 'Einzelheiten in KNX Monitor unter „Gesundheit“',
+      other: '… und $count weitere. Einzelheiten in Busclear unter „Gesundheit“',
+      one: '… und 1 weiterer. Einzelheiten in Busclear unter „Gesundheit“',
+      zero: 'Einzelheiten in Busclear unter „Gesundheit“',
     );
     return '$_temp0';
   }
@@ -2383,10 +2383,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get addonOpen => 'Monitor öffnen';
 
   @override
-  String get boxSection => 'KNX-Box';
+  String get boxSection => 'Busclear Box';
 
   @override
-  String get boxPair => 'Mit KNX-Box koppeln';
+  String get boxPair => 'Mit Busclear Box koppeln';
 
   @override
   String get boxPairHint =>
@@ -2399,7 +2399,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get boxLinkInvalid => 'Kein gültiger Kopplungslink.';
 
   @override
-  String get boxPairTitle => 'Mit KNX-Box verbinden?';
+  String get boxPairTitle => 'Mit Busclear Box verbinden?';
 
   @override
   String get boxPairBody =>
@@ -2407,7 +2407,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String boxVia(String name) {
-    return 'Über KNX-Box $name';
+    return 'Über Busclear Box $name';
   }
 
   @override
@@ -2420,14 +2420,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get boxForget => 'Kopplung löschen';
 
   @override
-  String get boxNone => 'Keine KNX-Box gekoppelt.';
+  String get boxNone => 'Keine Busclear Box gekoppelt.';
 
   @override
   String get boxUnauthorized => 'Die Box hat den Zugang abgelehnt. QR-Code der Box neu scannen.';
 
   @override
   String boxUnreachable(String address) {
-    return 'KNX-Box $address nicht erreichbar. Ist das Gerät im WLAN der Box?';
+    return 'Busclear Box $address nicht erreichbar. Ist das Gerät im WLAN der Box?';
   }
 
   @override
@@ -2535,7 +2535,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Ohne Gateway: Die Box hängt über den aufgesteckten KNX-HAT (Weinzierl kBerry) direkt an der Busleitung.';
 
   @override
-  String get connectModeHatBoxOnly => 'Nur über die KNX-Box mit aufgestecktem KNX-HAT möglich.';
+  String get connectModeHatBoxOnly => 'Nur über die Busclear Box mit aufgestecktem KNX-HAT möglich.';
 
   @override
   String get connectHatAddress => 'Eigene Adresse (optional)';
@@ -2724,7 +2724,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get diagnosticsBundle => 'Diagnose-Paket für Fehlerbericht';
 
   @override
-  String get aboutLicenses => 'Über KNX Monitor und Lizenzen';
+  String get aboutLicenses => 'Über Busclear und Lizenzen';
 
   @override
   String get aboutLegalese => '© 2026 regetskcob. Alle Rechte vorbehalten.';
@@ -3145,7 +3145,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get chartTemplateNoMatch => 'Passt in dieser Anlage noch zu keiner Adresse.';
 
   @override
-  String get boxAdd => 'KNX-Box hinzufügen';
+  String get boxAdd => 'Busclear Box hinzufügen';
 
   @override
   String get boxScanTitle => 'QR-Code der Box';
@@ -3160,7 +3160,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get boxScanNoCamera => 'Keine Kamera verfügbar.';
 
   @override
-  String get boxSetupTitle => 'KNX-Box einrichten';
+  String get boxSetupTitle => 'Busclear Box einrichten';
 
   @override
   String boxStepWifi(String ssid) {
@@ -3391,16 +3391,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get installationAll => 'Alle';
 
   @override
-  String get installationBoxRecording => 'KNX-Box zeichnet hier auf';
+  String get installationBoxRecording => 'Busclear Box zeichnet hier auf';
 
   @override
   String get installationHistoryOf => 'Verlauf von';
 
   @override
-  String get installationDeleteOnBox => 'Auch auf der KNX-Box, mit ihrem Langzeitverlauf.';
+  String get installationDeleteOnBox => 'Auch auf der Busclear Box, mit ihrem Langzeitverlauf.';
 
   @override
-  String get boxRecordingTitle => 'Daueraufzeichnung auf der KNX-Box';
+  String get boxRecordingTitle => 'Daueraufzeichnung auf der Busclear Box';
 
   @override
   String get planTitle => 'Plus und Pro';
@@ -3516,7 +3516,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planBetaBody(int months) {
-    return 'Danke fürs Testen! In der Beta ist alles freigeschaltet. Erscheint KNX Monitor im App Store, gibt es auf diesem Gerät $months Monate Pro als Dankeschön.';
+    return 'Danke fürs Testen! In der Beta ist alles freigeschaltet. Erscheint Busclear im App Store, gibt es auf diesem Gerät $months Monate Pro als Dankeschön.';
   }
 
   @override
@@ -3878,7 +3878,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get diagDownload => 'Paket herunterladen';
 
   @override
-  String get diagPackageInvalid => 'Kein Diagnosepaket von KNX Monitor.';
+  String get diagPackageInvalid => 'Kein Diagnosepaket von Busclear.';
 
   @override
   String get diagPackageNewer => 'Das Diagnosepaket stammt aus einer neueren App-Version.';
@@ -4758,7 +4758,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String versionApp(String version) {
-    return 'KNX Monitor $version';
+    return 'Busclear $version';
   }
 
   @override
@@ -4928,7 +4928,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get tourWelcomeText =>
-      'KNX Monitor hört am KNX-IP-Gateway mit und zeigt jedes Telegramm: wer sendet, an welche Gruppenadresse, mit welchem Wert. Diese Einführung führt durch die wichtigsten Stellen, mit dem Demo-Haus als Beispiel.';
+      'Busclear hört am KNX-IP-Gateway mit und zeigt jedes Telegramm: wer sendet, an welche Gruppenadresse, mit welchem Wert. Diese Einführung führt durch die wichtigsten Stellen, mit dem Demo-Haus als Beispiel.';
 
   @override
   String get tourConnectTitle => 'Verbinden in einem Schritt.';
@@ -5031,7 +5031,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get tourHistoryText =>
-      'Der Langzeitverlauf hebt ganze Tage auf, im Add-on und auf der KNX-Box rund um die Uhr. Du spulst zurück, was nachts passiert ist, mit Zeitleiste je Gruppenadresse und Wiedergabe in 1- bis 60-facher Geschwindigkeit.';
+      'Der Langzeitverlauf hebt ganze Tage auf, im Add-on und auf der Busclear Box rund um die Uhr. Du spulst zurück, was nachts passiert ist, mit Zeitleiste je Gruppenadresse und Wiedergabe in 1- bis 60-facher Geschwindigkeit.';
 
   @override
   String get tourChipTimeline => 'Zeitleiste';
@@ -5135,7 +5135,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Senden wie im ETS-Gruppenmonitor, auch verzögert oder zyklisch. Trigger-Aufnahmen starten bei einem Wert, einer Störung oder einer Wiederholung, mit Vorlauf. Eine Aufnahme lässt sich auf den Bus zurückspielen, nach ausdrücklicher Bestätigung.';
 
   @override
-  String get tourBoxTitle => 'KNX-Box für die Baustelle.';
+  String get tourBoxTitle => 'Busclear Box für die Baustelle.';
 
   @override
   String get tourBoxText =>
@@ -5339,7 +5339,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get acceptSignatureNote => 'Einfache elektronische Unterschrift auf dem Gerät, erstellt mit KNX Monitor.';
+  String get acceptSignatureNote => 'Einfache elektronische Unterschrift auf dem Gerät, erstellt mit Busclear.';
 
   @override
   String get signUndo => 'Letzten Strich zurücknehmen';
@@ -5360,14 +5360,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get huntTitle => 'Fehlerjagd';
 
   @override
-  String get huntTool => 'Sporadische Fehler über Tage fangen – mit der KNX-Box';
+  String get huntTool => 'Sporadische Fehler über Tage fangen – mit der Busclear Box';
 
   @override
   String get huntRefresh => 'Aktualisieren';
 
   @override
   String get huntNeedsBox =>
-      'Die Fehlerjagd läuft auf der KNX-Box oder im Home-Assistant-Add-on, rund um die Uhr. Koppel die App mit einer Box, um sie einzurichten.';
+      'Die Fehlerjagd läuft auf der Busclear Box oder im Home-Assistant-Add-on, rund um die Uhr. Koppel die App mit einer Box, um sie einzurichten.';
 
   @override
   String get huntExplain =>
@@ -5803,7 +5803,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectHelpWhat =>
-      'Dein Elektriker hat die Anlage mit der Planungssoftware ETS eingerichtet. Die Projektdatei (Endung .knxproj) enthält alle Namen: welche Gruppenadresse das Küchenlicht schaltet, welches Gerät wo sitzt, welche Werte es gibt. Mit ihr zeigt KNX Monitor Namen statt Zahlen.';
+      'Dein Elektriker hat die Anlage mit der Planungssoftware ETS eingerichtet. Die Projektdatei (Endung .knxproj) enthält alle Namen: welche Gruppenadresse das Küchenlicht schaltet, welches Gerät wo sitzt, welche Werte es gibt. Mit ihr zeigt Busclear Namen statt Zahlen.';
 
   @override
   String get projectHelpPasswordTitle => 'Projektpasswort';
@@ -6168,7 +6168,7 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String weekBasisPartial(String time, int days, String checks) {
     String _temp0 = intl.Intl.pluralLogic(days, locale: localeName, other: '$days Tagen', one: '1 Tag');
-    return 'Grundlage: Die App hat diese Woche etwa $time an $_temp0 mitgehört ($checks). Was dazwischen passiert, sieht der Bericht nicht – rund um die Uhr hört nur eine KNX-Box oder das Home-Assistant-Add-on mit.';
+    return 'Grundlage: Die App hat diese Woche etwa $time an $_temp0 mitgehört ($checks). Was dazwischen passiert, sieht der Bericht nicht – rund um die Uhr hört nur eine Busclear Box oder das Home-Assistant-Add-on mit.';
   }
 
   @override
@@ -6204,7 +6204,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get weekServerBox => 'KNX-Box';
+  String get weekServerBox => 'Busclear Box';
 
   @override
   String get weekServerAddon => 'Home-Assistant-Add-on';
@@ -6260,7 +6260,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get haExplain =>
-      'KNX Monitor leitet aus dem ETS-Projekt Leuchten, Behänge, Raumregler, Schalter und Sensoren für die KNX-Integration von Home Assistant ab. Wähle aus, was du übernehmen willst. Markierte Einträge bitte prüfen – dort war die Zuordnung nicht eindeutig.';
+      'Busclear leitet aus dem ETS-Projekt Leuchten, Behänge, Raumregler, Schalter und Sensoren für die KNX-Integration von Home Assistant ab. Wähle aus, was du übernehmen willst. Markierte Einträge bitte prüfen – dort war die Zuordnung nicht eindeutig.';
 
   @override
   String get haEmpty =>
@@ -6375,7 +6375,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String haYamlHeader(String version, String project, String date) {
-    return 'KNX Monitor $version – KNX-Integration für Home Assistant, Projekt „$project“, $date';
+    return 'Busclear $version – KNX-Integration für Home Assistant, Projekt „$project“, $date';
   }
 
   @override
@@ -6710,7 +6710,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get forumPreview => 'Vorschau';
 
   @override
-  String get forumHeading => 'Mitschnitt aus KNX Monitor';
+  String get forumHeading => 'Mitschnitt aus Busclear';
 
   @override
   String get forumTelegrams => 'Telegramme';
@@ -6742,7 +6742,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String forumMetaApp(String version) {
-    return 'KNX Monitor $version';
+    return 'Busclear $version';
   }
 
   @override
@@ -6781,7 +6781,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get etsHowTo =>
-      'Je Gerät eine Seite: die Zeichnung mit den Kanälen, die Aufgaben zum Abhaken und die Kanalzuordnung aus dem Projekt. Danach das Projekt neu in KNX Monitor importieren; der Projekt-Abgleich zeigt, was erledigt ist.';
+      'Je Gerät eine Seite: die Zeichnung mit den Kanälen, die Aufgaben zum Abhaken und die Kanalzuordnung aus dem Projekt. Danach das Projekt neu in Busclear importieren; der Projekt-Abgleich zeigt, was erledigt ist.';
 
   @override
   String get etsSummaryDevices => 'Geräte';
@@ -7444,8 +7444,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get packageCorrupt =>
-      'Diese Datei lässt sich nicht lesen. Sie ist beschädigt oder kein Paket von KNX Monitor.';
+  String get packageCorrupt => 'Diese Datei lässt sich nicht lesen. Sie ist beschädigt oder kein Paket von Busclear.';
 
   @override
   String get packageNewer => 'Diese Datei stammt aus einer neueren Version. Bitte die App aktualisieren.';
@@ -7651,7 +7650,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get gallerySubmitHint =>
-      'Wähle ein Diagramm. Die App erstellt daraus eine Datei mit Namen und Rollen, ohne Adressen und Räume. Teile sie selbst, zum Beispiel per Mail an support@knx-monitor.de; hochgeladen wird nichts.';
+      'Wähle ein Diagramm. Die App erstellt daraus eine Datei mit Namen und Rollen, ohne Adressen und Räume. Teile sie selbst, zum Beispiel per Mail an support@busclear.de; hochgeladen wird nichts.';
 
   @override
   String get gallerySubmitNone => 'Noch kein gespeichertes Diagramm mit erkennbaren Rollen.';
@@ -7740,7 +7739,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get siteDocsScanForeign => 'Das ist kein Etikett von KNX Monitor.';
+  String get siteDocsScanForeign => 'Das ist kein Etikett von Busclear.';
 
   @override
   String get srPhotos => 'Fotos';
@@ -8157,7 +8156,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get crashTitle => 'KNX Monitor wurde unerwartet beendet';
+  String get crashTitle => 'Busclear wurde unerwartet beendet';
 
   @override
   String get crashReport => 'Bericht erstellen';
@@ -8330,10 +8329,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Schützt die App, falls das Gerät verloren geht oder gestohlen wird: Beim Start und nach der gewählten Zeit im Hintergrund muss sich jemand ausweisen. Der Bus läuft währenddessen weiter.';
 
   @override
-  String get appLockTitle => 'KNX Monitor ist gesperrt';
+  String get appLockTitle => 'Busclear ist gesperrt';
 
   @override
-  String get appLockReason => 'KNX Monitor entsperren';
+  String get appLockReason => 'Busclear entsperren';
 
   @override
   String get appLockSystemHint => 'Mit Face ID, Fingerabdruck, Windows Hello oder dem Gerätecode entsperren.';
@@ -8514,7 +8513,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get recoveryPdfIntro =>
-      'Dieser Schlüssel öffnet die App-Sperre von KNX Monitor, wenn das App-Passwort vergessen wurde.';
+      'Dieser Schlüssel öffnet die App-Sperre von Busclear, wenn das App-Passwort vergessen wurde.';
 
   @override
   String recoveryPdfAccount(String email) {
@@ -8602,7 +8601,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get accountMfaPdfIntro =>
-      'Mit diesem Blatt bekommst du die Anmeldecodes für dein KNX-Monitor-Konto zurück, wenn dein Telefon weg ist.';
+      'Mit diesem Blatt bekommst du die Anmeldecodes für dein Busclear-Konto zurück, wenn dein Telefon weg ist.';
 
   @override
   String get accountMfaPdfUse =>
@@ -8641,7 +8640,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get installationsNewerBody =>
-      'Diese Daten stammen aus einer neueren Version von KNX Monitor. Bitte aktualisiere die App. Deine Daten bleiben unverändert.';
+      'Diese Daten stammen aus einer neueren Version von Busclear. Bitte aktualisiere die App. Deine Daten bleiben unverändert.';
 
   @override
   String get quarantineTitle => 'Alte Daten nicht lesbar';
@@ -8958,7 +8957,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get exportsEtsHistoryHint =>
-      'Lädt die Telegramme der dauerhaften Aufzeichnung als Gruppenmonitor-Datei der ETS. SpectrumKNX, die ETS und KNX Monitor öffnen sie direkt.';
+      'Lädt die Telegramme der dauerhaften Aufzeichnung als Gruppenmonitor-Datei der ETS. SpectrumKNX, die ETS und Busclear öffnen sie direkt.';
 
   @override
   String get exportsEtsHistoryDownload => 'Herunterladen';
@@ -9317,4 +9316,91 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get dataExportMqttSecureOn =>
       'Auch KNX-Secure-Telegramme gehen entschlüsselt hinaus. Jeder, der den Broker lesen kann, sieht ihre Werte.';
+
+  @override
+  String dataExportMqttDetails(String mode, String filter, int seq) {
+    String _temp0 = intl.Intl.selectLogic(mode, {
+      'raw': 'Mit Rohdaten',
+      'rawOnly': 'Nur Rohdaten',
+      'other': 'Ohne Rohdaten',
+    });
+    return '$_temp0 · Gruppenadressen: $filter · letzte Nr. (seq) $seq';
+  }
+
+  @override
+  String get dataExportMqttFilterAll => 'alle';
+
+  @override
+  String get tapPointsTitle => 'Messpunkte';
+
+  @override
+  String get tapPointsHint =>
+      'Weitere Verbindungen zur selben Anlage, etwa ein Interface je Linie. Die App führt alles in einem Verlauf zusammen. Jeder Tunnel-Messpunkt belegt einen Tunnel an seinem Interface.';
+
+  @override
+  String get tapPointFirst => 'Messpunkt 1 ist die Verbindung oben.';
+
+  @override
+  String get tapPointAdd => 'Messpunkt hinzufügen';
+
+  @override
+  String get tapPointName => 'Name';
+
+  @override
+  String get tapPointNameHint => 'Linie 1.2 · MDT IP-Interface';
+
+  @override
+  String get tapPointHost => 'Adresse';
+
+  @override
+  String get tapPointMode => 'Verbindungsart';
+
+  @override
+  String get tapPointWindow => 'Zeitfenster in ms';
+
+  @override
+  String get tapPointWindowHelp => 'Leer = 100 ms. Über VPN größer wählen, etwa 250.';
+
+  @override
+  String get tapPointRemote =>
+      'Die Adresse liegt nicht im eigenen Netz. Über VPN ist TCP robuster als UDP, Routing kommt meist nicht durch.';
+
+  @override
+  String get tapPointPaused => 'pausiert, Tunnel frei';
+
+  @override
+  String get tapPointActive => 'Messpunkt aktiv';
+
+  @override
+  String get tapPointRemove => 'Messpunkt entfernen';
+
+  @override
+  String get tapPointMax => 'Höchstens 8 Messpunkte je Anlage.';
+
+  @override
+  String get tapPointSave => 'Hinzufügen';
+
+  @override
+  String tapDown(String name, int live, int total) {
+    return '$name getrennt · $live von $total Messpunkten aktiv';
+  }
+
+  @override
+  String get tapDownHint => 'Die anderen laufen weiter. Der getrennte verbindet sich von selbst neu.';
+
+  @override
+  String get detailsPath => 'Weg durch die Anlage';
+
+  @override
+  String detailsPathSeen(String ms, int hop) {
+    return '+$ms ms · Hop $hop';
+  }
+
+  @override
+  String detailsPathFirst(int hop) {
+    return 'zuerst · Hop $hop';
+  }
+
+  @override
+  String get detailsPathMissing => 'nicht gesehen, gefiltert oder nur lokal';
 }

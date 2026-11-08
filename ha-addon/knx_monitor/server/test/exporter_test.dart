@@ -345,7 +345,7 @@ void main() {
         multiLine: true,
       ).allMatches(exporter.prometheusText()).map((m) => m[1]).toSet();
       final board = jsonDecode(jsonEncode(grafanaDashboard('prometheus'))) as Map<String, Object?>;
-      expect(board['title'], 'KNX Monitor');
+      expect(board['title'], 'Busclear');
       expect((board['__inputs']! as List).cast<Map>().single['pluginId'], 'prometheus');
       final used = <String>{};
       for (final panel in (board['panels']! as List).cast<Map>()) {

@@ -17,7 +17,7 @@ body:
         - macOS
         - Windows
         - Linux
-        - KNX Box
+        - Busclear Box
     validations:
       required: true
   - type: input
@@ -44,5 +44,5 @@ body:
     id: logs
     attributes:
       label: Logs / screenshots
-      description: For the add-on, see Settings → Add-ons → KNX Monitor → Log
+      description: For the add-on, see Settings → Add-ons → Busclear → Log
       render: text

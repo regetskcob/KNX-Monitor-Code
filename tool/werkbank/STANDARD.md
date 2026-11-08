@@ -88,7 +88,12 @@ Watch-App, Seiten-Deploy), steht als eigener Befehl daneben.
   Ohne Stempel (geändert nach `verify`, gewöhnliches `git push`, `--quick`) läuft alles.
   Prüft die PR-CI eines Projekts nur `verify --quick`, stempelt mit `WB_CI_VERIFY=quick`
   auch der schnelle Lauf.
-  Tags und `workflow_dispatch` prüfen immer voll. Das Gate zählt nur Statusmeldungen des
+  Tags gehen genauso: `werkbank push-tag <tag>` (und `werkbank release`) pushen den Tag und
+  setzen den Status für den getaggten Commit, wenn `verify` genau ihn geprüft hat; das Gate
+  fragt dann `github.sha` ab. Weitere lokale Prüfungen eines Projekts (etwa ein
+  Container-Smoke-Test) merken sich ihren Commit mit `wb_stamp <name>`; `push` und `push-tag`
+  setzen dafür `werkbank/<name>`, und der passende CI-Job fragt diesen Status ab.
+  `workflow_dispatch` prüft immer voll. Das Gate zählt nur Statusmeldungen des
   Repo-Besitzers (ein persönliches Repo); kann es GitHub nicht fragen, prüft die CI voll
   (`!cancelled()`, Fehler der Abfrage gelten als „kein Stempel“). Vorlage für den Job:
 
@@ -106,10 +111,10 @@ Watch-App, Seiten-Deploy), steht als eigener Befehl daneben.
         - id: stamp
           env:
             GH_TOKEN: ${{ github.token }}
-            SHA: ${{ github.event.pull_request.head.sha }}
+            SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           run: |
             verified=false
-            if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            if [ "$GITHUB_EVENT_NAME" = pull_request ] || [[ "$GITHUB_REF" == refs/tags/* ]]; then
               for _ in 1 2 3; do
                 state=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/statuses" \
                   --jq '[.[] | select(.context == "werkbank/verify" and .creator.login == "'"$GITHUB_REPOSITORY_OWNER"'")][0].state // ""' \

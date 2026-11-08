@@ -185,6 +185,19 @@ class _DataExportScreenState extends State<DataExportScreen> {
         mqtt.connected ? HorizontStatus.positive : HorizontStatus.warning,
         mqtt.connected ? s.dataExportMqttOn(mqtt.sent, mqtt.dropped) : s.dataExportMqttDisconnected,
       ),
+      if (mqtt.seq case final seq?)
+        HorizontStatusLine(
+          HorizontStatus.info,
+          s.dataExportMqttDetails(
+            mqtt.rawOnly
+                ? 'rawOnly'
+                : mqtt.raw
+                ? 'raw'
+                : 'none',
+            mqtt.filter.isEmpty ? s.dataExportMqttFilterAll : mqtt.filter,
+            seq,
+          ),
+        ),
       if (mqtt.secure) HorizontStatusLine(HorizontStatus.warning, s.dataExportMqttSecureOn),
       if (mqtt.secureSkipped > 0)
         HorizontStatusLine(HorizontStatus.info, s.dataExportMqttSecureSkipped(mqtt.secureSkipped)),

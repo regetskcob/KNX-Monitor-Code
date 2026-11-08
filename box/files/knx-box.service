@@ -1,7 +1,7 @@
-# KNX Monitor Box: server with continuous recording, web app and app pairing.
+# Busclear Box: server with continuous recording, web app and app pairing.
 [Unit]
-Description=KNX Monitor Box
-Documentation=https://knx-monitor.de/box/
+Description=Busclear Box
+Documentation=https://busclear.de/box/
 After=network-online.target knx-box-firstboot.service knx-box-data.service
 Wants=network-online.target knx-box-data.service
 # Do not start without first boot (passwords, Wi-Fi).

@@ -1,6 +1,6 @@
-# Every pull request: app (format, analysis, tests, web build for the HA
+# Every pull request and app-v* tag: app (format, analysis, tests, web build for the HA
 # add-on) and the add-on server – unless tool/release.sh verify passed for
-# the pull request's head locally and tool/release.sh push marked it on GitHub
+# the commit locally and tool/release.sh push (or app, for the tag) marked it on GitHub
 # (status werkbank/verify, job gate; tool/werkbank/STANDARD.md, "Stempel"). main changes only through pull requests, so
 # there is no second run after the merge. Changes only to the website or docs
 # start no run. Desktop (Linux, Windows) builds run only on an app-v* tag
@@ -37,10 +37,11 @@ jobs:
       - id: stamp
         env:
           GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           verified=false
-          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+          # Pull requests and app-v* tags (tool/release.sh app marks the tagged commit).
+          if [ "$GITHUB_EVENT_NAME" = pull_request ] || [[ "$GITHUB_REF" == refs/tags/* ]]; then
             for _ in 1 2 3; do
               state=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/statuses" \
                 --jq '[.[] | select(.context == "werkbank/verify" and .creator.login == "'"$GITHUB_REPOSITORY_OWNER"'")][0].state // ""' \

@@ -2,7 +2,7 @@
 # Baut die Bastler-Anleitung zum KNX-HAT (Weinzierl kBerry) aus index.html:
 # Horizont-Schriften aus dem Pub-Cache kopieren, dann mit headless Chrome
 # drucken. Ergebnis liegt bei der Box-Seite (site/static/box/), damit
-# knx-monitor.de/box/ darauf verlinken kann.
+# busclear.de/box/ darauf verlinken kann.
 #   docs/pdf/knx-hat/build.sh
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"

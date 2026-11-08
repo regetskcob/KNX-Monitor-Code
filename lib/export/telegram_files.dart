@@ -127,8 +127,8 @@ String buildEtsXml(List<Telegram> telegrams, {String? host}) {
         attributes: {
           'Timestamp': ts(items.isEmpty ? DateTime.now() : items.first.time),
           'Mode': 'LinkLayer',
-          'Host': host ?? 'KNX Monitor',
-          'ConnectionName': 'KNX Monitor',
+          'Host': host ?? 'Busclear',
+          'ConnectionName': 'Busclear',
           'ConnectorType': 'KnxIpTunneling',
           'MediumType': 'TP',
         },

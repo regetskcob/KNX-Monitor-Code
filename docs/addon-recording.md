@@ -1,6 +1,6 @@
 # Add-on: shared bus connection and continuous recording
 
-Applies to the Home Assistant add-on and the KNX Box, which run the same
+Applies to the Home Assistant add-on and the Busclear Box, which run the same
 server (`ha-addon/knx_monitor/server/`). The native apps (iOS, Android,
 desktop) hold their own connection and do not record in the background.
 

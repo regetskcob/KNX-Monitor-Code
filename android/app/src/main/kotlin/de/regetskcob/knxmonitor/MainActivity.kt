@@ -217,7 +217,7 @@ class MainActivity : FlutterFragmentActivity() {
                 "notify" -> {
                     notify(
                         call.argument<String>("id") ?: "",
-                        call.argument<String>("title") ?: "KNX Monitor",
+                        call.argument<String>("title") ?: "Busclear",
                         call.argument<String>("body") ?: "",
                         call.argument<Boolean>("silent") == true,
                     )
@@ -227,7 +227,7 @@ class MainActivity : FlutterFragmentActivity() {
                     if (call.argument<Boolean>("on") == true) {
                         ListenService.start(
                             applicationContext,
-                            call.argument<String>("title") ?: "KNX Monitor",
+                            call.argument<String>("title") ?: "Busclear",
                             call.argument<String>("text") ?: "",
                         )
                     } else {
@@ -304,7 +304,7 @@ class MainActivity : FlutterFragmentActivity() {
         }
         val publicVersion = publicBuilder
             .setSmallIcon(R.drawable.ic_stat_knx)
-            .setContentTitle("KNX Monitor")
+            .setContentTitle("Busclear")
             .setContentText(
                 if (silent) channelName("Wächter ausgelöst", "Watcher triggered")
                 else channelName("Alarm ausgelöst", "Alarm triggered")
@@ -468,7 +468,7 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    /// WLAN der KNX-Box: Android fragt einmal nach. Das Netz hat kein Internet,
+    /// WLAN der Busclear Box: Android fragt einmal nach. Das Netz hat kein Internet,
     /// deshalb wird der Prozess daran gebunden, sonst liefe der Verkehr zur Box
     /// über das Mobilnetz.
     private var boxNetwork: ConnectivityManager.NetworkCallback? = null
@@ -514,7 +514,7 @@ class MainActivity : FlutterFragmentActivity() {
         private const val NOTIFY_REQUEST = 4203
         private const val ALERT_CHANNEL = "alerts"
         private const val WATCH_CHANNEL = "watch"
-        private const val SECRET_LABEL = "KNX Monitor secret"
+        private const val SECRET_LABEL = "Busclear secret"
     }
 
     override fun onDestroy() {

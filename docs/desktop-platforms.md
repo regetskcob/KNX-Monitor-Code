@@ -46,7 +46,7 @@ only built in CI; a run on a real Windows machine is still missing.
   `data/app_icon.png` in the bundle. `linux/packaging/install.sh` installs to
   `~/.local/opt/knx-monitor` and adds a desktop entry whose name matches the
   app ID; without it, GNOME and KDE Plasma on Wayland show a placeholder icon.
-- **Windows:** window title "KNX Monitor", 1100×760, version info
+- **Windows:** window title "Busclear", 1100×760, version info
   (`Runner.rc`) and app icon (`windows/runner/resources/app_icon.ico`).
 - **CI** (`.github/workflows/ci.yml`): jobs `linux` and `windows` build on
   `app-v*` tags or by hand and upload `knx-monitor-linux` and

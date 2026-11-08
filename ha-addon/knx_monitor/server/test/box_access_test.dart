@@ -570,11 +570,11 @@ void main() {
       expect(access.lanAccess, isTrue);
     });
 
-    test('Docker: Anmeldedialog ohne „KNX-Box“', () async {
+    test('Docker: Anmeldedialog ohne „Busclear Box“', () async {
       await fromLan(initial: true, container: true, fresh: true);
       final (status, _, headers) = await send('/api/bus');
       expect(status, 401);
-      expect(headers.value(HttpHeaders.wwwAuthenticateHeader), contains('KNX Monitor'));
+      expect(headers.value(HttpHeaders.wwwAuthenticateHeader), contains('Busclear'));
     });
 
     test('WLAN der Box und die Box selbst: ja, sonst nein', () {

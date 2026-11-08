@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "Daniel Bocksteger" "\0"
-            VALUE "FileDescription", "KNX Monitor" "\0"
+            VALUE "FileDescription", "Busclear" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "knx_monitor" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 Daniel Bocksteger. All rights reserved." "\0"
             VALUE "OriginalFilename", "knx_monitor.exe" "\0"
-            VALUE "ProductName", "KNX Monitor" "\0"
+            VALUE "ProductName", "Busclear" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

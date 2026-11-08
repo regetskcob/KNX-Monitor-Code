@@ -7,7 +7,7 @@ import 'package:knx_monitor_server/box.dart';
 import 'package:knx_monitor_server/bus.dart';
 import 'package:knx_monitor_server/files.dart';
 
-/// Server of the Home Assistant add-on "KNX Monitor".
+/// Server of the Home Assistant add-on "Busclear".
 ///
 /// - serves the Flutter web app (via HA Ingress in the sidebar),
 /// - relays KNXnet/IP between the WebSocket "/ws" and UDP (browsers cannot do UDP),
@@ -51,7 +51,7 @@ Future<void> main(List<String> args) async {
   try {
     env = withSecretFiles(Platform.environment);
   } on ContainerEnvException catch (e) {
-    stderr.writeln('KNX Monitor: $e');
+    stderr.writeln('Busclear: $e');
     exit(78); // EX_CONFIG
   }
   if (args.isNotEmpty && args.first == 'sheet') {
@@ -101,14 +101,14 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
   _inHomeAssistant = (env['SUPERVISOR_TOKEN'] ?? '').isNotEmpty;
   if (env['BOX'] != '1' && !allowAll && !_inHomeAssistant) {
     stderr.writeln(
-      'KNX Monitor: weder Home Assistant (SUPERVISOR_TOKEN) noch BOX=1 noch ALLOW_ALL=1 – '
+      'Busclear: weder Home Assistant (SUPERVISOR_TOKEN) noch BOX=1 noch ALLOW_ALL=1 – '
       'der Server lehnt alle Anfragen ab. Für Docker BOX=1 und BOX_PASSWORD setzen.',
     );
   }
   // Read-only (read_only.dart): in the add-on the option `read_only`, on by default;
   // Docker, Linux and box with READ_ONLY=1, off by default.
   _readOnly = HomeAssistant.instance.available ? await _flag('read_only') : env['READ_ONLY'] == '1';
-  if (_readOnly) stdout.writeln('KNX Monitor: Nur-Lesen, es geht nichts auf den Bus');
+  if (_readOnly) stdout.writeln('Busclear: Nur-Lesen, es geht nichts auf den Bus');
   // Docker without BOX_PASSWORD: the server would invent a password and could
   // only tell it through the log, which other tools collect. Refuse instead,
   // also a password that is too short (only on the very first start; later
@@ -118,11 +118,11 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
   final stored = await File('${data.path}/access.json').exists() || await File('${data.path}/access.json.bak').exists();
   final refusal = refuseToStart(env, firstStart: !stored);
   if (refusal != null) {
-    stderr.writeln('KNX Monitor: $refusal');
+    stderr.writeln('Busclear: $refusal');
     exit(78); // EX_CONFIG
   }
   if (allowAll && env['BOX'] != '1') {
-    stderr.writeln('KNX Monitor: ALLOW_ALL=1 – keine Anmeldung, jeder Zugriff darf auf den Bus. Nur für Tests.');
+    stderr.writeln('Busclear: ALLOW_ALL=1 – keine Anmeldung, jeder Zugriff darf auf den Bus. Nur für Tests.');
   }
   // Standalone without the real box (Docker): see the doc comment of main.
   final docker = env['BOX'] == '1' && !sticker;
@@ -147,7 +147,7 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
       box.verifyPassword(env['BOX_PASSWORD']!).then((same) {
         if (!same) {
           stderr.writeln(
-            'KNX Monitor: BOX_PASSWORD weicht vom gespeicherten Passwort ab und wird ignoriert. '
+            'Busclear: BOX_PASSWORD weicht vom gespeicherten Passwort ab und wird ignoriert. '
             'Das Passwort in der App oder unter /pair ändern.',
           );
         }
@@ -157,8 +157,8 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
   if (box != null && docker) {
     stdout.writeln(
       box.lanAccess
-          ? 'KNX Monitor: aus dem Netzwerk erreichbar (LAN_ACCESS=yes), mit Passwort'
-          : 'KNX Monitor: nur am Rechner selbst erreichbar (http://localhost:$port). '
+          ? 'Busclear: aus dem Netzwerk erreichbar (LAN_ACCESS=yes), mit Passwort'
+          : 'Busclear: nur am Rechner selbst erreichbar (http://localhost:$port). '
                 'Für andere Geräte im Netzwerk LAN_ACCESS=yes setzen.',
     );
   }
@@ -171,9 +171,9 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
   final clock = box == null || docker ? null : BoxClock(requestFile: File('${data.path}/time-request.json'));
   // Each installation has its own bus connection, catalog and history; on first
   // start, the previous data folder becomes the installation "default".
-  // In the add-on with an MQTT broker: device "KNX Monitor" (see below).
+  // In the add-on with an MQTT broker: device "Busclear" (see below).
   MqttBridge? mqtt;
-  // Access for the KNX Monitor integration (created below).
+  // Access for the Busclear integration (created below).
   HaIntegration? ha;
   final installations = InstallationService(
     await Installations.open(data),
@@ -219,7 +219,7 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
     unawaited(HomeAssistant.instance.refreshKnx());
     Timer.periodic(const Duration(minutes: 10), (_) => HomeAssistant.instance.refreshKnx());
   }
-  // Access for the KNX Monitor integration (ha_integration.dart). While it is
+  // Access for the Busclear integration (ha_integration.dart). While it is
   // set up, it provides the entities instead of the MQTT device. In the add-on
   // with the token from the Supervisor's discovery; on the box and in Docker
   // (Home Assistant Container) with a paired admin device instead (see _handle).
@@ -235,7 +235,7 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
         )
       : null;
   await ha?.start();
-  // Device "KNX Monitor" via MQTT: in the add-on with the Supervisor's broker,
+  // Device "Busclear" via MQTT: in the add-on with the Supervisor's broker,
   // otherwise (Docker, box) with MQTT_HOST and friends.
   final envBroker = MqttBroker.fromEnvironment(env);
   if (HomeAssistant.instance.available || envBroker != null) {
@@ -243,6 +243,23 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
     // mqtt_telegrams, Docker and box MQTT_TELEGRAMS=true. Off by default.
     final telegrams =
         env['MQTT_TELEGRAMS'] == 'true' || (HomeAssistant.instance.available && await _on('mqtt_telegrams'));
+    Future<bool> option(String name, String key) async =>
+        env[name] == 'true' || (HomeAssistant.instance.available && await _on(key));
+    // Raw data (cEMI frame, priority, dedup key) and "raw only" without ETS data.
+    final rawOnly = telegrams && await option('MQTT_RAW_ONLY', 'mqtt_raw_only');
+    final raw = rawOnly || (telegrams && await option('MQTT_RAW', 'mqtt_raw'));
+    // Only these group addresses, e.g. "1/#,3/2/#,4/1/7"; empty = all.
+    final filter = GroupFilter.parse(
+      env['MQTT_FILTER'] ?? (HomeAssistant.instance.available ? await _option('mqtt_filter') : null),
+    );
+    if (telegrams && filter.invalid.isNotEmpty) {
+      stderr.writeln(
+        'MQTT-Filter: nicht lesbar und ignoriert: ${filter.invalid.join(', ')} (Beispiel: 1/#,3/2/#,4/1/7)',
+      );
+    }
+    final installationId =
+        (env['MQTT_INSTALLATION'] ?? (HomeAssistant.instance.available ? await _option('mqtt_installation') : null))
+            ?.trim();
     mqtt = MqttBridge(
       () => installations.bus,
       version: env['ADDON_VERSION'] ?? 'dev',
@@ -255,13 +272,27 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
               secure:
                   env['MQTT_SECURE_TELEGRAMS'] == 'true' ||
                   (HomeAssistant.instance.available && await _on('mqtt_secure_telegrams')),
+              raw: raw,
+              rawOnly: rawOnly,
+              filter: filter,
             )
           : null,
+      installation: installationId == null || installationId.isEmpty ? null : installationId,
     );
-    if (telegrams) stdout.writeln('MQTT: jedes Telegramm an knx_monitor/telegram/…');
+    if (telegrams) {
+      stdout.writeln(
+        'MQTT: jedes Telegramm an knx_monitor/telegram/…'
+        '${rawOnly
+            ? ', nur Rohdaten'
+            : raw
+            ? ', mit Rohdaten'
+            : ''}'
+        '${filter.isAll ? '' : ', nur ${filter.text}'}',
+      );
+    }
     unawaited(mqtt.start());
   }
-  // Dashboard card "KNX Monitor Diagramm" (can be disabled: option dashboard_card).
+  // Dashboard card "Busclear Diagramm" (can be disabled: option dashboard_card).
   if (HomeAssistant.instance.available && await _flag('dashboard_card')) {
     unawaited(_installCard(env['ADDON_VERSION'] ?? 'dev', Directory(env['CARD_DIR'] ?? '/app/card')));
   }
@@ -318,7 +349,7 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
   // With another BIND the developer chose to expose it.
   _localHostOnly = allowAll && bind.isLoopback;
   accept(await HttpServer.bind(bind, port));
-  stdout.writeln('KNX Monitor: Port $port, Web ${web.path}, Daten ${data.path}');
+  stdout.writeln('Busclear: Port $port, Web ${web.path}, Daten ${data.path}');
   // Box: HTTPS with its own certificate (see box_tls.dart); HTTP stays for the
   // browser in the box Wi-Fi. Without a certificate or if the port is taken, HTTP only.
   if (box != null) {
@@ -336,7 +367,7 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
         accept(await HttpServer.bindSecure(bind, tlsPort, tls.context));
         box.tlsFingerprint = tls.fingerprint;
         box.tlsPort = tlsPort;
-        stdout.writeln('KNX Monitor: HTTPS auf Port $tlsPort');
+        stdout.writeln('Busclear: HTTPS auf Port $tlsPort');
       } on SocketException catch (e) {
         stderr.writeln('HTTPS auf Port $tlsPort nicht möglich: $e');
       }
@@ -412,7 +443,7 @@ Future<void> _handle(
         ..headers.set(HttpHeaders.allowHeader, _methods.join(', '));
       return await response.close();
     }
-    // The KNX Monitor integration with its token: only the endpoints below /api/ha/.
+    // The Busclear integration with its token: only the endpoints below /api/ha/.
     if (ha != null && HaIntegration.handles(request.uri.path) && ha.authorized(request)) {
       await ha.serve(request);
       return;
@@ -751,7 +782,7 @@ Future<bool> _sendNotification({required String id, required String title, requi
   final panel = await _panelPath(token);
   await call('persistent_notification/create', {
     'title': title,
-    'message': panel == null ? message : '$message\n\n[KNX Monitor →]($panel)',
+    'message': panel == null ? message : '$message\n\n[Busclear →]($panel)',
     'notification_id': id,
   });
   final service = await _option('notify_service');
@@ -819,10 +850,10 @@ Future<void> _installCard(String version, Directory dir) async {
   if (result.freshWww) {
     await _sendNotification(
       id: 'knx_monitor_card',
-      title: 'KNX Monitor',
+      title: 'Busclear',
       message:
-          'Die Dashboard-Karte „KNX Monitor Diagramm“ ist eingerichtet. Starte Home Assistant einmal neu, '
-          'damit sie geladen wird.\n\nThe dashboard card “KNX Monitor chart” is installed. Restart Home '
+          'Die Dashboard-Karte „Busclear Diagramm“ ist eingerichtet. Starte Home Assistant einmal neu, '
+          'damit sie geladen wird.\n\nThe dashboard card “Busclear chart” is installed. Restart Home '
           'Assistant once to load it.',
     );
   }

@@ -1,7 +1,7 @@
 hero:
-  kennung: "KNX-Box · Raspberry Pi"
+  kennung: "Busclear Box · Raspberry Pi"
   title: "Der Bus zeichnet sich auf, während du weg bist."
-  lead: "Die KNX-Box ist ein Raspberry Pi, der rund um die Uhr jedes Telegramm mitschreibt und ein eigenes WLAN aufspannt. Eingerichtet wird sie mit der App: heute mit der Linux-App, bald per QR-Code mit iPhone, iPad und Android. Ohne Home Assistant und ohne Internet."
+  lead: "Die Busclear Box ist ein Raspberry Pi, der rund um die Uhr jedes Telegramm mitschreibt und ein eigenes WLAN aufspannt. Eingerichtet wird sie mit der App: heute mit der Linux-App, bald per QR-Code mit iPhone, iPad und Android. Ohne Home Assistant und ohne Internet."
   primary: "Image laden"
   secondary: "So richtest du sie ein"
 
@@ -28,10 +28,10 @@ setup:
     - { term: "Erster Start", value: "**SD-Karte in den Pi, Strom anschließen,** ein Netzwerkkabel braucht es dafür noch nicht. Nach wenigen Minuten erscheint das WLAN „KNX-Box-…“. Dann noch eine Minute warten und den Strom ziehen." }
     - { term: "Karte lesen", value: "**SD-Karte zurück in den Rechner und `knx-box-de.pdf` ausdrucken** (englisch: `knx-box-en.pdf`). Auf dem Blatt steht alles: **zwei Aufkleber** zum Ausschneiden (1 für die App oben auf die Box, 2 mit dem WLAN auf den Boden), **WLAN- und Box-Passwort**, der Link für die Linux-App und die nächsten Schritte. Gut aufheben, dann die Karte zurück in den Pi. Einzeln liegen daneben die QR-Codes als Bild (`knx-box-app.png`, `knx-box-wlan.png`), der Link als `knx-box-link.txt` und die Werte in `knx-box.txt`." }
     - { term: "Anschließen", value: "**Netzwerkkabel zum Router oder Switch am Gateway, dann Strom.** Nach etwa einer Minute ist die Box bereit." }
-    - { term: "Koppeln", value: "**In der App „KNX-Box hinzufügen“ und den Aufkleber scannen.** Die App tritt dem WLAN der Box bei, koppelt sich, stellt die Uhr und sucht das Gateway. Gibt es genau eins, ist es gleich eingestellt, und die Box zeichnet auf. Die Kopplung mit der App gehört zu Pro.", value_live: "**In der App „KNX-Box hinzufügen“ und den Aufkleber scannen.** Die App tritt dem WLAN der Box bei, koppelt sich, stellt die Uhr und sucht das Gateway. Gibt es genau eins, ist es gleich eingestellt, und die Box zeichnet auf." }
-    - { term: "Mit Linux", value: "**[Linux-App laden](https://github.com/regetskcob/KNX-Monitor/releases/latest),** entpacken und im Ordner `bundle` `./install.sh` ausführen: Es installiert KNX Monitor ins App-Menü, der Download kann danach weg. Am Rechner ins WLAN „KNX-Box-…“ wechseln (WLAN-Passwort aus `knx-box.txt`). In der App „KNX-Box hinzufügen“ und den Inhalt von `knx-box-link.txt` einfügen; den Rest erledigt die App wie oben." }
+    - { term: "Koppeln", value: "**In der App „Busclear Box hinzufügen“ und den Aufkleber scannen.** Die App tritt dem WLAN der Box bei, koppelt sich, stellt die Uhr und sucht das Gateway. Gibt es genau eins, ist es gleich eingestellt, und die Box zeichnet auf. Die Kopplung mit der App gehört zu Pro.", value_live: "**In der App „Busclear Box hinzufügen“ und den Aufkleber scannen.** Die App tritt dem WLAN der Box bei, koppelt sich, stellt die Uhr und sucht das Gateway. Gibt es genau eins, ist es gleich eingestellt, und die Box zeichnet auf." }
+    - { term: "Mit Linux", value: "**[Linux-App laden](https://github.com/regetskcob/KNX-Monitor/releases/latest),** entpacken und im Ordner `bundle` `./install.sh` ausführen: Es installiert Busclear ins App-Menü, der Download kann danach weg. Am Rechner ins WLAN „KNX-Box-…“ wechseln (WLAN-Passwort aus `knx-box.txt`). In der App „Busclear Box hinzufügen“ und den Inhalt von `knx-box-link.txt` einfügen; den Rest erledigt die App wie oben." }
   preview: "Aufkleber scannen, den Rest erledigt die App: WLAN, Kopplung, Uhr und Gateway. So sieht es bald auf iPhone, iPad und Android aus; heute geht es mit der Linux-App."
-  preview_alt: "Die App richtet die KNX-Box ein: WLAN beitreten, Box erreichen, koppeln, Uhr stellen, Gateway finden, alles abgehakt"
+  preview_alt: "Die App richtet die Busclear Box ein: WLAN beitreten, Box erreichen, koppeln, Uhr stellen, Gateway finden, alles abgehakt"
   alt: "Ohne App geht es auch: Der zweite QR-Code (`knx-box-wlan.png`) verbindet mit dem WLAN der Box, dann im Browser `knx-box.local` öffnen und mit dem Box-Passwort anmelden."
 
 data:
@@ -99,7 +99,7 @@ faq:
     - q: "Brauche ich einen PC?"
       a: "Einmal am Schreibtisch: zum Schreiben des Images, zum Lesen der SD-Karte und zum Ausdrucken des QR-Codes. Bis iPhone, iPad und Android erscheinen, koppelst du die Box mit der Linux-App; danach reicht auf der Baustelle das Handy oder Tablet."
     - q: "Brauche ich Home Assistant?"
-      a: "Nein. Die Box ist dieselbe Software wie das Home-Assistant-Add-on, nur als eigenes Gerät. Wer Home Assistant OS hat, nimmt besser das Add-on. Mit Home Assistant Container bindet die Integration „KNX Monitor“ die Box ein."
+      a: "Nein. Die Box ist dieselbe Software wie das Home-Assistant-Add-on, nur als eigenes Gerät. Wer Home Assistant OS hat, nimmt besser das Add-on. Mit Home Assistant Container bindet die Integration „Busclear“ die Box ein."
     - q: "Welcher Raspberry Pi reicht?"
       a: "Getestet ist der Raspberry Pi 4. Ein Pi 3 mit 64-Bit-System sollte für die Daueraufzeichnung reichen, lange Auswertungen dauern dort aber länger. Pi 2 und der erste Pi Zero gehen nicht, es gibt nur 64-Bit-Builds."
     - q: "SD-Karte oder SSD?"
@@ -128,6 +128,6 @@ log:
   head: ["Zeit", "Quelle", "Ziel", "Name", "Wert"]
   caption: "Am gekoppelten Laptop: Was die Box gerade mitschreibt."
   caption_taster: "Der Glastaster an der Leitung schickt dir eigene Telegramme."
-  drawing: "Laptop mit der App, gekoppelt mit der KNX-Box: eine Liste der Telegramme, die die Box aufzeichnet"
+  drawing: "Laptop mit der App, gekoppelt mit der Busclear Box: eine Liste der Telegramme, die die Box aufzeichnet"
 taster:
   note: "Drück ihn ruhig: Die Box schreibt jedes Telegramm mit, auch deins."

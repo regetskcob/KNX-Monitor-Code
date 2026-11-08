@@ -115,5 +115,20 @@ void main() {
       find.textContaining('3 KNX-Secure-Telegramme nicht gesendet, weil der Server sie nicht entschlüsseln'),
       findsOneWidget,
     );
+    expect(find.textContaining('Gruppenadressen:'), findsNothing, reason: 'older server without seq');
+
+    await tester.pumpWidget(
+      app(
+        DataExportScreen(
+          key: const ValueKey('raw'),
+          client: _FakeClient(
+            const {},
+            mqtt: {'enabled': true, 'connected': true, 'rawOnly': true, 'raw': true, 'filter': '1/#,3/2/#', 'seq': 42},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Nur Rohdaten · Gruppenadressen: 1/#,3/2/# · letzte Nr. (seq) 42'), findsOneWidget);
   });
 }

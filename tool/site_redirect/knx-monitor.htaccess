@@ -1,0 +1,51 @@
+# Apache settings for knx-monitor.de on the webspace at do.de after the rename
+# to Busclear: every address leads to the same path on busclear.de, except
+#
+# - /.well-known/: the ACME challenge for the certificate of knx-monitor.de
+#   and security.txt. Passkeys and app links belong to busclear.de only (rp_id
+#   in supabase/config.toml, webcredentials in the entitlements), so their
+#   files are not published here.
+# - /play/klangquittung.mp4: the address is entered in the Play Console; it
+#   stays until the store entry points to busclear.de.
+#
+# site_post_knx in tool/werkbank.conf builds this folder, site_deploy_knx
+# uploads it with tool/site_ftps.sh.
+
+Options -Indexes
+AddDefaultCharset utf-8
+
+<Files "apple-app-site-association">
+  ForceType application/json
+</Files>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # HTTPS only once do.de has issued the certificate for knx-monitor.de (some
+  # hours after the DNS entry of type "Webspace"); X-Forwarded-Proto as on
+  # busclear.de.
+  #RewriteCond %{HTTPS} !=on
+  #RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  #RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
+  #RewriteRule ^ https://knx-monitor.de%{REQUEST_URI} [R=301,L]
+
+  RewriteRule ^\.deploy-manifest$ - [R=404,L]
+  RewriteRule ^\.well-known/ - [L]
+  RewriteRule ^play/klangquittung\.mp4$ - [L]
+
+  # Everything else, www included: the same path on busclear.de, with
+  # #knx-monitor so the site shows a note about the new name (head.html). The
+  # query string goes before the fragment, so it is written out by hand.
+  RewriteCond %{QUERY_STRING} .
+  RewriteRule ^(.*)$ https://busclear.de/$1?%{QUERY_STRING}#knx-monitor [R=301,L,NE]
+  RewriteRule ^(.*)$ https://busclear.de/$1#knx-monitor [R=301,L,NE]
+</IfModule>
+
+<IfModule mod_headers.c>
+  # Apps up to 1.9.x read the offers from knx-monitor.de/kaufen/angebote.json;
+  # in the browser (web app, add-on) the redirect needs CORS like GitHub Pages
+  # had it.
+  Header always set Access-Control-Allow-Origin "*"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

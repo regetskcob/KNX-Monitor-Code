@@ -4,12 +4,12 @@ contact_text: "Please report bugs, questions and requests as an issue on GitHub:
 contact_mail: "For anything that should not be public, send us an email:"
 checklist_title: "Help us help you quickly"
 checklist:
-  - "Device and version (e.g. iPhone, iOS 26, KNX Monitor 1.9 or the Home Assistant add-on)"
+  - "Device and version (e.g. iPhone, iOS 26, Busclear 1.9 or the Home Assistant add-on)"
   - "Manufacturer and model of your KNX interface or IP router"
   - "What you did, what happened and what you expected"
-  - "A screenshot if possible. Issues are public: please don't upload your ETS project or any passwords. Group addresses and project details are best sent as a diagnostics package by e-mail, see [Feedback](https://knx-monitor.de/en/feedback/)."
+  - "A screenshot if possible. Issues are public: please don't upload your ETS project or any passwords. Group addresses and project details are best sent as a diagnostics package by e-mail, see [Feedback](https://busclear.de/en/feedback/)."
 faq:
   - q: "The app doesn't find my interface automatically."
-    a: "Discovery uses multicast on the local network. Guest Wi-Fi, VLANs or mesh systems sometimes block it. In that case, enter the interface's IP address manually. On iPhone, local network access must also be allowed (Settings → KNX Monitor)."
+    a: "Discovery uses multicast on the local network. Guest Wi-Fi, VLANs or mesh systems sometimes block it. In that case, enter the interface's IP address manually. On iPhone, local network access must also be allowed (Settings → Busclear)."
   - q: "Importing my ETS project fails."
     a: "Check that the password is correct and the file is complete (.knxproj exported directly from ETS). Alternatively, export the group addresses as CSV from ETS and import that."

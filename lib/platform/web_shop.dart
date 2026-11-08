@@ -9,7 +9,7 @@ import '../model/plan.dart';
 import '../model/plan_source.dart';
 
 /// Purchase page (Paddle) and its offers on the website (per language).
-const _site = 'https://knx-monitor.de/';
+const _site = 'https://busclear.de/';
 String get webShop => LocaleController.instance.locale.languageCode == 'de' ? '${_site}kaufen/' : '${_site}en/buy/';
 bool get _german => LocaleController.instance.locale.languageCode == 'de';
 

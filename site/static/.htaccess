@@ -1,0 +1,64 @@
+# Apache settings for busclear.de on the webspace at do.de (basicWEB, Apache
+# 2.4). Hugo copies this file unchanged into the build, tool/site_ftps.sh
+# uploads it with the site. Same building blocks as kalkar-it.de.
+
+Options -Indexes
+ErrorDocument 404 /404.html
+AddDefaultCharset utf-8
+AddType application/manifest+json .webmanifest
+AddType application/wasm .wasm
+
+# Passkeys and app links read these files as JSON (Apple follows no redirect
+# and wants the type, the file has no extension).
+<Files "apple-app-site-association">
+  ForceType application/json
+</Files>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # HTTPS only (certificate *.busclear.de from do.de since 08.11.2026). do.de
+  # ends TLS in a proxy that tells the scheme in X-Forwarded-Proto; %{HTTPS}
+  # alone loops. The ACME challenge stays reachable over plain HTTP for the
+  # renewals.
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
+  RewriteRule ^ https://busclear.de%{REQUEST_URI} [R=301,L]
+
+  # www.busclear.de leads to busclear.de.
+  RewriteCond %{HTTP_HOST} ^www\. [NC]
+  RewriteRule ^ https://busclear.de%{REQUEST_URI} [R=301,L]
+
+  # The upload keeps its state in this file; nobody needs to read it.
+  RewriteRule ^\.deploy-manifest$ - [R=404,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+  # HSTS only after HTTPS has run without trouble for a while.
+  #Header always set Strict-Transport-Security "max-age=31536000"
+
+  # The offers (kaufen/angebote.json) are read by the web app and the add-on
+  # from another origin, as GitHub Pages allowed it.
+  <FilesMatch "\.json$">
+    Header set Access-Control-Allow-Origin "*"
+  </FilesMatch>
+
+  # By default the browser asks whether there is a newer version.
+  Header set Cache-Control "no-cache"
+  # CSS, scripts and images with a Hugo hash in the name never change.
+  <FilesMatch "\.[0-9a-f]{16,}(\.min)?\.(css|js|svg|webp|png|jpg)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "_hu_[0-9a-f]+\.(webp|png|jpg)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  # Fonts and videos change rarely; a week is a fair trade.
+  <FilesMatch "\.(woff2?|ttf|otf|mp4)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+</IfModule>

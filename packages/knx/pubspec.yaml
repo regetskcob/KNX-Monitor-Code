@@ -1,7 +1,7 @@
 name: knx
 description: >-
   KNX protocol building blocks in pure Dart (addresses, cEMI, KNXnet/IP frames, datapoint types,
-  KNX Secure), shared by the KNX Monitor app and its add-on server.
+  KNX Secure), shared by the Busclear app and its add-on server.
 # Internal for now; may be published on pub.dev later (docs/architecture.md).
 publish_to: none
 version: 0.1.0

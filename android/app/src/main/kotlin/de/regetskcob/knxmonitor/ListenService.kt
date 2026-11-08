@@ -24,7 +24,7 @@ class ListenService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val title = intent?.getStringExtra("title") ?: "KNX Monitor"
+        val title = intent?.getStringExtra("title") ?: "Busclear"
         val text = intent?.getStringExtra("text") ?: ""
         val notification = notification(title, text)
         try {

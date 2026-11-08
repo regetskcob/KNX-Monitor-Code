@@ -1,6 +1,6 @@
 ---
 title: "Feedback"
-description: "Report bugs and ask about your installation without uploading your ETS project: with the diagnostics package from KNX Monitor."
+description: "Report bugs and ask about your installation without uploading your ETS project: with the diagnostics package from Busclear."
 layout: "page"
 slug: "feedback"
 ---
@@ -8,7 +8,7 @@ For bugs and questions about your installation we often need your group addresse
 
 ## The diagnostics package
 
-A ZIP file that KNX Monitor puts together for you. Before sending you see exactly what is in it ("View file contents").
+A ZIP file that Busclear puts together for you. Before sending you see exactly what is in it ("View file contents").
 
 **Included:** the bus recording around the fault; from the project the group addresses, datapoint types, devices and links; your description, your comments, the app's recent messages and technical facts: app and add-on version, platform, operating system or browser, connection mode, type and name of the gateway.
 
@@ -26,22 +26,22 @@ A ZIP file that KNX Monitor puts together for you. Before sending you see exactl
 
 ## How to create it
 
-1. Open KNX Monitor (app or Home Assistant add-on), connect to the bus, with the ETS project loaded.
+1. Open Busclear (app or Home Assistant add-on), connect to the bus, with the ETS project loaded.
 2. **Does the fault still happen?** Under Tools › Report a problem start recording, reproduce the fault and tap "It happened now" each time. The package then covers everything from the start.
 3. **Otherwise** under Tools › Diagnostics package describe what happened, pick the time around the fault and decide whether names go along.
 4. "Share package", "Save package" or in the browser "Download package".
 
 ## Where to send it
 
-**By e-mail to [support@knx-monitor.de](mailto:support@knx-monitor.de)**, with a sentence or two about the problem. The package stays with us and is not published.
+**By e-mail to [support@busclear.de](mailto:support@busclear.de)**, with a sentence or two about the problem. The package stays with us and is not published.
 
 If you write in a forum or in a [GitHub issue](https://github.com/regetskcob/KNX-Monitor/issues), a note "sent a diagnostics package by e-mail" is enough there. Please do not attach the package there: both are public.
 
-**After a crash** KNX Monitor shows a notice at the next start that leads to the diagnostics package. There, "Report as issue" opens a prefilled form on GitHub with only version, platform, time and kind of crash. On the KNX box, tap the line with the unexpected restarts to see the recent restarts with their reason.
+**After a crash** Busclear shows a notice at the next start that leads to the diagnostics package. There, "Report as issue" opens a prefilled form on GitHub with only version, platform, time and kind of crash. On the KNX box, tap the line with the unexpected restarts to see the recent restarts with their reason.
 
-We open the package in KNX Monitor, reproduce the fault and use it only for that. Once your request is done, we delete it. More in the [privacy policy](/en/privacy/).
+We open the package in Busclear, reproduce the fault and use it only for that. Once your request is done, we delete it. More in the [privacy policy](/en/privacy/).
 
-## Not using KNX Monitor yet?
+## Not using Busclear yet?
 
 If it is only about the import, for example because your project does not load, the group address export as CSV from ETS (Group addresses › Export) often helps us already. It contains no password.
 

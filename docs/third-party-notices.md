@@ -1,6 +1,6 @@
 # Third-party notices
 
-KNX Monitor is licensed under the GNU General Public License v3.0 (see
+Busclear is licensed under the GNU General Public License v3.0 (see
 [LICENSE](../LICENSE)). Dependencies from pub.dev keep their own licences; the
 apps list them under "Licences". This file covers code and data that live in
 this repository but come from elsewhere.

@@ -1,5 +1,5 @@
 {{- /*
-  The teaser of knx-monitor.de: one Feldseite that fits the screen. Left the
+  The teaser of busclear.de: one Feldseite that fits the screen. Left the
   app icon, the headline and the one way in that exists today (the add-on;
   the apps follow); right the small distribution board standing on the
   horizon, telegrams running along its bus cable. Below the first screen four
@@ -82,14 +82,15 @@
       <div class="hz-feld-actions">
         <a class="hz-button hz-button--primary" href="{{ site.Params.haUrl }}">{{ $d.primary }}{{ partial "horizont/symbol.html" "arrow_forward" }}</a>
         <a class="hz-button hz-button--secondary" href="{{ site.Params.codeUrl }}">{{ partial "horizont/symbol.html" "data_object" }}{{ $d.source }}</a>
-        {{- /* To the beta links in the roadmap (TestFlight, Google Play). */}}
-        {{- with index $d.beta $beta }}
-        <a class="hz-button hz-button--secondary" href="#roadmap">{{ . }}{{ partial "horizont/symbol.html" "expand_more" }}</a>
-        {{- end }}
       </div>
-      <p class="tz-note t-caption">{{ index $d.soon $beta }} {{ $d.local }}</p>
+      <p class="tz-note t-caption">{{ index $d.soon $beta }} {{ $d.local }} {{ $d.formerly }}</p>
     </div>
     <div class="tz-aside">
+      {{- /* Top right, apart from the two actions: to the beta page
+             (TestFlight, Google Play, thank-you). */}}
+      {{- with index $d.beta $beta }}
+      <a class="hz-button hz-button--secondary tz-beta" href="{{ "beta/" | relLangURL }}">{{ . }}{{ partial "horizont/symbol.html" "arrow_forward" }}</a>
+      {{- end }}
       {{- /* Large windows: the simulated telegrams as the monitor lists them,
              faint, above the board (teaser.js fills it). */}}
       <div class="tz-live" aria-hidden="true">
@@ -231,7 +232,7 @@
     </div>
   </section>
 </main>
-{{- $links := slice (dict "name" (i18n "imprint") "url" site.Params.legalUrl) (dict "name" (i18n "privacy") "url" site.Params.privacyUrl) (dict "name" (i18n "feedback") "url" ("feedback/" | relLangURL)) (dict "name" (i18n "changelog") "url" ("changelog/" | relLangURL)) (dict "name" (i18n "github") "url" site.Params.githubUrl) (dict "name" (i18n "instagram") "url" site.Params.instagramUrl) }}
+{{- $links := slice (dict "name" (i18n "imprint") "url" site.Params.legalUrl) (dict "name" (i18n "privacy") "url" site.Params.privacyUrl) (dict "name" (i18n "beta") "url" ("beta/" | relLangURL)) (dict "name" (i18n "feedback") "url" ("feedback/" | relLangURL)) (dict "name" (i18n "changelog") "url" ("changelog/" | relLangURL)) (dict "name" (i18n "github") "url" site.Params.githubUrl) (dict "name" (i18n "instagram") "url" site.Params.instagramUrl) }}
 {{- with site.GetPage "/nutzungsbedingungen" }}{{ $links = $links | append (dict "name" (i18n "terms") "url" .RelPermalink) }}{{ end }}
 {{ partial "horizont/feld/foot.html" (dict "links" $links "sender" (i18n "footer_sender")) }}
 <p class="tz-mark t-caption">{{ i18n "footer_note" }}</p>

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-// security.txt (RFC 9116) on knx-monitor.de: where to report a vulnerability. Expires
+// security.txt (RFC 9116) on busclear.de: where to report a vulnerability. Expires
 // must not pass unnoticed, so this test turns red a month before; then move the date
 // on by at most a year and deploy the site.
 void main() {
@@ -15,10 +15,10 @@ void main() {
       lines.where((l) => l.startsWith('Contact: ')),
       containsAll([
         'Contact: https://github.com/regetskcob/KNX-Monitor/security/advisories/new',
-        'Contact: mailto:support@knx-monitor.de',
+        'Contact: mailto:support@busclear.de',
       ]),
     );
-    expect(field('Canonical'), 'https://knx-monitor.de/.well-known/security.txt');
+    expect(field('Canonical'), 'https://busclear.de/.well-known/security.txt');
     final expires = DateTime.parse(field('Expires')!);
     final now = DateTime.now().toUtc();
     expect(expires.isAfter(now.add(const Duration(days: 30))), isTrue, reason: 'Expires $expires: bald erneuern');

@@ -1,7 +1,7 @@
-KNX Monitor für Linux
+Busclear für Linux
 =====================
 
-Busmonitor und Diagnose für KNX. Website: https://knx-monitor.de
+Busmonitor und Diagnose für KNX. Website: https://busclear.de
 (English below.)
 
 
@@ -22,7 +22,7 @@ Installieren
 
    Ein Passwort braucht es dafür nicht.
 
-4. Fertig. „KNX Monitor“ steht jetzt im Startmenü, mit Icon, auch in der
+4. Fertig. „Busclear“ steht jetzt im Startmenü, mit Icon, auch in der
    Leiste. Das Programm liegt unter ~/.local/opt/knx-monitor. Den
    heruntergeladenen Ordner kannst du löschen.
 
@@ -35,7 +35,7 @@ Aktualisieren
 
 Neue Version herunterladen, entpacken und dort genauso ./install.sh
 ausführen. Die alte Version wird ersetzt, sobald die neue komplett kopiert
-ist. Läuft KNX Monitor gerade, danach einmal neu starten.
+ist. Läuft Busclear gerade, danach einmal neu starten.
 
 
 Deine Daten
@@ -60,7 +60,7 @@ will, löscht danach den Ordner ~/.local/share/de.regetskcob.knxmonitor.
 Ohne Installation
 -----------------
 
-Die Datei knx_monitor in diesem Ordner startet KNX Monitor auch direkt.
+Die Datei knx_monitor in diesem Ordner startet Busclear auch direkt.
 Unter Wayland zeigt die Leiste dann aber nicht unser Icon.
 
 
@@ -73,10 +73,10 @@ Lizenz: LICENSE.txt in diesem Ordner.
 
 -----------------------------------------------------------------------------
 
-KNX Monitor for Linux
+Busclear for Linux
 =====================
 
-Bus monitor and diagnostics for KNX. Website: https://knx-monitor.de/en/
+Bus monitor and diagnostics for KNX. Website: https://busclear.de/en/
 
 
 Install
@@ -96,7 +96,7 @@ Install
 
    No password is needed.
 
-4. Done. "KNX Monitor" is now in the app menu, with its icon, also in the
+4. Done. "Busclear" is now in the app menu, with its icon, also in the
    taskbar. The program lives in ~/.local/opt/knx-monitor. You can delete
    the downloaded folder.
 
@@ -134,7 +134,7 @@ well, delete the folder ~/.local/share/de.regetskcob.knxmonitor afterwards.
 Without installing
 ------------------
 
-The file knx_monitor in this folder also starts KNX Monitor directly. Under
+The file knx_monitor in this folder also starts Busclear directly. Under
 Wayland the taskbar then shows a generic icon instead of ours.
 
 

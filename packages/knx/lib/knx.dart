@@ -10,4 +10,5 @@ export 'src/cycle.dart';
 export 'src/dpt.dart';
 export 'src/hex.dart';
 export 'src/knxip.dart';
+export 'src/tap_merge.dart';
 export 'src/telegram.dart';

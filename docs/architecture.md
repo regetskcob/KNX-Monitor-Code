@@ -1,6 +1,6 @@
 # Architecture
 
-KNX Monitor is one Flutter code base and one small Dart server. The app runs on
+Busclear is one Flutter code base and one small Dart server. The app runs on
 iOS, iPadOS, Android, macOS, Windows, Linux and in the browser; the server keeps
 a permanent bus connection for the Home Assistant add-on, Docker and the KNX
 Box. Neither uses a third-party KNX library: KNXnet/IP, cEMI, KNX IP Secure,
@@ -64,7 +64,7 @@ and the box.
 ## The server
 
 `bin/server.dart` starts an HTTP server with three faces: Home Assistant
-Ingress (add-on), standalone with password (`BOX=1`, Docker and KNX Box), and
+Ingress (add-on), standalone with password (`BOX=1`, Docker and Busclear Box), and
 the static web app.
 
 | File | Role |
@@ -82,7 +82,7 @@ the static web app.
 | `alarms.dart`, `watchers.dart`, `report.dart` | The same rules as in the app, evaluated on the server |
 | `mqtt_bridge.dart`, `ha.dart`, `lovelace_card.dart` | Home Assistant: MQTT device and entities, events, notifications, dashboard card |
 | `exporter.dart`, `grafana.dart` | Prometheus and InfluxDB export, Grafana dashboard |
-| `box_*.dart`, `crash_watch.dart` | KNX Box: access, TLS, clock, printed sheet, crash records |
+| `box_*.dart`, `crash_watch.dart` | Busclear Box: access, TLS, clock, printed sheet, crash records |
 
 ## The package knx
 

@@ -1,14 +1,14 @@
-# KNX Monitor
+# Busclear
 
 Bus monitor and diagnostic tool for KNX. Available today as a Home Assistant
 add-on and for Linux; the apps for iPhone, iPad, Android, Mac and Windows
-follow in the coming weeks. The KNX Box, a Raspberry Pi that records on site,
+follow in the coming weeks. The Busclear Box, a Raspberry Pi that records on site,
 is a preview, set up with the app, on an IP gateway or directly on the bus with the kBerry module; its image is listed under Downloads.
 
-**Website:** <https://knx-monitor.de>
+**Website:** <https://busclear.de>
 
 This repository hosts the Home Assistant add-on repository, the Linux and
-KNX Box downloads, and the issue tracker. The KNX Monitor integration for Home
+Busclear Box downloads, and the issue tracker. The Busclear integration for Home
 Assistant (HACS) lives in
 [regetskcob/KNX-Monitor-HA](https://github.com/regetskcob/KNX-Monitor-HA). The source code is open under GPLv3
 in [regetskcob/KNX-Monitor-Code](https://github.com/regetskcob/KNX-Monitor-Code),
@@ -20,9 +20,9 @@ the code also go to the issues here.
 
 ## Your data stays yours
 
-KNX Monitor works on your network and stores on your devices. You need no
+Busclear works on your network and stores on your devices. You need no
 account, and it contains no analytics or advertising libraries.
-Project, telegrams, recordings and keys stay on your device, your KNX Box or
+Project, telegrams, recordings and keys stay on your device, your Busclear Box or
 your Home Assistant, and only leave when you share them.
 
 From version 1.9.1 the apps encrypt their files with AES-256-GCM (key in the
@@ -31,7 +31,7 @@ as the gateway), offer an optional app lock, and back up everything to a file
 with its own password in an [open format](BACKUP-FORMAT.md). The add-on and the
 Box do not encrypt their files themselves; they rely on your backups and on
 physical access to the host. Details and limits:
-[privacy policy](https://knx-monitor.de/en/privacy/).
+[privacy policy](https://busclear.de/en/privacy/).
 
 ## Downloads
 
@@ -39,14 +39,14 @@ physical access to the host. Details and limits:
 - **iPhone, iPad, Mac:** App Store, coming in the next weeks
 - **Android:** Google Play, coming in the next weeks
 - **Windows:** coming in the next weeks
-- **KNX Box (Raspberry Pi image, preview):** releases tagged `box-v…`
+- **Busclear Box (Raspberry Pi image, preview):** releases tagged `box-v…`
 - **Docker (ioBroker, NAS, Proxmox):** `ghcr.io/regetskcob/knx-monitor`, see [docker/README.md](docker/README.md)
 
 ## Home Assistant add-on
 
 1. Click the button above, or go to **Settings → Add-ons → Add-on Store → ⋮ →
    Repositories** and add `https://github.com/regetskcob/KNX-Monitor`.
-2. Install **KNX Monitor**, start it and enable **Show in sidebar**.
+2. Install **Busclear**, start it and enable **Show in sidebar**.
 
 Configuration: [DOCS.md](ha-addon/knx_monitor/DOCS.md).
 
@@ -65,10 +65,10 @@ Security issues: see [SECURITY.md](SECURITY.md).
 
 ## License
 
-KNX Monitor is free software under the GNU General Public License v3.0, see
+Busclear is free software under the GNU General Public License v3.0, see
 [LICENSE](LICENSE) and the source in
 [regetskcob/KNX-Monitor-Code](https://github.com/regetskcob/KNX-Monitor-Code).
-The names KNX Monitor and KNX Box, the logo and the app icons are not covered
+The names Busclear and Busclear Box, the logo and the app icons are not covered
 by the licence, see its
 [TRADEMARKS.md](https://github.com/regetskcob/KNX-Monitor-Code/blob/main/TRADEMARKS.md).
 Builds from the App Store and Google Play are also subject to the terms of the

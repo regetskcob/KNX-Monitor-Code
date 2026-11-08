@@ -226,8 +226,8 @@ class _PlanScreenState extends State<PlanScreen> {
   static final _terms = Uri.parse('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
   static Uri get _privacy => Uri.parse(
     LocaleController.instance.locale.languageCode == 'de'
-        ? 'https://knx-monitor.de/datenschutz/'
-        : 'https://knx-monitor.de/en/privacy/',
+        ? 'https://busclear.de/datenschutz/'
+        : 'https://busclear.de/en/privacy/',
   );
 
   Future<void> _run(Future<void> Function() action, String Function() done) async {

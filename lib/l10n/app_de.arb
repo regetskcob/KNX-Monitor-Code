@@ -1349,7 +1349,7 @@
   "@pdfAverage": {
     "description": "PDF summary label: average value."
   },
-  "pdfFooterCreated": "Erstellt mit KNX Monitor · {date} {time} Uhr",
+  "pdfFooterCreated": "Erstellt mit Busclear · {date} {time} Uhr",
   "@pdfFooterCreated": {
     "description": "PDF footer with creation date and time.",
     "placeholders": {
@@ -2585,7 +2585,7 @@
   },
   "topoFactoryAddress": "Werksadresse (Box-Modul oder neues Gerät?)",
   "@topoFactoryAddress": {
-    "description": "Topology tool: sender 15.15.255, the factory address of KNX devices and of the KNX HAT in a KNX Monitor Box"
+    "description": "Topology tool: sender 15.15.255, the factory address of KNX devices and of the KNX HAT in a Busclear Box"
   },
   "topoStrayHint": "Die Adresse gehört zu Linie {line}, die es im Projekt nicht gibt. Die Telegramme kommen ohne Koppler an, das Gerät hängt also an Linie {gateway}. Gib ihm eine freie Adresse dieser Linie.",
   "@topoStrayHint": {
@@ -3041,7 +3041,7 @@
       }
     }
   },
-  "healthNotifyMore": "{count, plural, =0{Einzelheiten in KNX Monitor unter „Gesundheit“} =1{… und 1 weiterer. Einzelheiten in KNX Monitor unter „Gesundheit“} other{… und {count} weitere. Einzelheiten in KNX Monitor unter „Gesundheit“}}",
+  "healthNotifyMore": "{count, plural, =0{Einzelheiten in Busclear unter „Gesundheit“} =1{… und 1 weiterer. Einzelheiten in Busclear unter „Gesundheit“} other{… und {count} weitere. Einzelheiten in Busclear unter „Gesundheit“}}",
   "@healthNotifyMore": {
     "description": "Letzte Zeile der Befund-Mitteilung: wie viele Befunde nicht aufgeführt sind und wo die Einzelheiten stehen",
     "placeholders": {
@@ -3387,11 +3387,11 @@
   "@addonOpen": {
     "description": "Button: open monitor on add-on tunnel."
   },
-  "boxSection": "KNX-Box",
+  "boxSection": "Busclear Box",
   "@boxSection": {
     "description": "Section label: Raspberry Pi box that records the bus."
   },
-  "boxPair": "Mit KNX-Box koppeln",
+  "boxPair": "Mit Busclear Box koppeln",
   "@boxPair": {
     "description": "Button: pair with a KNX box."
   },
@@ -3407,7 +3407,7 @@
   "@boxLinkInvalid": {
     "description": "Pairing dialog: input is no pairing link."
   },
-  "boxPairTitle": "Mit KNX-Box verbinden?",
+  "boxPairTitle": "Mit Busclear Box verbinden?",
   "@boxPairTitle": {
     "description": "Dialog title when a pairing link was opened."
   },
@@ -3415,7 +3415,7 @@
   "@boxPairBody": {
     "description": "Dialog body when a pairing link was opened; the box address is shown above it."
   },
-  "boxVia": "Über KNX-Box {name}",
+  "boxVia": "Über Busclear Box {name}",
   "@boxVia": {
     "description": "Banner: app runs through a KNX box.",
     "placeholders": {
@@ -3436,7 +3436,7 @@
   "@boxForget": {
     "description": "Tooltip: remove the paired box."
   },
-  "boxNone": "Keine KNX-Box gekoppelt.",
+  "boxNone": "Keine Busclear Box gekoppelt.",
   "@boxNone": {
     "description": "Error: no box paired."
   },
@@ -3444,7 +3444,7 @@
   "@boxUnauthorized": {
     "description": "Error: box rejected the access key."
   },
-  "boxUnreachable": "KNX-Box {address} nicht erreichbar. Ist das Gerät im WLAN der Box?",
+  "boxUnreachable": "Busclear Box {address} nicht erreichbar. Ist das Gerät im WLAN der Box?",
   "@boxUnreachable": {
     "description": "Error: box not reachable.",
     "placeholders": {
@@ -3605,7 +3605,7 @@
   "@connectModeHatHint": {
     "description": "Hint for HAT mode."
   },
-  "connectModeHatBoxOnly": "Nur über die KNX-Box mit aufgestecktem KNX-HAT möglich.",
+  "connectModeHatBoxOnly": "Nur über die Busclear Box mit aufgestecktem KNX-HAT möglich.",
   "@connectModeHatBoxOnly": {
     "description": "HAT mode without box."
   },
@@ -3889,7 +3889,7 @@
   "@diagnosticsBundle": {
     "description": "Menu: save diagnostics zip (no passwords, names or telegram contents)."
   },
-  "aboutLicenses": "Über KNX Monitor und Lizenzen",
+  "aboutLicenses": "Über Busclear und Lizenzen",
   "@aboutLicenses": {
     "description": "Menu: open the about page with the third-party licenses."
   },
@@ -4489,7 +4489,7 @@
   "@chartTemplateNoMatch": {
     "description": "Placeholder card for an imported template without matches."
   },
-  "boxAdd": "KNX-Box hinzufügen",
+  "boxAdd": "Busclear Box hinzufügen",
   "@boxAdd": {
     "description": "Button: set up a box by scanning its QR code"
   },
@@ -4509,7 +4509,7 @@
   "@boxScanNoCamera": {
     "description": "Scanner error"
   },
-  "boxSetupTitle": "KNX-Box einrichten",
+  "boxSetupTitle": "Busclear Box einrichten",
   "@boxSetupTitle": {
     "description": "Setup screen title"
   },
@@ -4843,7 +4843,7 @@
   "@installationAll": {
     "description": "Filter: Aufnahmen aller Installationen"
   },
-  "installationBoxRecording": "KNX-Box zeichnet hier auf",
+  "installationBoxRecording": "Busclear Box zeichnet hier auf",
   "@installationBoxRecording": {
     "description": "Untertitel der Installation, in der die gekoppelte Box gerade aufzeichnet"
   },
@@ -4851,13 +4851,13 @@
   "@installationHistoryOf": {
     "description": "Auswahl im Langzeitverlauf: welche Installation"
   },
-  "installationDeleteOnBox": "Auch auf der KNX-Box, mit ihrem Langzeitverlauf.",
+  "installationDeleteOnBox": "Auch auf der Busclear Box, mit ihrem Langzeitverlauf.",
   "@installationDeleteOnBox": {
     "description": "Zusatz in der Lösch-Rückfrage, wenn die Box die Installation führt"
   },
-  "boxRecordingTitle": "Daueraufzeichnung auf der KNX-Box",
+  "boxRecordingTitle": "Daueraufzeichnung auf der Busclear Box",
   "@boxRecordingTitle": {
-    "description": "Titel der Aufzeichnungs-Karte im Verbinden-Bildschirm über die KNX-Box (im Add-on: addonTitle)"
+    "description": "Titel der Aufzeichnungs-Karte im Verbinden-Bildschirm über die Busclear Box (im Add-on: addonTitle)"
   },
   "planTitle": "Plus und Pro",
   "@planTitle": {
@@ -5019,7 +5019,7 @@
   "@planBetaTitle": {
     "description": "Menüeintrag in TestFlight-Builds"
   },
-  "planBetaBody": "Danke fürs Testen! In der Beta ist alles freigeschaltet. Erscheint KNX Monitor im App Store, gibt es auf diesem Gerät {months} Monate Pro als Dankeschön.",
+  "planBetaBody": "Danke fürs Testen! In der Beta ist alles freigeschaltet. Erscheint Busclear im App Store, gibt es auf diesem Gerät {months} Monate Pro als Dankeschön.",
   "@planBetaBody": {
     "description": "Erklärung der Beta-Freischaltung; der Titel hat einen versteckten langen Druck",
     "placeholders": {
@@ -5545,7 +5545,7 @@
   "@diagDownload": {
     "description": "Knopf: herunterladen (Add-on)"
   },
-  "diagPackageInvalid": "Kein Diagnosepaket von KNX Monitor.",
+  "diagPackageInvalid": "Kein Diagnosepaket von Busclear.",
   "@diagPackageInvalid": {
     "description": "Fehler beim Öffnen"
   },
@@ -6680,7 +6680,7 @@
   },
   "boxContainerLanAccess": "Zugriff aus dem Netzwerk",
   "@boxContainerLanAccess": {
-    "description": "Settings of KNX Monitor in a Docker container: whether other devices on the network may reach it."
+    "description": "Settings of Busclear in a Docker container: whether other devices on the network may reach it."
   },
   "boxContainerLanAccessHint": "Festgelegt im Container mit LAN_ACCESS (yes oder no). Zum Ändern dort umstellen und den Container neu starten. Aus: nur am Rechner mit dem Container erreichbar.",
   "@boxContainerLanAccessHint": {
@@ -6726,7 +6726,7 @@
   "@haKnxHintDismiss": {
     "description": "Button: hide the HA KNX hint."
   },
-  "versionApp": "KNX Monitor {version}",
+  "versionApp": "Busclear {version}",
   "@versionApp": {
     "description": "Version line in the menu: app version.",
     "placeholders": {
@@ -7005,7 +7005,7 @@
   "@tourWelcomeTitle": {
     "description": "Introduction, first card: title."
   },
-  "tourWelcomeText": "KNX Monitor hört am KNX-IP-Gateway mit und zeigt jedes Telegramm: wer sendet, an welche Gruppenadresse, mit welchem Wert. Diese Einführung führt durch die wichtigsten Stellen, mit dem Demo-Haus als Beispiel.",
+  "tourWelcomeText": "Busclear hört am KNX-IP-Gateway mit und zeigt jedes Telegramm: wer sendet, an welche Gruppenadresse, mit welchem Wert. Diese Einführung führt durch die wichtigsten Stellen, mit dem Demo-Haus als Beispiel.",
   "@tourWelcomeText": {
     "description": "Introduction, first card: text."
   },
@@ -7129,7 +7129,7 @@
   "@tourHistoryTitle": {
     "description": "Introduction: long-term history, title."
   },
-  "tourHistoryText": "Der Langzeitverlauf hebt ganze Tage auf, im Add-on und auf der KNX-Box rund um die Uhr. Du spulst zurück, was nachts passiert ist, mit Zeitleiste je Gruppenadresse und Wiedergabe in 1- bis 60-facher Geschwindigkeit.",
+  "tourHistoryText": "Der Langzeitverlauf hebt ganze Tage auf, im Add-on und auf der Busclear Box rund um die Uhr. Du spulst zurück, was nachts passiert ist, mit Zeitleiste je Gruppenadresse und Wiedergabe in 1- bis 60-facher Geschwindigkeit.",
   "@tourHistoryText": {
     "description": "Introduction: long-term history, text."
   },
@@ -7253,7 +7253,7 @@
   "@tourSendText": {
     "description": "Introduction: send, trigger, replay, text."
   },
-  "tourBoxTitle": "KNX-Box für die Baustelle.",
+  "tourBoxTitle": "Busclear Box für die Baustelle.",
   "@tourBoxTitle": {
     "description": "Introduction: KNX box, title."
   },
@@ -7520,7 +7520,7 @@
       }
     }
   },
-  "acceptSignatureNote": "Einfache elektronische Unterschrift auf dem Gerät, erstellt mit KNX Monitor.",
+  "acceptSignatureNote": "Einfache elektronische Unterschrift auf dem Gerät, erstellt mit Busclear.",
   "@acceptSignatureNote": {
     "description": "Abnahme-PDF: Hinweis zur Unterschrift"
   },
@@ -7548,7 +7548,7 @@
   "@huntTitle": {
     "description": "Werkzeug: sporadische Fehler mit der Box fangen"
   },
-  "huntTool": "Sporadische Fehler über Tage fangen – mit der KNX-Box",
+  "huntTool": "Sporadische Fehler über Tage fangen – mit der Busclear Box",
   "@huntTool": {
     "description": "Werkzeugliste: Untertitel Fehlerjagd"
   },
@@ -7556,7 +7556,7 @@
   "@huntRefresh": {
     "description": "Fehlerjagd: neu laden"
   },
-  "huntNeedsBox": "Die Fehlerjagd läuft auf der KNX-Box oder im Home-Assistant-Add-on, rund um die Uhr. Koppel die App mit einer Box, um sie einzurichten.",
+  "huntNeedsBox": "Die Fehlerjagd läuft auf der Busclear Box oder im Home-Assistant-Add-on, rund um die Uhr. Koppel die App mit einer Box, um sie einzurichten.",
   "@huntNeedsBox": {
     "description": "Fehlerjagd: ohne Box oder Add-on"
   },
@@ -8180,7 +8180,7 @@
   "@projectHelpWhatTitle": {
     "description": "Project file help: section."
   },
-  "projectHelpWhat": "Dein Elektriker hat die Anlage mit der Planungssoftware ETS eingerichtet. Die Projektdatei (Endung .knxproj) enthält alle Namen: welche Gruppenadresse das Küchenlicht schaltet, welches Gerät wo sitzt, welche Werte es gibt. Mit ihr zeigt KNX Monitor Namen statt Zahlen.",
+  "projectHelpWhat": "Dein Elektriker hat die Anlage mit der Planungssoftware ETS eingerichtet. Die Projektdatei (Endung .knxproj) enthält alle Namen: welche Gruppenadresse das Küchenlicht schaltet, welches Gerät wo sitzt, welche Werte es gibt. Mit ihr zeigt Busclear Namen statt Zahlen.",
   "@projectHelpWhat": {
     "description": "Project file help: what it is."
   },
@@ -8701,7 +8701,7 @@
       }
     }
   },
-  "weekBasisPartial": "Grundlage: Die App hat diese Woche etwa {time} an {days, plural, =1{1 Tag} other{{days} Tagen}} mitgehört ({checks}). Was dazwischen passiert, sieht der Bericht nicht – rund um die Uhr hört nur eine KNX-Box oder das Home-Assistant-Add-on mit.",
+  "weekBasisPartial": "Grundlage: Die App hat diese Woche etwa {time} an {days, plural, =1{1 Tag} other{{days} Tagen}} mitgehört ({checks}). Was dazwischen passiert, sieht der Bericht nicht – rund um die Uhr hört nur eine Busclear Box oder das Home-Assistant-Add-on mit.",
   "@weekBasisPartial": {
     "description": "Weekly report basis when the app runs only part-time.",
     "placeholders": {
@@ -8771,7 +8771,7 @@
       }
     }
   },
-  "weekServerBox": "KNX-Box",
+  "weekServerBox": "Busclear Box",
   "@weekServerBox": {
     "description": "Server name in weekly basis."
   },
@@ -8863,7 +8863,7 @@
   "@haTool": {
     "description": "Menü: Untertitel HA-Konfiguration"
   },
-  "haExplain": "KNX Monitor leitet aus dem ETS-Projekt Leuchten, Behänge, Raumregler, Schalter und Sensoren für die KNX-Integration von Home Assistant ab. Wähle aus, was du übernehmen willst. Markierte Einträge bitte prüfen – dort war die Zuordnung nicht eindeutig.",
+  "haExplain": "Busclear leitet aus dem ETS-Projekt Leuchten, Behänge, Raumregler, Schalter und Sensoren für die KNX-Integration von Home Assistant ab. Wähle aus, was du übernehmen willst. Markierte Einträge bitte prüfen – dort war die Zuordnung nicht eindeutig.",
   "@haExplain": {
     "description": "HA-Konfiguration: Erklärung"
   },
@@ -9016,7 +9016,7 @@
   "@haDoubtTypeGuessed": {
     "description": "HA: Grund zum Prüfen"
   },
-  "haYamlHeader": "KNX Monitor {version} – KNX-Integration für Home Assistant, Projekt „{project}“, {date}",
+  "haYamlHeader": "Busclear {version} – KNX-Integration für Home Assistant, Projekt „{project}“, {date}",
   "@haYamlHeader": {
     "description": "HA-YAML: Kopfzeile (Kommentar)",
     "placeholders": {
@@ -9488,7 +9488,7 @@
   "@forumPreview": {
     "description": "Forenpaket: Vorschau"
   },
-  "forumHeading": "Mitschnitt aus KNX Monitor",
+  "forumHeading": "Mitschnitt aus Busclear",
   "@forumHeading": {
     "description": "Forenpaket: Überschrift im Text"
   },
@@ -9534,7 +9534,7 @@
       }
     }
   },
-  "forumMetaApp": "KNX Monitor {version}",
+  "forumMetaApp": "Busclear {version}",
   "@forumMetaApp": {
     "description": "Forenpaket: Version",
     "placeholders": {
@@ -9604,7 +9604,7 @@
       }
     }
   },
-  "etsHowTo": "Je Gerät eine Seite: die Zeichnung mit den Kanälen, die Aufgaben zum Abhaken und die Kanalzuordnung aus dem Projekt. Danach das Projekt neu in KNX Monitor importieren; der Projekt-Abgleich zeigt, was erledigt ist.",
+  "etsHowTo": "Je Gerät eine Seite: die Zeichnung mit den Kanälen, die Aufgaben zum Abhaken und die Kanalzuordnung aus dem Projekt. Danach das Projekt neu in Busclear importieren; der Projekt-Abgleich zeigt, was erledigt ist.",
   "@etsHowTo": {
     "description": "ETS tasks PDF: how to use it."
   },
@@ -10522,7 +10522,7 @@
       }
     }
   },
-  "packageCorrupt": "Diese Datei lässt sich nicht lesen. Sie ist beschädigt oder kein Paket von KNX Monitor.",
+  "packageCorrupt": "Diese Datei lässt sich nicht lesen. Sie ist beschädigt oder kein Paket von Busclear.",
   "@packageCorrupt": {
     "description": "Fehlermeldung"
   },
@@ -10801,7 +10801,7 @@
   "@gallerySubmit": {
     "description": "Galerie geteilter Vorlagen"
   },
-  "gallerySubmitHint": "Wähle ein Diagramm. Die App erstellt daraus eine Datei mit Namen und Rollen, ohne Adressen und Räume. Teile sie selbst, zum Beispiel per Mail an support@knx-monitor.de; hochgeladen wird nichts.",
+  "gallerySubmitHint": "Wähle ein Diagramm. Die App erstellt daraus eine Datei mit Namen und Rollen, ohne Adressen und Räume. Teile sie selbst, zum Beispiel per Mail an support@busclear.de; hochgeladen wird nichts.",
   "@gallerySubmitHint": {
     "description": "Galerie geteilter Vorlagen"
   },
@@ -10919,7 +10919,7 @@
       }
     }
   },
-  "siteDocsScanForeign": "Das ist kein Etikett von KNX Monitor.",
+  "siteDocsScanForeign": "Das ist kein Etikett von Busclear.",
   "@siteDocsScanForeign": {
     "description": "Etiketten"
   },
@@ -11570,7 +11570,7 @@
       }
     }
   },
-  "crashTitle": "KNX Monitor wurde unerwartet beendet",
+  "crashTitle": "Busclear wurde unerwartet beendet",
   "@crashTitle": {
     "description": "Absturzerkennung: Hinweis nach Absturz"
   },
@@ -11804,8 +11804,8 @@
   },
   "appLockSettings": "App-Sperre",
   "appLockExplain": "Schützt die App, falls das Gerät verloren geht oder gestohlen wird: Beim Start und nach der gewählten Zeit im Hintergrund muss sich jemand ausweisen. Der Bus läuft währenddessen weiter.",
-  "appLockTitle": "KNX Monitor ist gesperrt",
-  "appLockReason": "KNX Monitor entsperren",
+  "appLockTitle": "Busclear ist gesperrt",
+  "appLockReason": "Busclear entsperren",
   "appLockSystemHint": "Mit Face ID, Fingerabdruck, Windows Hello oder dem Gerätecode entsperren.",
   "appLockPasswordHint": "Mit dem App-Passwort entsperren.",
   "appLockPassword": "App-Passwort",
@@ -11880,7 +11880,7 @@
   "recoveryNoted": "Sicher notiert",
   "recoveryRenew": "Neuen Notfallschlüssel erstellen",
   "recoveryResetBody": "Der Notfallschlüssel hat die App geöffnet und gilt nun nicht mehr. Lege eine neue Sperre fest.",
-  "recoveryPdfIntro": "Dieser Schlüssel öffnet die App-Sperre von KNX Monitor, wenn das App-Passwort vergessen wurde.",
+  "recoveryPdfIntro": "Dieser Schlüssel öffnet die App-Sperre von Busclear, wenn das App-Passwort vergessen wurde.",
   "recoveryPdfAccount": "Konto: {email}",
   "recoveryPdfUse": "So geht es: Auf dem Sperrbildschirm „Notfallschlüssel eingeben“ wählen, den Schlüssel eintippen und ein neues Passwort festlegen. Danach gilt dieser Schlüssel nicht mehr; die App erstellt einen neuen.",
   "recoveryPdfLimits": "Der Schlüssel gilt nur für dieses Gerät. Er öffnet keine Sicherungsdatei und ersetzt keine Sicherung, falls das Gerät verloren geht.",
@@ -11954,7 +11954,7 @@
   "@accountMfaPdfTitle": {
     "description": "Pro Team, Konto oder Sicherung"
   },
-  "accountMfaPdfIntro": "Mit diesem Blatt bekommst du die Anmeldecodes für dein KNX-Monitor-Konto zurück, wenn dein Telefon weg ist.",
+  "accountMfaPdfIntro": "Mit diesem Blatt bekommst du die Anmeldecodes für dein Busclear-Konto zurück, wenn dein Telefon weg ist.",
   "@accountMfaPdfIntro": {
     "description": "Pro Team, Konto oder Sicherung"
   },
@@ -11994,7 +11994,7 @@
   "backupSlow": "Das Verschlüsseln kann auf älteren Geräten bis zu einer Minute dauern.",
   "zipTooLarge": "Die Datei ist ausgepackt zu groß und wurde nicht geöffnet.",
   "installationsNewerTitle": "Neuere Daten",
-  "installationsNewerBody": "Diese Daten stammen aus einer neueren Version von KNX Monitor. Bitte aktualisiere die App. Deine Daten bleiben unverändert.",
+  "installationsNewerBody": "Diese Daten stammen aus einer neueren Version von Busclear. Bitte aktualisiere die App. Deine Daten bleiben unverändert.",
   "quarantineTitle": "Alte Daten nicht lesbar",
   "quarantineBody": "{count, plural, =1{Eine Datei ({size}) lässt} other{{count} Dateien ({size}) lassen}} sich nicht öffnen, weil der Schlüssel auf diesem Gerät fehlt, zum Beispiel nach einem Gerätewechsel. Es bleibt alles auf dem Gerät. Mit einer Sicherung holst du die Daten zurück.",
   "@quarantineBody": {
@@ -12267,7 +12267,7 @@
   "@exportsEtsHistoryMeta": {
     "description": "Exporte: Unterzeile zum ETS-Verlauf"
   },
-  "exportsEtsHistoryHint": "Lädt die Telegramme der dauerhaften Aufzeichnung als Gruppenmonitor-Datei der ETS. SpectrumKNX, die ETS und KNX Monitor öffnen sie direkt.",
+  "exportsEtsHistoryHint": "Lädt die Telegramme der dauerhaften Aufzeichnung als Gruppenmonitor-Datei der ETS. SpectrumKNX, die ETS und Busclear öffnen sie direkt.",
   "@exportsEtsHistoryHint": {
     "description": "Dialog ETS-Verlauf: Erklärung"
   },
@@ -12556,7 +12556,7 @@
   },
   "restartsIntroBox": "Letzte 30 Tage. systemd startet den Server nach 3 s neu, die Aufzeichnung läuft dann weiter.",
   "@restartsIntroBox": {
-    "description": "Absturzerkennung: Erklärung auf der KNX-Box"
+    "description": "Absturzerkennung: Erklärung auf der Busclear Box"
   },
   "restartsIntro": "Letzte 30 Tage. Nach einem unerwarteten Ende läuft die Aufzeichnung weiter, sobald der Server wieder gestartet ist.",
   "@restartsIntro": {
@@ -12775,5 +12775,136 @@
   "dataExportMqttSecureOn": "Auch KNX-Secure-Telegramme gehen entschlüsselt hinaus. Jeder, der den Broker lesen kann, sieht ihre Werte.",
   "@dataExportMqttSecureOn": {
     "description": "Datenexport: Secure-Telegramme an"
+  },
+  "dataExportMqttDetails": "{mode, select, raw{Mit Rohdaten} rawOnly{Nur Rohdaten} other{Ohne Rohdaten}} · Gruppenadressen: {filter} · letzte Nr. (seq) {seq}",
+  "@dataExportMqttDetails": {
+    "description": "Data export, MQTT telegram stream: raw data mode, group address filter and running number of the last telegram",
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "filter": {
+        "type": "String"
+      },
+      "seq": {
+        "type": "int"
+      }
+    }
+  },
+  "dataExportMqttFilterAll": "alle",
+  "@dataExportMqttFilterAll": {
+    "description": "Data export, MQTT telegram stream: no group address filter set"
+  },
+  "tapPointsTitle": "Messpunkte",
+  "@tapPointsTitle": {
+    "description": "Verbinden: Abschnitt weitere Messpunkte (#8)"
+  },
+  "tapPointsHint": "Weitere Verbindungen zur selben Anlage, etwa ein Interface je Linie. Die App führt alles in einem Verlauf zusammen. Jeder Tunnel-Messpunkt belegt einen Tunnel an seinem Interface.",
+  "@tapPointsHint": {
+    "description": "Verbinden: Erklärung Messpunkte"
+  },
+  "tapPointFirst": "Messpunkt 1 ist die Verbindung oben.",
+  "@tapPointFirst": {
+    "description": "Verbinden: erster Messpunkt"
+  },
+  "tapPointAdd": "Messpunkt hinzufügen",
+  "@tapPointAdd": {
+    "description": "Knopf und Titel: Messpunkt hinzufügen"
+  },
+  "tapPointName": "Name",
+  "@tapPointName": {
+    "description": "Messpunkt: Feld Name"
+  },
+  "tapPointNameHint": "Linie 1.2 · MDT IP-Interface",
+  "@tapPointNameHint": {
+    "description": "Messpunkt: Beispiel für den Namen"
+  },
+  "tapPointHost": "Adresse",
+  "@tapPointHost": {
+    "description": "Messpunkt: Feld IP-Adresse"
+  },
+  "tapPointMode": "Verbindungsart",
+  "@tapPointMode": {
+    "description": "Messpunkt: Feld Verbindungsart"
+  },
+  "tapPointWindow": "Zeitfenster in ms",
+  "@tapPointWindow": {
+    "description": "Messpunkt: Feld Zeitfenster"
+  },
+  "tapPointWindowHelp": "Leer = 100 ms. Über VPN größer wählen, etwa 250.",
+  "@tapPointWindowHelp": {
+    "description": "Messpunkt: Hilfe zum Zeitfenster"
+  },
+  "tapPointRemote": "Die Adresse liegt nicht im eigenen Netz. Über VPN ist TCP robuster als UDP, Routing kommt meist nicht durch.",
+  "@tapPointRemote": {
+    "description": "Messpunkt: Hinweis Adresse außerhalb des Netzes"
+  },
+  "tapPointPaused": "pausiert, Tunnel frei",
+  "@tapPointPaused": {
+    "description": "Messpunkt: Zustand pausiert"
+  },
+  "tapPointActive": "Messpunkt aktiv",
+  "@tapPointActive": {
+    "description": "Messpunkt: Schalter aktiv/pausiert (Bedienhilfe)"
+  },
+  "tapPointRemove": "Messpunkt entfernen",
+  "@tapPointRemove": {
+    "description": "Messpunkt: entfernen (Bedienhilfe)"
+  },
+  "tapPointMax": "Höchstens 8 Messpunkte je Anlage.",
+  "@tapPointMax": {
+    "description": "Messpunkt: Grenze erreicht"
+  },
+  "tapPointSave": "Hinzufügen",
+  "@tapPointSave": {
+    "description": "Messpunkt: Dialog bestätigen"
+  },
+  "tapDown": "{name} getrennt · {live} von {total} Messpunkten aktiv",
+  "@tapDown": {
+    "description": "Monitor: Banner, ein Messpunkt ist getrennt",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "live": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "tapDownHint": "Die anderen laufen weiter. Der getrennte verbindet sich von selbst neu.",
+  "@tapDownHint": {
+    "description": "Monitor: Banner Messpunkt getrennt, zweite Zeile"
+  },
+  "detailsPath": "Weg durch die Anlage",
+  "@detailsPath": {
+    "description": "Telegramm-Details: Abschnitt Messpunkte"
+  },
+  "detailsPathSeen": "+{ms} ms · Hop {hop}",
+  "@detailsPathSeen": {
+    "description": "Telegramm-Details: Sichtung an einem Messpunkt",
+    "placeholders": {
+      "ms": {
+        "type": "String"
+      },
+      "hop": {
+        "type": "int"
+      }
+    }
+  },
+  "detailsPathFirst": "zuerst · Hop {hop}",
+  "@detailsPathFirst": {
+    "description": "Telegramm-Details: erste Sichtung",
+    "placeholders": {
+      "hop": {
+        "type": "int"
+      }
+    }
+  },
+  "detailsPathMissing": "nicht gesehen, gefiltert oder nur lokal",
+  "@detailsPathMissing": {
+    "description": "Telegramm-Details: an diesem Messpunkt nicht gesehen"
   }
 }

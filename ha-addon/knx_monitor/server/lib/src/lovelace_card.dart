@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-/// Dashboard card "KNX Monitor Diagramm" (`custom:knx-monitor-chart-card`):
+/// Dashboard card "Busclear Diagramm" (`custom:knx-monitor-chart-card`):
 /// On every start the add-on places the card in `/config/www/knx-monitor/`
 /// (`/local/knx-monitor/…` in Home Assistant) and registers it as a
 /// dashboard resource. It then appears in the card picker without HACS.

@@ -1,7 +1,7 @@
 blueprint:
-  name: KNX Monitor – bus connection lost or back
+  name: Busclear – bus connection lost or back
   description: >-
-    Runs your actions when the KNX Monitor add-on loses its bus connection or
+    Runs your actions when the Busclear add-on loses its bus connection or
     gets it back (event `knx_monitor_bus`). The event data holds `connected`,
     `state`, `reason` and `installation`. Short drop-outs are reported too;
     the MQTT entity "Bus connected" (with a "for" duration) suits waiting a

@@ -7,12 +7,12 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>KNX Monitor</string>
+	<string>Busclear</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>KNX Monitor Übergabepaket</string>
+			<string>Busclear Übergabepaket</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
@@ -24,7 +24,7 @@
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>KNX Monitor Störungsmeldung</string>
+			<string>Busclear Störungsmeldung</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
@@ -53,7 +53,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>KNX-Box-Kopplung</string>
+			<string>Busclear-Box-Kopplung</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>knxmonitor</string>
@@ -76,13 +76,13 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Liest QR-Codes (KNX-Box, Übergabe, Geräte-Etiketten) und nimmt auf deinen Wunsch Fotos des Verteilers auf. Die Bilder bleiben auf dem Gerät.</string>
+	<string>Liest QR-Codes (Busclear Box, Übergabe, Geräte-Etiketten) und nimmt auf deinen Wunsch Fotos des Verteilers auf. Die Bilder bleiben auf dem Gerät.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Wählt auf deinen Wunsch ein Foto des Verteilers aus. Das Bild bleibt auf dem Gerät.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Entsperrt die App, wenn du die App-Sperre eingeschaltet hast.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Verbindet sich mit deinem KNX/IP-Gateway oder deiner KNX-Box im lokalen Netzwerk.</string>
+	<string>Verbindet sich mit deinem KNX/IP-Gateway oder deiner Busclear Box im lokalen Netzwerk.</string>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
@@ -91,7 +91,7 @@
 				<string>public.data</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>KNX Monitor Übergabepaket</string>
+			<string>Busclear Übergabepaket</string>
 			<key>UTTypeIdentifier</key>
 			<string>de.regetskcob.knx-monitor.handover</string>
 			<key>UTTypeTagSpecification</key>
@@ -112,7 +112,7 @@
 				<string>public.data</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>KNX Monitor Störungsmeldung</string>
+			<string>Busclear Störungsmeldung</string>
 			<key>UTTypeIdentifier</key>
 			<string>de.regetskcob.knx-monitor.report</string>
 			<key>UTTypeTagSpecification</key>

@@ -184,7 +184,7 @@ void main() {
     test('Technik enthält keine Keyring-Schlüssel oder Passwörter', () async {
       SharedPreferences.setMockInitialValues({});
       PackageInfo.setMockInitialValues(
-        appName: 'KNX Monitor',
+        appName: 'Busclear',
         packageName: 'knx_monitor',
         version: '1.5.1',
         buildNumber: '6',
@@ -453,7 +453,7 @@ void main() {
   testWidgets('Export-Bildschirm zeigt Inhalt und Namen-Schalter', (tester) async {
     SharedPreferences.setMockInitialValues({});
     PackageInfo.setMockInitialValues(
-      appName: 'KNX Monitor',
+      appName: 'Busclear',
       packageName: 'knx_monitor',
       version: '1.5.1',
       buildNumber: '6',
@@ -539,7 +539,7 @@ void main() {
   Future<void> setUpStorage(WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
     PackageInfo.setMockInitialValues(
-      appName: 'KNX Monitor',
+      appName: 'Busclear',
       packageName: 'knx_monitor',
       version: '1.5.1',
       buildNumber: '6',
@@ -559,7 +559,7 @@ void main() {
   testWidgets('Screenshot am Kommentar: Schalter steht auf aus, Hinweis und Inhalt sagen es', (tester) async {
     SharedPreferences.setMockInitialValues({});
     PackageInfo.setMockInitialValues(
-      appName: 'KNX Monitor',
+      appName: 'Busclear',
       packageName: 'knx_monitor',
       version: '1.5.1',
       buildNumber: '6',
@@ -653,9 +653,9 @@ void main() {
     String two(int v) => '$v'.padLeft(2, '0');
     final at = occurred.add(const Duration(minutes: 1));
     final ips =
-        '${jsonEncode({'app_name': 'KNX Monitor', 'bug_type': '309'})}\n'
+        '${jsonEncode({'app_name': 'Busclear', 'bug_type': '309'})}\n'
         '${jsonEncode({
-          'procName': 'KNX Monitor',
+          'procName': 'Busclear',
           'captureTime': '${at.year}-${two(at.month)}-${two(at.day)} ${two(at.hour)}:${two(at.minute)}:00.00 +0000',
           'exception': {'type': 'EXC_BAD_ACCESS', 'signal': 'SIGSEGV'},
           'faultingThread': 0,
@@ -674,13 +674,13 @@ void main() {
     await pumpScreen(
       tester,
       SupportPackageScreen(
-        error: 'KNX Monitor wurde unerwartet beendet',
+        error: 'Busclear wurde unerwartet beendet',
         occurred: occurred.toLocal(),
         crash: true,
         systemReports: SystemCrashFinder(
           platform: TargetPlatform.macOS,
-          executable: 'KNX Monitor',
-          macFiles: (_) async => [(name: 'KNX Monitor-1.ips', modified: at, read: () async => ips)],
+          executable: 'Busclear',
+          macFiles: (_) async => [(name: 'Busclear-1.ips', modified: at, read: () async => ips)],
         ),
       ),
       until: card,

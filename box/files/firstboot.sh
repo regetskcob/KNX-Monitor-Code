@@ -1,5 +1,5 @@
 #!/bin/bash
-# First boot of the KNX Monitor Box (knx-box-firstboot.service).
+# First boot of the Busclear Box (knx-box-firstboot.service).
 #
 # Reads knx-box.txt from the boot partition, generates missing values, sets up
 # hotspot, server environment, firewall and SSH and writes the values back
@@ -144,7 +144,7 @@ fi
 # --- Write back ---------------------------------------------------------------
 umask 022
 cat >"$CONF" <<EOF
-# KNX Monitor Box – eingerichtet am $(date '+%d.%m.%Y %H:%M')
+# Busclear Box – eingerichtet am $(date '+%d.%m.%Y %H:%M')
 #
 # Diese Werte gelten jetzt. Änderungen hier wirken nicht mehr. Beim ersten
 # Anmelden verlangt die Box ein eigenes Passwort (App oder
@@ -153,7 +153,7 @@ cat >"$CONF" <<EOF
 # knx-box-reset.txt mit BOX_PASSWORD=… und/oder WLAN_PASSWORD=… auf diese Karte
 # legen und neu starten.
 # Alles auf einem Blatt zum Ausdrucken: knx-box-de.pdf, knx-box-en.pdf.
-# Aufkleber: knx-box-app.png. In der App "KNX-Box hinzufügen" und diesen
+# Aufkleber: knx-box-app.png. In der App "Busclear Box hinzufügen" und diesen
 # QR-Code scannen: Die App tritt dem WLAN bei, koppelt sich und stellt die Uhr.
 # Ohne Kamera (Linux-App, Desktop): den Link aus knx-box-link.txt einfügen.
 # Ohne App: knx-box-wlan.png (WLAN-QR-Code für die Kamera), dann im Browser

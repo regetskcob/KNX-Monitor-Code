@@ -7,6 +7,7 @@ import '../l10n/locale_controller.dart';
 import '../platform/addon.dart';
 import 'gateway_info.dart';
 import 'knx_tunnel.dart';
+import '../model/tap_points.dart';
 import 'telegram.dart';
 
 /// The shared tunnel of the Home Assistant add-on or the KNX box.
@@ -109,6 +110,9 @@ class SharedTunnel extends KnxTunnel {
     switch (m[0]) {
       case 0x01:
         receiveCemi(Uint8List.sublistView(m, 1));
+      // Frame from a further tap point of the server (issue #8): tap number, then cEMI.
+      case 0x04 when m.length > 2:
+        receiveCemiAt(m[1], Uint8List.sublistView(m, 2));
       case 0x02:
         _onStatus(jsonDecode(utf8.decode(m.sublist(1))) as Map<String, Object?>);
       case 0x03:
@@ -137,6 +141,7 @@ class SharedTunnel extends KnxTunnel {
 
   void _onStatus(Map<String, Object?> j) {
     status.value = j;
+    _followTaps(j);
     if (j['state'] == 'yielded') {
       // The bus monitor has the slot – no error, no automatic reconnect.
       if (!(_released?.isCompleted ?? true)) _released!.complete();
@@ -167,6 +172,49 @@ class SharedTunnel extends KnxTunnel {
       error.value = (j['error'] as String?) ?? _connecting;
       state.value = TunnelState.disconnected;
     }
+  }
+
+  /// Tap points of the server (status `taps`, issue #8): labels for the chips, state for the banner,
+  /// merging of the `0x04` frames. Without the key (older server, single tap point) nothing changes.
+  void _followTaps(Map<String, Object?> j) {
+    final taps = j['taps'];
+    if (taps is! List || taps.isEmpty) {
+      if (tapPoints.value.isNotEmpty) {
+        tapPoints.value = const [];
+        tapLabels.value = const [];
+        useTaps(1);
+      }
+      return;
+    }
+    final mainState = j['state'] == 'connected' ? TunnelState.connected : TunnelState.disconnected;
+    final list = <TapStatus>[
+      TapStatus(
+        index: 0,
+        name: (j['link'] as String?) ?? host,
+        label: tapLabel(j['address'] as int?, '1'),
+        state: mainState,
+        error: j['error'] as String?,
+      ),
+      for (final (i, raw) in taps.indexed)
+        if (raw is Map)
+          TapStatus(
+            index: i + 1,
+            name: raw['name'] as String? ?? '${i + 2}',
+            label: tapLabel(raw['address'] as int?, raw['name'] as String? ?? '${i + 2}'),
+            state: raw['state'] == 'connected' ? TunnelState.connected : TunnelState.disconnected,
+            error: raw['error'] as String?,
+            paused: raw['paused'] == true,
+          ),
+    ];
+    tapPoints.value = list;
+    tapLabels.value = [for (final p in list) p.label];
+    useTaps(
+      list.where((p) => p.connected).length,
+      windows: {
+        for (final (i, raw) in taps.indexed)
+          if (raw is Map && raw['windowMs'] is int) i + 1: Duration(milliseconds: raw['windowMs']! as int),
+      },
+    );
   }
 
   void _closed(String? reason) {

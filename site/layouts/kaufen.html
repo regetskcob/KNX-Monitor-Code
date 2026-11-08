@@ -16,7 +16,7 @@
   <header class="knx-page-head">
     {{ partial "horizont/kennung.html" (dict "text" (printf "%s · %s" site.Title .Title) "tag" "p") }}
     <h1 class="t-display">{{ .Title }}</h1>
-    <p class="knx-lead">{{ cond $de "Für KNX Monitor unter Windows, ganz ohne Konto: Nach dem Kauf kommt deine Lizenz per Mail. Bezahlt wird über Paddle, unseren Händler; du bekommst eine ordentliche Rechnung mit Umsatzsteuer." "For KNX Monitor on Windows, no account needed: after buying, your license arrives by email. Payment runs through Paddle, our reseller; you get a proper invoice with VAT." }}</p>
+    <p class="knx-lead">{{ cond $de "Für Busclear unter Windows, ganz ohne Konto: Nach dem Kauf kommt deine Lizenz per Mail. Bezahlt wird über Paddle, unseren Händler; du bekommst eine ordentliche Rechnung mit Umsatzsteuer." "For Busclear on Windows, no account needed: after buying, your license arrives by email. Payment runs through Paddle, our reseller; you get a proper invoice with VAT." }}</p>
   </header>
   <hr class="hz-feld-horizon">
   <div class="knx-prose t-reading">
@@ -42,7 +42,7 @@
   const q = new URLSearchParams(location.hash.slice(1) || location.search);
   if (location.hash || location.search) history.replaceState(null, '', location.pathname);
   const say = (deText, enText) => { state.textContent = de ? deText : enText; };
-  if (q.get('done')) return say(q.get('user') ? 'Danke! Tippe jetzt in der App auf „Käufe wiederherstellen“.' : 'Danke! Deine Lizenz kommt gleich per Mail. Falls nicht: Spam-Ordner prüfen oder an support@knx-monitor.de schreiben.', q.get('user') ? 'Thank you! Now tap “Restore purchases” in the app.' : 'Thank you! Your license is on its way by email. If it does not arrive, check your spam folder or write to support@knx-monitor.de.');
+  if (q.get('done')) return say(q.get('user') ? 'Danke! Tippe jetzt in der App auf „Käufe wiederherstellen“.' : 'Danke! Deine Lizenz kommt gleich per Mail. Falls nicht: Spam-Ordner prüfen oder an support@busclear.de schreiben.', q.get('user') ? 'Thank you! Now tap “Restore purchases” in the app.' : 'Thank you! Your license is on its way by email. If it does not arrive, check your spam folder or write to support@busclear.de.');
   if (!root.dataset.token) return say('Der Kauf für Windows ist bald verfügbar.', 'Buying for Windows is coming soon.');
   const script = document.createElement('script');
   script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';

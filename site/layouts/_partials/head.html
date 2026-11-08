@@ -67,12 +67,13 @@
 {{- /* Plus the platforms whose public beta is open (partial beta.html). */}}
 {{- $beta := partial "beta.html" . -}}
 {{- $os := "Home Assistant, Linux" -}}
-{{- if in (slice "ios" "both") $beta }}{{ $os = printf "%s, iOS, iPadOS" $os }}{{ end -}}
+{{- if in (slice "ios" "both") $beta }}{{ $os = printf "%s, iOS, iPadOS, macOS" $os }}{{ end -}}
 {{- if in (slice "android" "both") $beta }}{{ $os = printf "%s, Android" $os }}{{ end -}}
 {{- $app := dict
   "@type" "SoftwareApplication"
   "@id" (printf "%s#app" $root)
   "name" site.Title
+  "alternateName" "KNX Monitor"
   "url" $home
   "description" (index $d.description $beta)
   "applicationCategory" "UtilitiesApplication"
@@ -94,4 +95,29 @@
   "about" (dict "@id" (printf "%s#app" $root))
   "primaryImageOfPage" $og -}}
 <script type="application/ld+json">{{ dict "@context" "https://schema.org" "@graph" (slice $website $app $page) | jsonify | safeJS }}</script>
+{{- /* After the redirect from knx-monitor.de (tool/site_redirect/knx-monitor.htaccess
+       appends #knx-monitor): a closable note about the new name; the fragment
+       leaves the address again. Nothing without the fragment. */}}
+{{- with index site.Data.teaser site.Language.Lang }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (location.hash !== '#knx-monitor') return;
+  history.replaceState(null, '', location.pathname + location.search);
+  var b = document.createElement('div');
+  b.className = 'knx-renamed';
+  b.setAttribute('role', 'status');
+  b.style.cssText = 'position:sticky;top:0;z-index:50;display:flex;gap:12px;align-items:center;justify-content:center;padding:10px 16px;background:var(--surface);border-bottom:2px solid var(--accent);font:inherit;color:var(--text)';
+  var t = document.createElement('span');
+  t.textContent = {{ .renamed }};
+  var x = document.createElement('button');
+  x.type = 'button';
+  x.textContent = '\u00d7';
+  x.setAttribute('aria-label', {{ .renamed_close }});
+  x.style.cssText = 'border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:inherit';
+  x.onclick = function () { b.remove(); };
+  b.append(t, x);
+  document.body.prepend(b);
+});
+</script>
+{{- end }}
 </head>

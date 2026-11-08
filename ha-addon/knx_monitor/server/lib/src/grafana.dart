@@ -114,7 +114,7 @@ Map<String, Object?> grafanaDashboard(String kind) {
         'pluginId': influx ? 'influxdb' : 'prometheus',
       },
     ],
-    'title': 'KNX Monitor',
+    'title': 'Busclear',
     'uid': influx ? 'knx-monitor-influxdb' : 'knx-monitor-prometheus',
     'tags': const ['knx', 'knx-monitor'],
     'timezone': 'browser',

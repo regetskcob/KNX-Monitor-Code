@@ -1,7 +1,7 @@
 blueprint:
-  name: KNX Monitor – bus load high
+  name: Busclear – bus load high
   description: >-
-    Runs your actions when the bus load measured by the KNX Monitor add-on
+    Runs your actions when the bus load measured by the Busclear add-on
     stays above a limit for a while. The sensor "Bus load" comes from the
     add-on's MQTT device and is averaged over one minute; a TP line
     (9600 bit/s) should normally stay well below 30 %. Needs an MQTT broker
@@ -11,7 +11,7 @@ blueprint:
   input:
     sensor:
       name: Bus load sensor
-      description: The "Bus load" sensor of the device KNX Monitor.
+      description: The "Bus load" sensor of the device Busclear.
       selector:
         entity:
           filter:

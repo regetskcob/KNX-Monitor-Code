@@ -4,7 +4,7 @@ part of 'pdf_export.dart';
 /// large type, function, mounting location, QR code. `pdf` package only.
 Future<Uint8List> buildDeviceLabelsPdf(List<DeviceLabel> labels) async {
   final fonts = await PdfFonts.load();
-  final doc = pw.Document(title: s.siteDocsLabelsPdf, creator: 'KNX Monitor');
+  final doc = pw.Document(title: s.siteDocsLabelsPdf, creator: 'Busclear');
   const perPage = labelColumns * labelRows;
   final width = PdfPageFormat.a4.width / labelColumns;
   final height = PdfPageFormat.a4.height / labelRows;

@@ -2,9 +2,9 @@ tagline: "KNX bus monitor & diagnostics"
 # Je nach offenen Betas (hugo.toml betaIos/betaAndroid): none, ios, android, both.
 description:
   none: "KNX bus monitor and diagnostics for Home Assistant and Linux, soon on iPhone, iPad, Android, Mac and Windows. Reads ETS projects, data stays local."
-  ios: "KNX bus monitor and diagnostics for Home Assistant and Linux, in beta for iPhone and iPad, soon on Android, Mac and Windows. Reads ETS projects, data stays local."
+  ios: "KNX bus monitor and diagnostics for Home Assistant and Linux, in beta for iPhone, iPad and Mac, soon on Android and Windows. Reads ETS projects, data stays local."
   android: "KNX bus monitor and diagnostics for Home Assistant and Linux, in beta for Android, soon on iPhone, iPad, Mac and Windows. Reads ETS projects, data stays local."
-  both: "KNX bus monitor and diagnostics for Home Assistant and Linux, in beta for iPhone, iPad and Android, soon on Mac and Windows. Reads ETS projects, data stays local."
+  both: "KNX bus monitor and diagnostics for Home Assistant and Linux, in beta for iPhone, iPad, Mac and Android, soon on Windows. Reads ETS projects, data stays local."
 kennung: "Bus monitor & diagnostics for KNX"
 title: "Every telegram in view, at home and on the building site."
 lead: "Made sense of with your ETS project: devices, rooms and values instead of columns of hex. Plus a check of your installation for silent sensors, wrong datapoint types and bus problems."
@@ -12,15 +12,19 @@ primary: "As a Home Assistant add-on"
 source: "Open source · GPLv3"
 beta:
   none: ""
-  ios: "Join the beta: iPhone and iPad"
+  ios: "Join the beta: iPhone, iPad, Mac"
   android: "Join the beta: Android"
-  both: "Join the beta: iPhone, iPad, Android"
+  both: "Join the beta: Apple and Android"
 soon:
   none: "Coming soon for iPhone, iPad, Android, Mac and Windows, available for Linux today."
-  ios: "In beta for iPhone and iPad, coming soon for Android, Mac and Windows, available for Linux today."
+  ios: "In beta for iPhone, iPad and Mac, coming soon for Android and Windows, available for Linux today."
   android: "In beta for Android, coming soon for iPhone, iPad, Mac and Windows, available for Linux today."
-  both: "In beta for iPhone, iPad and Android, coming soon for Mac and Windows, available for Linux today."
+  both: "In beta for iPhone, iPad, Mac and Android, coming soon for Windows, available for Linux today."
 local: "Your installation data only leaves your network if you share it yourself."
+formerly: "Busclear was called KNX Monitor until November 2026."
+# Banner after the redirect from knx-monitor.de (head.html).
+renamed: "KNX Monitor is now Busclear. Same app, same features, new name."
+renamed_close: "Close notice"
 drawing: "A small distribution board with power supply, IP interface, switch, blind and dimming actuator. Telegrams run as dots of light along the green bus cable, the channel LEDs follow."
 telegrams:
   - { from: "1.1.30", to: "1/1/3", text: "Kitchen light", value: "On", device: 2, channel: 2, on: true }
@@ -43,7 +47,7 @@ cable: "to the push buttons 1.1.30 – 1.1.35"
 live: "Live · demo house"
 live_window: "Last 60 s"
 more: "What the add-on does today"
-ipad_alt: "KNX Monitor as an add-on in Home Assistant on the iPad: the menu on the left with health, commissioning, bus monitor, topology and more, the overview with values per group address in the middle, the details of one address with history and telegram on the right"
+ipad_alt: "Busclear as an add-on in Home Assistant on the iPad: the menu on the left with health, commissioning, bus monitor, topology and more, the overview with values per group address in the middle, the details of one address with history and telegram on the right"
 addon:
   kennung: "02 — In the add-on today"
   title: "Bus monitor and diagnostics, in Home Assistant today."
@@ -74,11 +78,11 @@ roadmap:
   title: "At home in Home Assistant first, then out on the building site too."
   text:
     none: "The add-on is ready and stays free, and the Linux app is available today. The other apps are built and follow in the coming weeks."
-    ios: "The add-on is ready and stays free, the Linux app is available today, and iPhone and iPad are in beta. The other apps are built and follow in the coming weeks."
+    ios: "The add-on is ready and stays free, the Linux app is available today, and iPhone, iPad and Mac are in beta. The other apps are built and follow in the coming weeks."
     android: "The add-on is ready and stays free, the Linux app is available today, and Android is in beta. The other apps are built and follow in the coming weeks."
-    both: "The add-on is ready and stays free, the Linux app is available today, and iPhone, iPad and Android are in beta. The other apps are built and follow in the coming weeks."
+    both: "The add-on is ready and stays free, the Linux app is available today, and iPhone, iPad, Mac and Android are in beta. The other apps are built and follow in the coming weeks."
   # Public as a preview, on the left below the text.
-  prices_preview: "**Everything is still free in the beta:** you use all features at no cost, including those of Plus and Pro. As a thank-you, you get 90 days of Pro on first launch of the store version, on the device you used the beta on."
+  prices_preview: "**Everything is still free in the beta:** you use all features at no cost, including those of Plus and Pro. As a thank-you, you get 90 days of Pro on first launch of the store version, on the device you used the beta on. [How to join](/en/beta/)"
   prices:
     - { name: "Free", price: "Free", sub: "For a look at your own installation" }
     - { name: "Plus", price: "€24.99", per: "a year", sub: "or €79 once · long-term history, charts, watchers, export" }
@@ -86,14 +90,14 @@ roadmap:
   prices_note: "Suggested prices as a non-binding preview, nothing can be bought yet. Final prices apply in the App Store and on Google Play; on iPhone, iPad and Mac one purchase works everywhere."
   # commerce: false only without prices (params.commerce).
   facts:
-    - { term: "Open", value: "**Source code under GPLv3** [on GitHub](https://github.com/regetskcob/KNX-Monitor-Code): everything for beginners and advanced users in the app, add-on and KNX Box, open to check and to change" }
+    - { term: "Open", value: "**Source code under GPLv3** [on GitHub](https://github.com/regetskcob/KNX-Monitor-Code): everything for beginners and advanced users in the app, add-on and Busclear Box, open to check and to change" }
     - { term: "Now", value: "**Home Assistant add-on** and **Linux** ([download](https://github.com/regetskcob/KNX-Monitor/releases/latest)), both free for one installation, for good" }
-    - { term: "Beta", value: "**iPhone and iPad** through [TestFlight](https://testflight.apple.com/join/fsM3ufJK), open to everyone, with every tool", when: [ios, both] }
+    - { term: "Beta", value: "**iPhone, iPad and Mac** through [TestFlight](https://testflight.apple.com/join/fsM3ufJK), open to everyone, with every tool", when: [ios, both] }
     - { term: "Beta", value: "**Android** on Google Play: first [join the Google group](https://groups.google.com/g/knx-monitor-beta), then [join the test](https://play.google.com/apps/testing/de.kalkar_it.knxmonitor). Open to everyone, with every tool", when: [android, both] }
     - { term: "Soon", value: "**iPhone, iPad, Android, Mac and Windows** in the App Store, on Google Play and as a download for Windows", when: [none] }
-    - { term: "Soon", value: "**Android, Mac and Windows** on Google Play, in the App Store and as a download for Windows", when: [ios] }
+    - { term: "Soon", value: "**Android and Windows** on Google Play and as a download", when: [ios] }
     - { term: "Soon", value: "**iPhone, iPad, Mac and Windows** in the App Store and as a download for Windows", when: [android] }
-    - { term: "Soon", value: "**Mac and Windows** in the App Store and as a download for Windows", when: [both] }
+    - { term: "Soon", value: "**Windows** as a download", when: [both] }
     - { term: "Preview", value: "**Home builder package**: from everyday wishes through room book and floor plan to documents for your electrician. [Learn more](/en/bauherren/)" }
     - { term: "Preview", value: "**[KNX box](/en/box/)**: a Raspberry Pi as an on-site telegram recorder, recording for days on the building site, without Home Assistant and without internet. Until the other apps arrive, set it up with the Linux app" }
     - { term: "Apps", value: "Free to use, more tools with Plus and Pro. Everything is free in the beta.", commerce: false }

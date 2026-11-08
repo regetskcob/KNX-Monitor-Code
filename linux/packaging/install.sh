@@ -1,5 +1,5 @@
 #!/bin/bash
-# KNX Monitor installieren (nur für den eigenen Benutzer, ohne sudo).
+# Busclear installieren (nur für den eigenen Benutzer, ohne sudo).
 #
 #   ./install.sh            nach ~/.local/opt/knx-monitor kopieren und ins
 #                           App-Menü eintragen; mit einer neuen Version: Update
@@ -32,12 +32,12 @@ refresh() {
 
 if [ "${1:-}" = --remove ]; then
   rm -f "$desktop" "$icon"
-  # Nur einen Ordner löschen, der wirklich KNX Monitor ist.
+  # Nur einen Ordner löschen, der wirklich Busclear ist.
   if [ -x "$target/knx_monitor" ] && [ -f "$target/install.sh" ]; then
     rm -rf "$target"
   fi
   refresh
-  echo "KNX Monitor ist entfernt. Deine Projekte und der Verlauf bleiben im Benutzerprofil."
+  echo "Busclear ist entfernt. Deine Projekte und der Verlauf bleiben im Benutzerprofil."
   exit 0
 fi
 
@@ -63,7 +63,7 @@ install -m 0644 "$target/data/app_icon.png" "$icon"
 cat >"$desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=KNX Monitor
+Name=Busclear
 GenericName=KNX-Busmonitor
 GenericName[en]=KNX bus monitor
 Comment=Busmonitor und Diagnose für KNX
@@ -76,7 +76,7 @@ Keywords=KNX;ETS;Busmonitor;Gebäudeautomation;
 StartupWMClass=$id
 EOF
 refresh
-echo "KNX Monitor ist installiert in $target und steht im App-Menü."
+echo "Busclear ist installiert in $target und steht im App-Menü."
 if [ -n "${updated:-}" ]; then
   echo "Den entpackten Ordner $here kannst du jetzt löschen. Läuft die App gerade, einmal neu starten."
 fi

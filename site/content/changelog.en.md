@@ -1,10 +1,17 @@
 ---
 title: "Changelog"
-description: "What the latest versions of KNX Monitor brought to the app, the Home Assistant add-on and the KNX box, newest first."
+description: "What the latest versions of Busclear brought to the app, the Home Assistant add-on and the Busclear Box, newest first."
 layout: "page"
 slug: "changelog"
 ---
-What the latest versions of KNX Monitor brought, newest first. App, Home Assistant add-on and KNX box share one version number. Every version is on [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant the add-on shows the same notes before an update.
+What the latest versions of Busclear brought, newest first. App, Home Assistant add-on and Busclear Box share one version number. Every version is on [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant the add-on shows the same notes before an update.
+
+## 1.10.0 – 8 Nov 2026
+
+- KNX Monitor is now **Busclear**, the KNX box is now the **Busclear Box**. Same add-on, same features: projects, recordings, settings and automations stay. Existing entities keep their IDs (`knx_monitor_…`), add-on slug and MQTT topics stay, the box keeps its Wi-Fi `KNX-Box-…`. The website is now busclear.de (knx-monitor.de redirects), support via support@busclear.de.
+- Tap points ([#8](https://github.com/regetskcob/KNX-Monitor/issues/8)): up to eight connections per installation, e.g. one interface per line, merged into one history. Each telegram keeps where it was seen first and the other sightings with offset and hops. The app shows the lines as chips, reports a dropped tap point and shows the path through the installation in the telegram details.
+- Every telegram to MQTT, traceable and with raw data ([#11](https://github.com/regetskcob/KNX-Monitor/issues/11)): running number, server start, installation id, time in microseconds, hops, device name of the sender and project state. New: send raw data too, raw data only, and a filter on group addresses.
+- Docker guide: the telegram stream variables are in the table; every release test-starts the published `compose.yaml` and the `docker run` example.
 
 ## 1.9.10 – 7 Nov 2026
 

@@ -1,4 +1,4 @@
-# KNX Box case for Raspberry Pi with kBerry
+# Busclear Box case for Raspberry Pi with kBerry
 
 A sturdy, screwed case for a Raspberry Pi 3B, 3B+, 4B or 5 with a Weinzierl KNX BAOS 838 kBerry mounted on top. It is built for use on job sites: solid walls, recessed connectors, smooth outer surfaces. The KNX terminal protrudes from the slim lid and can be unplugged with the case closed.
 

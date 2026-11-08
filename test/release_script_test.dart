@@ -28,7 +28,26 @@ void main() {
   ProcessResult run(List<String> args, [Map<String, String> env = const {}]) => Process.runSync(
     'bash',
     ['tool/release.sh', ...args],
-    environment: {'HOME': home.path, 'PATH': '${bin.path}:${Platform.environment['PATH']}', ...env},
+    // Build switches of the caller (e.g. RC_NONE=1 tool/release.sh app) must
+    // not leak into the cases; each test sets what it needs.
+    environment: {
+      'HOME': home.path,
+      'PATH': '${bin.path}:${Platform.environment['PATH']}',
+      for (final k in [
+        'RC_NONE',
+        'PAID',
+        'BETA',
+        'BETRIEB',
+        'RC_GOOGLE_KEY',
+        'RC_APPLE_KEY',
+        'UPLOAD',
+        'ASC_KEY_ID',
+        'ASC_ISSUER_ID',
+        'ASC_KEY_PATH',
+      ])
+        k: '',
+      ...env,
+    },
   );
 
   group('Kaufweg im Build', () {

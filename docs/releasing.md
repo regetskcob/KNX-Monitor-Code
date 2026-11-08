@@ -23,7 +23,7 @@ exist.
 How the images are signed and how to verify them:
 [release-security.md](release-security.md).
 
-## KNX Box and Linux app
+## Busclear Box and Linux app
 
 Box images are built by `.github/workflows/box-image.yml` from a
 `box-v<version>` tag, see [knx-box.md](knx-box.md). The Linux app is built by

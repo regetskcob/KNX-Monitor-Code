@@ -127,7 +127,7 @@
   <div class="s-line"></div>
   {{- /* Left tile (posted last, top left in the grid): the add-on in HA. */}}
   <div class="s-tile" style="left:0">
-    <div class="s-kennung">KNX Monitor · 3/3</div>
+    <div class="s-kennung">Busclear · 3/3</div>
     <h1 class="s-title">Heute kostenlos in Home Assistant.</h1>
     <p class="s-text">Als Add-on in der Seitenleiste, für Linux schon heute. Apps folgen.</p>
     <div class="s-stand" style="bottom:216px">
@@ -139,7 +139,7 @@
   </div>
   {{- /* Middle tile: telegrams with names from the ETS project. */}}
   <div class="s-tile" style="left:1080px">
-    <div class="s-kennung">KNX Monitor · 2/3</div>
+    <div class="s-kennung">Busclear · 2/3</div>
     <h1 class="s-title">Mit deinem ETS-Projekt.</h1>
     <p class="s-text">Namen, Räume und Datentypen statt Hex-Kolonnen.</p>
     <div class="s-telegrams">
@@ -151,7 +151,7 @@
   </div>
   {{- /* Right tile (posted first): the board, its cable is the line. */}}
   <div class="s-tile" style="left:2160px">
-    <div class="s-kennung">KNX Monitor · 1/3</div>
+    <div class="s-kennung">Busclear · 1/3</div>
     <h1 class="s-title">Jedes Telegramm im Blick.</h1>
     <p class="s-text">Busmonitor und Diagnose für KNX.</p>
     <div class="s-stand" style="bottom:225px"><div class="s-verteiler">{{ partial "verteiler.html" (dict "alt" $d.drawing "cable" "") }}</div></div>
@@ -169,7 +169,7 @@
     </g>
   </svg>
   <div class="s-tile" style="left:0">
-    <div class="s-brand">{{ partial "horizont/app-icon.html" (dict "product" "knx" "size" 110) }} KNX Monitor</div>
+    <div class="s-brand">{{ partial "horizont/app-icon.html" (dict "product" "knx" "size" 110) }} Busclear</div>
     <div class="s-kennung">{{ $d.kennung }}</div>
     <h1 class="s-hero-title">{{ $d.title }}</h1>
     <p class="s-hero-lead">{{ $d.lead }}</p>
@@ -194,7 +194,7 @@
   <div class="s-line"></div>
   {{- /* Left tile (pinned last): the add-on in HA, as on the start tiles. */}}
   <div class="s-tile" style="left:0">
-    <div class="s-kennung">KNX Monitor · Home Assistant</div>
+    <div class="s-kennung">Busclear · Home Assistant</div>
     <h1 class="s-title">Heute kostenlos in Home Assistant.</h1>
     <p class="s-text">Als Add-on in der Seitenleiste, für Linux schon heute. Apps folgen.</p>
     <div class="s-stand" style="bottom:226px">
@@ -206,7 +206,7 @@
   </div>
   {{- /* Middle tile: findings of the health check (demo house). */}}
   <div class="s-tile" style="left:1080px">
-    <div class="s-kennung">KNX Monitor · Diagnose</div>
+    <div class="s-kennung">Busclear · Diagnose</div>
     <h1 class="s-title">Findet, was still kaputt ist.</h1>
     <p class="s-text">Die Gesundheitsprüfung fragt die Anlage ab und sortiert, was auffällt.</p>
     <div class="s-health">
@@ -220,7 +220,7 @@
   </div>
   {{- /* Right tile (pinned first): the actuator with its channel cards. */}}
   <div class="s-tile" style="left:2160px">
-    <div class="s-kennung">KNX Monitor · Aktor</div>
+    <div class="s-kennung">Busclear · Aktor</div>
     <h1 class="s-title">Jeder Kanal mit seiner Adresse.</h1>
     <p class="s-text">Der Schaltaktor wie im Verteiler: Zustand, Gruppenadresse und Rückmeldung je Kanal.</p>
     {{- with resources.Get "images/social/actuator-links.png" }}

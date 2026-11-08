@@ -990,7 +990,7 @@ class ReportService {
         de
             ? 'Die Wartung der Anlage ist fällig. Einzelheiten in der App.'
             : 'Maintenance of the installation is due. Details in the app.',
-      _ => de ? 'Testmitteilung von KNX Monitor.' : 'Test message from KNX Monitor.',
+      _ => de ? 'Testmitteilung von Busclear.' : 'Test message from Busclear.',
     };
   }
 
@@ -999,7 +999,7 @@ class ReportService {
 
   /// A failure only shows up in the status; it does not throw or block anything.
   Future<OutboundResult> _notify(String kind, String text, {String? period}) async {
-    const title = 'KNX Monitor';
+    const title = 'Busclear';
     final OutboundResult result;
     try {
       result = switch (settings.notifyKind) {

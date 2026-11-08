@@ -60,9 +60,11 @@ Future<AddonSocket> openAddonBus() async {
     }
     if (status == 401) {
       loginIfExpired(status);
-      throw const AddonException('Anmeldung an der KNX-Box nötig. Seite neu laden und mit dem Box-Passwort anmelden.');
+      throw const AddonException(
+        'Anmeldung an der Busclear Box nötig. Seite neu laden und mit dem Box-Passwort anmelden.',
+      );
     }
-    if (status == 403) throw const AddonException('Zugriff von der KNX-Box abgelehnt.');
+    if (status == 403) throw const AddonException('Zugriff von der Busclear Box abgelehnt.');
     if (status != 200) rethrow;
     return _openBus();
   }

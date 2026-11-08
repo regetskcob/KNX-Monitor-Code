@@ -38,18 +38,18 @@ ensure_table() {
 
 if [ "$choice" = yes ]; then
   if ensure_table && printf 'flush chain inet knx_box_lan lan_open\nadd rule inet knx_box_lan lan_open accept\n' | nft -f -; then
-    echo "KNX-Box: Zugriff über das Kabel frei"
+    echo "Busclear Box: Zugriff über das Kabel frei"
   else
-    echo "KNX-Box: Freigabe über das Kabel fehlgeschlagen (nft)" >&2
+    echo "Busclear Box: Freigabe über das Kabel fehlgeschlagen (nft)" >&2
     exit 1
   fi
 else
   if ! { ensure_table && nft flush chain inet knx_box_lan lan_open; }; then
     # Flushing failed: load the closed table as a whole.
     nft -f "$here/lan.nft" || {
-      echo "KNX-Box: Sperre über das Kabel fehlgeschlagen" >&2
+      echo "Busclear Box: Sperre über das Kabel fehlgeschlagen" >&2
       exit 1
     }
   fi
-  echo "KNX-Box: Zugriff nur im WLAN der Box"
+  echo "Busclear Box: Zugriff nur im WLAN der Box"
 fi

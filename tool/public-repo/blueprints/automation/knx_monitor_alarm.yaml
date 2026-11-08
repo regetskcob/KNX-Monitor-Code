@@ -1,9 +1,9 @@
 blueprint:
-  name: KNX Monitor – alarm or fault
+  name: Busclear – alarm or fault
   description: >-
     Runs your actions when a KNX alarm or fault object switches on (event
     `knx_monitor_alarm`), for example a smoke detector, leak sensor or a
-    device fault. KNX Monitor detects these from the ETS project. The event
+    device fault. Busclear detects these from the ETS project. The event
     data holds `address`, `name`, `kind` (`alarm` or `fault`), `active` and
     `installation`.
 

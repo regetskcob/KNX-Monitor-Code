@@ -1,6 +1,6 @@
 {
-    "name": "KNX Monitor",
-    "short_name": "KNX Monitor",
+    "name": "Busclear",
+    "short_name": "Busclear",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",

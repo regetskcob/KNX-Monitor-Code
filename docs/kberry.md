@@ -1,12 +1,12 @@
 # KNX TP on a Raspberry Pi with the Weinzierl kBerry
 
-This guide describes how KNX Monitor connects to a KNX twisted-pair (TP) bus through the
+This guide describes how Busclear connects to a KNX twisted-pair (TP) bus through the
 Weinzierl **KNX BAOS Module 838 "kBerry"** plugged onto a Raspberry Pi, without a KNXnet/IP
 gateway. It covers the hardware, the Raspberry Pi configuration, the serial protocol (FT1.2
 with cEMI), the two operating modes (link layer and bus monitor), diagnostics, known pitfalls,
 and a map of the code.
 
-The implementation is plain Dart with no native dependencies. It runs inside the KNX Monitor
+The implementation is plain Dart with no native dependencies. It runs inside the Busclear
 server on the Raspberry Pi box image (`box/`). It is written so that the transport can be
 reused in other projects. The code is licensed under the **GNU GPL v3** (see
 [`LICENSE`](../LICENSE)); reuse is welcome under that licence.
@@ -40,7 +40,7 @@ All paths below are relative to the repository root. Server code lives in
   module to **link layer** (`0x00`: send and receive `L_Data`) or **link-layer bus monitor**
   (`0x01`: receive every frame on the wire, *including* ACK/NAK/BUSY, but no sending).
   `0xF0` switches back to BAOS mode.
-- KNX Monitor implements this as `Ft12CemiLink` (`server/lib/src/ft12_link.dart`), a
+- Busclear implements this as `Ft12CemiLink` (`server/lib/src/ft12_link.dart`), a
   `BusLink` like the KNXnet/IP tunnel. Everything above it (recording, watchers, WebSocket
   clients) is unchanged.
 - On the Raspberry Pi the PL011 UART must be routed to GPIO 14/15 as `/dev/ttyAMA0`, and the
@@ -165,7 +165,7 @@ SupplementaryGroups=dialout
 
 The Weinzierl guide (ch. 13.3.2, written for older Raspbian) recommends `miniuart-bt` for
 Pi 3/4 and additional `gpio=3,18,17,22,24=ip,pu` / `gpio=2,4,27,23,25=op,dl` lines. According
-to the datasheet the kBerry uses only VCC, GND, RX and TX. KNX Monitor works without the
+to the datasheet the kBerry uses only VCC, GND, RX and TX. Busclear works without the
 `gpio=` lines on a Pi 4; their purpose is unclear.
 
 ### Quick checks without the server
@@ -190,7 +190,7 @@ Reference: *KNX BAOS Starter Kit User's Guide*, ch. 5.4; implementation in
 
 19200 baud, 8 data bits, even parity, 1 stop bit, raw mode, no flow control. The module can be
 switched to 115200 baud (BAOS server item 13), and it falls back to 19200 after a bus voltage
-failure. KNX Monitor never changes the rate; it tries **19200 first, then 115200**
+failure. Busclear never changes the rate; it tries **19200 first, then 115200**
 (`bauds` in `Ft12CemiLink` and `KberryProbe`).
 
 `TtyLine.open` configures the device with `stty` and reads it as a file:
@@ -259,7 +259,7 @@ next `poll()`.
 
 ## 5. cEMI management: properties and modes
 
-Inside FT1.2, KNX Monitor uses cEMI local device management
+Inside FT1.2, Busclear uses cEMI local device management
 (KNX specification 03.06.03 EMI/IMI; Weinzierl guide ch. 4.6.1.7 and 5.2).
 
 ### Property services
@@ -295,7 +295,7 @@ specification and was confirmed on a real module. A kBerry tested on a Pi 4 repo
 
 | Code | Name | Handling |
 |---|---|---|
-| `A7` / `A8` | PEI identify request / response | Sent once after reset; a Weinzierl module in cEMI mode answers with 11 bytes instead of 9 (other stacks use this to detect cEMI). KNX Monitor only requires *an* answer. |
+| `A7` / `A8` | PEI identify request / response | Sent once after reset; a Weinzierl module in cEMI mode answers with 11 bytes instead of 9 (other stacks use this to detect cEMI). Busclear only requires *an* answer. |
 | `F0` | `M_Reset.ind` | Module restarted (ETS download, bus voltage loss). It is back in BAOS mode; the link treats the connection as lost. |
 
 ### Example: switching to link layer
@@ -462,7 +462,7 @@ Example from the tests: a GroupValueWrite 1.1.5 → 1/1/1 with status and timest
 
 In this mode sending is impossible; `send` throws.
 
-### How KNX Monitor uses monitor frames
+### How Busclear uses monitor frames
 
 `BusService._handleFrame` (`server/lib/src/bus.dart`):
 
@@ -518,7 +518,7 @@ the acknowledgement, 1.5 ms after the end of the data frame, overwrites it. This
 inference from the pattern, not confirmed by Weinzierl. The module offers no other mode that
 would help (PID 64 = `0x000B`: link layer, bus monitor, transport layer; raw mode is rejected).
 
-Consequences in KNX Monitor:
+Consequences in Busclear:
 
 - **Record in link layer mode.** It is the default and complete. The bus monitor is for
   acknowledgements, NAK/BUSY, repetitions and damaged frames; recording, watchers and the group

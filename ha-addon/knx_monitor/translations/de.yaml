@@ -26,7 +26,7 @@ configuration:
   dashboard_card:
     name: Dashboard-Karte
     description: >-
-      Legt die Karte „KNX Monitor Diagramm“ nach /config/www/knx-monitor/
+      Legt die Karte „Busclear Diagramm“ nach /config/www/knx-monitor/
       und meldet sie als Dashboard-Ressource an. Sie zeigt die in der App
       gespeicherten Diagramme. Ausschalten, wenn du die Karte nicht
       brauchst oder Ressourcen selbst pflegst.
@@ -44,3 +44,27 @@ configuration:
       Secure geschützte Telegramme, entschlüsselt und als Klartext. Jeder,
       der den Broker lesen kann, sieht dann genau die Werte, die die
       Verschlüsselung schützen soll. Standard aus.
+  mqtt_raw:
+    name: Rohdaten mitsenden
+    description: >-
+      Nur zusammen mit „Jedes Telegramm an MQTT“. Fügt den vollständigen
+      cEMI-Rahmen als Hex, Art des Rahmens, Priorität, Bestätigungswunsch
+      und eine Prüfsumme (key) zum Erkennen doppelter Telegramme hinzu.
+      Standard aus.
+  mqtt_raw_only:
+    name: Nur Rohdaten
+    description: >-
+      Wie „Rohdaten mitsenden“, aber ohne Name, Gerätename, DPT, Wert und
+      Einheit aus dem ETS-Projekt, für Datenbanken, die die Werte selbst
+      auswerten. Standard aus.
+  mqtt_filter:
+    name: Nur diese Gruppenadressen an MQTT
+    description: >-
+      Leer: alle. Sonst dreistufige Adressen oder Bereiche, durch Komma
+      getrennt, z. B. 1/#,3/2/#,4/1/7. Andere Telegramme gehen nicht an
+      den Broker.
+  mqtt_installation:
+    name: Kennung der Anlage (inst)
+    description: >-
+      Steht in jeder MQTT-Nachricht als inst und hält mehrere Server in
+      einer Datenbank auseinander. Leer: die Kennung der aktiven Anlage.

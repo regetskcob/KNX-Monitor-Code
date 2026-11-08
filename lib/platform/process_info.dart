@@ -3,7 +3,7 @@ import 'process_info_io.dart' if (dart.library.js_interop) 'process_info_web.dar
 /// Process id of this app; `null` in the browser.
 int? get currentPid => impl.currentPid;
 
-/// File name of the running executable without its folder (e.g. `KNX Monitor`,
+/// File name of the running executable without its folder (e.g. `Busclear`,
 /// `knx_monitor.exe`); `null` in the browser.
 String? get executableName => impl.executableName;
 

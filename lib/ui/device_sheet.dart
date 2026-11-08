@@ -38,7 +38,7 @@ import 'plan_screen.dart';
 
 /// Name for a sender that is not in the project: the factory address
 /// 15.15.255 gets its own, as it is mostly a fresh interface (e.g. the
-/// KNX HAT of a KNX Monitor Box) or an unprogrammed device.
+/// KNX HAT of a Busclear Box) or an unprogrammed device.
 String unknownDeviceName(int address) => address == factoryAddress ? s.topoFactoryAddress : s.topoNotInProject;
 
 /// Device in a sheet: sent and received telegrams, jump to the communication

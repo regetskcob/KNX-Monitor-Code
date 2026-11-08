@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Updates the public repository regetskcob/KNX-Monitor-HA (the KNX Monitor
+# Updates the public repository regetskcob/KNX-Monitor-HA (the Busclear
 # integration for Home Assistant, installed through HACS) from ha-integration/
 # at HEAD. Every sync is one commit there, named after the commit here.
 #
@@ -53,7 +53,7 @@ git -C "$DIR" add -A
 if git -C "$DIR" diff --cached --quiet; then
   echo "nothing changed since the last sync"
 else
-  git -C "$DIR" commit -q -m "Stand $head" -m "KNX Monitor integration $version, generated from ha-integration/ as of $head."
+  git -C "$DIR" commit -q -m "Stand $head" -m "Busclear integration $version, generated from ha-integration/ as of $head."
   echo "committed in $DIR: $(git -C "$DIR" log -1 --format='%h %s')"
 fi
 [ "$push" = 1 ] || exit 0
@@ -65,8 +65,8 @@ if git -C "$DIR" rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
   echo "$tag exists – raise the version in manifest.json for a new release" >&2
   exit 1
 fi
-git -C "$DIR" tag -a "$tag" -m "KNX Monitor integration $version"
+git -C "$DIR" tag -a "$tag" -m "Busclear integration $version"
 git -C "$DIR" push -q origin "$tag"
-gh release create "$tag" -R "$REPO" --title "KNX Monitor $version" --latest \
-  --notes "KNX Monitor integration $version. Needs the KNX Monitor add-on 1.9.7 or newer; see README for what it adds."
+gh release create "$tag" -R "$REPO" --title "Busclear $version" --latest \
+  --notes "Busclear integration $version. Needs the Busclear add-on 1.9.7 or newer; see README for what it adds."
 echo "released $tag"

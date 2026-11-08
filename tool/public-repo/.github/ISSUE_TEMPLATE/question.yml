@@ -21,7 +21,7 @@ body:
         - Android
         - macOS
         - Windows
-        - KNX Box
+        - Busclear Box
   - type: textarea
     id: setup
     attributes:

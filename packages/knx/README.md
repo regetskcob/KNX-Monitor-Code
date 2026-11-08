@@ -1,9 +1,9 @@
 # knx
 
-KNX protocol building blocks in pure Dart, shared by the KNX Monitor app (Flutter, also on the web)
+KNX protocol building blocks in pure Dart, shared by the Busclear app (Flutter, also on the web)
 and its Home Assistant add-on server (Dart VM). One implementation instead of two copies.
 
-**Internal for now.** The package lives in the KNX Monitor repository and is not published
+**Internal for now.** The package lives in the Busclear repository and is not published
 (`publish_to: none`). It may be published on pub.dev later, with its own licence and a stable API;
 until then names and signatures change whenever app and server need it.
 

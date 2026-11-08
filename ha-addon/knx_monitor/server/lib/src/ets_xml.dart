@@ -46,8 +46,8 @@ String _attr(String value) => value.replaceAllMapped(
 String etsXmlHeader(int firstMicros, {String? host}) =>
     '<?xml version="1.0" encoding="utf-8"?>\n'
     '<CommunicationLog xmlns="$etsNamespace">\n'
-    '  <RecordStart Timestamp="${etsTimestamp(firstMicros)}" Mode="LinkLayer" Host="${_attr(host ?? 'KNX Monitor')}" '
-    'ConnectionName="KNX Monitor" ConnectorType="KnxIpTunneling" MediumType="TP"/>\n';
+    '  <RecordStart Timestamp="${etsTimestamp(firstMicros)}" Mode="LinkLayer" Host="${_attr(host ?? 'Busclear')}" '
+    'ConnectionName="Busclear" ConnectorType="KnxIpTunneling" MediumType="TP"/>\n';
 
 /// `RecordStop` (time of the last telegram) and the end of the document,
 /// without a final line break (like the app).

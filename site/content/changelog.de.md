@@ -1,10 +1,17 @@
 ---
 title: "Änderungen"
-description: "Was die letzten Versionen von KNX Monitor in App, Home-Assistant-Add-on und KNX-Box gebracht haben, neueste zuerst."
+description: "Was die letzten Versionen von Busclear in App, Home-Assistant-Add-on und Busclear Box gebracht haben, neueste zuerst."
 layout: "page"
 slug: "changelog"
 ---
-Was die letzten Versionen von KNX Monitor gebracht haben, neueste zuerst. App, Home-Assistant-Add-on und KNX-Box haben eine gemeinsame Versionsnummer. Jede Version liegt auf [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant zeigt das Add-on dieselben Hinweise vor einem Update (auf Englisch).
+Was die letzten Versionen von Busclear gebracht haben, neueste zuerst. App, Home-Assistant-Add-on und Busclear Box haben eine gemeinsame Versionsnummer. Jede Version liegt auf [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant zeigt das Add-on dieselben Hinweise vor einem Update (auf Englisch).
+
+## 1.10.0 – 8.11.2026
+
+- KNX Monitor heißt jetzt **Busclear**, die KNX-Box heißt **Busclear Box**. Gleiches Add-on, gleiche Funktionen: Projekte, Aufzeichnungen, Einstellungen und Automationen bleiben. Bestehende Entitäten behalten ihre IDs (`knx_monitor_…`), Add-on-Slug und MQTT-Themen bleiben, die Box behält ihr WLAN `KNX-Box-…`. Die Website ist jetzt busclear.de (knx-monitor.de leitet weiter), Support per support@busclear.de.
+- Messpunkte ([#8](https://github.com/regetskcob/KNX-Monitor/issues/8)): bis zu acht Verbindungen je Anlage, etwa eine Schnittstelle je Linie, zusammengeführt in einem Verlauf. Jedes Telegramm merkt sich, wo es zuerst gesehen wurde, und die weiteren Sichtungen mit Versatz und Hops. Die App zeigt die Linien als Chips, meldet einen ausgefallenen Messpunkt und zeigt den Weg durch die Anlage in den Telegrammdetails.
+- Jedes Telegramm an MQTT, nachvollziehbar und mit Rohdaten ([#11](https://github.com/regetskcob/KNX-Monitor/issues/11)): laufende Nummer, Serverstart, Anlagen-ID, Zeit in Mikrosekunden, Hops, Gerätename des Senders und Projektstand. Neu: Rohdaten mitsenden, nur Rohdaten und ein Filter auf Gruppenadressen.
+- Docker-Anleitung: Die Variablen des Telegrammstroms stehen in der Tabelle; jedes Release startet die veröffentlichte `compose.yaml` und das `docker run`-Beispiel zur Probe.
 
 ## 1.9.10 – 7.11.2026
 

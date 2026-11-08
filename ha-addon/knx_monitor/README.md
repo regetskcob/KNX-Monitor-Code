@@ -1,4 +1,4 @@
-# Home Assistant Add-on: KNX Monitor
+# Home Assistant Add-on: Busclear
 
 ![Supports aarch64 Architecture][aarch64-shield]
 ![Supports amd64 Architecture][amd64-shield]
@@ -6,7 +6,7 @@
 See what is happening on your KNX bus – right in the Home Assistant sidebar,
 on any device, also on the go via the Home Assistant app.
 
-KNX Monitor connects directly to your KNX IP interface or router and shows
+Busclear connects directly to your KNX IP interface or router and shows
 every group telegram with the names, datapoint types and devices from your
 ETS project. It is built for installers commissioning a building as well as
 for owners who want to understand what their installation is doing.
@@ -30,7 +30,7 @@ for owners who want to understand what their installation is doing.
 
 ## Getting started
 
-1. Install and start the add-on, then open **KNX Monitor** in the sidebar.
+1. Install and start the add-on, then open **Busclear** in the sidebar.
 2. Pick your gateway (discovered automatically) or enter its IP address.
 3. Import your ETS project to get names, datapoint types and devices.
 

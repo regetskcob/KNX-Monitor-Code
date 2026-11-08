@@ -2,11 +2,11 @@ hero:
   tagline: "KNX bus monitor & diagnostics"
   kennung: "01 — Bus monitor & diagnostics · iPhone · iPad · Android · Mac · Windows · Linux · Home Assistant"
   title: "See what happens on your KNX bus."
-  lead: "KNX Monitor shows every telegram, puts it in context with your ETS project and checks your installation for silent sensors, wrong datapoint types and bus problems. On iPhone, iPad, Android, desktop and in Home Assistant."
+  lead: "Busclear shows every telegram, puts it in context with your ETS project and checks your installation for silent sensors, wrong datapoint types and bus problems. On iPhone, iPad, Android, desktop and in Home Assistant."
   note: "Connects via KNXnet/IP to your IP interface or IP router, KNX Secure included. You need no account, and your installation data only leaves your network if you share it yourself."
   primary: "Get it for Linux"
   secondary: "Install as add-on"
-  screen_alt: "KNX Monitor on iPad, iPhone, Mac and Android: overview, live telegrams and values from the demo house"
+  screen_alt: "Busclear on iPad, iPhone, Mac and Android: overview, live telegrams and values from the demo house"
   badges:
     appstore: { term: "App Store", small: "Download on the", label: "App Store" }
     play: { term: "Google Play", small: "Get it on", label: "Google Play" }
@@ -151,7 +151,7 @@ pricing:
 etsproject:
   label: "ETS project"
   title: "Your project makes telegrams readable."
-  text: "Import your ETS project (.knxproj, password-protected too) or the group address CSV export. KNX Monitor picks up names, datapoint types, devices, rooms and links. 1/2/3 becomes “Living room ceiling light – On”."
+  text: "Import your ETS project (.knxproj, password-protected too) or the group address CSV export. Busclear picks up names, datapoint types, devices, rooms and links. 1/2/3 becomes “Living room ceiling light – On”."
 
 setup:
   label: "Setups"
@@ -163,7 +163,7 @@ setup:
     - term: "Home Assistant"
       id: home-assistant
       title: "Home Assistant add-on"
-      text: "Lives in the sidebar and records around the clock, even with no browser open. All views share one tunnel, and alarms arrive as notifications. Out of the box it sends nothing to the bus, and the \"KNX Monitor\" integration turns it into a device with sensors and triggers."
+      text: "Lives in the sidebar and records around the clock, even with no browser open. All views share one tunnel, and alarms arrive as notifications. Out of the box it sends nothing to the bus, and the \"Busclear\" integration turns it into a device with sensors and triggers."
 
 box:
   label: "KNX box"
@@ -185,14 +185,14 @@ ha:
   steps:
     - { term: "Step 1", value: "In Home Assistant, open **Settings → Add-ons → Add-on Store**." }
     - { term: "Step 2", value: "Choose **⋮ → Repositories** in the top right and add this URL:" }
-    - { term: "Step 3", value: "Install **KNX Monitor**, start it and enable **Show in sidebar**." }
+    - { term: "Step 3", value: "Install **Busclear**, start it and enable **Show in sidebar**." }
   copy_hint: "Repository URL"
 
 privacy:
   label: "Privacy"
   title: "Your data stays yours."
-  text: "KNX Monitor works on your network and stores on your devices. We have hardened the systems considerably, and the control stays with you: you need no account, and the app does not send your project, telegrams or keys to anyone on its own. In the store versions it asks RevenueCat for your purchase status, even if you have bought nothing; the account exists for purchases, not for your installation."
-  text_live: "KNX Monitor works on your network and stores on your devices. We have hardened the systems considerably, and the control stays with you: you need no account, and the app does not send your project, telegrams or keys to anyone on its own."
+  text: "Busclear works on your network and stores on your devices. We have hardened the systems considerably, and the control stays with you: you need no account, and the app does not send your project, telegrams or keys to anyone on its own. In the store versions it asks RevenueCat for your purchase status, even if you have bought nothing; the account exists for purchases, not for your installation."
+  text_live: "Busclear works on your network and stores on your devices. We have hardened the systems considerably, and the control stays with you: you need no account, and the app does not send your project, telegrams or keys to anyone on its own."
   points:
     - { term: "Local", value: "Project, telegrams, recordings and keys are on your device, your box or your Home Assistant, not with us. Your ETS project password is not stored" }
     - { term: "Tracking", value: "No analytics or advertising libraries, no tracking" }
@@ -222,7 +222,7 @@ faq:
     - q: "Can I try the app without a KNX system?"
       a: "Yes. “Try the demo without a KNX system” on the start screen opens a sample house with a project and live values. Your own project stays untouched."
     - commerce: true
-      q: "What does KNX Monitor cost?"
+      q: "What does Busclear cost?"
       a: "The app is free and stays useful for everyday use. Plus costs €24.99 a year or €79 once, Pro €149 a year or €14.99 a month, with a free trial. The Home Assistant add-on and the Linux version are free for good. Try everything in the demo house first, Pro included. Cancel a subscription any time in your App Store or Google Play account."
     - q: "Which KNX interfaces are supported?"
       a: "Any KNXnet/IP interface or IP router, for example a Gira X1. Tunnelling works over UDP or TCP; with an IP router you can also use routing, which needs no tunnel (not yet on iPhone and iPad, where multicast needs approval from Apple). The app does not support USB and serial interfaces; the KNX box can connect the bus line directly through the kBerry plug-on module."
@@ -231,13 +231,13 @@ faq:
     - q: "Is KNX Secure supported?"
       a: "Yes: KNX IP Secure for the tunnel and KNX Data Secure for encrypted group addresses. Import the keyring (.knxkeys) from ETS. The keys are kept in your device's keychain. If something doesn't work with your interface, [please report it on GitHub](https://github.com/regetskcob/KNX-Monitor/issues)."
     - q: "How do I back up my data, and who can get at it?"
-      a: "From version 1.9.1 the app can save everything from this device into one file with its own password (at least 12 characters). It stays wherever you put it, and nobody can reset the password, not even us. Not included are the app lock and the history on a box. Details are in the [privacy policy](https://knx-monitor.de/en/privacy/)."
+      a: "From version 1.9.1 the app can save everything from this device into one file with its own password (at least 12 characters). It stays wherever you put it, and nobody can reset the password, not even us. Not included are the app lock and the history on a box. Details are in the [privacy policy](https://busclear.de/en/privacy/)."
     - q: "Do I need an ETS project?"
       a: "No, the bus monitor works without one, and you can teach in your installation without ETS. With a project you get names, datapoint types, rooms and better checks. The password of a protected project is only used during import and is not stored."
     - q: "How do I get the desktop version?"
-      a: "Linux does everything the iPad app does. The download is in the [GitHub release](https://github.com/regetskcob/KNX-Monitor/releases/latest). Windows follows in the coming weeks; on the Mac, KNX Monitor comes through the App Store."
+      a: "Linux does everything the iPad app does. The download is in the [GitHub release](https://github.com/regetskcob/KNX-Monitor/releases/latest). Windows follows in the coming weeks; on the Mac, Busclear comes through the App Store."
     - q: "What do I need for the KNX box?"
-      a: "A Raspberry Pi 4 (tested) or 5, ideally with a USB SSD and a real-time clock (Pi 5: battery), an IP gateway or the kBerry plug-on module, plus the app: on iPhone, iPad and Android in the coming weeks, on Linux today. The box also sets its clock from the iPhone or the KNX time master. The ready-made image is in the [GitHub releases](https://github.com/regetskcob/KNX-Monitor/releases), everything else on the [KNX box page](https://knx-monitor.de/en/box/); it is a first preview."
+      a: "A Raspberry Pi 4 (tested) or 5, ideally with a USB SSD and a real-time clock (Pi 5: battery), an IP gateway or the kBerry plug-on module, plus the app: on iPhone, iPad and Android in the coming weeks, on Linux today. The box also sets its clock from the iPhone or the KNX time master. The ready-made image is in the [GitHub releases](https://github.com/regetskcob/KNX-Monitor/releases), everything else on the [KNX box page](https://busclear.de/en/box/); it is a first preview."
 
 get:
   label: "Get it"

@@ -16,5 +16,5 @@
   ],
   "prog": { "led": { "x": 58, "y": 68.4, "r": 1.1 }, "button": { "x": 61.5, "y": 66.4, "w": 6.5, "h": 4 } },
   "bus": { "x": 57.5, "y": 79.4, "w": 10, "h": 6.4 },
-  "license": { "holder": "KNX Monitor", "attribution": "Beispielgrafik" }
+  "license": { "holder": "Busclear", "attribution": "Beispielgrafik" }
 }

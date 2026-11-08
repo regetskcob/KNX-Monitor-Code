@@ -171,33 +171,72 @@ wb_stamp_verified() {
   say "Stamped $(git rev-parse --short HEAD) as verified – push with: tool/release.sh push"
 }
 
-# Pushes (arguments as for git push), then marks the pushed HEAD as verified
-# on GitHub when verify passed for exactly that commit. Without a stamp, or
-# when gh cannot set it, the CI simply runs in full.
-wb_push() {
-  git push "$@"
-  local file sha head slug
+# Further local checks a project runs before a push or a tag (e.g. a container
+# smoke test): `wb_stamp <name>` remembers the commit like verify does, and push
+# and push-tag set status werkbank/<name> for it, so a CI job can skip the same
+# check. Only a clean working tree is stamped.
+wb_stamp_named_file() { echo "$(git rev-parse --git-dir)/werkbank-stamp-$1"; }
+
+wb_stamp() {
+  local name=${1:?stamp name}
+  if [ -n "$(git status --porcelain --untracked-files=all)" ]; then
+    rm -f "$(wb_stamp_named_file "$name")"
+    say "Not stamped ($name): the working tree has changes (the CI will run it)"
+    return 0
+  fi
+  git rev-parse HEAD >"$(wb_stamp_named_file "$name")"
+  say "Stamped $(git rev-parse --short HEAD) for $name"
+}
+
+# Sets status werkbank/verify (and werkbank/<name> of every wb_stamp) on GitHub
+# for commit $1 when the local stamps name exactly that commit. Without a stamp,
+# or when gh cannot set it, the CI simply runs in full.
+wb_mark_stamped() {
+  local sha=$1 slug file name ctx marked=0
+  local -a contexts=()
   file=$(wb_stamp_file)
-  head=$(git rev-parse HEAD)
-  if [ ! -f "$file" ]; then
+  if [ -f "$file" ] && [ "$(cat "$file")" = "$sha" ]; then
+    contexts+=(verify)
+  elif [ -f "$file" ]; then
+    warn "verify ran for $(cut -c1-7 "$file"), not for ${sha:0:7} – the CI runs in full"
+  else
     warn "no verify stamp – the CI runs in full (tool/release.sh verify first saves it)"
-    return 0
   fi
-  sha=$(cat "$file")
-  if [ "$sha" != "$head" ]; then
-    warn "verify ran for ${sha:0:7}, HEAD is ${head:0:7} – the CI runs in full"
-    return 0
-  fi
+  for file in "$(git rev-parse --git-dir)"/werkbank-stamp-*; do
+    [ -f "$file" ] || continue
+    name=${file##*/werkbank-stamp-}
+    [ "$(cat "$file")" = "$sha" ] && contexts+=("$name")
+  done
+  [ ${#contexts[@]} -gt 0 ] || return 0
   if ! slug=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null); then
     warn "gh cannot see the repository – the CI runs in full"
     return 0
   fi
-  if gh api -X POST "repos/$slug/statuses/$head" -f state=success -f context=werkbank/verify \
-    -f "description=tool/release.sh verify passed locally" >/dev/null; then
-    say "GitHub: ${head:0:7} verified – the CI's gate skips its checks"
-  else
-    warn "could not set the status – the CI runs in full"
-  fi
+  for ctx in "${contexts[@]}"; do
+    if gh api -X POST "repos/$slug/statuses/$sha" -f state=success -f "context=werkbank/$ctx" \
+      -f "description=tool/release.sh $ctx passed locally" >/dev/null; then
+      marked=$((marked + 1))
+    else
+      warn "could not set status werkbank/$ctx – the CI runs it"
+    fi
+  done
+  [ "$marked" = 0 ] || say "GitHub: ${sha:0:7} marked (${contexts[*]}) – the CI's gate skips those checks"
+}
+
+# Pushes (arguments as for git push), then marks the pushed HEAD (wb_mark_stamped).
+wb_push() {
+  git push "$@"
+  wb_mark_stamped "$(git rev-parse HEAD)"
+}
+
+# Pushes tag $1 to origin and marks the tagged commit, so the tag's CI run skips
+# what verify (and other stamps) already checked for it. The gate asks a few
+# times, so setting the status right after the push is early enough.
+wb_push_tag() {
+  local tag=${1:?tag} sha
+  sha=$(git rev-list -n 1 "$tag")
+  git push -q origin "$tag"
+  wb_mark_stamped "$sha"
 }
 
 # ---------------------------------------------------------------------------
@@ -826,7 +865,7 @@ wb_release() {
     say "Release $p $v"
     wb_release_build "$p" "$upload"
     git tag -a "$tag" -m "$WB_APP $p $v"
-    git push -q origin "$tag"
+    wb_push_tag "$tag"
     done_lines+=("- $p $v: tag $tag")
     if [ -n "$WB_GH_RELEASE_REPO" ]; then
       local notes files=()

@@ -4,7 +4,7 @@
 # The block itself is in place earlier (knx-box-lan-lock.service); this unit
 # only opens or closes the exception.
 [Unit]
-Description=KNX Monitor Box: Zugriff über das Kabel
+Description=Busclear Box: Zugriff über das Kabel
 After=knx-box-firstboot.service knx-box-data.service knx-box-lan-lock.service
 Before=knx-box.service
 

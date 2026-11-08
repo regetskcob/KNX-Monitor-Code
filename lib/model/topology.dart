@@ -9,7 +9,7 @@ int lineOf(int individualAddress) => individualAddress >> 8;
 String formatLine(int line) => '${(line >> 4) & 0x0F}.${line & 0x0F}';
 
 /// Factory individual address of KNX devices and interfaces (15.15.255), also
-/// the one the KNX HAT of a KNX Monitor Box keeps until one is entered.
+/// the one the KNX HAT of a Busclear Box keeps until one is entered.
 const factoryAddress = 0xFFFF;
 
 /// A line with its devices according to the project and the observed traffic.
@@ -98,7 +98,7 @@ class Topology {
   /// Senders listed on the gateway line although their address belongs to
   /// another line: that line is not in the project and their telegrams arrive
   /// without passing a coupler. Typically the factory address 15.15.255 (e.g.
-  /// the KNX HAT of a KNX Monitor Box) or a visualisation. Without this they
+  /// the KNX HAT of a Busclear Box) or a visualisation. Without this they
   /// would appear as a line of their own behind an invented coupler.
   final Set<int> strays;
 

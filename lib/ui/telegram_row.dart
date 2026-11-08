@@ -10,6 +10,7 @@ import '../model/alarms.dart';
 import '../model/analysis.dart';
 import '../model/annotation.dart';
 import '../model/plain_text.dart';
+import '../model/tap_points.dart';
 import '../model/live_plain.dart';
 import '../theme/app_icons.dart';
 import '../theme/palette.dart';
@@ -215,6 +216,7 @@ class TelegramRow extends StatelessWidget {
                 IssueChips(issues: issues, telegram: t, alarm: activeAlarm(t)),
                 const SizedBox(height: 3),
               ],
+              if (tapLabels.value.length > 1) ...[TapChips(telegram: t), const SizedBox(height: 3)],
               Text.rich(meta, maxLines: 2, overflow: TextOverflow.ellipsis, style: metaStyle),
             ],
           ),
@@ -342,6 +344,11 @@ class TelegramRow extends StatelessWidget {
               ),
               // Der Hop-Count steht breit in einer eigenen Spalte.
               ...chips,
+              if (tapLabels.value.length > 1)
+                Padding(
+                  padding: const EdgeInsets.only(top: HzSpace.s2),
+                  child: TapChips(telegram: t),
+                ),
             ],
           ),
         ),
@@ -550,4 +557,51 @@ class AlarmChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       HorizontBadge(HorizontStatus.critical, label: kind == AlarmKind.alarm ? s.alarmLabel : s.faultLabel);
+}
+
+/// Tap points where a telegram was seen (issue #8): one small chip per tap point, the first one
+/// (origin) emphasized. Only with more than one tap point; otherwise nothing changes.
+class TapChips extends StatelessWidget {
+  const TapChips({super.key, required this.telegram});
+
+  final Telegram telegram;
+
+  @override
+  Widget build(BuildContext context) {
+    final labels = tapLabels.value;
+    if (labels.length < 2) return const SizedBox.shrink();
+    final hz = context.hz;
+    final style = context.hzTheme.data.copyWith(fontSize: 12, height: 16 / 12);
+    String label(int tap) => tap < labels.length ? labels[tap] : '${tap + 1}';
+    final taps = telegram.taps.toList();
+    return Semantics(
+      label: '${s.detailsPath}: ${taps.map(label).join(', ')}',
+      child: ExcludeSemantics(
+        child: Wrap(
+          spacing: HzSpace.s4,
+          runSpacing: HzSpace.s4,
+          children: [
+            for (final (i, tap) in taps.indexed)
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: i == 0 ? hz.accentTint : hz.surface,
+                  border: Border.all(color: i == 0 ? hz.accent : hz.lineStrong),
+                  borderRadius: Radii.row,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  child: Text(
+                    label(tap),
+                    style: style.copyWith(
+                      color: i == 0 ? hz.accentText : hz.text,
+                      fontWeight: i == 0 ? FontWeight.w600 : null,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }

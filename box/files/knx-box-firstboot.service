@@ -1,7 +1,7 @@
 # Once on first boot: name, Wi-Fi, passwords (from knx-box.txt on the
 # boot partition or random), set up the hotspot.
 [Unit]
-Description=KNX Monitor Box: Erststart
+Description=Busclear Box: Erststart
 After=local-fs.target NetworkManager.service
 Wants=NetworkManager.service
 Before=knx-box.service

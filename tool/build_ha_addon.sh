@@ -35,5 +35,5 @@ if [ -n "$1" ]; then
     $s sed -i "/^image:/d" /addons/knx_monitor/config.yaml'
   ssh $ssh_opts -O exit "$1" 2>/dev/null || true
   echo "Copied. In Home Assistant: Settings → Add-ons → Add-on Store → ⋮ → Check for updates,"
-  echo "then install KNX Monitor under \"Local add-ons\" and enable \"Show in sidebar\"."
+  echo "then install Busclear under \"Local add-ons\" and enable \"Show in sidebar\"."
 fi

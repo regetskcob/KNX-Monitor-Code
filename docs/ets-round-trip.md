@@ -1,7 +1,7 @@
-# Changes from KNX Monitor back into the ETS project
+# Changes from Busclear back into the ETS project
 
 What does it take for datapoint types, flags and links changed or found in
-KNX Monitor to end up in the real ETS project? None of this has been tried in
+Busclear to end up in the real ETS project? None of this has been tried in
 ETS yet; the ETS test procedure is at the end.
 
 ## Summary
@@ -32,7 +32,7 @@ ETS can export group addresses as XML and import them again (namespace
 the import overwrites existing addresses: "import data always has the
 priority". The XML format contains name, address, description and datapoint
 type (`DPTs="DPST-9-1"`). The CSV export of ETS 4–6 also has a
-`DatapointType` column; only the older ETS3 format lacks it. KNX Monitor uses
+`DatapointType` column; only the older ETS3 format lacks it. Busclear uses
 XML because it carries the range names. Example of the format:
 [knx-ets5-ga-reader](https://github.com/snowdd1/knx-ets5-ga-reader/blob/master/myETS5GroupAddressExport-sample.xml).
 
@@ -157,7 +157,7 @@ attributes could be changed (`DatapointType` on `GroupAddress`, flags and
 
 An ETS app runs inside ETS (Windows, .NET) and may change the open project,
 including flags and links. It would be the only official way to apply
-everything in one step, e.g. as "Apply changes from KNX Monitor".
+everything in one step, e.g. as "Apply changes from Busclear".
 Prerequisites: development and distribution through the KNX Association
 (membership or app partner programme, licence costs), Windows development next
 to the Flutter app, approval by KNX. A large effort, only worthwhile if users
@@ -165,7 +165,7 @@ really ask for it.
 
 ## Test in ETS (on a copy of a project)
 
-1. Copy a project, import it into KNX Monitor, change the datapoint type of
+1. Copy a project, import it into Busclear, change the datapoint type of
    two or three addresses, one of them with a description. Also learn a name
    for an unnamed address and learn an address that is missing in the
    project.

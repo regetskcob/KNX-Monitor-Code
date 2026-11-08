@@ -1,4 +1,4 @@
-# Installationen im Server (Add-on und KNX-Box)
+# Installationen im Server (Add-on und Busclear Box)
 
 Eine Installation ist eine Anlage (Kunde, Baustelle, Zuhause) mit eigener
 Busverbindung, ETS-Katalog, Keyring und Langzeitverlauf. Die Box wandert von

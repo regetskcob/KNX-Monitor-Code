@@ -1,5 +1,5 @@
 [Unit]
-Description=KNX Monitor Box: Uhrzeit für den nächsten Start merken
+Description=Busclear Box: Uhrzeit für den nächsten Start merken
 
 # Without an RTC, systemd starts the clock at the time stamp of
 # /var/lib/systemd/timesync/clock. Only systemd-timesyncd updates it, the box

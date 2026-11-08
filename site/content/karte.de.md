@@ -1,5 +1,5 @@
 ---
 title: "Flurkarte"
-description: "Alle Seiten von KNX Monitor auf einen Blick."
+description: "Alle Seiten von Busclear auf einen Blick."
 layout: "karte"
 ---

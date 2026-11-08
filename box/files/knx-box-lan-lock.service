@@ -3,7 +3,7 @@
 # LAN_ACCESS allows it; it cannot run this early itself (it needs the data
 # partition and first boot, which runs after NetworkManager).
 [Unit]
-Description=KNX Monitor Box: Kabel bis zur Freigabe gesperrt
+Description=Busclear Box: Kabel bis zur Freigabe gesperrt
 Before=NetworkManager.service network-pre.target ssh.service knx-box-lan.service
 Wants=network-pre.target
 

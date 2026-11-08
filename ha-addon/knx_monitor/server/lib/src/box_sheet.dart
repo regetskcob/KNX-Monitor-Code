@@ -210,8 +210,8 @@ Future<Uint8List> boxSheetPdf(BoxSheet sheet, {String lang = 'de', bool compress
 
   final doc = pw.Document(
     title: '${t.title} ${sheet.name}',
-    author: 'KNX Monitor',
-    creator: 'KNX Monitor Box',
+    author: 'Busclear',
+    creator: 'Busclear Box',
     compress: compress,
   );
   doc.addPage(
@@ -229,7 +229,7 @@ Future<Uint8List> boxSheetPdf(BoxSheet sheet, {String lang = 'de', bool compress
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    kennung('KNX Monitor · ${t.title}'),
+                    kennung('Busclear · ${t.title}'),
                     pw.SizedBox(height: 4),
                     pw.Text(
                       sheet.name,
@@ -404,13 +404,13 @@ class _Texts {
 }
 
 const _de = _Texts(
-  title: 'KNX-Box',
-  site: 'knx-monitor.de/box',
+  title: 'Busclear Box',
+  site: 'busclear.de/box',
   stickersLabel: 'Zwei Aufkleber für die Box',
   cutHint: 'Beide entlang der gestrichelten Linie ausschneiden. Gleiche Größe, aber nicht vertauschen: Nummer und Platz stehen auf jedem Aufkleber.',
   appTag: 'Aufkleber 1 · oben',
   appTitle: 'In der App scannen',
-  appText: 'KNX Monitor öffnen, "KNX-Box hinzufügen" wählen und diesen Code scannen. Nicht mit der Kamera-App.',
+  appText: 'Busclear öffnen, "Busclear Box hinzufügen" wählen und diesen Code scannen. Nicht mit der Kamera-App.',
   appPlace: 'Oben auf die Box',
   appWhere: 'Für die App: Er richtet die Box mit einem Scan ein (WLAN, Kopplung, Uhr, Gateway). Enthält das Box-Passwort, bis du ein eigenes setzt.',
   wifiTag: 'Aufkleber 2 · Boden',
@@ -438,11 +438,11 @@ const _de = _Texts(
     ),
     (
       'Mit Handy oder Tablet.',
-      'In der App "KNX-Box hinzufügen" und Aufkleber 1 scannen. Die App tritt dem WLAN bei, koppelt sich, stellt die Uhr und sucht das Gateway.',
+      'In der App "Busclear Box hinzufügen" und Aufkleber 1 scannen. Die App tritt dem WLAN bei, koppelt sich, stellt die Uhr und sucht das Gateway.',
     ),
     (
       'Mit Linux.',
-      'Am Rechner ins WLAN der Box wechseln (Name und Passwort oben). In der App "KNX-Box hinzufügen" und den Link von oben einfügen.',
+      'Am Rechner ins WLAN der Box wechseln (Name und Passwort oben). In der App "Busclear Box hinzufügen" und den Link von oben einfügen.',
     ),
     (
       'Ohne App.',
@@ -460,13 +460,13 @@ const _de = _Texts(
 
 const _en = _Texts(
   title: 'KNX box',
-  site: 'knx-monitor.de/en/box',
+  site: 'busclear.de/en/box',
   stickersLabel: 'Two labels for the box',
   cutHint:
       'Cut both out along the dashed line. Same size, but do not swap them: each label shows its number and place.',
   appTag: 'Label 1 · top',
   appTitle: 'Scan in the app',
-  appText: 'Open KNX Monitor, choose "Add KNX box" and scan this code. Not with the camera app.',
+  appText: 'Open Busclear, choose "Add KNX box" and scan this code. Not with the camera app.',
   appPlace: 'On top of the box',
   appWhere: 'For the app: one scan sets up the box (Wi-Fi, pairing, clock, gateway). Holds the box password until you set your own.',
   wifiTag: 'Label 2 · bottom',

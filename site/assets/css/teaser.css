@@ -1,4 +1,4 @@
-/* Teaser of knx-monitor.de on Horizont: one screen, the words left, the
+/* Teaser of busclear.de on Horizont: one screen, the words left, the
    distribution board right on the horizon, the foot below. Only what the
    components do not say already. */
 
@@ -267,6 +267,9 @@ body.tz { overflow-x: clip; }
 /* The board stands on the horizon and never grows taller than the screen
    leaves for it (400 × 220 is its viewBox). */
 .tz-aside { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: var(--s-24); min-width: 0; align-self: stretch; }
+/* The beta button at the top right of the hero, level with the brand; the
+   margin pushes the board down to where it stands without it. */
+.tz-beta { align-self: flex-end; margin-bottom: auto; border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 
 /* The live list over the board: only where the window leaves room for it.
    Faint on purpose; the newest row at the bottom, older ones fade upwards. */
@@ -309,6 +312,7 @@ body.tz { overflow-x: clip; }
   .tz-note { margin-bottom: var(--s-24); }
   .knx-board { width: min(100%, 520px); }
   .tz-ticker { text-align: left; padding-inline: var(--s-16); }
+  .tz-beta { align-self: flex-start; margin-bottom: 0; }
 }
 
 /* The trademark line under the foot, as on the landing page. */

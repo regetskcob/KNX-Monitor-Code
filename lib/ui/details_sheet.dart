@@ -43,6 +43,7 @@ import '../model/watch_rules.dart';
 import 'watch_screen.dart';
 import '../model/commissioning.dart' show isStatusGroup;
 import '../model/learning.dart';
+import '../model/tap_points.dart';
 import 'learn_screen.dart';
 
 /// Shows all details of a telegram with quick actions (phone). [onFilter] sets
@@ -664,6 +665,29 @@ class _TelegramDetailsState extends State<TelegramDetails> {
             ],
           ),
         ),
+        // Tap points (issue #8): where the telegram was seen, with offset and hop count.
+        if (tapLabels.value case final labels when labels.length > 1)
+          _Section(
+            title: s.detailsPath,
+            child: Column(
+              children: [
+                for (final (tap, label) in labels.indexed)
+                  HorizontFact(
+                    term: label,
+                    value: tap == t.tap
+                        ? s.detailsPathFirst(t.hopCount)
+                        : switch (t.sightings.where((x) => x.tap == tap).firstOrNull) {
+                            final x? => s.detailsPathSeen(
+                              (x.offset.inMicroseconds / 1000).toStringAsFixed(1),
+                              x.hopCount,
+                            ),
+                            null => s.detailsPathMissing,
+                          },
+                    measured: true,
+                  ),
+              ],
+            ),
+          ),
         // Schreiben
         if (tunnel != null)
           _Section(

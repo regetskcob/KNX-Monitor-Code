@@ -1,5 +1,5 @@
 #!/bin/bash
-# Sets up or updates the KNX Monitor Box on Raspberry Pi OS Lite (64 bit,
+# Sets up or updates the Busclear Box on Raspberry Pi OS Lite (64 bit,
 # Trixie). Runs from the bundle of bundle.sh (next to server, web/,
 # files/) and is called by pi-gen in the chroot during the image build.
 #
@@ -88,7 +88,7 @@ EOF
   [[ "$answer" =~ ^[jJyY]$ ]] || exit 1
 fi
 
-echo "KNX Monitor Box $version einrichten"
+echo "Busclear Box $version einrichten"
 
 if [ "$image" = no ]; then
   apt-get update

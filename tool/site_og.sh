@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Preview images for links to knx-monitor.de (og:image, 1200×630) from the
+# Preview images for links to busclear.de (og:image, 1200×630) from the
 # draft pages site/content/og*.md (layout site/layouts/og.html): start Hugo
 # with drafts, capture with headless Chrome at double resolution,
 # scale down to 1200×630. Then deploy the site (tool/release.sh site knx --live).

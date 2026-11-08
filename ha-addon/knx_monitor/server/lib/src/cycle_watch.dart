@@ -8,7 +8,7 @@ import 'atomic_file.dart';
 import 'bus.dart';
 import 'recorder.dart';
 
-/// "A device stopped sending" for the KNX Monitor integration of Home
+/// "A device stopped sending" for the Busclear integration of Home
 /// Assistant (`GET /api/ha/silent`, ha_integration.dart).
 ///
 /// Every [every] it reads the last [window] of the active installation's

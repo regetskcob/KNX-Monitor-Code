@@ -9,6 +9,37 @@ enum TelegramType { read, response, write }
 /// Telegram priority (cEMI Ctrl1 bits 3–2).
 enum TelegramPriority { system, normal, urgent, low }
 
+/// One more place where the same telegram was seen (issue #8, tap points): tap point [tap], [offset]
+/// after the first sighting (the telegram's own time), with the hop count there.
+class Sighting {
+  const Sighting(this.tap, this.offset, this.hopCount);
+
+  /// Number of the tap point (0 = the first one of the installation).
+  final int tap;
+
+  /// Time after the first sighting.
+  final Duration offset;
+
+  /// Routing counter at this tap point (6 directly from the sender, 1 less per coupler).
+  final int hopCount;
+
+  List<int> toJson() => [tap, offset.inMicroseconds, hopCount];
+
+  static Sighting? fromJson(Object? j) {
+    if (j is! List || j.length < 3) return null;
+    final [tap, offset, hop, ...] = j;
+    if (tap is! int || offset is! int || hop is! int) return null;
+    return Sighting(tap, Duration(microseconds: offset), hop);
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is Sighting && other.tap == tap && other.offset == offset && other.hopCount == hopCount;
+
+  @override
+  int get hashCode => Object.hash(tap, offset, hopCount);
+}
+
 /// A KNX group telegram: received (L_Data.ind) or confirmed for one we sent (L_Data.con).
 ///
 /// Its JSON form ([toJson], [Telegram.fromJson]) is the line format of the recorded history; app and
@@ -26,6 +57,8 @@ class Telegram {
     this.repeated = false,
     this.hopCount = 6,
     this.confirmError = false,
+    this.tap = 0,
+    this.sightings = const [],
     Uint8List? raw,
   }) : raw = raw ?? const [];
 
@@ -62,6 +95,39 @@ class Telegram {
   /// Only for telegrams we sent (L_Data.con): the bus did not acknowledge.
   final bool confirmError;
 
+  /// Tap point where the telegram was seen first (issue #8); 0 = the first tap point of the
+  /// installation, which is also what every telegram without the field means.
+  final int tap;
+
+  /// Further tap points that saw the same telegram, in order of arrival. Empty with a single tap point.
+  final List<Sighting> sightings;
+
+  /// All tap points that saw the telegram, the first one first.
+  Iterable<int> get taps sync* {
+    yield tap;
+    for (final s in sightings) {
+      yield s.tap;
+    }
+  }
+
+  /// The same telegram from tap point [tap] and with [sightings] (merging, see TapMerger).
+  Telegram atTap(int tap, {List<Sighting> sightings = const []}) => Telegram(
+    time: time,
+    source: source,
+    destination: destination,
+    type: type,
+    data: data,
+    isSmall: isSmall,
+    outgoing: outgoing,
+    priority: priority,
+    repeated: repeated,
+    hopCount: hopCount,
+    confirmError: confirmError,
+    tap: tap,
+    sightings: sightings,
+    raw: raw is Uint8List ? raw as Uint8List : Uint8List.fromList(raw),
+  );
+
   /// Whether the routing counter differs from 6 (passed a coupler, or a special case).
   bool get unusualHop => hopCount != 6;
 
@@ -81,6 +147,8 @@ class Telegram {
     priority: priority,
     repeated: repeated,
     hopCount: hopCount,
+    tap: tap,
+    sightings: sightings,
   );
 
   Map<String, Object?> toJson() => {
@@ -96,6 +164,8 @@ class Telegram {
     if (hopCount != 6) 'h': hopCount,
     if (confirmError) 'ce': true,
     if (raw.isNotEmpty) 'r': hexOf(raw),
+    if (tap != 0) 'tp': tap,
+    if (sightings.isNotEmpty) 'sg': [for (final s in sightings) s.toJson()],
   };
 
   factory Telegram.fromJson(Map<String, Object?> j) => Telegram(
@@ -111,6 +181,8 @@ class Telegram {
     hopCount: j['h'] as int? ?? 6,
     confirmError: j['ce'] == true,
     raw: j['r'] == null ? null : Uint8List.fromList(parseHex(j['r']! as String) ?? const []),
+    tap: j['tp'] is int ? j['tp']! as int : 0,
+    sightings: j['sg'] is List ? [for (final s in j['sg']! as List) ?Sighting.fromJson(s)] : const [],
   );
 
   /// Parses a cEMI frame. Returns `null` for anything that is not a group telegram (L_Data.ind /

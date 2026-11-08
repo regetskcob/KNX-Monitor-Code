@@ -230,7 +230,7 @@ class KnxTimeWatch {
 
   Future<void> _offer(DateTime time) async {
     final result = await clock.offer(time, ClockSource.knx);
-    if (result == 'set') stdout.writeln('KNX-Box: Uhr vom KNX-Zeitgeber gestellt ($time)');
+    if (result == 'set') stdout.writeln('Busclear Box: Uhr vom KNX-Zeitgeber gestellt ($time)');
   }
 
   static List<int> _bytes(String hex) => [

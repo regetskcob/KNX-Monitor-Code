@@ -1,0 +1,15 @@
+{{- /* 404: the webspace at do.de shows it for every unknown address (ErrorDocument in static/.htaccess). German and English together, the server picks no language. */ -}}
+{{- $body := printf `<article class="knx-page">
+  <header class="knx-page-head">
+    %s
+    <h1 class="t-display">Seite nicht gefunden</h1>
+    <p class="knx-lead">Diese Adresse gibt es bei %s nicht (mehr). Page not found.</p>
+    <div class="hz-feld-actions">
+      <a class="hz-button hz-button--primary" href="%s">Zur Startseite</a>
+      <a class="hz-button" href="%s">Home page in English</a>
+    </div>
+  </header>
+</article>`
+  (partial "horizont/kennung.html" (dict "text" (printf "%s · 404" site.Title) "tag" "p"))
+  site.Title ("/" | relURL) ("/en/" | relURL) -}}
+{{ partial "textpage.html" (dict "page" . "body" ($body | safeHTML)) }}

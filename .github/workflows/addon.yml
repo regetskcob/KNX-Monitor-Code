@@ -27,6 +27,7 @@ on:
 
 permissions:
   contents: read
+  statuses: read
 
 jobs:
   version:
@@ -67,105 +68,46 @@ jobs:
           path: build/web
           retention-days: 1
 
-  # Starts the finished image and checks that settings and history end up in
-  # the data directory and survive a restart – packaging errors that
-  # no unit test sees.
+  # Starts the finished image (tool/smoke_docker.sh): settings and history in
+  # the data folder across a restart, the box mode's access rules, and Docker
+  # as the guide documents it – packaging errors that no unit test sees.
+  # tool/release.sh addon runs the same script locally (podman) before the tag
+  # and marks the commit (werkbank/smoke); then this job only checks that.
   smoke:
     needs: web
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - id: stamp
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          done=false
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            for _ in 1 2 3; do
+              state=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/statuses" \
+                --jq '[.[] | select(.context == "werkbank/smoke" and .creator.login == "'"$GITHUB_REPOSITORY_OWNER"'")][0].state // ""' \
+                2>/dev/null || true)
+              if [ "$state" = success ]; then done=true; break; fi
+              sleep 10
+            done
+          fi
+          echo "done=$done" >> "$GITHUB_OUTPUT"
+          if [ "$done" = true ]; then echo "Smoke test passed locally for ${SHA:0:7} (werkbank/smoke)"; fi
+      - if: steps.stamp.outputs.done != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: steps.stamp.outputs.done != 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: web
           path: ha-addon/knx_monitor/web
       # The server's internal packages (packages/knx) into the build context.
-      - run: tool/addon_packages.sh
-      - run: docker build -t knx-monitor-smoke ha-addon/knx_monitor
-      - name: Start, configure, restart, check persistence
-        run: |
-          set -e
-          mkdir -p "$RUNNER_TEMP/data"
-          run() { docker run -d --name smoke -e ALLOW_ALL=1 -e ALLOW_ALL_EXPOSED=1 -e BIND=0.0.0.0 -e TZ=Europe/Berlin -p 8765:8765 -v "$RUNNER_TEMP/data:/data" knx-monitor-smoke; }
-          wait_up() { for i in $(seq 1 30); do curl -sf http://localhost:8765/api/bus >/dev/null && return 0; sleep 1; done; docker logs smoke; return 1; }
-          run; wait_up
-          curl -sf -X PUT -H 'Content-Type: application/json' -d '{"retentionDays": 30}' http://localhost:8765/api/bus | grep -q '"retentionDays":30'
-          curl -sf http://localhost:8765/ | grep -q '<base href'
-          docker stop -t 10 smoke && docker rm smoke
-          test -f "$RUNNER_TEMP/data/app/installations/default/server.json"
-          run; wait_up
-          curl -sf http://localhost:8765/api/bus | grep -q '"retentionDays":30'
-          docker stop -t 10 smoke
-      # KNX Box without Home Assistant: nothing without login, with password or
-      # device access from /pair everything except the raw relay; survives the restart.
-      - name: Box mode (BOX=1) access
-        run: |
-          # -x: on failure the log shows which check it was.
-          set -ex
-          trap 'docker logs box 2>&1 | tail -30 || true' ERR
-          mkdir -p "$RUNNER_TEMP/box"
-          # The runner connects via the Docker bridge, so for the box this is "via
-          # cable": blocked as long as LAN_ACCESS does not allow it.
-          run() { docker run -d --name box -e BOX=1 -e BOX_PASSWORD=ci-box-pass -e BOX_NAME=KNX-Box-CI -e LAN_ACCESS=yes -e TZ=Europe/Berlin -p 8766:8765 -v "$RUNNER_TEMP/box:/data" knx-monitor-smoke; }
-          code() { curl -s -o /dev/null -m 5 -w '%{http_code}' "$@"; }
-          # Without LAN_ACCESS the container listens on its own loopback only, so
-          # the published port answers nothing, not even with the correct password.
-          mkdir -p "$RUNNER_TEMP/box-closed"
-          docker run -d --name box-closed -e BOX=1 -e BOX_PASSWORD=ci-box-pass -e TZ=Europe/Berlin -p 8767:8765 -v "$RUNNER_TEMP/box-closed:/data" knx-monitor-smoke
-          # "Port 8765" is logged after the bind, so the server is listening by then.
-          for i in $(seq 1 30); do docker logs box-closed 2>&1 | grep -q 'KNX Monitor: Port 8765' && break; sleep 1; done
-          docker logs box-closed 2>&1 | grep -q 'KNX Monitor: Port 8765'
-          docker logs box-closed 2>&1 | grep -q 'nur am Rechner selbst erreichbar'
-          test "$(code http://localhost:8767/ || true)" = 000
-          test "$(code -u x:ci-box-pass http://localhost:8767/api/bus || true)" = 000
-          sudo grep -qx no "$RUNNER_TEMP/box-closed/app/lan-access"
-          docker stop -t 10 box-closed && docker rm box-closed
-          wait_up() { for i in $(seq 1 30); do [ "$(code http://localhost:8766/)" = 401 ] && return 0; sleep 1; done; docker logs box; return 1; }
-          ws=(-H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==')
-          run; wait_up
-          pw=ci-box-pass
-          sudo test ! -e "$RUNNER_TEMP/box/app/box-password.txt"
-          # Box mode keeps its data folder to itself (keyring, passwords).
-          test "$(sudo stat -c %a "$RUNNER_TEMP/box/app")" = 700
-          test "$(code http://localhost:8766/api/bus)" = 401
-          test "$(code "${ws[@]}" http://localhost:8766/ws/bus)" = 401
-          test "$(code -u "x:$pw" http://localhost:8766/api/bus)" = 200
-          test "$(code -u "x:wrong" http://localhost:8766/api/bus)" = 401
-          key=$(curl -sf -u "x:$pw" -d 'name=CI' http://localhost:8766/pair | grep -o 'key=[A-Za-z0-9_-]*' | head -1 | cut -d= -f2)
-          test ${#key} = 43
-          test "$(code -H "Authorization: Bearer $key" http://localhost:8766/api/bus)" = 200
-          test "$(code -H "Authorization: Bearer $key" "${ws[@]}" http://localhost:8766/ws/bus)" = 101
-          test "$(code -H "Authorization: Bearer $key" http://localhost:8766/ws)" = 403
-          # Health endpoint without login, but without data.
-          test "$(curl -sf -m 5 http://localhost:8766/healthz)" = ok
-          # Device from /pair: reading yes, bus connection and keyring no.
-          test "$(code -H "Authorization: Bearer $key" -X PUT -d '{"host":"192.0.2.1"}' http://localhost:8766/api/bus)" = 403
-          test "$(code -H "Authorization: Bearer $key" http://localhost:8766/api/files/secure_keys.json)" = 403
-          # Pairing from the app: with the password an admin access, a /pair device does not manage.
-          admin=$(curl -sf -u "x:$pw" -d '{"name":"CI-App"}' http://localhost:8766/api/box/pair | grep -o '"key":"[A-Za-z0-9_-]*"' | cut -d'"' -f4)
-          test ${#admin} = 43
-          test "$(code -H "Authorization: Bearer $admin" http://localhost:8766/api/box/devices)" = 200
-          test "$(code -H "Authorization: Bearer $key" http://localhost:8766/api/box/devices)" = 403
-          # Clock: Docker keeps the host's time (#214). No box clock in /api/box and no
-          # /api/box/time, so no paired device can move the history's time stamps.
-          curl -sf -H "Authorization: Bearer $key" http://localhost:8766/api/box > "$RUNNER_TEMP/box.json"
-          # (`! grep` would not stop `set -e`.)
-          if grep -q '"clock"' "$RUNNER_TEMP/box.json"; then exit 1; fi
-          res=$(code -H "Authorization: Bearer $admin" -H 'Content-Type: application/json' \
-            -d "{\"epochMs\": $(date +%s)000}" http://localhost:8766/api/box/time)
-          [[ $res = 404 || $res = 405 ]]
-          sudo test ! -e "$RUNNER_TEMP/box/app/time-request.json"
-          # /api/files/ hands out the server's own files to nobody.
-          for f in access.json server.json box-password.txt lan-access; do
-            test "$(code -H "Authorization: Bearer $key" http://localhost:8766/api/files/$f)" = 403
-            test "$(code -u "x:$pw" http://localhost:8766/api/files/$f)" = 403
-          done
-          test "$(code -u "x:$pw" -H 'Origin: http://evil.example' -X PUT http://localhost:8766/api/bus)" = 403
-          ! sudo grep -q "$key" "$RUNNER_TEMP/box/app/access.json"
-          docker stop -t 10 box && docker rm box
-          run; wait_up
-          test "$(code -H "Authorization: Bearer $key" http://localhost:8766/api/bus)" = 200
-          docker stop -t 10 box
+      - if: steps.stamp.outputs.done != 'true'
+        run: tool/addon_packages.sh
+      - if: steps.stamp.outputs.done != 'true'
+        run: docker build -t knx-monitor-smoke ha-addon/knx_monitor
+      - if: steps.stamp.outputs.done != 'true'
+        run: tool/smoke_docker.sh knx-monitor-smoke
 
   # Room for a manual approval before an image goes to customers
   # (effective only with required reviewers). Tags only; a manual run
@@ -228,7 +170,7 @@ jobs:
           build-args: BUILD_VERSION=${{ needs.version.outputs.version }}
           tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-knx-monitor:${{ needs.version.outputs.version }}
           labels: |
-            io.hass.name=KNX Monitor
+            io.hass.name=Busclear
             io.hass.description=KNX bus monitor and diagnostics in the sidebar
             io.hass.arch=${{ matrix.arch }}
             io.hass.type=addon

@@ -1,4 +1,4 @@
-# KNX Monitor Box – Einstellungen für den ersten Start
+# Busclear Box – Einstellungen für den ersten Start
 #
 # Vor dem ersten Start ausfüllen oder leer lassen. Leere Werte erzeugt die Box
 # selbst und trägt sie nach dem ersten Start hier ein (SD-Karte am PC lesen).

@@ -1,7 +1,7 @@
 blueprint:
-  name: KNX Monitor – recording space low
+  name: Busclear – recording space low
   description: >-
-    Runs your actions when the KNX Monitor add-on runs short of disk space
+    Runs your actions when the Busclear add-on runs short of disk space
     for its continuous recording. The binary sensor "Low space" of the add-on's
     MQTT device switches on when the add-on has already deleted the oldest
     days and still has too little room, and has paused recording. Needs an MQTT
@@ -11,7 +11,7 @@ blueprint:
   input:
     sensor:
       name: Low space sensor
-      description: The "Low space" binary sensor of the device KNX Monitor.
+      description: The "Low space" binary sensor of the device Busclear.
       selector:
         entity:
           filter:

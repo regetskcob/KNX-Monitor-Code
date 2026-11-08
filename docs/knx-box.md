@@ -1,10 +1,10 @@
-# KNX Box
+# Busclear Box
 
-The KNX Box is a Raspberry Pi image that records a KNX installation on site,
+The Busclear Box is a Raspberry Pi image that records a KNX installation on site,
 around the clock, without Home Assistant and without internet access. It reaches
 the bus through a KNXnet/IP interface or router on its Ethernet port, or directly
 on KNX TP through a Weinzierl kBerry HAT. It spans its own Wi-Fi, and phones,
-tablets and laptops either pair the KNX Monitor app with it or open the web app in
+tablets and laptops either pair the Busclear app with it or open the web app in
 a browser.
 
 ```

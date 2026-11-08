@@ -25,6 +25,7 @@ import 'history_store.dart';
 import 'home_plan/home_plan_store.dart';
 import 'pinned_sections.dart';
 import 'site_photos.dart';
+import 'tap_points.dart';
 
 /// Gateway of an installation: the most recently used address, plus what the
 /// device reveals about itself (the serial number identifies it even after an
@@ -59,7 +60,14 @@ class GatewayRef {
 /// keyring, health, commissioning, long-term history and settings.
 @immutable
 class Installation {
-  const Installation({required this.id, required this.name, required this.created, this.gateway, this.lastUsed});
+  const Installation({
+    required this.id,
+    required this.name,
+    required this.created,
+    this.gateway,
+    this.lastUsed,
+    this.taps = const [],
+  });
 
   final String id;
   final String name;
@@ -74,12 +82,16 @@ class Installation {
   final DateTime created;
   final DateTime? lastUsed;
 
-  Installation copyWith({String? name, GatewayRef? gateway, DateTime? lastUsed}) => Installation(
+  /// Further tap points besides the normal connection (issue #8). Empty for most installations.
+  final List<TapPoint> taps;
+
+  Installation copyWith({String? name, GatewayRef? gateway, DateTime? lastUsed, List<TapPoint>? taps}) => Installation(
     id: id,
     name: name ?? this.name,
     created: created,
     gateway: gateway ?? this.gateway,
     lastUsed: lastUsed ?? this.lastUsed,
+    taps: taps ?? this.taps,
   );
 
   Map<String, Object?> toJson() => {
@@ -88,6 +100,7 @@ class Installation {
     'created': created.millisecondsSinceEpoch,
     'gateway': ?gateway?.toJson(),
     'lastUsed': ?lastUsed?.millisecondsSinceEpoch,
+    if (taps.isNotEmpty) 'taps': [for (final t in taps) t.toJson()],
   };
 
   /// Throws [FormatException] for an invalid id ([isValidId]); the index then skips the entry.
@@ -97,6 +110,9 @@ class Installation {
     created: DateTime.fromMillisecondsSinceEpoch(j['created'] as int? ?? 0),
     gateway: j['gateway'] == null ? null : GatewayRef.fromJson((j['gateway']! as Map).cast<String, Object?>()),
     lastUsed: j['lastUsed'] == null ? null : DateTime.fromMillisecondsSinceEpoch(j['lastUsed']! as int),
+    taps: j['taps'] is List
+        ? [for (final t in j['taps']! as List) ?TapPoint.fromJson(t)].take(TapPoint.max - 1).toList()
+        : const [],
   );
 
   static String _checkedId(String id) => isValidId(id) ? id : throw FormatException('invalid installation id', id);
@@ -486,6 +502,10 @@ class InstallationStore extends ChangeNotifier {
     await _save();
     notifyListeners();
   }
+
+  /// Sets the further tap points of installation [id] (issue #8).
+  Future<void> setTaps(String id, List<TapPoint> taps) =>
+      _update(id, (i) => i.copyWith(taps: List.unmodifiable(taps.take(TapPoint.max - 1))));
 
   /// Remembers the connected gateway (address and, once known, what it reveals
   /// about itself) in the active installation.

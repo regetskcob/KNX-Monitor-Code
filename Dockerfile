@@ -1,4 +1,4 @@
-# Builds the KNX Monitor image from this repository alone: web app, server and
+# Builds the Busclear image from this repository alone: web app, server and
 # packages, without a local Flutter or Dart.
 #
 #   docker build -t knx-monitor .

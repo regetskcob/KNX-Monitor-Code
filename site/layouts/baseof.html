@@ -14,6 +14,7 @@
 {{- $links := slice (dict "name" (i18n "imprint") "url" site.Params.legalUrl) -}}
 {{- with site.GetPage "/datenschutz" }}{{ $links = $links | append (dict "name" (i18n "privacy") "url" .RelPermalink) }}{{ end -}}
 {{- with site.GetPage "/nutzungsbedingungen" }}{{ $links = $links | append (dict "name" (i18n "terms") "url" .RelPermalink) }}{{ end -}}
+{{- with site.GetPage "/beta" }}{{ $links = $links | append (dict "name" (i18n "beta") "url" .RelPermalink) }}{{ end -}}
 {{- with site.GetPage "/support" }}{{ $links = $links | append (dict "name" (i18n "support") "url" .RelPermalink) }}{{ end -}}
 {{- $links = $links | append (dict "name" (i18n "github") "url" site.Params.githubUrl) -}}
 <!doctype html>

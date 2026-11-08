@@ -25,7 +25,7 @@ void main() {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
-    expect(find.text('KNX Monitor ist gesperrt'), findsOneWidget);
+    expect(find.text('Busclear ist gesperrt'), findsOneWidget);
     expect(find.byKey(const Key('geheim')), findsNothing);
     expect(tester.takeException(), isNull);
 
@@ -34,6 +34,6 @@ void main() {
     expect(find.text('Passwort vergessen?'), findsOneWidget);
     await tester.tap(find.text('Abbrechen'));
     await tester.pumpAndSettle();
-    expect(find.text('KNX Monitor ist gesperrt'), findsOneWidget);
+    expect(find.text('Busclear ist gesperrt'), findsOneWidget);
   });
 }

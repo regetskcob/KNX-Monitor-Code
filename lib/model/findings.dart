@@ -110,7 +110,7 @@ List<(String, String)> technicalFacts(Map<String, Object?> tech) {
   final secure = sub('secure');
   final traffic = sub('traffic');
   final addon = sub('addon');
-  final where = [if (tech['homeAssistantAddon'] == true) 'Home Assistant', if (tech['viaBox'] == true) 'KNX-Box'];
+  final where = [if (tech['homeAssistantAddon'] == true) 'Home Assistant', if (tech['viaBox'] == true) 'Busclear Box'];
   return [
     if (app.isNotEmpty)
       (

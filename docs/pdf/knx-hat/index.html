@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<title>KNX Monitor · KNX-Box direkt an der Linie</title>
+<title>Busclear · Busclear Box direkt an der Linie</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="pages.css">
 <style>
@@ -33,17 +33,17 @@
 
 <!-- 1 · Titel -->
 <section class="page cover" style="--p: .1">
-  <div class="lockup"><img src="img/icon.png" alt=""><span>KNX Monitor</span></div>
-  <p class="kennung">KNX-Box · Anleitung für Bastler · Weinzierl kBerry</p>
+  <div class="lockup"><img src="img/icon.png" alt=""><span>Busclear</span></div>
+  <p class="kennung">Busclear Box · Anleitung für Bastler · Weinzierl kBerry</p>
   <h1>Die Box direkt an der Busleitung, ganz ohne IP-Gateway.</h1>
-  <p class="lead" style="max-width: 155mm">Die KNX-Box hängt per Netzwerkkabel am Gateway oder, seit Version 1.8.4, mit dem Aufsteckmodul KNX BAOS 838 kBerry von Weinzierl selbst an der Linie: kein Tunnelplatz, und ein Busmonitor, der auch Quittungen und Wiederholungen zeigt. Hier steht, wie das Modul auf den Raspberry Pi kommt und wie der Pi vorbereitet wird.</p>
+  <p class="lead" style="max-width: 155mm">Die Busclear Box hängt per Netzwerkkabel am Gateway oder, seit Version 1.8.4, mit dem Aufsteckmodul KNX BAOS 838 kBerry von Weinzierl selbst an der Linie: kein Tunnelplatz, und ein Busmonitor, der auch Quittungen und Wiederholungen zeigt. Hier steht, wie das Modul auf den Raspberry Pi kommt und wie der Pi vorbereitet wird.</p>
   <p><span class="badge">Vorschau · auf einem Raspberry Pi 4 am echten Bus geprüft</span></p>
   <div class="horizon"></div>
   <figure class="hero">
     <svg id="topview" viewBox="-22 -16 128 86" style="width: 150mm; margin: 0 auto"></svg>
     <figcaption>Raspberry Pi 4 bzw. 5 von oben, im Maßstab. Der kBerry steckt auf den Pins 1–26 und liegt über der Platine, die Busklemme zeigt zur microSD-Seite.</figcaption>
   </figure>
-  <div class="folio"><span>KNX Monitor · knx-monitor.de/box · Vorschau</span><span>Stand 31.10.2026</span></div>
+  <div class="folio"><span>Busclear · busclear.de/box · Vorschau</span><span>Stand 31.10.2026</span></div>
 </section>
 
 <!-- 2 · Warum und was -->
@@ -80,7 +80,7 @@
     <div><b>ETS</b>generischer Eintrag mit 1000 Gruppenobjekten, ETS 4, 5 und 6; für die Box nicht nötig</div>
   </div>
   <p class="small muted" style="margin-top: auto">Quellen: Beiblatt zum Modul (Stand 2025-01-23) und „KNX BAOS Starter Kit User's Guide“ von Weinzierl Engineering (weinzierl.de), Raspberry-Pi-Dokumentation „Configure UARTs“.</p>
-  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>2</span></div>
+  <div class="folio"><span>Busclear · Busclear Box direkt an der Linie · Vorschau</span><span>2</span></div>
 </section>
 
 <!-- 3 · Aufstecken -->
@@ -115,7 +115,7 @@
       </div>
     </div>
   </div>
-  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>3</span></div>
+  <div class="folio"><span>Busclear · Busclear Box direkt an der Linie · Vorschau</span><span>3</span></div>
 </section>
 
 <!-- 4 · Pi vorbereiten -->
@@ -164,7 +164,7 @@ picocom -b 19200 -y e /dev/ttyAMA0</pre>
       <p class="small muted" style="margin-top: 2mm">Beenden mit Strg+A, Strg+X. Danach Brücke ab, Modul aufstecken.</p>
     </div>
   </div>
-  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>4</span></div>
+  <div class="folio"><span>Busclear · Busclear Box direkt an der Linie · Vorschau</span><span>4</span></div>
 </section>
 
 <!-- 5 · Stand -->
@@ -200,8 +200,8 @@ picocom -b 19200 -y e /dev/ttyAMA0</pre>
     </div>
   </div>
 
-  <p class="small muted" style="margin-top: auto">Alle Angaben ohne Gewähr, am Bus bisher nur auf einem Pi 4 geprüft. Arbeiten an der KNX-Anlage nur mit Fachkenntnis; Busleitung und Netzspannung im Verteiler sicher trennen. Der kBerry ist ein Produkt der Weinzierl Engineering GmbH; KNX Monitor ist unabhängig davon. knx-monitor.de/box</p>
-  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>5</span></div>
+  <p class="small muted" style="margin-top: auto">Alle Angaben ohne Gewähr, am Bus bisher nur auf einem Pi 4 geprüft. Arbeiten an der KNX-Anlage nur mit Fachkenntnis; Busleitung und Netzspannung im Verteiler sicher trennen. Der kBerry ist ein Produkt der Weinzierl Engineering GmbH; Busclear ist unabhängig davon. busclear.de/box</p>
+  <div class="folio"><span>Busclear · Busclear Box direkt an der Linie · Vorschau</span><span>5</span></div>
 </section>
 
 <!-- 6 · Gehäuse -->
@@ -225,7 +225,7 @@ picocom -b 19200 -y e /dev/ttyAMA0</pre>
     <div><b>Material</b>PETG oder ASA, <b style="display:inline;font:inherit;font-weight:600;color:var(--text);text-transform:none;letter-spacing:0">bei 0,2 mm Schichthöhe drucken</b>, 4–5 Perimeter, ohne Stützen</div>
     <div><b>Maße</b>100 × 69 × 29,5 mm; passt für Pi 3B, 3B+, 4B und 5</div>
   </div>
-  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>6</span></div>
+  <div class="folio"><span>Busclear · Busclear Box direkt an der Linie · Vorschau</span><span>6</span></div>
 </section>
 
 <!-- 7 · Montage, Zeichnung -->
@@ -237,7 +237,7 @@ picocom -b 19200 -y e /dev/ttyAMA0</pre>
     <figcaption>Nummern in Montagereihenfolge, die Einschmelzgewinde sitzen schon. Die Einsatzbohrungen sind am Druck bestimmt, das vollständige Gehäuse bleibt Vorschau.</figcaption>
   </figure>
   <div class="facts legend"><div><b>01</b>Boden</div><div><b>02</b>Einschmelzgewinde M2.5 (aus Schritt 1)</div><div><b>03</b>Raspberry Pi 3B, 3B+, 4B oder 5</div><div><b>04</b>2× M2.5 × 6, Pi hinten</div><div><b>05</b>Modulbrücke (gedruckt)</div><div><b>06</b>2× M2.5 × 16 durch Brücke und Pi</div><div><b>07</b>Weinzierl KNX BAOS 838 kBerry</div><div><b>08</b>Buchsenleiste auf GPIO-Pins 1–26</div><div><b>09</b>KNX-Busklemme, rot vorne, grau hinten</div><div><b>10</b>Schlanker Deckel mit Schürze um die Klemme</div><div><b>11</b>Stiftloch über der Programmiertaste</div><div><b>12</b>4× M3 × 8 Zylinderkopf von unten</div><div><b>13</b>Klemmenöffnung mit Aderkanal nach links</div><div><b>14</b>USB-Abdeckung (optional)</div></div>
-  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>7</span></div>
+  <div class="folio"><span>Busclear · Busclear Box direkt an der Linie · Vorschau</span><span>7</span></div>
 </section>
 
 <!-- 8 · Montage, Schritte -->
@@ -273,7 +273,7 @@ picocom -b 19200 -y e /dev/ttyAMA0</pre>
     </div>
   </div>
   <p class="small muted" style="margin-top: auto">Die Status-LEDs sind bei geschlossenem Deckel nicht sichtbar, die Programmiertaste erreicht man mit einem Stift. Der Active Cooler des Pi 5 passt unter dem kBerry nicht. Beim Pi 5 sind Power-Taster und PCIe-Anschluss bei geschlossenem Gehäuse nicht erreichbar.</p>
-  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>8</span></div>
+  <div class="folio"><span>Busclear · Busclear Box direkt an der Linie · Vorschau</span><span>8</span></div>
 </section>
 
 <!-- 9 · Hutschiene -->
@@ -308,7 +308,7 @@ picocom -b 19200 -y e /dev/ttyAMA0</pre>
     <h3>Vorschau</h3>
     <p class="small" style="margin: 0">Hutschienen-Boden und Clip sind nur am Modell gegen ein TS35-Profil geprüft, erst teilweise am Druck. Beim Clip ist Variante · gewählt, sie wird noch nachgebessert. Im Verteiler gelten die üblichen Regeln: Busleitung und Netzspannung sicher trennen, für den Pi ein Netzteil mit sicherer Trennung, Arbeiten nur mit Fachkenntnis.</p>
   </div>
-  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>9</span></div>
+  <div class="folio"><span>Busclear · Busclear Box direkt an der Linie · Vorschau</span><span>9</span></div>
 </section>
 
 <!-- 10 · Hutschienen-Clip -->
@@ -333,7 +333,7 @@ picocom -b 19200 -y e /dev/ttyAMA0</pre>
     <div><b>Variante ··· (clip-3)</b>5 Stege 0,8 mm, ca. 1,3 N, am weichsten</div>
   </div>
   <p class="small" style="margin-top: 2mm">Empfohlen ist Variante · (clip-1): Sie hat sich im Drucktest durchgesetzt und wird noch nachgebessert. Die weicheren Varianten ·· und ··· bleiben vorerst als Testvarianten dabei. Die Kräfte sind grobe Schätzungen für PLA, mit PETG etwa 40 % niedriger. </p>
-  <div class="folio"><span>KNX Monitor · KNX-Box direkt an der Linie · Vorschau</span><span>10</span></div>
+  <div class="folio"><span>Busclear · Busclear Box direkt an der Linie · Vorschau</span><span>10</span></div>
 </section>
 
 <script>

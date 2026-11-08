@@ -8,7 +8,7 @@
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>KNX Monitor Übergabepaket</string>
+			<string>Busclear Übergabepaket</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
@@ -20,7 +20,7 @@
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>KNX Monitor Störungsmeldung</string>
+			<string>Busclear Störungsmeldung</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
@@ -61,7 +61,7 @@
 				<string>public.data</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>KNX Monitor Übergabepaket</string>
+			<string>Busclear Übergabepaket</string>
 			<key>UTTypeIdentifier</key>
 			<string>de.regetskcob.knx-monitor.handover</string>
 			<key>UTTypeTagSpecification</key>
@@ -82,7 +82,7 @@
 				<string>public.data</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>KNX Monitor Störungsmeldung</string>
+			<string>Busclear Störungsmeldung</string>
 			<key>UTTypeIdentifier</key>
 			<string>de.regetskcob.knx-monitor.report</string>
 			<key>UTTypeTagSpecification</key>
@@ -112,7 +112,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>KNX-Box-Kopplung</string>
+			<string>Busclear-Box-Kopplung</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>knxmonitor</string>

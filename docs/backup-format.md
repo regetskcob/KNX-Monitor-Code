@@ -1,10 +1,10 @@
 # Backup file format (`.knxbackup`)
 
-A full backup holds everything the KNX Monitor app keeps on one device, encrypted
+A full backup holds everything the Busclear app keeps on one device, encrypted
 with a password the user chooses. The format is documented so that the data stays
 readable without the app. It applies to backups created by the native apps
 (iOS, iPadOS, Android, macOS, Windows, Linux) from version 1.9.1 on. The web app
-of the Home Assistant add-on and of the KNX Box has no full backup; its data
+of the Home Assistant add-on and of the Busclear Box has no full backup; its data
 lives in the server's data folder.
 
 Implementation: `lib/model/full_backup.dart` (`FullBackup`, `_pack`, `_unpack`),
@@ -109,13 +109,13 @@ keyring that the app needs, as written by `KeyringStore.import`
 
 - The app lock: its state, password hash and recovery code (keys `app_lock_*`).
 - Device identifiers and other settings that belong to one device, and the
-  consent to share a keyring with a particular KNX Box (`box_keyring_*`).
+  consent to share a keyring with a particular Busclear Box (`box_keyring_*`).
 - The backup reminder's own timestamps (`backup_*`): a restored file is not a new
   backup on this device.
 - Files the app has set aside because it could not decrypt them (folder
   `nicht-lesbar/`), the plugin settings file `shared_preferences.json`, and
   temporary and previous-version files (`*.tmp`, `*.prev`).
-- History recorded on a KNX Box or by the Home Assistant add-on: it stays there.
+- History recorded on a Busclear Box or by the Home Assistant add-on: it stays there.
 
 The exact rule for settings keys is `FullBackup.keepsOut`; the same rule applies
 on restore, so a file cannot set any of these keys.

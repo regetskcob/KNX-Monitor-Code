@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds the finished Raspberry Pi OS image of the KNX Monitor Box with pi-gen.
+# Builds the finished Raspberry Pi OS image of the Busclear Box with pi-gen.
 #
 #   box/build-image.sh build/knx-box-<version>.tar.gz
 #

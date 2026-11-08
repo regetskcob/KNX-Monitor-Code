@@ -8,7 +8,7 @@ never into a public issue.
 
 ## Before you write code
 
-Open an issue first and describe what you want to change. KNX Monitor is a
+Open an issue first and describe what you want to change. Busclear is a
 one-person project that runs on live installations, so larger changes need to
 fit its direction before they are worth your time.
 
@@ -23,7 +23,7 @@ fit its direction before they are worth your time.
 
 ## Licence of your contribution
 
-KNX Monitor is licensed under the GNU General Public License v3.0. The
+Busclear is licensed under the GNU General Public License v3.0. The
 official builds are also distributed through the App Store and Google Play,
 whose terms are not compatible with the GPL for code from third parties.
 That is why every contribution needs the agreement below in addition to the

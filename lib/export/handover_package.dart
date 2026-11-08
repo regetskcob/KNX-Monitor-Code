@@ -25,7 +25,7 @@ const packageMaxEntry = 256 * 1024 * 1024;
 
 /// Why a file cannot be opened.
 enum PackageProblem {
-  /// Not a KNX Monitor package, or damaged.
+  /// Not a Busclear package, or damaged.
   corrupt,
 
   /// From a newer app version.

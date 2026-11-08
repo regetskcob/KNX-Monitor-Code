@@ -1,11 +1,11 @@
-/// Access for the KNX Monitor integration of Home Assistant
+/// Access for the Busclear integration of Home Assistant
 /// (`custom_components/knx_monitor`, repository KNX-Monitor-HA).
 ///
 /// Ingress only lets the Supervisor through; the integration runs in Home
 /// Assistant Core and needs its own way in. The add-on creates a token once
 /// (`ha_integration.json` in the data root, outside the file store) and
 /// announces itself to the Supervisor (discovery `knx_monitor`): Home
-/// Assistant then shows "New device found: KNX Monitor" and hands host, port
+/// Assistant then shows "New device found: Busclear" and hands host, port
 /// and token to the integration.
 ///
 /// The token opens only the endpoints below `/api/ha/`, nothing else:
@@ -181,7 +181,7 @@ class HaIntegration {
         'config': {'host': host ?? '127.0.0.1', 'port': port, 'token': _token},
       });
       final ok = res?['result'] == 'ok';
-      stdout.writeln(ok ? 'Home Assistant: KNX-Monitor-Integration angeboten' : 'Discovery abgelehnt: $res');
+      stdout.writeln(ok ? 'Home Assistant: Busclear-Integration angeboten' : 'Discovery abgelehnt: $res');
       return ok;
     } on Object catch (e) {
       stderr.writeln('Discovery: $e');

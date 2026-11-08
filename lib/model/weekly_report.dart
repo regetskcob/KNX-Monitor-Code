@@ -70,7 +70,7 @@ class ReportBasis {
   /// Days with listening.
   final int days;
 
-  /// "KNX-Box" or "Home-Assistant-Add-on" for continuous operation.
+  /// "Busclear Box" or "Home-Assistant-Add-on" for continuous operation.
   final String? server;
 }
 

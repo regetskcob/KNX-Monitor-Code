@@ -1,16 +1,17 @@
-# KNX Monitor – website https://knx-monitor.de (Hugo, design system Horizont)
+# Busclear – website https://busclear.de (Hugo, design system Horizont)
 #
-# One full-screen page, plus the KNX Box page (/box/): title, mark, the small distribution board with the
+# One full-screen page, plus the Busclear Box page (/box/): title, mark, the small distribution board with the
 # app's generic actuators as an animated drawing; support, privacy policy, account
 # deletion and the legal drafts. Draft pages (layouts baseof, store, header,
 # appheader, kaufen; partials in _partials/drafts/) render only with `hugo server -D`
 # and make the store graphics and headers. regetskcob.de/knx/ redirects here.
 #
-# Served via GitHub Pages from the public repo (branch gh-pages),
-# see tool/release.sh site (werkbank, WB_SITES). Included: /.well-known/ for the
-# passkeys; /socials/ is built from store/social/ on deploy (tool/social/preview.py).
-baseURL = "https://knx-monitor.de/"
-title = "KNX Monitor"
+# Served from the webspace at do.de, uploaded over FTPS by tool/site_ftps.sh
+# through tool/release.sh site knx --live (werkbank, WB_SITES, site_deploy_knx);
+# knx-monitor.de redirects here (tool/site_redirect/). Included: /.well-known/ for
+# the passkeys; /socials/ is built from store/social/ on deploy (tool/social/preview.py).
+baseURL = "https://busclear.de/"
+title = "Busclear"
 
 defaultContentLanguage = "de"
 defaultContentLanguageInSubdir = false
@@ -31,15 +32,15 @@ disableKinds = ["taxonomy", "term", "rss", "section"]
   # (TestFlight: Beta App Review, Google Play: closed test live).
   # They switch the button, the beta line in the roadmap and the texts that are
   # stored per state (none, ios, android, both) in data/site/<lang>.yaml.
-  betaIos = false
+  betaIos = true
   # Public source code (GPLv3), hero button and FAQ.
   codeUrl = "https://github.com/regetskcob/KNX-Monitor-Code"
-  betaAndroid = false
+  betaAndroid = true
   githubUrl = "https://github.com/regetskcob/KNX-Monitor"
-  instagramUrl = "https://www.instagram.com/knxmonitor/"
+  instagramUrl = "https://www.instagram.com/busclear.app/"
   legalUrl = "https://www.regetskcob.de/legal/"
-  supportMail = "support@knx-monitor.de"
-  # KNX Box image (as on the landing page).
+  supportMail = "support@busclear.de"
+  # Busclear Box image (as on the landing page).
   boxUrl = "https://github.com/regetskcob/KNX-Monitor/releases/tag/box-v1.9.10"
   # For the draft pages (store graphics, headers, buy page; layouts baseof, store,
   # header, appheader, kaufen with partials in _partials/drafts/).

@@ -1,6 +1,6 @@
 hero:
   kennung: "Home Assistant add-on · free"
-  title: "KNX Monitor as part of Home Assistant."
+  title: "Busclear as part of Home Assistant."
   lead: "The bus monitor in the sidebar, on every device with Home Assistant. If you like, it shares the connection of your KNX integration instead of an own tunnel, brings triggers for automations and, with MQTT, shows up as a device with entities. Free, with every tool, for one installation."
   primary: "Install the add-on"
   secondary: "Automations"
@@ -10,7 +10,7 @@ install:
   title: "In the sidebar in two minutes."
   points:
     - { term: "Repository", value: "**Tap \"Install the add-on\" above** or in Home Assistant under Settings › Add-ons › Add-on store › ⋮ › Repositories add `https://github.com/regetskcob/KNX-Monitor`." }
-    - { term: "Start", value: "**Install KNX Monitor, start it and turn on \"Show in sidebar\".** The add-on runs on amd64 and aarch64, so also on Home Assistant Green, Yellow and the Raspberry Pi." }
+    - { term: "Start", value: "**Install Busclear, start it and turn on \"Show in sidebar\".** The add-on runs on amd64 and aarch64, so also on Home Assistant Green, Yellow and the Raspberry Pi." }
     - { term: "Connect", value: "**Pick the gateway or share the KNX integration** (see Connection). The add-on then stays connected, also without an open browser." }
     - { term: "Project", value: "**Import the ETS project** (`.knxproj` up to ETS6, also password protected) for names, datapoint types, devices and rooms. The password is not stored." }
 
@@ -29,16 +29,16 @@ automations:
   title: "Watchers, alarms and the bus as triggers."
   text: "The add-on fires events in Home Assistant, also without an open browser. In the automation editor use them as an \"Event\" trigger, with the integration or MQTT also as device triggers."
   points:
-    - { term: "Watcher", value: "**A watcher fires** (`knx_monitor_watcher`). With name, group address, source and value. Watchers are set up in KNX Monitor under Tools › Watchers." }
-    - { term: "Alarm", value: "**An alarm or fault object switches on or off** (`knx_monitor_alarm`), for example a smoke detector or a device fault. KNX Monitor recognises them from the ETS project." }
+    - { term: "Watcher", value: "**A watcher fires** (`knx_monitor_watcher`). With name, group address, source and value. Watchers are set up in Busclear under Tools › Watchers." }
+    - { term: "Alarm", value: "**An alarm or fault object switches on or off** (`knx_monitor_alarm`), for example a smoke detector or a device fault. Busclear recognises them from the ETS project." }
     - { term: "Bus", value: "**The bus connection is lost or back** (`knx_monitor_bus`). Only real changes are reported, not every connection attempt." }
     - { term: "Blueprints", value: "Import with one click: [Watcher](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fregetskcob%2FKNX-Monitor%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fknx_monitor_watcher.yaml), [Alarm or fault](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fregetskcob%2FKNX-Monitor%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fknx_monitor_alarm.yaml), [Bus connection](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fregetskcob%2FKNX-Monitor%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fknx_monitor_bus.yaml), [High bus load](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fregetskcob%2FKNX-Monitor%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fknx_monitor_bus_load.yaml), [Low space](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fregetskcob%2FKNX-Monitor%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fknx_monitor_low_space.yaml)." }
     - { term: "Notifications", value: "Without your own automation the add-on reports alarms and watchers as a Home Assistant notification. If you notify yourself, turn that off in the configuration and you get nothing twice." }
 
 device:
   label: "Device"
-  title: "KNX Monitor as a device with entities."
-  text: "Two ways, neither needs credentials: the \"KNX Monitor\" integration via [HACS](https://github.com/regetskcob/KNX-Monitor-HA), which Home Assistant discovers when the add-on starts, or MQTT if a broker is set up (usually the Mosquitto add-on)."
+  title: "Busclear as a device with entities."
+  text: "Two ways, neither needs credentials: the \"Busclear\" integration via [HACS](https://github.com/regetskcob/KNX-Monitor-HA), which Home Assistant discovers when the add-on starts, or MQTT if a broker is set up (usually the Mosquitto add-on)."
   points:
     - { term: "Bus connected", value: "Connectivity, handy for automations with \"for 5 minutes\" or on the dashboard." }
     - { term: "Recording", value: "Switch to pause and resume continuous recording, for example when ETS needs the only tunnel slot." }
@@ -59,13 +59,13 @@ recording:
 options:
   label: "Options"
   title: "What you can set in the configuration."
-  text: "Under Settings › Add-ons › KNX Monitor › Configuration."
+  text: "Under Settings › Add-ons › Busclear › Configuration."
   points:
     - { term: "Read only", value: "`read_only`: the server sends nothing to the bus, not even read requests. On by default; turn it off to write or read values from the add-on." }
     - { term: "Alarms", value: "`alarm_notifications`: notification for alarms and faults, on by default." }
     - { term: "Watchers", value: "`watcher_notifications`: notification for watchers, on by default." }
     - { term: "Push", value: "`notify_service`: additionally as push through a notify service, e.g. `notify.mobile_app_iphone`." }
-    - { term: "Card", value: "`dashboard_card`: registers the dashboard card \"KNX Monitor chart\" as a resource, on by default." }
+    - { term: "Card", value: "`dashboard_card`: registers the dashboard card \"Busclear chart\" as a resource, on by default." }
     - { term: "Telegrams", value: "`mqtt_telegrams`: preview, sends every telegram as JSON to `knx_monitor/telegram/1/2/3`, with name, DPT and value where the ETS project knows them. Off by default; feedback welcome in [issue #11](https://github.com/regetskcob/KNX-Monitor/issues/11)." }
     - { term: "Secure", value: "`mqtt_secure_telegrams`: also sends telegrams protected by KNX Data Secure, then decrypted. Anyone who can read the broker sees exactly the values the encryption is meant to protect. Off by default." }
 
@@ -76,7 +76,7 @@ faq:
     - q: "Does the add-on cost anything?"
       a: "No. The add-on stays free, with all tools and long-term history, for one installation."
     - q: "Is the add-on open source?"
-      a: "Yes. The source code of the app, the add-on and the KNX Box is licensed under GPLv3 [on GitHub](https://github.com/regetskcob/KNX-Monitor-Code). Everything the server sends to the bus passes one file there. The commercial parts are not included: account, the solution for electrical contractors and the home planning package. Name and logo are excluded, a fork needs a name of its own."
+      a: "Yes. The source code of the app, the add-on and the Busclear Box is licensed under GPLv3 [on GitHub](https://github.com/regetskcob/KNX-Monitor-Code). Everything the server sends to the bus passes one file there. The commercial parts are not included: account, the solution for electrical contractors and the home planning package. Name and logo are excluded, a fork needs a name of its own."
     - q: "Does the add-on take a tunnel slot on the gateway?"
       a: "With an own tunnel yes, exactly one, shared by all open views. With the connection mode \"Home Assistant\" none: it then uses the connection of the KNX integration. For the bus monitor with acknowledgements it releases the tunnel for a while and takes it back afterwards."
     - q: "Do I need MQTT?"
@@ -90,7 +90,7 @@ faq:
     - q: "I use ioBroker or a NAS instead of Home Assistant."
       a: "The same server also runs as a Docker container, with a password instead of the Home Assistant login and optionally with MQTT, for example for the ioBroker MQTT adapter. Instructions and `compose.yaml` [on GitHub](https://github.com/regetskcob/KNX-Monitor/tree/main/docker). A native ioBroker adapter comes if enough users want it: [vote with 👍](https://github.com/regetskcob/KNX-Monitor/issues/3)."
     - q: "Is there an own integration?"
-      a: "Yes, \"KNX Monitor\" via [HACS](https://github.com/regetskcob/KNX-Monitor-HA): discovery at start-up, sensors, device triggers and conditions, services for scripts, diagnostics and repair hints. Without Supervisor (Home Assistant Container) it connects to a KNX box or the Docker container through a pairing link with \"Manage\"."
+      a: "Yes, \"Busclear\" via [HACS](https://github.com/regetskcob/KNX-Monitor-HA): discovery at start-up, sensors, device triggers and conditions, services for scripts, diagnostics and repair hints. Without Supervisor (Home Assistant Container) it connects to a KNX box or the Docker container through a pairing link with \"Manage\"."
     - q: "Something does not work. How do I report it?"
       a: "Best with a diagnostic package, see [Feedback](/en/feedback/). Then you do not have to upload your ETS project anywhere."
 

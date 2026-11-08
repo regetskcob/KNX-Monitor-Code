@@ -130,7 +130,7 @@ void main() {
     }
   }
 
-  // Box-Seite (site/, 03 Einrichten): die Einrichtung der KNX-Box auf dem
+  // Box-Seite (site/, 03 Einrichten): die Einrichtung der Busclear Box auf dem
   // iPhone, alle Schritte abgehakt, je Sprache nach site/assets/images/:
   //   BOX_SHOTS=1 flutter test --tags golden --update-goldens test/layout_shots_test.dart
   final skipBox = Platform.environment['BOX_SHOTS'] == null;

@@ -1,13 +1,13 @@
 ---
 title: "Feedback"
-description: "Fehler melden und Fragen zu deiner Anlage stellen, ohne dein ETS-Projekt hochzuladen: mit dem Diagnosepaket aus KNX Monitor."
+description: "Fehler melden und Fragen zu deiner Anlage stellen, ohne dein ETS-Projekt hochzuladen: mit dem Diagnosepaket aus Busclear."
 layout: "page"
 ---
 Für Fehler und Fragen zu deiner Anlage brauchen wir oft deine Gruppenadressen und Details aus dem ETS-Projekt. Bitte lade dafür nicht dein Projekt hoch und schick uns kein Passwort: Eine `.knxproj`-Datei enthält mehr, als wir brauchen, und Foren und GitHub-Issues sind öffentlich. Dafür gibt es das **Diagnosepaket**.
 
 ## Das Diagnosepaket
 
-Eine ZIP-Datei, die KNX Monitor für dich zusammenstellt. Du siehst vor dem Senden genau, was drin ist („Dateiinhalt ansehen“).
+Eine ZIP-Datei, die Busclear für dich zusammenstellt. Du siehst vor dem Senden genau, was drin ist („Dateiinhalt ansehen“).
 
 **Enthalten:** die Busaufzeichnung um den Fehler, aus dem Projekt die Gruppenadressen, Datenpunkttypen, Geräte und Verknüpfungen, deine Beschreibung, deine Kommentare, die letzten Meldungen der App und technische Eckdaten: App- und Add-on-Version, Plattform, Betriebssystem bzw. Browser, Verbindungsart, Typ und Name des Gateways.
 
@@ -25,22 +25,22 @@ Eine ZIP-Datei, die KNX Monitor für dich zusammenstellt. Du siehst vor dem Send
 
 ## So erstellst du es
 
-1. KNX Monitor öffnen (App oder Home-Assistant-Add-on), mit dem Bus verbinden, das ETS-Projekt geladen.
+1. Busclear öffnen (App oder Home-Assistant-Add-on), mit dem Bus verbinden, das ETS-Projekt geladen.
 2. **Tritt der Fehler noch auf?** Unter Werkzeuge › Problem melden die Aufzeichnung starten, den Fehler nachstellen und jedes Mal „Es ist gerade passiert“ antippen. Danach entsteht das Paket ab dem Start.
 3. **Sonst** unter Werkzeuge › Diagnosepaket beschreiben, was passiert ist, den Zeitraum um den Fehler wählen und festlegen, ob Namen mitgehen.
 4. „Paket teilen“, „Paket speichern“ oder im Browser „Paket herunterladen“.
 
 ## Wohin damit
 
-**Per E-Mail an [support@knx-monitor.de](mailto:support@knx-monitor.de)**, mit ein, zwei Sätzen, worum es geht. Das Paket bleibt bei uns und wird nicht veröffentlicht.
+**Per E-Mail an [support@busclear.de](mailto:support@busclear.de)**, mit ein, zwei Sätzen, worum es geht. Das Paket bleibt bei uns und wird nicht veröffentlicht.
 
 Schreibst du in einem Forum oder in einem [GitHub-Issue](https://github.com/regetskcob/KNX-Monitor/issues), genügt dort der Hinweis „Diagnosepaket per E-Mail geschickt“. Bitte häng das Paket dort nicht an: Beides ist öffentlich.
 
-**Nach einem Absturz** zeigt KNX Monitor beim nächsten Start einen Hinweis, der zum Diagnosepaket führt. Dort öffnet „Als Issue melden“ ein vorausgefülltes Formular auf GitHub, nur mit Version, Plattform, Zeit und Art des Absturzes. Auf der KNX-Box siehst du die letzten Neustarts mit Grund, wenn du auf die Zeile mit den unerwarteten Neustarts tippst.
+**Nach einem Absturz** zeigt Busclear beim nächsten Start einen Hinweis, der zum Diagnosepaket führt. Dort öffnet „Als Issue melden“ ein vorausgefülltes Formular auf GitHub, nur mit Version, Plattform, Zeit und Art des Absturzes. Auf der Busclear Box siehst du die letzten Neustarts mit Grund, wenn du auf die Zeile mit den unerwarteten Neustarts tippst.
 
-Wir öffnen das Paket in KNX Monitor, stellen den Fehler nach und nutzen es nur dafür. Sobald deine Anfrage erledigt ist, löschen wir es. Mehr dazu im [Datenschutz](/datenschutz/).
+Wir öffnen das Paket in Busclear, stellen den Fehler nach und nutzen es nur dafür. Sobald deine Anfrage erledigt ist, löschen wir es. Mehr dazu im [Datenschutz](/datenschutz/).
 
-## Noch ohne KNX Monitor?
+## Noch ohne Busclear?
 
 Geht es nur um den Import, etwa weil dein Projekt nicht geladen wird, hilft uns oft schon der Export der Gruppenadressen als CSV aus der ETS (Gruppenadressen › Export). Er enthält kein Passwort.
 

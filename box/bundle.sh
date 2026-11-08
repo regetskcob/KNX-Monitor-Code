@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds the KNX Monitor Box bundle: server for Linux arm64, web app,
+# Builds the Busclear Box bundle: server for Linux arm64, web app,
 # setup.sh and system files. The image is made from it (build-image.sh), and
 # on a running Pi it is enough to unpack it and run "sudo ./setup.sh".
 #

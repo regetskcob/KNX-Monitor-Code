@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 
 import 'bus.dart';
+import 'catalog_info.dart';
 import 'exporter.dart';
 import 'key_figures.dart';
 import 'ha.dart';
@@ -147,7 +149,7 @@ class MqttClientSink implements MqttSink {
   }
 }
 
-/// The add-on as the device "KNX Monitor" in Home Assistant via MQTT discovery:
+/// The add-on as the device "Busclear" in Home Assistant via MQTT discovery:
 /// entities (bus connected, recording, telegrams per minute, …), event
 /// entities for watchers and alarms, and device triggers for the automation
 /// picker. Without a broker, events still come from [HomeAssistant].
@@ -171,8 +173,12 @@ class MqttBridge {
     this.retry = const Duration(minutes: 5),
     bool discovery = true,
     this.telegrams,
+    this.installation,
+    String? boot,
     DateTime Function() clock = DateTime.now,
   }) : _clock = clock,
+       boot = boot ?? uuidV4(),
+       _catalog = CatalogInfo(clock: clock),
        _sinkFactory = sink ?? MqttClientSink.new,
        _broker = broker ?? brokerFromSupervisor,
        _discoveryOn = discovery,
@@ -187,6 +193,22 @@ class MqttBridge {
   /// Every telegram to `knx_monitor/telegram/…` (issue #11); `null` = off.
   /// Switched on by the add-on option `mqtt_telegrams` or MQTT_TELEGRAMS=true.
   final TelegramStream? telegrams;
+
+  /// Installation id in the stream's payload (`inst`); `null` = the active
+  /// installation's id (MQTT_INSTALLATION overrides it).
+  final String? installation;
+
+  /// Random id of this server start (`boot` in the stream): a new value tells
+  /// a database that [telegramSeq] starts over, which is not a gap.
+  final String boot;
+
+  /// Running number of the last telegram that passed the filters and was due
+  /// to be sent (`seq`); a dropped one (rate limit, broker down) leaves a gap.
+  int telegramSeq = 0;
+
+  /// Device names and project state for the stream, from the active
+  /// installation's catalog.
+  final CatalogInfo _catalog;
 
   /// Telegrams sent to the broker since the start.
   int telegramsSent = 0;
@@ -224,7 +246,7 @@ class MqttBridge {
 
   /// Whether to send Home Assistant discovery; off (MQTT_DISCOVERY=false) for
   /// systems like ioBroker that would only create superfluous data points
-  /// from it, and while the KNX Monitor integration provides the entities
+  /// from it, and while the Busclear integration provides the entities
   /// (ha_integration.dart). State, single values and events are sent regardless.
   bool get discovery => _discoveryOn;
   bool _discoveryOn;
@@ -334,6 +356,8 @@ class MqttBridge {
   void onTelegram(Map<String, Object?> line, ExportSource source, {bool secure = false, bool decrypted = false}) {
     final stream = telegrams;
     if (stream == null) return;
+    // Filtered out: as if it had never been there, not counted anywhere.
+    if (line['d'] case final int group when !stream.accepts(group)) return;
     if (secure && !decrypted) {
       telegramsUndecrypted++;
       _note('undecrypted', line);
@@ -345,8 +369,26 @@ class MqttBridge {
       return;
     }
     try {
-      final message = stream.message(line, source, secure: secure);
+      final bus = _bus();
+      if (bus != null) _catalog.poll(bus.data);
+      final meta = TelegramMeta(
+        seq: telegramSeq + 1,
+        boot: boot,
+        installation: installation ?? bus?.installation?['id'] as String?,
+        project: _catalog.project,
+        deviceName: _catalog.deviceName,
+        tapNames: switch (bus?.config.taps) {
+          final taps? when taps.isNotEmpty => [
+            'main',
+            for (final (i, t) in taps.indexed)
+              t['name'] is String && (t['name'] as String).isNotEmpty ? t['name'] as String : 'tap ${i + 1}',
+          ],
+          _ => null,
+        },
+      );
+      final message = stream.message(line, source, secure: secure, meta: meta);
       if (message == null) return;
+      telegramSeq++;
       final second = _clock().millisecondsSinceEpoch ~/ 1000;
       if (second != _second) {
         _second = second;
@@ -369,6 +411,25 @@ class MqttBridge {
       // A broker hiccup must not disturb the recording.
       telegramsDropped++;
     }
+  }
+
+  /// The active bus, `null` where there is none (tests).
+  BusService? _bus() {
+    try {
+      return currentBus();
+    } on Object {
+      return null;
+    }
+  }
+
+  /// Random UUID version 4 (RFC 9562).
+  static String uuidV4([Random? random]) {
+    final r = random ?? Random.secure();
+    final b = [for (var i = 0; i < 16; i++) r.nextInt(256)];
+    b[6] = (b[6] & 0x0F) | 0x40;
+    b[8] = (b[8] & 0x3F) | 0x80;
+    final h = [for (final x in b) x.toRadixString(16).padLeft(2, '0')].join();
+    return '${h.substring(0, 8)}-${h.substring(8, 12)}-${h.substring(12, 16)}-${h.substring(16, 20)}-${h.substring(20)}';
   }
 
   /// Tells the user once per group address and reason why a telegram stays
@@ -398,6 +459,11 @@ class MqttBridge {
       'connected': connected,
       'secure': t.secure,
       'repeats': t.repeats,
+      'raw': t.raw,
+      'rawOnly': t.rawOnly,
+      'filter': t.filter.text,
+      'boot': boot,
+      'seq': telegramSeq,
       'sent': telegramsSent,
       'dropped': telegramsDropped,
       'secureSkipped': telegramsSecureSkipped,
@@ -471,7 +537,7 @@ class MqttBridge {
     final t = currentBus().config.language.startsWith('de') ? _de : _en;
     final device = {
       'identifiers': [_device],
-      'name': 'KNX Monitor',
+      'name': 'Busclear',
       'manufacturer': 'regetskcob',
       'model': 'Home Assistant add-on',
       'sw_version': version,

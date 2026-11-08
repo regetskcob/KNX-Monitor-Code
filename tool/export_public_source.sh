@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the public source snapshot of KNX Monitor (GPLv3) from HEAD: every
+# Builds the public source snapshot of Busclear (GPLv3) from HEAD: every
 # tracked file except what stays private (tool/public_source/private.txt:
 # backend, account, Betriebslösung, home planner, notes for Claude). The
 # release workflows stay public on purpose: they show how the images are built
@@ -55,7 +55,7 @@ fail=0
 say() { printf '%s\n' "$*"; }
 
 say "Secrets"
-# Patterns for keys and tokens of the services KNX Monitor uses. A hit stops
+# Patterns for keys and tokens of the services Busclear uses. A hit stops
 # the release until it is removed and the secret rotated.
 if grep -rnIE 'BEGIN ((RSA|EC|OPENSSH) )?PRIVATE KEY|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|github_pat_|sk_(live|test)_[A-Za-z0-9]{10,}|AIza[0-9A-Za-z_-]{35}|eyJhbGciOi[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}|pdl_(live|sdbx)_|appl_[A-Za-z0-9]{20,}|goog_[A-Za-z0-9]{20,}|sb_secret_' \
   --exclude='*.lock' --exclude=export_public_source.sh "$target"; then

@@ -7,7 +7,7 @@ import UserNotifications
 
 /// Native Helfer für den Monitor (Kanal „knx/native“): Hintergrund-Gnadenfrist,
 /// damit der Tunnel sauber abgemeldet werden kann, lokale Alarm-Mitteilungen
-/// und der Beitritt zum WLAN der KNX-Box.
+/// und der Beitritt zum WLAN der Busclear Box.
 final class KnxNative {
   static let shared = KnxNative()
 

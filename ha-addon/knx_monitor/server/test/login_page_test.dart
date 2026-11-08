@@ -16,7 +16,7 @@ void main() {
     access = await BoxAccess.open(
       data,
       initialPassword: password,
-      name: 'KNX Monitor',
+      name: 'Busclear',
       iterations: 1000,
       clock: () => now,
       container: !sticker,

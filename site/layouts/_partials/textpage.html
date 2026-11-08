@@ -5,6 +5,7 @@
     partial "textpage.html" (dict "page" . "body" $html)
 */ -}}
 {{- $p := .page -}}
+{{- $field := "404" }}{{ with $p.File }}{{ $field = .ContentBaseName }}{{ end -}}
 {{- $target := "" }}{{ range $p.Translations }}{{ $target = . }}{{ end -}}
 {{- $lang := dict -}}
 {{- with $target }}{{ $lang = dict "current" (upper site.Language.Lang) "name" (upper .Language.Lang) "url" .RelPermalink "hreflang" .Language.Lang }}{{ end -}}
@@ -16,12 +17,12 @@
     "product" "knx"
     "place" (printf "%s / %s" site.Title $p.Title)
     "lang" $lang
-    "karte" (dict "home" "knx" "here" "knx" "map" "knx" "projects" false "field" $p.File.ContentBaseName "url" ("karte/" | relLangURL))) }}
+    "karte" (dict "home" "knx" "here" "knx" "map" "knx" "projects" false "field" $field "url" ("karte/" | relLangURL))) }}
 <div class="hz-feld tz-feld">
 <main id="main" class="tz-main">
 {{ .body }}
 </main>
-{{- $links := slice (dict "name" site.Title "url" ("" | relLangURL)) (dict "name" (i18n "imprint") "url" site.Params.legalUrl) (dict "name" (i18n "privacy") "url" site.Params.privacyUrl) (dict "name" (i18n "feedback") "url" ("feedback/" | relLangURL)) (dict "name" (i18n "changelog") "url" ("changelog/" | relLangURL)) (dict "name" (i18n "github") "url" site.Params.githubUrl) (dict "name" (i18n "instagram") "url" site.Params.instagramUrl) }}
+{{- $links := slice (dict "name" site.Title "url" ("" | relLangURL)) (dict "name" (i18n "imprint") "url" site.Params.legalUrl) (dict "name" (i18n "privacy") "url" site.Params.privacyUrl) (dict "name" (i18n "beta") "url" ("beta/" | relLangURL)) (dict "name" (i18n "feedback") "url" ("feedback/" | relLangURL)) (dict "name" (i18n "changelog") "url" ("changelog/" | relLangURL)) (dict "name" (i18n "github") "url" site.Params.githubUrl) (dict "name" (i18n "instagram") "url" site.Params.instagramUrl) }}
 {{- with site.GetPage "/nutzungsbedingungen" }}{{ $links = $links | append (dict "name" (i18n "terms") "url" .RelPermalink) }}{{ end }}
 {{ partial "horizont/feld/foot.html" (dict "links" $links "sender" (i18n "footer_sender")) }}
 <p class="tz-mark t-caption">{{ i18n "footer_note" }}</p>

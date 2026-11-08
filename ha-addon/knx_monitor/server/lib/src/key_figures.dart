@@ -3,7 +3,7 @@ import 'dart:io';
 import 'bus.dart';
 
 /// Key figures of the active installation for Home Assistant: the state of
-/// the MQTT device ([MqttBridge]) and of the KNX Monitor integration
+/// the MQTT device ([MqttBridge]) and of the Busclear integration
 /// (ha_integration.dart) come from here, so both report the same numbers.
 ///
 /// Rates (telegrams and repeats per minute, bus load) are differences between

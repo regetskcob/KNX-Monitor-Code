@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
-# Builds and publishes all release artifacts of KNX Monitor.
+# Builds and publishes all release artifacts of Busclear.
 #
 #   tool/release.sh verify           # checks of the pull request CI, on any branch – run before pushing
 #   tool/release.sh push [args]      # git push; marks HEAD verified on GitHub, so the PR CI skips its checks
 #   tool/release.sh layout           # folder structure only (part of verify, tool/werkbank/STANDARD.md)
+#   tool/release.sh smoke            # build the add-on image locally (podman or docker) and run its smoke
+#                                    # test (tool/smoke_docker.sh); push/tag then let the CI skip it
 #   tool/release.sh check            # preflight: clean main, verify, versions
 #   tool/release.sh addon            # tag addon-v<version>, wait for both images, then merge main via PR + GitHub release
-#   tool/release.sh site [knx] [--live] # knx-monitor.de with /socials/: preview build, --live to gh-pages
+#   tool/release.sh site [knx] [--live] # busclear.de with /socials/: preview build, --live over FTPS to do.de
 #   tool/release.sh android          # build signed AAB (needs android/key.properties)
 #   tool/release.sh ios              # build IPA, archive for the Organizer, upload to App Store Connect if API key is set
 #   tool/release.sh macos            # build and archive for the Organizer (upload there), symbols kept
 #   tool/release.sh app              # android + ios, then tag app-v<version>
 #   tool/release.sh desktop          # Linux from CI of tag app-v<version> → public release (latest)
-#   tool/release.sh box <version>    # KNX Box image from the box-v<version> workflow, plus the case (box/case) → public release
+#   tool/release.sh box <version>    # Busclear Box image from the box-v<version> workflow, plus the case (box/case) → public release
 #   tool/release.sh status           # show versions, tags and open release steps
 #   tool/release.sh notes [--draft]  # release texts of this build (TestFlight, Play) complete? drafts from the PRs
 #   tool/release.sh devicetest [--device <id>] [test …]
@@ -89,6 +91,38 @@ require_clean_main() {
 # build and the add-on server come from verify_extra in tool/werkbank.conf.
 cmd_verify() { wb_verify; }
 
+# The add-on image's smoke test (tool/smoke_docker.sh), locally instead of in
+# the CI: builds the web app and the image with podman (or docker), runs the
+# test and stamps the commit (werkbank/smoke). push and the add-on tag then tell
+# GitHub, and the smoke job of addon.yml skips it. On macOS podman needs its
+# machine (started here) and a compose provider (brew install docker-compose).
+SMOKE_IMAGE=localhost/knx-monitor-smoke
+smoke_engine() {
+  if [ -n "${ENGINE:-}" ]; then echo "$ENGINE"
+  elif command -v podman >/dev/null 2>&1; then echo podman
+  elif command -v docker >/dev/null 2>&1; then echo docker
+  fi
+}
+smoke_stamped() {
+  local f; f="$(git rev-parse --git-dir)/werkbank-stamp-smoke"
+  [ -f "$f" ] && [ "$(cat "$f")" = "$(git rev-parse HEAD)" ]
+}
+cmd_smoke() {
+  local engine; engine=$(smoke_engine)
+  [ -n "$engine" ] || die "neither podman nor docker found (brew install podman)"
+  if [ "$engine" = podman ] && [ "$(uname)" = Darwin ] &&
+    ! podman machine inspect --format '{{.State}}' 2>/dev/null | grep -q running; then
+    say "Starting the podman machine"
+    podman machine start >/dev/null
+  fi
+  say "Web app and packages for the image"
+  tool/build_ha_addon.sh >/dev/null
+  say "Building $SMOKE_IMAGE ($engine)"
+  "$engine" build -q -t "$SMOKE_IMAGE" ha-addon/knx_monitor >/dev/null
+  ENGINE=$engine tool/smoke_docker.sh "$SMOKE_IMAGE"
+  wb_stamp smoke
+}
+
 cmd_check() {
   require_clean_main ahead
   cmd_verify
@@ -127,9 +161,14 @@ cmd_addon() {
   tag_exists "addon-v$v" && die "addon-v$v already exists – bump version in $ADDON_CONFIG"
   local notes; notes=$(changelog_section "$v")
   [ -n "$notes" ] || die "no CHANGELOG entry for $v in $ADDON_CHANGELOG"
+  # Smoke test locally first: a broken image stops here, before the tag, and the
+  # tag's CI skips the test (werkbank/smoke). Without podman/docker the CI runs it.
+  if ! smoke_stamped; then
+    if [ -n "$(smoke_engine)" ]; then cmd_smoke; else warn "no podman/docker – the CI runs the smoke test"; fi
+  fi
   say "Tagging addon-v$v (main stays unmerged until the images exist)"
   git tag -a "addon-v$v" -m "Home Assistant add-on $v"
-  git push -q origin "addon-v$v"
+  wb_push_tag "addon-v$v"
   say "Waiting for image workflow"
   sleep 10
   local run; run=$(gh run list -R "$REPO" --workflow addon.yml --branch "addon-v$v" -L 1 --json databaseId --jq '.[0].databaseId')
@@ -180,7 +219,7 @@ cmd_verify_images() {
   [ $ok = 1 ]
 }
 
-# knx-monitor.de (site/ with the socials page) through the werkbank deploy:
+# busclear.de (site/ with the socials page) through the werkbank deploy:
 # preview by default, --live from a clean main (tool/werkbank.conf, WB_SITES).
 cmd_site() {
   command -v hugo >/dev/null || die "hugo not installed (brew install hugo)"
@@ -261,7 +300,7 @@ cmd_ios() {
 
 # Path of a new archive in the folder the Xcode Organizer reads ($1: platform).
 organizer_path() {
-  echo "$HOME/Library/Developer/Xcode/Archives/$(date +%F)/KNX Monitor $1 $(app_version).xcarchive"
+  echo "$HOME/Library/Developer/Xcode/Archives/$(date +%F)/Busclear $1 $(app_version).xcarchive"
 }
 
 # Makes an archive show up in the Xcode Organizer.
@@ -304,10 +343,13 @@ cmd_app() {
   tag_exists "app-v$v" && die "app-v$v already exists – bump the build number in pubspec.yaml"
   # Texts first: an upload without them leaves testers with nothing to look at.
   if [ "${UPLOAD:-}" = 1 ]; then WB_NO_CLIPBOARD=1 wb_store_notes >/dev/null; fi
+  # verify for exactly this commit lets the tag's CI skip app and addon-server
+  # (werkbank/verify, job gate); the desktop builds run in any case.
+  [ "$(cat "$(wb_stamp_file)" 2>/dev/null)" = "$(git rev-parse HEAD)" ] || cmd_verify
   cmd_android
   cmd_ios
   git tag -a "app-v$v" -m "App store build $v"
-  git push -q origin "app-v$v"
+  wb_push_tag "app-v$v"
   say "Tagged app-v$v"
 }
 
@@ -342,13 +384,13 @@ cmd_desktop() {
     tar -czf "$tmp/out/knx-monitor-$name-linux-x64.tar.gz" bundle)
   (cd "$tmp/out" && shasum -a 256 ./*.tar.gz | sed 's| \./| |' >SHA256SUMS.txt)
   say "Creating public release app-v$v"
-  gh release create "app-v$v" -R "$PUBLIC_REPO" --title "KNX Monitor $name" --latest \
-    --notes "Linux build of KNX Monitor $name: unpack and run \`./install.sh\` in the \`bundle\` folder: it installs KNX Monitor to \`~/.local/opt/knx-monitor\` and adds it with its icon to the app menu, then the download can go. For an update, do the same with the new version. Step by step (German and English): \`README.txt\` in the \`bundle\` folder. Windows, iPhone, iPad, Mac and Android follow (App Store, Google Play)." \
+  gh release create "app-v$v" -R "$PUBLIC_REPO" --title "Busclear $name" --latest \
+    --notes "Linux build of Busclear $name: unpack and run \`./install.sh\` in the \`bundle\` folder: it installs Busclear to \`~/.local/opt/knx-monitor\` and adds it with its icon to the app menu, then the download can go. For an update, do the same with the new version. Step by step (German and English): \`README.txt\` in the \`bundle\` folder. Windows, iPhone, iPad, Mac and Android follow (App Store, Google Play)." \
     "$tmp"/out/*
   rm -rf "$tmp"
 }
 
-# KNX Box: .github/workflows/box-image.yml builds image and package on a
+# Busclear Box: .github/workflows/box-image.yml builds image and package on a
 # box-v<version> tag; this publishes its artifacts in the public repository.
 #
 # Only a run started by pushing the tag (not a manual run on a branch of the
@@ -417,7 +459,7 @@ cmd_box() {
   for bundle in "$tmp"/*.sigstore.json; do
     [ ! -f "$bundle" ] || files+=("$bundle")
   done
-  gh release create "$tag" -R "$PUBLIC_REPO" --latest=false --title "KNX Monitor Box $v" --notes "$notes" "${files[@]}"
+  gh release create "$tag" -R "$PUBLIC_REPO" --latest=false --title "Busclear Box $v" --notes "$notes" "${files[@]}"
   rm -rf "$tmp"
 }
 
@@ -432,6 +474,7 @@ cmd_status() {
 
 case "${1:-}" in
   verify) cmd_verify ;;
+  smoke) cmd_smoke ;;
   push) shift; wb_push "$@" ;;
   layout) wb_layout ;;
   check) cmd_check ;;
@@ -450,5 +493,5 @@ case "${1:-}" in
   # For tests and for checking what a build would get, without building.
   rc-define) rc_define "${2:?RC_APPLE_KEY or RC_GOOGLE_KEY}" ;;
   desktop-run) desktop_run "${2:?tag}" ;;
-  *) sed -n '2,37p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,39p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

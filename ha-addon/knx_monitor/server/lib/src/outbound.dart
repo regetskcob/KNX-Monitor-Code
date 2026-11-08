@@ -122,7 +122,7 @@ Future<OutboundResult> sendOutbound({
         headers: {
           ...auth,
           // Headers are ASCII; the text is in the body.
-          'Title': message.title.codeUnits.every((c) => c < 128) ? message.title : 'KNX Monitor',
+          'Title': message.title.codeUnits.every((c) => c < 128) ? message.title : 'Busclear',
           'Priority': message.kind == 'urgent' ? '4' : '3',
           'Tags': message.kind == 'urgent' ? 'warning' : 'house',
           HttpHeaders.contentTypeHeader: 'text/plain; charset=utf-8',

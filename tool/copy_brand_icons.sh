@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copies the KNX Monitor icon set exported by Horizont into every platform.
+# Copies the Busclear icon set exported by Horizont into every platform.
 #
 #   tool/copy_brand_icons.sh <path to a horizont checkout>
 #

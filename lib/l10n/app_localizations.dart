@@ -1835,7 +1835,7 @@ abstract class AppLocalizations {
   /// PDF footer with creation date and time.
   ///
   /// In de, this message translates to:
-  /// **'Erstellt mit KNX Monitor · {date} {time} Uhr'**
+  /// **'Erstellt mit Busclear · {date} {time} Uhr'**
   String pdfFooterCreated(String date, String time);
 
   /// PDF footer page number.
@@ -3386,7 +3386,7 @@ abstract class AppLocalizations {
   /// **'nicht im Projekt (Tunnel/Visu?)'**
   String get topoNotInProject;
 
-  /// Topology tool: sender 15.15.255, the factory address of KNX devices and of the KNX HAT in a KNX Monitor Box
+  /// Topology tool: sender 15.15.255, the factory address of KNX devices and of the KNX HAT in a Busclear Box
   ///
   /// In de, this message translates to:
   /// **'Werksadresse (Box-Modul oder neues Gerät?)'**
@@ -3917,7 +3917,7 @@ abstract class AppLocalizations {
   /// Letzte Zeile der Befund-Mitteilung: wie viele Befunde nicht aufgeführt sind und wo die Einzelheiten stehen
   ///
   /// In de, this message translates to:
-  /// **'{count, plural, =0{Einzelheiten in KNX Monitor unter „Gesundheit“} =1{… und 1 weiterer. Einzelheiten in KNX Monitor unter „Gesundheit“} other{… und {count} weitere. Einzelheiten in KNX Monitor unter „Gesundheit“}}'**
+  /// **'{count, plural, =0{Einzelheiten in Busclear unter „Gesundheit“} =1{… und 1 weiterer. Einzelheiten in Busclear unter „Gesundheit“} other{… und {count} weitere. Einzelheiten in Busclear unter „Gesundheit“}}'**
   String healthNotifyMore(int count);
 
   /// Gesundheit: Kennzeichen neuer Befund
@@ -4277,13 +4277,13 @@ abstract class AppLocalizations {
   /// Section label: Raspberry Pi box that records the bus.
   ///
   /// In de, this message translates to:
-  /// **'KNX-Box'**
+  /// **'Busclear Box'**
   String get boxSection;
 
   /// Button: pair with a KNX box.
   ///
   /// In de, this message translates to:
-  /// **'Mit KNX-Box koppeln'**
+  /// **'Mit Busclear Box koppeln'**
   String get boxPair;
 
   /// Pairing dialog: how to pair.
@@ -4307,7 +4307,7 @@ abstract class AppLocalizations {
   /// Dialog title when a pairing link was opened.
   ///
   /// In de, this message translates to:
-  /// **'Mit KNX-Box verbinden?'**
+  /// **'Mit Busclear Box verbinden?'**
   String get boxPairTitle;
 
   /// Dialog body when a pairing link was opened; the box address is shown above it.
@@ -4319,7 +4319,7 @@ abstract class AppLocalizations {
   /// Banner: app runs through a KNX box.
   ///
   /// In de, this message translates to:
-  /// **'Über KNX-Box {name}'**
+  /// **'Über Busclear Box {name}'**
   String boxVia(String name);
 
   /// Banner: gateway field configures the box.
@@ -4343,7 +4343,7 @@ abstract class AppLocalizations {
   /// Error: no box paired.
   ///
   /// In de, this message translates to:
-  /// **'Keine KNX-Box gekoppelt.'**
+  /// **'Keine Busclear Box gekoppelt.'**
   String get boxNone;
 
   /// Error: box rejected the access key.
@@ -4355,7 +4355,7 @@ abstract class AppLocalizations {
   /// Error: box not reachable.
   ///
   /// In de, this message translates to:
-  /// **'KNX-Box {address} nicht erreichbar. Ist das Gerät im WLAN der Box?'**
+  /// **'Busclear Box {address} nicht erreichbar. Ist das Gerät im WLAN der Box?'**
   String boxUnreachable(String address);
 
   /// Label: history size limit (add-on).
@@ -4535,7 +4535,7 @@ abstract class AppLocalizations {
   /// HAT mode without box.
   ///
   /// In de, this message translates to:
-  /// **'Nur über die KNX-Box mit aufgestecktem KNX-HAT möglich.'**
+  /// **'Nur über die Busclear Box mit aufgestecktem KNX-HAT möglich.'**
   String get connectModeHatBoxOnly;
 
   /// Field: individual address of the HAT.
@@ -4865,7 +4865,7 @@ abstract class AppLocalizations {
   /// Menu: open the about page with the third-party licenses.
   ///
   /// In de, this message translates to:
-  /// **'Über KNX Monitor und Lizenzen'**
+  /// **'Über Busclear und Lizenzen'**
   String get aboutLicenses;
 
   /// Copyright line on the about/licenses page.
@@ -5537,7 +5537,7 @@ abstract class AppLocalizations {
   /// Button: set up a box by scanning its QR code
   ///
   /// In de, this message translates to:
-  /// **'KNX-Box hinzufügen'**
+  /// **'Busclear Box hinzufügen'**
   String get boxAdd;
 
   /// Scanner title
@@ -5567,7 +5567,7 @@ abstract class AppLocalizations {
   /// Setup screen title
   ///
   /// In de, this message translates to:
-  /// **'KNX-Box einrichten'**
+  /// **'Busclear Box einrichten'**
   String get boxSetupTitle;
 
   /// Setup step
@@ -5969,7 +5969,7 @@ abstract class AppLocalizations {
   /// Untertitel der Installation, in der die gekoppelte Box gerade aufzeichnet
   ///
   /// In de, this message translates to:
-  /// **'KNX-Box zeichnet hier auf'**
+  /// **'Busclear Box zeichnet hier auf'**
   String get installationBoxRecording;
 
   /// Auswahl im Langzeitverlauf: welche Installation
@@ -5981,13 +5981,13 @@ abstract class AppLocalizations {
   /// Zusatz in der Lösch-Rückfrage, wenn die Box die Installation führt
   ///
   /// In de, this message translates to:
-  /// **'Auch auf der KNX-Box, mit ihrem Langzeitverlauf.'**
+  /// **'Auch auf der Busclear Box, mit ihrem Langzeitverlauf.'**
   String get installationDeleteOnBox;
 
-  /// Titel der Aufzeichnungs-Karte im Verbinden-Bildschirm über die KNX-Box (im Add-on: addonTitle)
+  /// Titel der Aufzeichnungs-Karte im Verbinden-Bildschirm über die Busclear Box (im Add-on: addonTitle)
   ///
   /// In de, this message translates to:
-  /// **'Daueraufzeichnung auf der KNX-Box'**
+  /// **'Daueraufzeichnung auf der Busclear Box'**
   String get boxRecordingTitle;
 
   /// Titel der Bezahlseite und Menüeintrag
@@ -6149,7 +6149,7 @@ abstract class AppLocalizations {
   /// Erklärung der Beta-Freischaltung; der Titel hat einen versteckten langen Druck
   ///
   /// In de, this message translates to:
-  /// **'Danke fürs Testen! In der Beta ist alles freigeschaltet. Erscheint KNX Monitor im App Store, gibt es auf diesem Gerät {months} Monate Pro als Dankeschön.'**
+  /// **'Danke fürs Testen! In der Beta ist alles freigeschaltet. Erscheint Busclear im App Store, gibt es auf diesem Gerät {months} Monate Pro als Dankeschön.'**
   String planBetaBody(int months);
 
   /// Meldung nach dem versteckten Schalter: Käufe testen
@@ -6695,7 +6695,7 @@ abstract class AppLocalizations {
   /// Fehler beim Öffnen
   ///
   /// In de, this message translates to:
-  /// **'Kein Diagnosepaket von KNX Monitor.'**
+  /// **'Kein Diagnosepaket von Busclear.'**
   String get diagPackageInvalid;
 
   /// Fehler: neueres Format
@@ -7928,7 +7928,7 @@ abstract class AppLocalizations {
   /// **'Aus: Die Box ist nur in ihrem eigenen WLAN erreichbar, beim Kunden kommt niemand aus dessen Netz an sie heran. An: für die eigene Box im eigenen Netz, dann reicht dort das Box-Passwort.'**
   String get boxLanAccessHint;
 
-  /// Settings of KNX Monitor in a Docker container: whether other devices on the network may reach it.
+  /// Settings of Busclear in a Docker container: whether other devices on the network may reach it.
   ///
   /// In de, this message translates to:
   /// **'Zugriff aus dem Netzwerk'**
@@ -8003,7 +8003,7 @@ abstract class AppLocalizations {
   /// Version line in the menu: app version.
   ///
   /// In de, this message translates to:
-  /// **'KNX Monitor {version}'**
+  /// **'Busclear {version}'**
   String versionApp(String version);
 
   /// Version line in the menu: add-on server version.
@@ -8291,7 +8291,7 @@ abstract class AppLocalizations {
   /// Introduction, first card: text.
   ///
   /// In de, this message translates to:
-  /// **'KNX Monitor hört am KNX-IP-Gateway mit und zeigt jedes Telegramm: wer sendet, an welche Gruppenadresse, mit welchem Wert. Diese Einführung führt durch die wichtigsten Stellen, mit dem Demo-Haus als Beispiel.'**
+  /// **'Busclear hört am KNX-IP-Gateway mit und zeigt jedes Telegramm: wer sendet, an welche Gruppenadresse, mit welchem Wert. Diese Einführung führt durch die wichtigsten Stellen, mit dem Demo-Haus als Beispiel.'**
   String get tourWelcomeText;
 
   /// Introduction: connecting, title.
@@ -8477,7 +8477,7 @@ abstract class AppLocalizations {
   /// Introduction: long-term history, text.
   ///
   /// In de, this message translates to:
-  /// **'Der Langzeitverlauf hebt ganze Tage auf, im Add-on und auf der KNX-Box rund um die Uhr. Du spulst zurück, was nachts passiert ist, mit Zeitleiste je Gruppenadresse und Wiedergabe in 1- bis 60-facher Geschwindigkeit.'**
+  /// **'Der Langzeitverlauf hebt ganze Tage auf, im Add-on und auf der Busclear Box rund um die Uhr. Du spulst zurück, was nachts passiert ist, mit Zeitleiste je Gruppenadresse und Wiedergabe in 1- bis 60-facher Geschwindigkeit.'**
   String get tourHistoryText;
 
   /// Introduction chip: timeline per group address.
@@ -8663,7 +8663,7 @@ abstract class AppLocalizations {
   /// Introduction: KNX box, title.
   ///
   /// In de, this message translates to:
-  /// **'KNX-Box für die Baustelle.'**
+  /// **'Busclear Box für die Baustelle.'**
   String get tourBoxTitle;
 
   /// Introduction: KNX box, text.
@@ -9041,7 +9041,7 @@ abstract class AppLocalizations {
   /// Abnahme-PDF: Hinweis zur Unterschrift
   ///
   /// In de, this message translates to:
-  /// **'Einfache elektronische Unterschrift auf dem Gerät, erstellt mit KNX Monitor.'**
+  /// **'Einfache elektronische Unterschrift auf dem Gerät, erstellt mit Busclear.'**
   String get acceptSignatureNote;
 
   /// Unterschrift: rückgängig
@@ -9083,7 +9083,7 @@ abstract class AppLocalizations {
   /// Werkzeugliste: Untertitel Fehlerjagd
   ///
   /// In de, this message translates to:
-  /// **'Sporadische Fehler über Tage fangen – mit der KNX-Box'**
+  /// **'Sporadische Fehler über Tage fangen – mit der Busclear Box'**
   String get huntTool;
 
   /// Fehlerjagd: neu laden
@@ -9095,7 +9095,7 @@ abstract class AppLocalizations {
   /// Fehlerjagd: ohne Box oder Add-on
   ///
   /// In de, this message translates to:
-  /// **'Die Fehlerjagd läuft auf der KNX-Box oder im Home-Assistant-Add-on, rund um die Uhr. Koppel die App mit einer Box, um sie einzurichten.'**
+  /// **'Die Fehlerjagd läuft auf der Busclear Box oder im Home-Assistant-Add-on, rund um die Uhr. Koppel die App mit einer Box, um sie einzurichten.'**
   String get huntNeedsBox;
 
   /// Fehlerjagd: Erklärung
@@ -9833,7 +9833,7 @@ abstract class AppLocalizations {
   /// Project file help: what it is.
   ///
   /// In de, this message translates to:
-  /// **'Dein Elektriker hat die Anlage mit der Planungssoftware ETS eingerichtet. Die Projektdatei (Endung .knxproj) enthält alle Namen: welche Gruppenadresse das Küchenlicht schaltet, welches Gerät wo sitzt, welche Werte es gibt. Mit ihr zeigt KNX Monitor Namen statt Zahlen.'**
+  /// **'Dein Elektriker hat die Anlage mit der Planungssoftware ETS eingerichtet. Die Projektdatei (Endung .knxproj) enthält alle Namen: welche Gruppenadresse das Küchenlicht schaltet, welches Gerät wo sitzt, welche Werte es gibt. Mit ihr zeigt Busclear Namen statt Zahlen.'**
   String get projectHelpWhat;
 
   /// Project file help: section.
@@ -10421,7 +10421,7 @@ abstract class AppLocalizations {
   /// Weekly report basis when the app runs only part-time.
   ///
   /// In de, this message translates to:
-  /// **'Grundlage: Die App hat diese Woche etwa {time} an {days, plural, =1{1 Tag} other{{days} Tagen}} mitgehört ({checks}). Was dazwischen passiert, sieht der Bericht nicht – rund um die Uhr hört nur eine KNX-Box oder das Home-Assistant-Add-on mit.'**
+  /// **'Grundlage: Die App hat diese Woche etwa {time} an {days, plural, =1{1 Tag} other{{days} Tagen}} mitgehört ({checks}). Was dazwischen passiert, sieht der Bericht nicht – rund um die Uhr hört nur eine Busclear Box oder das Home-Assistant-Add-on mit.'**
   String weekBasisPartial(String time, int days, String checks);
 
   /// Weekly report basis without listening time.
@@ -10475,7 +10475,7 @@ abstract class AppLocalizations {
   /// Server name in weekly basis.
   ///
   /// In de, this message translates to:
-  /// **'KNX-Box'**
+  /// **'Busclear Box'**
   String get weekServerBox;
 
   /// Server name in weekly basis.
@@ -10553,7 +10553,7 @@ abstract class AppLocalizations {
   /// HA-Konfiguration: Erklärung
   ///
   /// In de, this message translates to:
-  /// **'KNX Monitor leitet aus dem ETS-Projekt Leuchten, Behänge, Raumregler, Schalter und Sensoren für die KNX-Integration von Home Assistant ab. Wähle aus, was du übernehmen willst. Markierte Einträge bitte prüfen – dort war die Zuordnung nicht eindeutig.'**
+  /// **'Busclear leitet aus dem ETS-Projekt Leuchten, Behänge, Raumregler, Schalter und Sensoren für die KNX-Integration von Home Assistant ab. Wähle aus, was du übernehmen willst. Markierte Einträge bitte prüfen – dort war die Zuordnung nicht eindeutig.'**
   String get haExplain;
 
   /// HA-Konfiguration: ohne Projekt
@@ -10763,7 +10763,7 @@ abstract class AppLocalizations {
   /// HA-YAML: Kopfzeile (Kommentar)
   ///
   /// In de, this message translates to:
-  /// **'KNX Monitor {version} – KNX-Integration für Home Assistant, Projekt „{project}“, {date}'**
+  /// **'Busclear {version} – KNX-Integration für Home Assistant, Projekt „{project}“, {date}'**
   String haYamlHeader(String version, String project, String date);
 
   /// HA-YAML: Kommentar
@@ -11285,7 +11285,7 @@ abstract class AppLocalizations {
   /// Forenpaket: Überschrift im Text
   ///
   /// In de, this message translates to:
-  /// **'Mitschnitt aus KNX Monitor'**
+  /// **'Mitschnitt aus Busclear'**
   String get forumHeading;
 
   /// Forenpaket: Abschnitt
@@ -11339,7 +11339,7 @@ abstract class AppLocalizations {
   /// Forenpaket: Version
   ///
   /// In de, this message translates to:
-  /// **'KNX Monitor {version}'**
+  /// **'Busclear {version}'**
   String forumMetaApp(String version);
 
   /// Forenpaket: Verbindungsart
@@ -11393,7 +11393,7 @@ abstract class AppLocalizations {
   /// ETS tasks PDF: how to use it.
   ///
   /// In de, this message translates to:
-  /// **'Je Gerät eine Seite: die Zeichnung mit den Kanälen, die Aufgaben zum Abhaken und die Kanalzuordnung aus dem Projekt. Danach das Projekt neu in KNX Monitor importieren; der Projekt-Abgleich zeigt, was erledigt ist.'**
+  /// **'Je Gerät eine Seite: die Zeichnung mit den Kanälen, die Aufgaben zum Abhaken und die Kanalzuordnung aus dem Projekt. Danach das Projekt neu in Busclear importieren; der Projekt-Abgleich zeigt, was erledigt ist.'**
   String get etsHowTo;
 
   /// ETS tasks PDF: summary label, devices with tasks.
@@ -12587,7 +12587,7 @@ abstract class AppLocalizations {
   /// Fehlermeldung
   ///
   /// In de, this message translates to:
-  /// **'Diese Datei lässt sich nicht lesen. Sie ist beschädigt oder kein Paket von KNX Monitor.'**
+  /// **'Diese Datei lässt sich nicht lesen. Sie ist beschädigt oder kein Paket von Busclear.'**
   String get packageCorrupt;
 
   /// Fehlermeldung
@@ -12941,7 +12941,7 @@ abstract class AppLocalizations {
   /// Galerie geteilter Vorlagen
   ///
   /// In de, this message translates to:
-  /// **'Wähle ein Diagramm. Die App erstellt daraus eine Datei mit Namen und Rollen, ohne Adressen und Räume. Teile sie selbst, zum Beispiel per Mail an support@knx-monitor.de; hochgeladen wird nichts.'**
+  /// **'Wähle ein Diagramm. Die App erstellt daraus eine Datei mit Namen und Rollen, ohne Adressen und Räume. Teile sie selbst, zum Beispiel per Mail an support@busclear.de; hochgeladen wird nichts.'**
   String get gallerySubmitHint;
 
   /// Galerie geteilter Vorlagen
@@ -13091,7 +13091,7 @@ abstract class AppLocalizations {
   /// Etiketten
   ///
   /// In de, this message translates to:
-  /// **'Das ist kein Etikett von KNX Monitor.'**
+  /// **'Das ist kein Etikett von Busclear.'**
   String get siteDocsScanForeign;
 
   /// Servicebericht
@@ -13739,7 +13739,7 @@ abstract class AppLocalizations {
   /// Absturzerkennung: Hinweis nach Absturz
   ///
   /// In de, this message translates to:
-  /// **'KNX Monitor wurde unerwartet beendet'**
+  /// **'Busclear wurde unerwartet beendet'**
   String get crashTitle;
 
   /// Absturzerkennung: Knopf: öffnet das Diagnosepaket
@@ -14021,13 +14021,13 @@ abstract class AppLocalizations {
   /// No description provided for @appLockTitle.
   ///
   /// In de, this message translates to:
-  /// **'KNX Monitor ist gesperrt'**
+  /// **'Busclear ist gesperrt'**
   String get appLockTitle;
 
   /// No description provided for @appLockReason.
   ///
   /// In de, this message translates to:
-  /// **'KNX Monitor entsperren'**
+  /// **'Busclear entsperren'**
   String get appLockReason;
 
   /// No description provided for @appLockSystemHint.
@@ -14351,7 +14351,7 @@ abstract class AppLocalizations {
   /// No description provided for @recoveryPdfIntro.
   ///
   /// In de, this message translates to:
-  /// **'Dieser Schlüssel öffnet die App-Sperre von KNX Monitor, wenn das App-Passwort vergessen wurde.'**
+  /// **'Dieser Schlüssel öffnet die App-Sperre von Busclear, wenn das App-Passwort vergessen wurde.'**
   String get recoveryPdfIntro;
 
   /// No description provided for @recoveryPdfAccount.
@@ -14489,7 +14489,7 @@ abstract class AppLocalizations {
   /// Pro Team, Konto oder Sicherung
   ///
   /// In de, this message translates to:
-  /// **'Mit diesem Blatt bekommst du die Anmeldecodes für dein KNX-Monitor-Konto zurück, wenn dein Telefon weg ist.'**
+  /// **'Mit diesem Blatt bekommst du die Anmeldecodes für dein Busclear-Konto zurück, wenn dein Telefon weg ist.'**
   String get accountMfaPdfIntro;
 
   /// Pro Team, Konto oder Sicherung
@@ -14555,7 +14555,7 @@ abstract class AppLocalizations {
   /// No description provided for @installationsNewerBody.
   ///
   /// In de, this message translates to:
-  /// **'Diese Daten stammen aus einer neueren Version von KNX Monitor. Bitte aktualisiere die App. Deine Daten bleiben unverändert.'**
+  /// **'Diese Daten stammen aus einer neueren Version von Busclear. Bitte aktualisiere die App. Deine Daten bleiben unverändert.'**
   String get installationsNewerBody;
 
   /// No description provided for @quarantineTitle.
@@ -15089,7 +15089,7 @@ abstract class AppLocalizations {
   /// Dialog ETS-Verlauf: Erklärung
   ///
   /// In de, this message translates to:
-  /// **'Lädt die Telegramme der dauerhaften Aufzeichnung als Gruppenmonitor-Datei der ETS. SpectrumKNX, die ETS und KNX Monitor öffnen sie direkt.'**
+  /// **'Lädt die Telegramme der dauerhaften Aufzeichnung als Gruppenmonitor-Datei der ETS. SpectrumKNX, die ETS und Busclear öffnen sie direkt.'**
   String get exportsEtsHistoryHint;
 
   /// Dialog ETS-Verlauf: Knopf
@@ -15422,7 +15422,7 @@ abstract class AppLocalizations {
   /// **'Neustarts anzeigen'**
   String get restartsShow;
 
-  /// Absturzerkennung: Erklärung auf der KNX-Box
+  /// Absturzerkennung: Erklärung auf der Busclear Box
   ///
   /// In de, this message translates to:
   /// **'Letzte 30 Tage. systemd startet den Server nach 3 s neu, die Aufzeichnung läuft dann weiter.'**
@@ -15667,6 +15667,150 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Auch KNX-Secure-Telegramme gehen entschlüsselt hinaus. Jeder, der den Broker lesen kann, sieht ihre Werte.'**
   String get dataExportMqttSecureOn;
+
+  /// Data export, MQTT telegram stream: raw data mode, group address filter and running number of the last telegram
+  ///
+  /// In de, this message translates to:
+  /// **'{mode, select, raw{Mit Rohdaten} rawOnly{Nur Rohdaten} other{Ohne Rohdaten}} · Gruppenadressen: {filter} · letzte Nr. (seq) {seq}'**
+  String dataExportMqttDetails(String mode, String filter, int seq);
+
+  /// Data export, MQTT telegram stream: no group address filter set
+  ///
+  /// In de, this message translates to:
+  /// **'alle'**
+  String get dataExportMqttFilterAll;
+
+  /// Verbinden: Abschnitt weitere Messpunkte (#8)
+  ///
+  /// In de, this message translates to:
+  /// **'Messpunkte'**
+  String get tapPointsTitle;
+
+  /// Verbinden: Erklärung Messpunkte
+  ///
+  /// In de, this message translates to:
+  /// **'Weitere Verbindungen zur selben Anlage, etwa ein Interface je Linie. Die App führt alles in einem Verlauf zusammen. Jeder Tunnel-Messpunkt belegt einen Tunnel an seinem Interface.'**
+  String get tapPointsHint;
+
+  /// Verbinden: erster Messpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'Messpunkt 1 ist die Verbindung oben.'**
+  String get tapPointFirst;
+
+  /// Knopf und Titel: Messpunkt hinzufügen
+  ///
+  /// In de, this message translates to:
+  /// **'Messpunkt hinzufügen'**
+  String get tapPointAdd;
+
+  /// Messpunkt: Feld Name
+  ///
+  /// In de, this message translates to:
+  /// **'Name'**
+  String get tapPointName;
+
+  /// Messpunkt: Beispiel für den Namen
+  ///
+  /// In de, this message translates to:
+  /// **'Linie 1.2 · MDT IP-Interface'**
+  String get tapPointNameHint;
+
+  /// Messpunkt: Feld IP-Adresse
+  ///
+  /// In de, this message translates to:
+  /// **'Adresse'**
+  String get tapPointHost;
+
+  /// Messpunkt: Feld Verbindungsart
+  ///
+  /// In de, this message translates to:
+  /// **'Verbindungsart'**
+  String get tapPointMode;
+
+  /// Messpunkt: Feld Zeitfenster
+  ///
+  /// In de, this message translates to:
+  /// **'Zeitfenster in ms'**
+  String get tapPointWindow;
+
+  /// Messpunkt: Hilfe zum Zeitfenster
+  ///
+  /// In de, this message translates to:
+  /// **'Leer = 100 ms. Über VPN größer wählen, etwa 250.'**
+  String get tapPointWindowHelp;
+
+  /// Messpunkt: Hinweis Adresse außerhalb des Netzes
+  ///
+  /// In de, this message translates to:
+  /// **'Die Adresse liegt nicht im eigenen Netz. Über VPN ist TCP robuster als UDP, Routing kommt meist nicht durch.'**
+  String get tapPointRemote;
+
+  /// Messpunkt: Zustand pausiert
+  ///
+  /// In de, this message translates to:
+  /// **'pausiert, Tunnel frei'**
+  String get tapPointPaused;
+
+  /// Messpunkt: Schalter aktiv/pausiert (Bedienhilfe)
+  ///
+  /// In de, this message translates to:
+  /// **'Messpunkt aktiv'**
+  String get tapPointActive;
+
+  /// Messpunkt: entfernen (Bedienhilfe)
+  ///
+  /// In de, this message translates to:
+  /// **'Messpunkt entfernen'**
+  String get tapPointRemove;
+
+  /// Messpunkt: Grenze erreicht
+  ///
+  /// In de, this message translates to:
+  /// **'Höchstens 8 Messpunkte je Anlage.'**
+  String get tapPointMax;
+
+  /// Messpunkt: Dialog bestätigen
+  ///
+  /// In de, this message translates to:
+  /// **'Hinzufügen'**
+  String get tapPointSave;
+
+  /// Monitor: Banner, ein Messpunkt ist getrennt
+  ///
+  /// In de, this message translates to:
+  /// **'{name} getrennt · {live} von {total} Messpunkten aktiv'**
+  String tapDown(String name, int live, int total);
+
+  /// Monitor: Banner Messpunkt getrennt, zweite Zeile
+  ///
+  /// In de, this message translates to:
+  /// **'Die anderen laufen weiter. Der getrennte verbindet sich von selbst neu.'**
+  String get tapDownHint;
+
+  /// Telegramm-Details: Abschnitt Messpunkte
+  ///
+  /// In de, this message translates to:
+  /// **'Weg durch die Anlage'**
+  String get detailsPath;
+
+  /// Telegramm-Details: Sichtung an einem Messpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'+{ms} ms · Hop {hop}'**
+  String detailsPathSeen(String ms, int hop);
+
+  /// Telegramm-Details: erste Sichtung
+  ///
+  /// In de, this message translates to:
+  /// **'zuerst · Hop {hop}'**
+  String detailsPathFirst(int hop);
+
+  /// Telegramm-Details: an diesem Messpunkt nicht gesehen
+  ///
+  /// In de, this message translates to:
+  /// **'nicht gesehen, gefiltert oder nur lokal'**
+  String get detailsPathMissing;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -52,7 +52,7 @@ if git -C "$DIR" diff --cached --quiet; then
   echo "nothing changed since the last sync"
 else
   git -C "$DIR" commit -q -m "Stand $head" \
-    -m "Source of KNX Monitor as of $head, without the private parts (tool/public_source/private.txt)."
+    -m "Source of Busclear as of $head, without the private parts (tool/public_source/private.txt)."
   echo "committed in $DIR: $(git -C "$DIR" log --oneline -1)"
 fi
 

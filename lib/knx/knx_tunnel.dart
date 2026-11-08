@@ -11,6 +11,7 @@ import 'gateway_info.dart';
 import 'package:knx/secure.dart';
 
 import 'secure/keyring_store.dart';
+import '../model/tap_points.dart';
 import 'telegram.dart';
 
 enum TunnelState { disconnected, connecting, connected }
@@ -121,6 +122,14 @@ class KnxTunnel {
 
   final _telegrams = StreamController<Telegram>.broadcast();
   Stream<Telegram> get telegrams => _telegrams.stream;
+
+  /// Tap points behind this connection (issue #8): MultiTunnel in the app, or the server's tap
+  /// points for a SharedTunnel. Empty with a single one.
+  final tapPoints = ValueNotifier<List<TapStatus>>(const []);
+
+  TapMerger? _tapMerger;
+  Timer? _tapFlush;
+  int _tapOfFrame = 0;
 
   /// All data frames including individual addressing (for device diagnostics).
   final _frames = StreamController<CemiFrame>.broadcast();
@@ -241,6 +250,8 @@ class KnxTunnel {
     _socketSub?.cancel();
     _socketSub = null;
     disconnect();
+    _tapFlush?.cancel();
+    if (tapPoints.value.isNotEmpty && tapLabels.value.isNotEmpty) tapLabels.value = const [];
     _telegrams.close();
     _frames.close();
     _busmon.close();
@@ -303,7 +314,58 @@ class KnxTunnel {
     final frame = CemiFrame.parse(cemi);
     if (frame != null) _frames.add(frame);
     final t = Telegram.fromCemi(cemi);
-    if (t != null) _telegrams.add(t);
+    if (t != null) _deliver(_tapOfFrame, t);
+  }
+
+  /// A received cEMI frame from tap point [tap] (issue #8); see [useTaps].
+  @protected
+  void receiveCemiAt(int tap, Uint8List cemi) {
+    _tapOfFrame = tap;
+    try {
+      receiveCemi(cemi);
+    } finally {
+      _tapOfFrame = 0;
+    }
+  }
+
+  /// Merges telegrams of [live] tap points ([receiveCemiAt]) into one stream; [live] ≤ 1 and no
+  /// windows ends merging once nothing is pending.
+  @protected
+  void useTaps(int live, {Map<int, Duration> windows = const {}}) {
+    final m = _tapMerger ??= TapMerger();
+    m.taps = live < 1 ? 1 : live;
+    m.windows
+      ..clear()
+      ..addAll(windows);
+  }
+
+  void _deliver(int tap, Telegram t) {
+    final m = _tapMerger;
+    if (m == null) {
+      _telegrams.add(tap == 0 ? t : t.atTap(tap));
+      return;
+    }
+    _emitMerged(m.add(tap, t));
+    _scheduleTapFlush();
+  }
+
+  void _emitMerged(List<Telegram> ready) {
+    if (_telegrams.isClosed) return;
+    for (final t in ready) {
+      _telegrams.add(t);
+    }
+  }
+
+  void _scheduleTapFlush() {
+    _tapFlush?.cancel();
+    final due = _tapMerger?.nextDue;
+    if (due == null) return;
+    var wait = due.difference(DateTime.now());
+    if (wait.isNegative) wait = Duration.zero;
+    _tapFlush = Timer(wait, () {
+      _emitMerged(_tapMerger?.flush(DateTime.now()) ?? const []);
+      _scheduleTapFlush();
+    });
   }
 
   /// For subclasses: the connection was lost.

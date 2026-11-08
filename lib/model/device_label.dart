@@ -48,7 +48,7 @@ class LabelUnknownInstallation extends LabelResolution {
   final int address;
 }
 
-/// Not a KNX Monitor label.
+/// Not a Busclear label.
 class LabelForeign extends LabelResolution {
   const LabelForeign();
 }

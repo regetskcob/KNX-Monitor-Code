@@ -52,6 +52,19 @@ class MqttTelegramState {
 
   /// Secured telegrams left out because the server could not decrypt them.
   int get undecrypted => json['undecrypted'] as int? ?? 0;
+
+  /// Whether the cEMI frame and further raw fields are sent too.
+  bool get raw => json['raw'] == true;
+
+  /// Whether only raw data goes out (no names, DPT, value, unit).
+  bool get rawOnly => json['rawOnly'] == true;
+
+  /// Group address filter as set on the server, e.g. `1/#,3/2/#`; empty = all.
+  String get filter => json['filter'] as String? ?? '';
+
+  /// Running number of the last telegram due to be sent; `null` on servers
+  /// before the field existed.
+  int? get seq => json['seq'] as int?;
 }
 
 /// Talks to the server; replaceable in tests.

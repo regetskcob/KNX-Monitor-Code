@@ -325,7 +325,7 @@ void main() {
     await tester.pumpWidget(
       app(CrashNotice(time: DateTime(2026, 10, 30, 12), onReport: () => reported++, onDismiss: () => dismissed++)),
     );
-    expect(find.text('KNX Monitor wurde unerwartet beendet'), findsOneWidget);
+    expect(find.text('Busclear wurde unerwartet beendet'), findsOneWidget);
     expect(find.textContaining('Nichts wird automatisch gesendet'), findsOneWidget);
     await tester.tap(find.text('Bericht erstellen'));
     await tester.tap(find.text('Ausblenden'));
