@@ -228,13 +228,13 @@ implementation is checked against the examples of the KNX Association and xknx.
 
 | Part | Where | Used by the app | Used by the server (add-on, Docker, box) |
 |---|---|---|---|
-| CCM building blocks (CBC-MAC, CTR), X25519, password derivation | `packages/knx/lib/src/secure/knx_crypto.dart` | keyring, IP Secure, Data Secure | IP Secure, Data Secure |
-| IP Secure session | `packages/knx/lib/src/secure/ip_secure.dart` | `lib/knx/secure_tunnel.dart` | `server/lib/src/link.dart` |
-| Data Secure | `packages/knx/lib/src/secure/data_secure.dart` | `lib/knx/knx_tunnel.dart` (receive and send) | `server/lib/src/bus.dart` (receive only, for recording) |
+| CCM building blocks (CBC-MAC, CTR), X25519, password derivation | `package:knx` `lib/src/secure/knx_crypto.dart` | keyring, IP Secure, Data Secure | IP Secure, Data Secure |
+| IP Secure session | `package:knx` `lib/src/secure/ip_secure.dart` | `lib/knx/secure_tunnel.dart` | `package:knx_io` (`link.dart`) |
+| Data Secure | `package:knx` `lib/src/secure/data_secure.dart` | `lib/knx/knx_tunnel.dart` (receive and send) | `server/lib/src/bus.dart` (receive only, for recording) |
 | ETS keyring import | `lib/knx/secure/keyring.dart`, `lib/knx/secure/keyring_store.dart` | yes | reads `secure_keys.json` (`server/lib/src/bus.dart`, `_reloadKeys`, `DataSecure.fromJson`) |
-| Tests | `packages/knx/test/knx_crypto_test.dart`, `packages/knx/test/data_secure_test.dart` | `test/data_secure_test.dart` (keyring, `secure_keys.json`) | `server/test/robust_frames_test.dart` |
+| Tests | `knx_crypto_test.dart`, `data_secure_test.dart` in package knx | `test/data_secure_test.dart` (keyring, `secure_keys.json`) | `server/test/robust_frames_test.dart` |
 
-App and server use one implementation from the internal package `packages/knx`
+App and server use one implementation from the open-source package [`knx`](https://pub.dev/packages/knx)
 (`package:knx/secure.dart`); there are no copies any more.
 
 ### Keyring import
@@ -699,12 +699,56 @@ keyring and IP Secure passwords are not readable by other host accounts
 certificate of the user's own (`TLS_CERT`, `TLS_KEY`, `TLS_PORT`); without it,
 password and data travel in plain HTTP.
 
-The template drops all capabilities except `DAC_OVERRIDE` and `FOWNER` (kept
-so a data folder created by a host user stays writable) and sets
-`no-new-privileges`. Despite the host network, the server can therefore not
-open raw sockets. It still runs as root inside the container: data folders of
-existing installations belong to root, and a `user:` setting would make them
+The template drops all capabilities except `CHOWN`, `SETUID`, `SETGID`,
+`DAC_OVERRIDE` and `FOWNER` and sets `no-new-privileges`. Despite the host
+network, the server can therefore not open raw sockets. With `PUID`/`PGID`
+(`1000:1000` in the template) it starts as root only to hand the data folder
+to that user (`lchown`, symbolic links not followed, so data folders of older
+versions that belong to root keep working) and then switches for good
+(`setgroups`, `setgid`, `setuid` through libc in `drop_root.dart`, since the
+image has no `su`). It checks that `setuid(0)` fails afterwards and that the
+data folder is writable; otherwise it refuses to start (exit 78) instead of
+carrying on as root. After the switch the process holds no capabilities.
+Without `PUID` (older templates, a plain `docker run`) it runs as root as
+before. A `user:` setting is not used: it would make root-owned data folders
 unreadable after an update.
+
+### Further hardening (9 November 2026)
+
+Follow-ups of the review of 7 November:
+
+- **Frames of devices without admin rights** are rebuilt before they go on
+  the bus (`normalizeDeviceCemi` in `cemi_policy.dart`): standard frame, low
+  priority, hop count 6, no additional info, source 0.0.0 (the gateway puts in
+  its own address). Such a device can no longer raise its priority, change
+  the routing counter or pose as another device.
+- **ETS export**: one at a time; a second request gets `429` with
+  `Retry-After`.
+- **History cache**: a single day bigger than the cache budget is answered
+  but not kept, so the cache stays within its budget.
+- **Charts**: at most 8 series per chart on the server, as in the app.
+- **MQTT `recording/set`**: only `ON` and `OFF` are accepted (anything else
+  used to switch the recording off), and every change is logged. Making it
+  opt-in would break the existing Home Assistant switch.
+- **`/api/files` allowlist** (`knownAppFiles` in `files.dart`): in report
+  mode for now. A first path segment outside the list is logged once and
+  still served; once a release shows no unexpected names in the logs, the
+  list replaces the blocklist. `test/known_app_files_test.dart` checks every
+  file name in the app's code against the list; it found
+  `secure_sequence.json` missing (the Data Secure sequence counters), which
+  an enforced list would have refused.
+- **Without root in Docker** (PUID/PGID, see above). Tested with Podman: data
+  folder of a root-run container handed over, server as `1000:1000` with no
+  effective capabilities, and exit 78 without `SETUID`/`SETGID`.
+
+### Keys of installations and boxes are no credentials
+
+Installations, boxes and app instances have keys that tell them apart across
+devices ([keys.md](keys.md)). The installation key travels in handover
+packages and fault reports and is treated as public: no request is authorised
+by it, no path accepts it in place of an id, and a box that merely names the
+key of an installation in the app gets nothing exchanged for it until the
+user confirms the connection.
 
 ## 7. Outbound connections and what leaves the device
 
@@ -832,10 +876,10 @@ Collected from the sections above, and in `tool/public-repo/SECURITY.md`:
   device in the network can inject telegrams into the recording, watchers and
   alarms, or disconnect a UDP tunnel. Use a TCP or IP Secure tunnel where the
   gateway offers one.
-- The Docker image runs the server as root inside the container (existing data
-  folders belong to root). The template drops all capabilities except
-  `DAC_OVERRIDE` and `FOWNER` and sets `no-new-privileges`; a plain `docker
-  run` without those options keeps Docker's defaults, including `NET_RAW`.
+- The Docker image runs the server as root unless `PUID` is set (the template
+  sets it). A plain `docker run` without `PUID`, `--cap-drop` and
+  `no-new-privileges` keeps root and Docker's default capabilities, including
+  `NET_RAW`.
 - Behind a reverse proxy every client has the proxy's address: one sender's
   lockout after wrong passwords locks out every browser login (paired apps
   keep working).
@@ -845,6 +889,21 @@ Collected from the sections above, and in `tool/public-repo/SECURITY.md`:
 - IP Secure without a device authentication code does not verify the gateway.
   Secure routing is not implemented.
 - Diagnostics packages are scrubbed, not anonymous.
+- Pairing and setup links use the custom scheme `knxmonitor://`, which any app
+  on the phone can register too. A link that another app catches gives it the
+  device key (`key=`) or, on the sticker, the first box password (`pw=`). The
+  app confirms every link from outside with the address before it pairs, the
+  sticker password must be changed on first use (which revokes devices paired
+  with it), and a paired device can be removed on `/pair`. Verified app links
+  would need a public web domain for each box, which a box in its own Wi-Fi
+  does not have.
+- The app pins the box certificate by its fingerprint and ignores its validity
+  period and name (the box often has no clock). A pin stays valid until the
+  box gets a new certificate: then pair again with the new link. Revoking a
+  device on `/pair` takes its key away regardless of the certificate.
+- The Prometheus endpoint (section 7) listens on all interfaces, so a scraper
+  in the network can reach it; it answers only local addresses with the token,
+  over plain HTTP.
 
 ## Reporting a vulnerability
 
@@ -854,3 +913,17 @@ on the repository `regetskcob/KNX-Monitor`. Only the latest release of the app,
 the add-on and the Busclear Box receives security fixes. Scope and known limits are
 listed in `tool/public-repo/SECURITY.md`, which is published as `SECURITY.md` in
 that repository.
+
+## Software bill of materials
+
+`python3 tool/sbom.py [out-dir]` writes one CycloneDX 1.5 file per product
+to `build/sbom/` (`busclear-app.cdx.json` from `pubspec.lock`,
+`busclear-server.cdx.json` from the add-on/box server's `pubspec.lock`). Each
+component carries version, source, SHA-256 and package URL (`pkg:pub/…`);
+git packages carry their repository and commit, dev dependencies are marked
+optional. Only the Python standard library is needed. The serial number
+depends on the lock file, so the same lock file gives the same document
+apart from its time stamp. `tool/release.sh` attaches it to every public
+release (`busclear-server.cdx.json` to the add-on release,
+`busclear-app.cdx.json` with the Linux build, listed in `SHA256SUMS.txt`), for
+the Cyber Resilience Act and for anyone who asks what Busclear contains.

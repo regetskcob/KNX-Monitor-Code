@@ -341,6 +341,31 @@ void main() {
       await until(() => !file.readAsStringSync().contains('$temperature'));
     });
 
+    test('completed days are read once, the open day at every check', () async {
+      // Pack all days but today, as the recorder does after midnight.
+      final today = Recorder.dayName(now);
+      for (final f in Directory('${data.path}/history').listSync().whereType<File>()) {
+        final name = f.uri.pathSegments.last;
+        if (!name.endsWith('.ndjson') || name.startsWith(today)) continue;
+        File('${f.path}.gz').writeAsBytesSync(gzip.encode(f.readAsBytesSync()));
+        f.deleteSync();
+      }
+      await ha.cycles.check();
+      final first = ha.cycles.daysRead;
+      await ha.cycles.check();
+      expect(ha.cycles.daysRead - first, 1, reason: 'only today is read again');
+      final list = (await call('GET', '/api/ha/silent', token: ha.token)).$2! as List;
+      expect(list.single['address'], '1/2/3');
+      // A changed packed day (other size) is read again.
+      final yesterday = File(
+        '${data.path}/history/${Recorder.dayName(now.subtract(const Duration(days: 1)))}.ndjson.gz',
+      );
+      yesterday.writeAsBytesSync(gzip.encode([...gzip.decode(yesterday.readAsBytesSync()), ...utf8.encode('\n')]));
+      final before = ha.cycles.daysRead;
+      await ha.cycles.check();
+      expect(ha.cycles.daysRead - before, 2);
+    });
+
     test('a sender that came back while the server was down is not ignored any more', () async {
       await call('POST', '/api/ha/silent/ignore', token: ha.token, body: {'address': '1/2/3'});
       final day = Recorder.dayName(now);

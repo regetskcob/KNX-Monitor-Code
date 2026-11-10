@@ -23,7 +23,11 @@ void main() {
     final line = BusMetric.line(0x11);
     expect(BusMetric.of(line.id)!.line, 0x11);
     expect(BusMetric.lineLabel(0x11), '1.1');
-    expect(BusMetric.of(-3), isNull);
+    expect(BusMetric.of(-3), BusMetric.load);
+    expect(BusMetric.load.key, 'load');
+    expect(BusMetric.load.unit, '%');
+    expect(BusMetric.repeats.unit, '/min');
+    expect(BusMetric.of(-4), isNull);
   });
 
   test('je Minute: gesamt, wiederholt, je Linie; leere Minuten zählen 0', () {
@@ -41,5 +45,13 @@ void main() {
       final rates = BusMetric.telegrams.rates(log, now: t0.add(Duration(minutes: minutes)));
       expect(rates.length, lessThanOrEqualTo(400), reason: '$minutes min');
     }
+  });
+
+  test('Buslast: Belegungszeit der Leitung in Prozent, wie auf dem Server', () {
+    // Small telegrams (1 bit): (50 + 13 × 9 + 28) bits at 9600 bit/s = 20.3 ms each.
+    final log = [for (var i = 0; i < 30; i++) at(i * 2), at(119)];
+    final rates = BusMetric.load.rates(log, now: t0.add(const Duration(minutes: 2)));
+    expect(rates.first.$2, closeTo(30 * 195 / 9600 / 60 * 100, 0.001));
+    expect(rates.first.$2, closeTo(1.016, 0.01));
   });
 }

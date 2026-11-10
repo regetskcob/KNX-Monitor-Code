@@ -208,12 +208,19 @@ Future<void> saveBytes(BuildContext context, Uint8List bytes, String fileName, {
 
 /// Shares a finished file again (from the recent exports): PDF via the print
 /// share menu, everything else via the system share menu; Linux and Windows
-/// save instead of sharing.
+/// save instead of sharing, the Mac asks which of the two.
 Future<void> shareFile(BuildContext context, Uint8List bytes, String name, String mimeType, {Rect? origin}) async {
   final messenger = ScaffoldMessenger.of(context);
   final colors = context.hz;
   try {
-    if (!kIsWeb && const {TargetPlatform.linux, TargetPlatform.windows}.contains(defaultTargetPlatform)) {
+    // Mac: the share menu has no "Save As…" (test round 29 Oct), so ask first which of the two.
+    var save = !kIsWeb && const {TargetPlatform.linux, TargetPlatform.windows}.contains(defaultTargetPlatform);
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
+      final choice = await _saveOrShare(context, origin);
+      if (choice == null) return;
+      save = choice;
+    }
+    if (save) {
       final uri = await FilePicker.saveFile(fileName: name, bytes: bytes, mimeType: mimeType);
       if (uri != null) messenger.showSnackBar(SnackBar(content: Text(s.exportSaved(name))));
       return;
@@ -233,6 +240,20 @@ Future<void> shareFile(BuildContext context, Uint8List bytes, String name, Strin
     debugPrint('Teilen fehlgeschlagen: $e');
     messenger.showSnackBar(horizontMessageSnackBar(colors, s.exportFailedGeneric, status: HorizontStatus.critical));
   }
+}
+
+/// Mac: "Sichern unter …" (`true`) or "Teilen …" (`false`) at [origin], `null` when dismissed.
+Future<bool?> _saveOrShare(BuildContext context, Rect? origin) {
+  final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
+  final at = origin ?? Rect.fromCenter(center: overlay.size.center(Offset.zero), width: 1, height: 1);
+  return showMenu<bool>(
+    context: context,
+    position: RelativeRect.fromRect(at, Offset.zero & overlay.size),
+    items: [
+      PopupMenuItem(value: true, child: Text(s.shareSaveAs)),
+      PopupMenuItem(value: false, child: Text(s.shareShare)),
+    ],
+  );
 }
 
 /// File name with timestamp and an arbitrary extension.

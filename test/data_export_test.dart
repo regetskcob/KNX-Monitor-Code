@@ -130,5 +130,23 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Nur Rohdaten · Gruppenadressen: 1/#,3/2/# · letzte Nr. (seq) 42'), findsOneWidget);
+    expect(find.textContaining('knx_monitor/value/'), findsNothing, reason: 'keep last value is off');
+
+    await tester.pumpWidget(
+      app(
+        DataExportScreen(
+          key: const ValueKey('retain'),
+          client: _FakeClient(
+            const {},
+            mqtt: {'enabled': true, 'connected': true, 'retainValues': true, 'valuesSent': 12, 'seq': 42},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Letzter Wert je Adresse unter knx_monitor/value/… mit retain, 12 Werte gesendet.'),
+      findsOneWidget,
+    );
   });
 }

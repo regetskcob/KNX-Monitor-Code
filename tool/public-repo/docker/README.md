@@ -69,6 +69,11 @@ but how you run it matters:
   password does not remove paired devices.
 - **Updates:** security fixes come with new versions. Watch the
   [releases](https://github.com/regetskcob/KNX-Monitor/releases).
+- **Not as root** (from 1.11.0): with `PUID`/`PGID` (default `1000` in
+  `compose.yaml`) the server starts as root only to hand `./data` to that user,
+  then switches to it and keeps no capabilities. Data folders of older versions
+  belong to root and are handed over on the first start. Without `PUID` (older
+  `compose.yaml`, the Home Assistant add-on) it runs as before.
 - **Use KNX IP Secure and Data Secure** where your installation supports them;
   plain KNXnet/IP can be read and written by every device in the network,
   with or without Busclear.
@@ -130,8 +135,10 @@ same settings yourself, at least `BOX=1`, the password and the host network:
 
 ```sh
 docker run -d --name knx-monitor --restart unless-stopped --network host \
-  --cap-drop ALL --cap-add DAC_OVERRIDE --cap-add FOWNER \
+  --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID \
+  --cap-add DAC_OVERRIDE --cap-add FOWNER \
   --security-opt no-new-privileges:true \
+  -e PUID="$(id -u)" -e PGID="$(id -g)" \
   -e BOX=1 -e BOX_PASSWORD='your-own-password' -e LAN_ACCESS=yes -e READ_ONLY=1 \
   -e TZ=Europe/Berlin -v "$PWD/data:/data" \
   ghcr.io/regetskcob/knx-monitor:<version>
@@ -165,6 +172,7 @@ Images exist for amd64 and arm64 only, so a Raspberry Pi needs the 64-bit OS
 | `BOX_PASSWORD` | Password for the browser and for pairing apps, at least 8 characters. Used on the first start; change it later in the app under box settings. |
 | `BOX_PASSWORD_FILE`, `MQTT_PASSWORD_FILE` | Read the password from a file instead (Docker secrets). A variable set directly wins. |
 | `BOX_NAME` | Name shown in the apps. |
+| `PUID`, `PGID` | User and group the server runs as instead of root (1 to 65534). `./data` is handed over to them on start. Needs `CHOWN`, `SETUID` and `SETGID` in `cap_add`. |
 | `LAN_ACCESS=yes` | Reachable from your network, not only from the host (default `no`). Applies on every start (since 1.9.9). Plain HTTP unless you set up TLS, see above. |
 | `TLS_CERT`, `TLS_KEY`, `TLS_PORT` | Optional HTTPS with your own certificate (PEM files), default port 8443. |
 | `KNX_MONITOR_VERSION` | Image version (default: the one this file was published for). |
@@ -176,6 +184,7 @@ Images exist for amd64 and arm64 only, so a Raspberry Pi needs the 64-bit OS
 | `MQTT_TELEGRAMS=true` | Every group telegram as JSON to `knx_monitor/telegram/…`, for your own database. Fields and options: [telegram stream](https://github.com/regetskcob/KNX-Monitor/blob/main/ha-addon/knx_monitor/DOCS.md#every-telegram-to-mqtt-preview). |
 | `MQTT_REPEATS=true`, `MQTT_SECURE_TELEGRAMS=true` | Telegram stream: include repeated telegrams, and decrypted KNX Data Secure telegrams. |
 | `MQTT_RAW=true`, `MQTT_RAW_ONLY=true` | Telegram stream: add the raw data (cEMI frame, priority, key), or send only raw data without names and values. |
+| `MQTT_RETAIN_VALUES=true` | Telegram stream: also the last value per address to `knx_monitor/value/…`, retained, only when it changes. |
 | `MQTT_FILTER` | Telegram stream: only these group addresses, e.g. `1/#,3/2/#,4/1/7`. |
 | `MQTT_INSTALLATION` | Telegram stream: installation ID in `inst`, to tell several servers apart in one database. |
 
@@ -255,6 +264,14 @@ reverse proxy, or to reach it under the host's name, set `LAN_ACCESS=yes`.
 **The app no longer switches anything, "Nur-Lesen ist an":** `compose.yaml`
 starts read only since 1.9.10. Add `READ_ONLY=0` to `.env` and run
 `docker compose up -d`.
+
+**Container stops right away, log says `Benutzerwechsel … abgelehnt` or
+`Datenordner … nicht beschreibbar`:** `PUID` is set, but the container lacks
+`SETUID`/`SETGID`, or `./data` cannot be handed over (no `CHOWN`, or a share
+that refuses it, such as NFS with `root_squash`). Take `cap_add` from the
+current `compose.yaml`, set `PUID`/`PGID` to the owner of `./data`, or leave
+`PUID` out to run as root as before. TLS files outside `./data` must be
+readable for that user.
 
 **HTTPS no longer answers on port 443:** since 1.9.10 the container's default
 `TLS_PORT` is 8443 (with `cap_drop: ALL` it cannot open ports below 1024).

@@ -6,7 +6,7 @@ import 'addon_io.dart' if (dart.library.js_interop) 'addon_web.dart' as impl;
 import '../knx/telegram.dart';
 import 'box_link.dart';
 
-/// Connection to the server of the Home Assistant add-on or the KNX box.
+/// Connection to the server of the Home Assistant add-on or the Busclear Box.
 ///
 /// The server keeps the bus connection open permanently, records and distributes the frames to all
 /// open views. In the browser it is the server that delivers the page; natively (iPad, iPhone) the
@@ -57,11 +57,16 @@ abstract final class Addon {
   /// Long-term analysis of the history over the last [days] days.
   static Future<Map<String, Object?>> stats(int days) => impl.addonGet('api/bus/stats?days=$days');
 
+  /// Overview of the last seven days of the recording (start card), computed at most hourly.
+  static Future<Map<String, Object?>> summary() => impl.addonGet('api/summary');
+
   /// Recording outages within the period.
-  static Future<List<Object?>> outages(DateTime from, DateTime to, {String? installation}) => impl.addonGetList(
-    'api/bus/availability?from=${from.millisecondsSinceEpoch}&to=${to.millisecondsSinceEpoch}'
-    '${installation == null ? '' : '&installation=$installation'}',
-  );
+  /// With [taps] also the gaps of further tap points (kind `tap`, issue #8); older servers ignore it.
+  static Future<List<Object?>> outages(DateTime from, DateTime to, {String? installation, bool taps = false}) =>
+      impl.addonGetList(
+        'api/bus/availability?from=${from.millisecondsSinceEpoch}&to=${to.millisecondsSinceEpoch}'
+        '${installation == null ? '' : '&installation=$installation'}${taps ? '&taps=1' : ''}',
+      );
 
   /// Unexpected server restarts in the last 30 days (for the diagnostics package).
   static Future<List<Object?>> restarts() => impl.addonGetList('api/restarts');
@@ -70,6 +75,23 @@ abstract final class Addon {
 
   /// Settings, status and list of reports (see `server/lib/src/report.dart`).
   static Future<Map<String, Object?>> report() => impl.addonGet('api/report');
+
+  /// Project against the recorded bus over [days] days (server: `ProjectEvidence`).
+  static Future<Map<String, Object?>> projectEvidence(int days) => impl.addonGet('api/project-evidence?days=$days');
+
+  /// AI access (MCP server of the add-on or box, admin): `{enabled, token, path}`.
+  static Future<Map<String, Object?>> mcpSettings() => impl.addonGet('api/mcp/settings');
+
+  /// Switches the AI access ([enabled]) or issues a new token ([renew]).
+  static Future<Map<String, Object?>> configureMcp({bool? enabled, bool renew = false}) =>
+      impl.addonPut('api/mcp/settings', {'enabled': ?enabled, if (renew) 'renew': true});
+
+  /// The server's address in the house network (add-on), `null` if unknown.
+  static Future<String?> lanAddress() async => (await impl.addonGet('api/network'))['ip'] as String?;
+
+  /// The KNX project of Home Assistant's KNX integration: `{loaded, project, ha_groups}`
+  /// (server: `HaKnxProject`).
+  static Future<Map<String, Object?>> knxProject() => impl.addonGet('api/knx-project');
   static Future<Map<String, Object?>> configureReport(Map<String, Object?> changes) =>
       impl.addonPut('api/report', changes);
   static Future<Map<String, Object?>> readReport(String id) => impl.addonGet('api/report/$id');
@@ -150,7 +172,7 @@ abstract final class Addon {
   /// Grafana template (`prometheus` or `influxdb`).
   static Future<Map<String, Object?>> grafanaTemplate(String kind) => impl.addonGet('api/export/grafana?kind=$kind');
 
-  // --- KNX box only ------------------------------------------------------------
+  // --- Busclear Box only ------------------------------------------------------------
 
   /// Name, role (`admin`/`device`) and clock of the box.
   static Future<Map<String, Object?>> boxInfo() => impl.addonGet('api/box');
@@ -200,9 +222,14 @@ abstract final class Addon {
   /// `{active: id, list: [{id, name, created, active}]}`.
   static Future<Map<String, Object?>> installations() => impl.addonGet('api/installations');
 
-  /// Creates an installation with the app's ID (does not switch).
-  static Future<void> createInstallation(String id, String name) =>
-      impl.addonPost('api/installations', {'id': id, 'name': name});
+  /// Creates an installation with the app's ID and its key (does not switch). An older box
+  /// ignores the key.
+  static Future<void> createInstallation(String id, String name, {String? key}) =>
+      impl.addonPost('api/installations', {'id': id, 'name': name, 'key': ?key});
+
+  /// Supplies the key of an installation the box has none for yet (admin only).
+  static Future<void> setInstallationKey(String id, String key) =>
+      impl.addonPatch('api/installations/$id', {'key': key});
 
   /// The box records into [id] from now on (bus connection, project, history).
   static Future<void> activateInstallation(String id) => impl.addonPost('api/installations/active', {'id': id});
@@ -220,8 +247,11 @@ abstract final class Addon {
       impl.addonGetList('api/installations/$id/files/$dir/');
 
   /// Pairs with the box password (from the sticker) and returns the device access.
-  static Future<String> pairBox(BoxLink link, String password, String deviceName) =>
-      impl.addonPairBox(link, password, deviceName);
+  ///
+  /// [app] is the key of this app instance (docs/keys.md): the box's device list then says
+  /// which app a device access belongs to. An older box ignores it.
+  static Future<String> pairBox(BoxLink link, String password, String deviceName, {String? app}) =>
+      impl.addonPairBox(link, password, deviceName, app: app);
 }
 
 /// Binary messages with the add-on server (see BusService in the server).

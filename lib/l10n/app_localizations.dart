@@ -185,7 +185,7 @@ abstract class AppLocalizations {
   /// Catalog tile hint when nothing is imported.
   ///
   /// In de, this message translates to:
-  /// **'ETS-Projekt (.knxproj) oder Gruppenadressen-CSV für Namen, Datentypen & Geräte'**
+  /// **'ETS-Projekt (.knxproj), XKNX-Editor-Projekt (.xknx) oder Gruppenadressen-CSV für Namen, Datentypen & Geräte'**
   String get catalogHint;
 
   /// Button replacing the imported project.
@@ -215,7 +215,7 @@ abstract class AppLocalizations {
   /// Import error for an unsupported file type.
   ///
   /// In de, this message translates to:
-  /// **'Bitte eine .knxproj- oder .csv-Datei wählen.'**
+  /// **'Bitte eine .knxproj-, .xknx- oder .csv-Datei wählen.'**
   String get catalogPickFile;
 
   /// Title of the project password dialog.
@@ -1979,7 +1979,7 @@ abstract class AppLocalizations {
   /// Hilfetext zur Filtersyntax
   ///
   /// In de, this message translates to:
-  /// **'Leerzeichen = UND · Komma = ODER · -begriff = NICHT\n\n1/2/3 exakt · 1/2 Bereich · 1/*/3 oder 1/2/1* mit Platzhalter\n1.1.5 Absender · 1.1.* Linie · von:1.1.5\n\ntyp:w|r|a (Schreiben, Lesen, Antwort)\ndpt:9 oder dpt:9.001\nzeit:14:05 · zeit:14:05-14:10 (Uhrzeit, ohne das Ende)\nist:alarm · ist:wiederholt · ist:antwort · ist:projekt\nist:eigen · ist:fremd (selbst gesendet bzw. vom Bus)\n\nAlles andere sucht in Name, Bereich, Gerät und Wert – Umlaute egal (kuche findet Küche).\n\nMehrere ODER-Gruppen bekommen in der Liste je eine Farbe. „Kontext“ zeigt die Sekunden vor und nach jedem Treffer.\n\nBeispiele:\n1/*/* ist:antwort – unbeantwortete Leseanfragen in Hauptgruppe 1\nküche, bad -schalten – Küche oder Bad, ohne Schalten'**
+  /// **'Leerzeichen = UND · Komma = ODER · -begriff = NICHT\n\n1/2/3 exakt · 1/2 Bereich · 1/*/3 oder 1/2/1* mit Platzhalter\n1.1.5 Absender · 1.1.* Linie · von:1.1.5\n\ntyp:w|r|a (Schreiben, Lesen, Antwort)\ndpt:9 oder dpt:9.001\nzeit:14:05 · zeit:14:05-14:10 (Uhrzeit, ohne das Ende)\nist:alarm · ist:wiederholt · ist:antwort · ist:projekt\nist:eigen · ist:fremd (selbst gesendet bzw. vom Bus)\nmesspunkt:1.2 oder messpunkt:1.2|1.3 (gesehen an diesen Messpunkten) · ist:einzeln (nur an einem Messpunkt)\n\nAlles andere sucht in Name, Bereich, Gerät und Wert – Umlaute egal (kuche findet Küche).\n\nMehrere ODER-Gruppen bekommen in der Liste je eine Farbe. „Kontext“ zeigt die Sekunden vor und nach jedem Treffer.\n\nBeispiele:\n1/*/* ist:antwort – unbeantwortete Leseanfragen in Hauptgruppe 1\nküche, bad -schalten – Küche oder Bad, ohne Schalten'**
   String get filterHelpBody;
 
   /// Titel: Abgleich Busverkehr mit ETS-Projekt
@@ -4280,7 +4280,7 @@ abstract class AppLocalizations {
   /// **'Busclear Box'**
   String get boxSection;
 
-  /// Button: pair with a KNX box.
+  /// Button: pair with a Busclear Box.
   ///
   /// In de, this message translates to:
   /// **'Mit Busclear Box koppeln'**
@@ -4316,7 +4316,7 @@ abstract class AppLocalizations {
   /// **'Die App zeigt den Bus dann über diese Box. Nur bestätigen, wenn du den QR-Code selbst gescannt hast und die Adresse zu deiner Box passt.'**
   String get boxPairBody;
 
-  /// Banner: app runs through a KNX box.
+  /// Banner: app runs through a Busclear Box.
   ///
   /// In de, this message translates to:
   /// **'Über Busclear Box {name}'**
@@ -8012,7 +8012,7 @@ abstract class AppLocalizations {
   /// **'Add-on {version}'**
   String versionAddon(String version);
 
-  /// Version line in the menu: KNX box server version.
+  /// Version line in the menu: Busclear Box server version.
   ///
   /// In de, this message translates to:
   /// **'Box {version}'**
@@ -8660,13 +8660,13 @@ abstract class AppLocalizations {
   /// **'Senden wie im ETS-Gruppenmonitor, auch verzögert oder zyklisch. Trigger-Aufnahmen starten bei einem Wert, einer Störung oder einer Wiederholung, mit Vorlauf. Eine Aufnahme lässt sich auf den Bus zurückspielen, nach ausdrücklicher Bestätigung.'**
   String get tourSendText;
 
-  /// Introduction: KNX box, title.
+  /// Introduction: Busclear Box, title.
   ///
   /// In de, this message translates to:
   /// **'Busclear Box für die Baustelle.'**
   String get tourBoxTitle;
 
-  /// Introduction: KNX box, text.
+  /// Introduction: Busclear Box, text.
   ///
   /// In de, this message translates to:
   /// **'Ein Raspberry Pi, der rund um die Uhr mitschreibt und ein eigenes WLAN aufspannt. Gekoppelt wird per Aufkleber, den Verlauf holt die App direkt von der Box. Noch eine Vorschau.'**
@@ -15668,6 +15668,12 @@ abstract class AppLocalizations {
   /// **'Auch KNX-Secure-Telegramme gehen entschlüsselt hinaus. Jeder, der den Broker lesen kann, sieht ihre Werte.'**
   String get dataExportMqttSecureOn;
 
+  /// Datenexport: Option „Letzten Wert je Adresse behalten“ an
+  ///
+  /// In de, this message translates to:
+  /// **'Letzter Wert je Adresse unter knx_monitor/value/… mit retain, {count} Werte gesendet.'**
+  String dataExportMqttRetain(int count);
+
   /// Data export, MQTT telegram stream: raw data mode, group address filter and running number of the last telegram
   ///
   /// In de, this message translates to:
@@ -15788,6 +15794,18 @@ abstract class AppLocalizations {
   /// **'Die anderen laufen weiter. Der getrennte verbindet sich von selbst neu.'**
   String get tapDownHint;
 
+  /// Monitor: Hinweis, ein Messpunkt ist verbunden, sieht aber nichts
+  ///
+  /// In de, this message translates to:
+  /// **'Verbunden, aber hier kommt nichts an: {name}'**
+  String tapSilent(String name);
+
+  /// Monitor: Hinweis stiller Messpunkt, zweiter Teil
+  ///
+  /// In de, this message translates to:
+  /// **'Bei Routing gibt es im Netz oft keinen IP-Router (Tunnel-Schnittstellen leiten kein Routing weiter). Sonst Linie und Filtertabelle des Kopplers prüfen.'**
+  String get tapSilentHint;
+
   /// Telegramm-Details: Abschnitt Messpunkte
   ///
   /// In de, this message translates to:
@@ -15800,10 +15818,10 @@ abstract class AppLocalizations {
   /// **'+{ms} ms · Hop {hop}'**
   String detailsPathSeen(String ms, int hop);
 
-  /// Telegramm-Details: erste Sichtung
+  /// Telegramm-Details: Messpunkt auf der Linie des Senders (höchster Hop)
   ///
   /// In de, this message translates to:
-  /// **'zuerst · Hop {hop}'**
+  /// **'Ursprung · Hop {hop}'**
   String detailsPathFirst(int hop);
 
   /// Telegramm-Details: an diesem Messpunkt nicht gesehen
@@ -15811,6 +15829,624 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'nicht gesehen, gefiltert oder nur lokal'**
   String get detailsPathMissing;
+
+  /// Import error: .xknx file cannot be read
+  ///
+  /// In de, this message translates to:
+  /// **'Keine lesbare Projektdatei des XKNX Editors (.xknx).'**
+  String get projectXknxInvalid;
+
+  /// Project check section: devices without any download
+  ///
+  /// In de, this message translates to:
+  /// **'Geräte nie programmiert'**
+  String get checkDevicesNeverProgrammed;
+
+  /// Explanation for checkDevicesNeverProgrammed
+  ///
+  /// In de, this message translates to:
+  /// **'Laut Projekt wurde auf diese Geräte noch nie ein Download gemacht: noch nicht in Betrieb genommen oder gar nicht verbaut. Prüfen, ob sie antworten, dann programmieren oder aus dem Projekt löschen.'**
+  String get checkDevicesNeverProgrammedHint;
+
+  /// Project check section: devices changed since the last download
+  ///
+  /// In de, this message translates to:
+  /// **'Download ausstehend'**
+  String get checkDevicesPendingDownload;
+
+  /// Explanation for checkDevicesPendingDownload
+  ///
+  /// In de, this message translates to:
+  /// **'Im Projekt nach dem letzten Download geändert, aber noch nicht ins Gerät geladen (wie Adr/Prg/Par/Grp/Kfg in der ETS). Bis zum Programmieren arbeitet das Gerät mit dem alten Stand.'**
+  String get checkDevicesPendingDownloadHint;
+
+  /// Part of a device download: individual address
+  ///
+  /// In de, this message translates to:
+  /// **'Adresse'**
+  String get downloadPartAddress;
+
+  /// Part of a device download: application program
+  ///
+  /// In de, this message translates to:
+  /// **'Applikation'**
+  String get downloadPartApplication;
+
+  /// Part of a device download: parameters
+  ///
+  /// In de, this message translates to:
+  /// **'Parameter'**
+  String get downloadPartParameters;
+
+  /// Part of a device download: group communication
+  ///
+  /// In de, this message translates to:
+  /// **'Gruppenadressen'**
+  String get downloadPartGroups;
+
+  /// Part of a device download: medium configuration
+  ///
+  /// In de, this message translates to:
+  /// **'Medium'**
+  String get downloadPartMedium;
+
+  /// Title of the handover to the XKNX Editor
+  ///
+  /// In de, this message translates to:
+  /// **'An XKNX Editor übergeben'**
+  String get xknxEditorTitle;
+
+  /// Explanation of the handover to the XKNX Editor
+  ///
+  /// In de, this message translates to:
+  /// **'Busclear übergibt Korrekturen (Datentypen, Namen, neue Adressen, K- und L-Flags) und schreibt die übrigen Befunde als Kommentar an Adressen und Geräte. Programmiert wird nichts; im Editor lässt sich alles rückgängig machen.'**
+  String get xknxEditorText;
+
+  /// Size of the handover
+  ///
+  /// In de, this message translates to:
+  /// **'{corrections} Korrekturen, {notes} Notizen'**
+  String xknxEditorSummary(int corrections, int notes);
+
+  /// Handover without content
+  ///
+  /// In de, this message translates to:
+  /// **'Nichts zu übergeben: keine Aufgaben aus der Projektprüfung.'**
+  String get xknxEditorNothing;
+
+  /// Field: address of the editor's MCP server
+  ///
+  /// In de, this message translates to:
+  /// **'Adresse des MCP-Servers'**
+  String get xknxEditorEndpoint;
+
+  /// Field: token of the editor's MCP server
+  ///
+  /// In de, this message translates to:
+  /// **'Bearer-Token (optional)'**
+  String get xknxEditorToken;
+
+  /// Hint where to find the MCP settings
+  ///
+  /// In de, this message translates to:
+  /// **'Im XKNX Editor unter Einstellungen › KI/MCP den Server starten; Adresse und Token stehen dort.'**
+  String get xknxEditorConnectionHint;
+
+  /// Button: hand over to the editor
+  ///
+  /// In de, this message translates to:
+  /// **'Übergeben'**
+  String get xknxEditorSend;
+
+  /// Button: save the handover as JSON
+  ///
+  /// In de, this message translates to:
+  /// **'Als Datei speichern'**
+  String get xknxEditorSaveFile;
+
+  /// File name prefix of the handover file
+  ///
+  /// In de, this message translates to:
+  /// **'XKNX-Editor-Aufgaben'**
+  String get xknxEditorFile;
+
+  /// Handover error: no project open
+  ///
+  /// In de, this message translates to:
+  /// **'Im XKNX Editor ist kein Projekt geöffnet.'**
+  String get xknxEditorNoProject;
+
+  /// Warning: different projects
+  ///
+  /// In de, this message translates to:
+  /// **'Im Editor ist „{editor}“ geöffnet, in Busclear „{busclear}“. Trotzdem übergeben?'**
+  String xknxEditorOtherProject(String editor, String busclear);
+
+  /// Handover error: connection
+  ///
+  /// In de, this message translates to:
+  /// **'XKNX Editor nicht erreichbar: {error}'**
+  String xknxEditorUnreachable(String error);
+
+  /// Handover error: token missing or wrong
+  ///
+  /// In de, this message translates to:
+  /// **'Der Editor verlangt ein Token (Einstellungen › KI/MCP).'**
+  String get xknxEditorUnauthorized;
+
+  /// Handover result
+  ///
+  /// In de, this message translates to:
+  /// **'{corrections} Korrekturen übernommen, {notes} Notizen geschrieben. Geänderte Geräte im Editor programmieren.'**
+  String xknxEditorDone(int corrections, int notes);
+
+  /// Heading of the failed handover steps
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht übernommen:'**
+  String get xknxEditorFailed;
+
+  /// Button: download preview through the editor
+  ///
+  /// In de, this message translates to:
+  /// **'Mit Projekt vergleichen (XKNX Editor)'**
+  String get xknxEditorPreview;
+
+  /// Download preview: no difference
+  ///
+  /// In de, this message translates to:
+  /// **'Gerät entspricht dem Projekt im Editor.'**
+  String get xknxEditorPreviewSame;
+
+  /// Download preview: difference
+  ///
+  /// In de, this message translates to:
+  /// **'Ein Download würde {bytes} Byte der Konfiguration ändern: Gerät und Projekt weichen ab.'**
+  String xknxEditorPreviewDiff(int bytes);
+
+  /// Explanation of the download preview
+  ///
+  /// In de, this message translates to:
+  /// **'Liest das Gerät über die Busverbindung des Editors und schreibt nichts. Kann je nach Gerät einige Minuten dauern.'**
+  String get xknxEditorPreviewHint;
+
+  /// Note in the XKNX Editor for a never programmed device
+  ///
+  /// In de, this message translates to:
+  /// **'Nie programmiert: laut Projekt noch kein Download auf dieses Gerät.'**
+  String get xknxNoteNeverProgrammed;
+
+  /// Button: take over the project of Home Assistant's KNX integration
+  ///
+  /// In de, this message translates to:
+  /// **'Aus Home Assistant'**
+  String get catalogFromHomeAssistant;
+
+  /// Tooltip of catalogFromHomeAssistant
+  ///
+  /// In de, this message translates to:
+  /// **'Projekt der KNX-Integration übernehmen (dort hochgeladen oder vom XKNX Editor gesendet)'**
+  String get catalogFromHomeAssistantTooltip;
+
+  /// Import from Home Assistant: no project there
+  ///
+  /// In de, this message translates to:
+  /// **'Die KNX-Integration von Home Assistant hat kein Projekt. Im KNX-Panel ein Projekt hochladen oder es aus dem XKNX Editor senden.'**
+  String get catalogHaNoProject;
+
+  /// Import from Home Assistant failed
+  ///
+  /// In de, this message translates to:
+  /// **'Projekt aus Home Assistant nicht abrufbar: {error}'**
+  String catalogHaFailed(String error);
+
+  /// Error: token would be sent over plain HTTP on the network
+  ///
+  /// In de, this message translates to:
+  /// **'Den Token schickt Busclear nur über HTTPS oder an diesen Rechner. Für einen anderen Rechner im Netz den Editor mit HTTPS betreiben.'**
+  String get xknxEditorInsecure;
+
+  /// Title of the AI access settings
+  ///
+  /// In de, this message translates to:
+  /// **'KI-Zugriff (MCP)'**
+  String get aiAccessTitle;
+
+  /// Subtitle of the AI access row
+  ///
+  /// In de, this message translates to:
+  /// **'Verlauf, Befunde und Projektprüfung für KI-Werkzeuge'**
+  String get aiAccessMeta;
+
+  /// Explanation of the AI access
+  ///
+  /// In de, this message translates to:
+  /// **'KI-Werkzeuge wie Claude lesen über das Model Context Protocol den aufgezeichneten Bus, die Befunde und die Projektprüfung und können zusammen mit dem XKNX Editor Korrekturen vorschlagen. Busclear sendet dabei nichts auf den Bus und ändert nichts.'**
+  String get aiAccessText;
+
+  /// Switch for the MCP server
+  ///
+  /// In de, this message translates to:
+  /// **'KI-Zugriff erlauben'**
+  String get aiAccessEnable;
+
+  /// Subtitle of the switch
+  ///
+  /// In de, this message translates to:
+  /// **'Nur lesen, mit Token'**
+  String get aiAccessReadOnly;
+
+  /// Privacy notice of the AI access
+  ///
+  /// In de, this message translates to:
+  /// **'Wer den Token hat, liest den ganzen Verlauf, aus dem sich Anwesenheit ablesen lässt. Token nur in eigenen Werkzeugen eintragen und bei Verdacht erneuern. Im Add-on geht die Verbindung im Heimnetz unverschlüsselt (HTTP); die Box nutzt HTTPS.'**
+  String get aiAccessPrivacy;
+
+  /// Label: MCP endpoint
+  ///
+  /// In de, this message translates to:
+  /// **'Adresse'**
+  String get aiAccessEndpoint;
+
+  /// Label: MCP bearer token
+  ///
+  /// In de, this message translates to:
+  /// **'Token'**
+  String get aiAccessToken;
+
+  /// Heading of the setup command
+  ///
+  /// In de, this message translates to:
+  /// **'Für Claude Code'**
+  String get aiAccessCommand;
+
+  /// Button: copy the setup command
+  ///
+  /// In de, this message translates to:
+  /// **'Befehl kopieren'**
+  String get aiAccessCopyCommand;
+
+  /// Button: renew the MCP token
+  ///
+  /// In de, this message translates to:
+  /// **'Neuen Token erzeugen'**
+  String get aiAccessRenew;
+
+  /// Message after copying
+  ///
+  /// In de, this message translates to:
+  /// **'Kopiert'**
+  String get aiAccessCopied;
+
+  /// Section of the project check: evaluation of the recorded history
+  ///
+  /// In de, this message translates to:
+  /// **'Projekt gegen Bus ({days} Tage)'**
+  String checkSectionEvidence(int days);
+
+  /// Finding: device sends where the project says it cannot
+  ///
+  /// In de, this message translates to:
+  /// **'Gerät sendet anders als im Projekt'**
+  String get checkUnexpectedSenders;
+
+  /// Explanation of checkUnexpectedSenders
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Geräte senden auf Adressen, auf denen sie laut Projekt nicht senden. Das Gerät trägt dann nicht den Projektstand: nach dem letzten Download geändert, getauscht oder das Projekt ist veraltet. Mit dem XKNX Editor vergleichen (Diagnose › Mit Projekt vergleichen).'**
+  String get checkUnexpectedSendersHint;
+
+  /// Row of an unexpected sender
+  ///
+  /// In de, this message translates to:
+  /// **'sendet auf {group}'**
+  String checkUnexpectedSenderRow(String group);
+
+  /// Finding: actuator status does not answer commands
+  ///
+  /// In de, this message translates to:
+  /// **'Befehl ohne Rückmeldung'**
+  String get checkNoFeedback;
+
+  /// Explanation of checkNoFeedback
+  ///
+  /// In de, this message translates to:
+  /// **'Auf Befehle antwortet der Status desselben Kanals selten oder nie innerhalb von 5 Sekunden. Mögliche Ursachen: Aktor führt nicht aus, Filtertabelle, ausstehender Download, oder der Aktor meldet nur bei einer Änderung.'**
+  String get checkNoFeedbackHint;
+
+  /// Row of a command without feedback
+  ///
+  /// In de, this message translates to:
+  /// **'Status {status} von {device}: {answered} von {commands} beantwortet'**
+  String checkNoFeedbackRow(String status, String device, int answered, int commands);
+
+  /// Finding: several project senders really heard
+  ///
+  /// In de, this message translates to:
+  /// **'Mehrere Sender, im Verlauf bestätigt'**
+  String get checkSendersConfirmed;
+
+  /// Explanation of checkSendersConfirmed
+  ///
+  /// In de, this message translates to:
+  /// **'Von den Adressen mit mehreren Sendern im Projekt haben hier wirklich mehrere gesendet. Bei Reglern oder Stellwerten überschreiben sie sich gegenseitig.'**
+  String get checkSendersConfirmedHint;
+
+  /// Finding: status addresses without R that were read
+  ///
+  /// In de, this message translates to:
+  /// **'Leseanfragen ohne Antwort'**
+  String get checkReadsUnanswered;
+
+  /// Explanation of checkReadsUnanswered
+  ///
+  /// In de, this message translates to:
+  /// **'Statusadressen ohne L-Flag, die im Verlauf gelesen wurden: so oft blieb die Antwort aus.'**
+  String get checkReadsUnansweredHint;
+
+  /// Row of reads without answer
+  ///
+  /// In de, this message translates to:
+  /// **'{reads} Leseanfragen, {answered} beantwortet'**
+  String checkReadsRow(int reads, int answered);
+
+  /// Finding: DPT suggestions for addresses without one
+  ///
+  /// In de, this message translates to:
+  /// **'Datentyp aus dem Verlauf'**
+  String get checkDptSuggestions;
+
+  /// Explanation of checkDptSuggestions
+  ///
+  /// In de, this message translates to:
+  /// **'Für Adressen ohne Datentyp schlägt Busclear einen vor, aus Länge und Werten der Telegramme und dem Namen. „Sicher“ heißt: eindeutige Länge und passender Name. Über „An XKNX Editor übergeben“ oder in der ETS eintragen.'**
+  String get checkDptSuggestionsHint;
+
+  /// Certainty of a DPT suggestion: high
+  ///
+  /// In de, this message translates to:
+  /// **'sicher'**
+  String get checkDptSure;
+
+  /// Certainty of a DPT suggestion: medium
+  ///
+  /// In de, this message translates to:
+  /// **'wahrscheinlich'**
+  String get checkDptLikely;
+
+  /// Finding: contact or alarm stuck on 1
+  ///
+  /// In de, this message translates to:
+  /// **'Zustand ungewöhnlich lange gleich'**
+  String get checkLongStates;
+
+  /// Explanation of checkLongStates
+  ///
+  /// In de, this message translates to:
+  /// **'Kontakt- oder Alarmadressen, die über Tage immer wieder 1 senden, ohne je zu wechseln, etwa „gekippt“ bei geschlossenem Fenster. Kontakt klemmt oder die Polarität ist falsch eingestellt.'**
+  String get checkLongStatesHint;
+
+  /// Row of a long state
+  ///
+  /// In de, this message translates to:
+  /// **'seit {days} Tagen 1, {count} Telegramme'**
+  String checkLongStateRow(String days, int count);
+
+  /// Finding: presence at night
+  ///
+  /// In de, this message translates to:
+  /// **'Auslösungen in der Nacht'**
+  String get checkNightActivity;
+
+  /// Explanation of checkNightActivity
+  ///
+  /// In de, this message translates to:
+  /// **'Präsenz- oder Bewegungsmelder, die in den meisten Nächten zwischen 0 und 5 Uhr auslösen. Sieht der Melder in ein Schlafzimmer, reagiert er auf ein Haustier, oder ist er zu empfindlich?'**
+  String get checkNightActivityHint;
+
+  /// Row of night activity
+  ///
+  /// In de, this message translates to:
+  /// **'in {nights} von {recorded} Nächten, {per} Auslösungen je Nacht'**
+  String checkNightRow(int nights, int recorded, String per);
+
+  /// Button: download preview for all devices through the editor
+  ///
+  /// In de, this message translates to:
+  /// **'Alle Geräte vergleichen'**
+  String get xknxEditorCompareAll;
+
+  /// Explanation of the comparison of all devices
+  ///
+  /// In de, this message translates to:
+  /// **'Der Editor liest jedes programmierte Gerät über seine Busverbindung und vergleicht es mit dem Projekt. Schreibt nichts, belastet aber den Bus und dauert je Gerät bis zu einigen Minuten: am besten abends oder nachts laufen lassen.'**
+  String get xknxEditorCompareAllHint;
+
+  /// Progress of the comparison
+  ///
+  /// In de, this message translates to:
+  /// **'{done} von {total}: {device}'**
+  String xknxEditorCompareProgress(int done, int total, String device);
+
+  /// Result of the comparison
+  ///
+  /// In de, this message translates to:
+  /// **'{differ} von {total} Geräten weichen vom Projekt ab, {failed} nicht erreichbar.'**
+  String xknxEditorCompareResult(int differ, int total, int failed);
+
+  /// Button: stop the comparison after the current device
+  ///
+  /// In de, this message translates to:
+  /// **'Anhalten'**
+  String get xknxEditorCompareStop;
+
+  /// Note in the XKNX Editor for a likely DPT
+  ///
+  /// In de, this message translates to:
+  /// **'Datentyp laut Verlauf wahrscheinlich {dpt}: prüfen und setzen.'**
+  String xknxNoteDptLikely(String dpt);
+
+  /// Mac: Auswahl beim Teilen einer Datei, im Finder speichern
+  ///
+  /// In de, this message translates to:
+  /// **'Sichern unter …'**
+  String get shareSaveAs;
+
+  /// Mac: Auswahl beim Teilen einer Datei, Teilen-Menü des Systems
+  ///
+  /// In de, this message translates to:
+  /// **'Teilen …'**
+  String get shareShare;
+
+  /// Verlauf: Lücke, ein weiterer Messpunkt war nicht erreichbar (kein Busfehler)
+  ///
+  /// In de, this message translates to:
+  /// **'Messpunkt {name} {duration} nicht erreichbar'**
+  String outageTap(String name, String duration);
+
+  /// Topologie: Abzeichen an einer Linie mit Messpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'Messpunkt'**
+  String get topoTapPoint;
+
+  /// Topologie: Messpunkte zeigen, dass ein Koppler eine benötigte Gruppenadresse sperrt
+  ///
+  /// In de, this message translates to:
+  /// **'{ga} {name} kommt von Linie {from} nicht in Linie {to} an ({count} Telegramme), obwohl dort Geräte darauf hören. Filtertabelle des Kopplers prüfen.'**
+  String topoFilterBlocked(String ga, String name, String from, String to, int count);
+
+  /// Topologie: Messpunkte zeigen unnötig durchgelassene Telegramme
+  ///
+  /// In de, this message translates to:
+  /// **'{ga} {name} kommt von Linie {from} in Linie {to} an ({count} Telegramme), obwohl dort niemand darauf hört.'**
+  String topoFilterLeaked(String ga, String name, String from, String to, int count);
+
+  /// Diagramm: Kennzahl Belegung der Leitung in Prozent
+  ///
+  /// In de, this message translates to:
+  /// **'Buslast'**
+  String get busMetricLoad;
+
+  /// Monitor: Überschrift der Wochenübersicht aus der Daueraufzeichnung
+  ///
+  /// In de, this message translates to:
+  /// **'Letzte {days} Tage'**
+  String weekSumTitle(int days);
+
+  /// Wochenübersicht: keine Befunde
+  ///
+  /// In de, this message translates to:
+  /// **'Der Bus lief unauffällig.'**
+  String get weekSumAllGood;
+
+  /// Wochenübersicht: nur Hinweise
+  ///
+  /// In de, this message translates to:
+  /// **'Der Bus lief stabil, {count, plural, =1{ein Hinweis} other{{count} Hinweise}} für die Anlage.'**
+  String weekSumHints(int count);
+
+  /// Wochenübersicht: mindestens eine Warnung
+  ///
+  /// In de, this message translates to:
+  /// **'Es gab Auffälligkeiten, die du dir ansehen solltest.'**
+  String get weekSumWarn;
+
+  /// Wochenübersicht: Kennzahl
+  ///
+  /// In de, this message translates to:
+  /// **'Telegramme/Tag'**
+  String get weekSumPerDay;
+
+  /// Wochenübersicht: Kennzahl
+  ///
+  /// In de, this message translates to:
+  /// **'Buslast Ø / max'**
+  String get weekSumLoad;
+
+  /// Wochenübersicht: Anteil der Zeit mit Aufzeichnung
+  ///
+  /// In de, this message translates to:
+  /// **'Aufzeichnung'**
+  String get weekSumAvailability;
+
+  /// Wochenübersicht: Kennzahl
+  ///
+  /// In de, this message translates to:
+  /// **'Wiederholungen'**
+  String get weekSumRepeatsLabel;
+
+  /// Wochenübersicht: weitere Befunde aufklappen
+  ///
+  /// In de, this message translates to:
+  /// **'{count} weitere'**
+  String weekSumMore(int count);
+
+  /// Wochenübersicht: Befunde zuklappen
+  ///
+  /// In de, this message translates to:
+  /// **'Weniger'**
+  String get weekSumLess;
+
+  /// Befund
+  ///
+  /// In de, this message translates to:
+  /// **'Mehrere Zeitgeber: {senders} senden Datum/Uhrzeit auf {groups}, zusammen {share} des Verkehrs. Einer, alle 10 bis 60 Minuten, reicht.'**
+  String weekSumClocks(String senders, String groups, String share);
+
+  /// Befund
+  ///
+  /// In de, this message translates to:
+  /// **'Auf Leseanfragen antworten mehrere Geräte: {groups}{count, plural, =1{} other{ ({count} Adressen)}}. Das L-Flag gehört nur an den Sender.'**
+  String weekSumMultiResponders(String groups, int count);
+
+  /// Befund
+  ///
+  /// In de, this message translates to:
+  /// **'{sender} liest viele Adressen auf einmal, bis {perMinute} Leseanfragen je Minute (z. B. Statusabgleich von Home Assistant).'**
+  String weekSumReadStorms(String sender, int perMinute);
+
+  /// Befund
+  ///
+  /// In de, this message translates to:
+  /// **'Sehr häufig gesendet: {groups}. Eine höhere Sendeschwelle entlastet den Bus.'**
+  String weekSumChatty(String groups);
+
+  /// Befund: Projektgeräte, die nichts gesendet haben
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne Telegramm: {devices}{count, plural, =1{} other{ ({count} Geräte)}}.'**
+  String weekSumSilent(String devices, int count);
+
+  /// Befund
+  ///
+  /// In de, this message translates to:
+  /// **'Absender nicht im Projekt: {senders}.'**
+  String weekSumUnknown(String senders);
+
+  /// Befund
+  ///
+  /// In de, this message translates to:
+  /// **'{count} Wiederholungen ({share}): Quittungen fehlen, Leitung oder Gerät prüfen.'**
+  String weekSumRepeats(int count, String share);
+
+  /// Befund
+  ///
+  /// In de, this message translates to:
+  /// **'Buslast zeitweise hoch, bis {max} in einer Minute.'**
+  String weekSumLoadHigh(String max);
+
+  /// Befund
+  ///
+  /// In de, this message translates to:
+  /// **'Die Busverbindung brach {count, plural, =1{einmal} other{{count}-mal}} ab, zusammen {minutes} min.'**
+  String weekSumDisconnected(int count, int minutes);
+
+  /// Befund
+  ///
+  /// In de, this message translates to:
+  /// **'Messpunkt {taps} war zeitweise nicht erreichbar, zusammen {minutes} min.'**
+  String weekSumTapGaps(String taps, int minutes);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

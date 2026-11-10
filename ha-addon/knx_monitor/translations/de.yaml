@@ -57,6 +57,13 @@ configuration:
       Wie „Rohdaten mitsenden“, aber ohne Name, Gerätename, DPT, Wert und
       Einheit aus dem ETS-Projekt, für Datenbanken, die die Werte selbst
       auswerten. Standard aus.
+  mqtt_retain_values:
+    name: Letzten Wert je Adresse behalten
+    description: >-
+      Nur zusammen mit „Jedes Telegramm an MQTT“. Schickt zusätzlich jeden
+      neuen Wert an knx_monitor/value/<Adresse>, mit retain: Wer sich
+      später anmeldet, bekommt sofort den letzten Stand. Nur wenn sich der
+      Wert ändert. Standard aus.
   mqtt_filter:
     name: Nur diese Gruppenadressen an MQTT
     description: >-

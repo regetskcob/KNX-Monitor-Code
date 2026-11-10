@@ -18,6 +18,8 @@ class _HatTunnel extends SharedTunnel {
     };
   }
 
+  // Not closed on purpose: lives as long as the fake.
+  // ignore: close_sinks
   final controller = StreamController<BusmonFrame>.broadcast();
 
   @override

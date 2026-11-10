@@ -186,4 +186,24 @@ void main() {
       expect(availabilityRange(q, at).error, isNotNull, reason: '$q');
     }
   });
+
+  test('Cache: ein Tag größer als das Budget wird beantwortet, aber nicht behalten', () async {
+    final dir = Directory.systemTemp.createTempSync('day_cache');
+    try {
+      Directory('${dir.path}/history').createSync();
+      final day = DateTime(2026, 11, 1, 12);
+      final lines = [
+        for (var i = 0; i < 10; i++)
+          jsonEncode({'t': day.microsecondsSinceEpoch + i, 's': 4402, 'd': 2305, 'y': 2, 'x': '01', 'm': true}),
+      ];
+      File('${dir.path}/history/${Recorder.dayName(day)}.ndjson.gz')
+          .writeAsBytesSync(gzip.encode(utf8.encode('${lines.join('\n')}\n')));
+      final cache = DayLinesCache(budget: 5);
+      final got = await cache.lines(Recorder(dir), Recorder.dayName(day), {2305});
+      expect(got![2305], hasLength(10));
+      expect(cache.cachedLines, 0);
+    } finally {
+      dir.deleteSync(recursive: true);
+    }
+  });
 }

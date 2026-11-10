@@ -198,6 +198,7 @@ class _DataExportScreenState extends State<DataExportScreen> {
             seq,
           ),
         ),
+      if (mqtt.retainValues) HorizontStatusLine(HorizontStatus.info, s.dataExportMqttRetain(mqtt.valuesSent)),
       if (mqtt.secure) HorizontStatusLine(HorizontStatus.warning, s.dataExportMqttSecureOn),
       if (mqtt.secureSkipped > 0)
         HorizontStatusLine(HorizontStatus.info, s.dataExportMqttSecureSkipped(mqtt.secureSkipped)),

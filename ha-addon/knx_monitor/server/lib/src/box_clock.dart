@@ -19,7 +19,7 @@ enum ClockSource {
   ntp,
 }
 
-/// Clock of the KNX box (`BOX=1`), see docs/knx-box.md, section "Time without an RTC".
+/// Clock of the Busclear Box (`BOX=1`), see docs/knx-box.md, section "Time without an RTC".
 ///
 /// The server must not set the system time. It puts the request into
 /// [requestFile]; on the host, `knx-box-time.service` then sets chrony and the

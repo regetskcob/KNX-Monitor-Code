@@ -343,11 +343,14 @@ GroupCatalog anonymizeCatalog(GroupCatalog c, {required bool keepNames, required
         location: keepNames ? scrub.maybe(d.location) : null,
         description: keepNames ? scrub.maybe(d.description) : null,
         tunnelOf: d.tunnelOf,
+        neverProgrammed: d.neverProgrammed,
+        pendingDownload: d.pendingDownload,
       ),
   },
   projectName: c.projectName == null ? null : placeholderProject,
   manufacturers: c.manufacturers,
   style: c.style,
+  externalSenders: c.externalSenders,
 );
 
 /// Assembles the package – purely from the inputs, without app state.

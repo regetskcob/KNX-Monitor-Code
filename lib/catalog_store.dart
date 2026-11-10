@@ -10,6 +10,8 @@ import 'export/handover_package.dart';
 import 'knx/dpt_codec.dart';
 import 'knx/group_catalog.dart';
 import 'knx/knxproj_parser.dart';
+import 'knx/ha_knx_project_parser.dart';
+import 'knx/xknx_parser.dart';
 import 'knx/telegram.dart';
 import 'l10n/locale_controller.dart';
 import 'knx/demo_tunnel.dart';
@@ -282,13 +284,13 @@ class CatalogStore extends ChangeNotifier {
     if (_beforeDemo != null || DemoTunnel.active) return;
     final text = jsonEncode(_learned.toJson());
     // Lives in the installation's storage: natively on the device, in the add-on (browser) in the
-    // data folder of the user's own Home Assistant – never in a cloud. Via a KNX box it goes there
+    // data folder of the user's own Home Assistant – never in a cloud. Via a Busclear Box it goes there
     // too, so its alarms use the learned names like the app.
     await _storage.write(_learnedPath, text);
     _shareWithBox(_learnedPath, text);
   }
 
-  /// Opens the file picker and imports a .knxproj or ETS CSV. Returns `false` when cancelled;
+  /// Opens the file picker and imports a .knxproj, an XKNX Editor project (.xknx) or ETS CSV. Returns `false` when cancelled;
   /// throws [FormatException] for an invalid file.
   Future<bool> pickAndImport({required PasswordPrompt askPassword}) async {
     // FileType.any: iOS does not know .knxproj as a file type and would grey it out.
@@ -355,6 +357,9 @@ class CatalogStore extends ChangeNotifier {
           }
         }
       }
+    } else if (name.toLowerCase().endsWith('.xknx') || isXknx(bytes)) {
+      parsed = await _importXknx(bytes, askPassword);
+      if (parsed == null) return false;
     } else if (RegExp(r'\.(csv|txt)$', caseSensitive: false).hasMatch(name)) {
       parsed = GroupCatalog.parseCsv(GroupCatalog.decodeBytes(bytes));
     } else if (packageKindOf(bytes) != null) {
@@ -371,6 +376,64 @@ class CatalogStore extends ChangeNotifier {
     await _save(parsed, name);
     notifyListeners();
     return true;
+  }
+
+  /// Takes over the project of Home Assistant's KNX integration (add-on only). Returns `false` when
+  /// the integration has none; throws [FormatException] for an unusable answer.
+  Future<bool> importFromHomeAssistant() async {
+    busy.value = true;
+    phase.value = ImportPhase.reading;
+    try {
+      final answer = await Addon.knxProject();
+      if (answer['loaded'] != true || answer['project'] is! Map) return false;
+      phase.value = ImportPhase.opening;
+      await _paint();
+      final parsed = parseHaKnxProject(
+        (answer['project']! as Map).cast<String, Object?>(),
+        haGroups: (answer['ha_groups'] as List? ?? const []).whereType<String>(),
+      );
+      phase.value = ImportPhase.saving;
+      await _paint();
+      catalog = parsed;
+      await _save(parsed, 'Home Assistant');
+      notifyListeners();
+      return true;
+    } finally {
+      busy.value = false;
+      phase.value = null;
+    }
+  }
+
+  /// Project of the XKNX Editor; `null` when the password prompt was cancelled.
+  Future<GroupCatalog?> _importXknx(Uint8List bytes, PasswordPrompt askPassword) async {
+    String? password;
+    List<int>? key;
+    while (true) {
+      phase.value = password == null ? ImportPhase.opening : ImportPhase.decrypting;
+      await _paint();
+      try {
+        final pw = password;
+        final k = key;
+        final locale = LocaleController.instance.locale;
+        GroupCatalog parse() {
+          LocaleController.instance.debugSetLocale(locale);
+          return parseXknx(bytes, password: pw, key: k);
+        }
+
+        return kIsWeb ? parse() : await Isolate.run(parse);
+      } on KnxprojPasswordException catch (e) {
+        phase.value = null;
+        password = await askPassword(wrong: e.wrong);
+        if (password == null) return null;
+        key = null;
+        // 600 000 PBKDF2 rounds: in the browser via Web Crypto instead of Dart.
+        if (kIsWeb && password.isNotEmpty) {
+          phase.value = ImportPhase.decrypting;
+          final kdf = xknxKeyDerivation(bytes);
+          if (kdf != null) key = await nativePbkdf2Sha256(utf8.encode(password), kdf.salt, kdf.iterations, 32);
+        }
+      }
+    }
   }
 
   /// Adopts a finished project (e.g. from a diagnostics package) including user-chosen datapoint
@@ -411,7 +474,7 @@ class CatalogStore extends ChangeNotifier {
     await prefs.setString(_name, name);
   }
 
-  /// Via the KNX box: put the project there too so it knows names and types (alarms, timers,
+  /// Via the Busclear Box: put the project there too so it knows names and types (alarms, timers,
   /// browser on the box Wi-Fi). Native only; in the browser [AppStorage] lives on the server
   /// anyway.
   void _shareWithBox(String path, String text) {

@@ -47,6 +47,66 @@ const _deviceWritable = {'charts.json': ('charts', 'name'), 'watch_rules.json': 
 /// [_deviceWritable] file. Entries without it belong to the admin.
 const ownerField = 'owner';
 
+/// What the app stores through this API, by first path segment (files and folders of
+/// `AppStorage` in the app, plus what the server writes for it). Not enforced yet: the path list
+/// is new (security review 07.11.: allowlist instead of the blocklist [_private]), so for now an
+/// unknown name is only logged once. When the logs of a release stay quiet, refuse the rest.
+/// `test/known_app_files_test.dart` checks every file name in the app's code against it.
+const knownAppFiles = {
+  'annotations.json',
+  'assets',
+  'betrieb_standards.json',
+  'catalog.json',
+  'charts.json',
+  'cloud_sync',
+  'commissioning.json',
+  'company.json',
+  'company_logo.png.b64',
+  'crash',
+  'crash_log.txt',
+  'customer.json',
+  'dpt_overrides.json',
+  'exports',
+  'fault_hunt.json',
+  'fault_report.json',
+  'ga_plan.json',
+  'handover_origin.json',
+  'health.json',
+  'history',
+  'home_plan.json',
+  'home_plan_images',
+  'knx.yaml',
+  'learned.json',
+  'name_overrides.json',
+  'protocols',
+  'recordings',
+  'secure_keys.json',
+  'secure_sequence.json',
+  'service_reports',
+  'shots',
+  'site_notes.json',
+  'site_photos',
+  'site_photos.json',
+  'site_survey.json',
+  'team',
+  'visits.json',
+  'watch_rules.json',
+};
+
+final _reportedUnknown = <String>{};
+
+/// Logs the first path segment of [relative] once if it is not in [knownAppFiles] (and not
+/// `.bak`/`.corrupt-…` of a known one). Returns whether it was unknown.
+bool reportUnknownFile(String relative) {
+  final top = relative.split('/').first;
+  final base = top.replaceFirst(RegExp(r'\.(bak|corrupt-\d+)$'), '');
+  if (top.isEmpty || knownAppFiles.contains(base)) return false;
+  if (_reportedUnknown.add(top)) {
+    stderr.writeln('Datei-API: "$top" steht nicht auf der Positivliste (noch nicht gesperrt, siehe knownAppFiles)');
+  }
+  return true;
+}
+
 /// Upper limit of a merged file: each device brings at most [_maxDeviceUpload].
 const _maxMerged = 8 * 1024 * 1024;
 
@@ -100,6 +160,7 @@ Future<void> serveFile(
     response.statusCode = HttpStatus.methodNotAllowed;
     return response.close();
   }
+  reportUnknownFile(relative);
   if (_isPrivate(relative.split('/').first) || relative.toLowerCase().endsWith('.tmp')) {
     response.statusCode = HttpStatus.forbidden;
     return response.close();

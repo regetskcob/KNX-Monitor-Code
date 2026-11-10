@@ -18,6 +18,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class _FakeTunnel extends KnxTunnel {
   _FakeTunnel() : super('test');
 
+  // Not closed on purpose: lives as long as the fake.
+  // ignore: close_sinks
   final controller = StreamController<Telegram>.broadcast();
 
   @override

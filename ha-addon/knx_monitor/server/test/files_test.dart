@@ -187,7 +187,7 @@ void main() {
             'allowed': true,
             'scope': 'a',
             'charts': [
-              {'name': 'Temperatur', 'series': []},
+              {'name': 'Temperatur', 'series': <Object?>[]},
             ],
           }),
         )).$1,
@@ -198,14 +198,14 @@ void main() {
         'scope': 'a',
         'allowed': false,
         'charts': [
-          {'name': 'Temperatur', 'series': [], 'owner': 'A'},
+          {'name': 'Temperatur', 'series': <Object?>[], 'owner': 'A'},
         ],
       });
       await File('${data.path}/charts.json').writeAsString(
         jsonEncode({
           'allowed': true,
           'charts': [
-            {'name': 'Strom', 'series': []},
+            {'name': 'Strom', 'series': <Object?>[]},
           ],
         }),
       );
@@ -213,7 +213,7 @@ void main() {
       expect(await stored('charts.json'), {
         'allowed': true,
         'charts': [
-          {'name': 'Strom', 'series': []},
+          {'name': 'Strom', 'series': <Object?>[]},
         ],
       });
     });
@@ -271,5 +271,12 @@ void main() {
     first.add(Uint8List(30 * 1024 * 1024 - 1024));
     expect((await first.close()).statusCode, 204);
     expect(bodiesInFlight, 0);
+  });
+
+  test('Positivliste der Datei-API meldet nur, sperrt noch nicht', () {
+    expect(reportUnknownFile('catalog.json'), isFalse);
+    expect(reportUnknownFile('history/2026-11-09.ndjson'), isFalse);
+    expect(reportUnknownFile('catalog.json.bak'), isFalse);
+    expect(reportUnknownFile('irgendwas.json'), isTrue);
   });
 }

@@ -54,6 +54,12 @@ configuration:
       Like "Send raw data too", but without name, device name, DPT, value
       and unit from the ETS project, for databases that decode the values
       themselves. Off by default.
+  mqtt_retain_values:
+    name: Keep last value per address
+    description: >-
+      Only together with "Every telegram to MQTT". Also sends every new value
+      to knx_monitor/value/<address>, retained: whoever subscribes later gets
+      the latest state at once. Only when the value changes. Off by default.
   mqtt_filter:
     name: Only these group addresses to MQTT
     description: >-

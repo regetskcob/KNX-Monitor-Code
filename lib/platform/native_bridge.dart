@@ -46,7 +46,7 @@ abstract final class NativeBridge {
     }
   }
 
-  /// Join the KNX box's Wi-Fi (iOS and Android 10+): `joined`, `denied`, `unsupported` (other
+  /// Join the Busclear Box's Wi-Fi (iOS and Android 10+): `joined`, `denied`, `unsupported` (other
   /// platforms; then by hand) or `error: …`.
   static Future<String> joinWifi(String ssid, String password) async {
     if (kIsWeb || !(Platform.isIOS || Platform.isAndroid)) return 'unsupported';

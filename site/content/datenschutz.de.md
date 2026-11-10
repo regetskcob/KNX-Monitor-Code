@@ -65,7 +65,7 @@ Unter **Android** erkennt Googles ML Kit den QR-Code. ML Kit arbeitet auf dem Ge
 
 ### Busclear Box
 
-Verbindest du die App mit einer Busclear Box, legt sie dein ETS-Projekt, eigene Datentypen und den Keyring auch auf der Box ab und liest deren Verlauf. Die Box ist dein eigenes Gerät im lokalen Netz. Die Daten verlassen es nur, wenn du selbst ein Ziel einrichtest (siehe „Das Home-Assistant-Add-on“); an uns gehen sie nicht. Sie liegen dort unverschlüsselt auf SD-Karte oder SSD, wer den Datenträger hat, kann sie lesen. Der Zugang ist durch das Box-Passwort und gekoppelte Geräte geschützt, das Passwort liegt nur als Hash auf der Box; im WLAN der Box läuft die Verbindung ohne TLS. Hat die Box Internet, stellt sie darüber ihre Uhr.
+Verbindest du die App mit einer Busclear Box, legt sie dein ETS-Projekt, eigene Datentypen und den Keyring auch auf der Box ab und liest deren Verlauf. Beim Koppeln nennt die App der Box ab Version 1.11 außerdem eine zufällige Kennung dieser App auf diesem Gerät; die Box zeigt damit in ihrer Geräteliste, welcher Zugang zu welchem Gerät gehört. Anlage und Box haben je eine eigene Kennung, an der App und Box einander wiedererkennen. Keine dieser Kennungen gewährt Zugriff. Die Box ist dein eigenes Gerät im lokalen Netz. Die Daten verlassen es nur, wenn du selbst ein Ziel einrichtest (siehe „Das Home-Assistant-Add-on“); an uns gehen sie nicht. Sie liegen dort unverschlüsselt auf SD-Karte oder SSD, wer den Datenträger hat, kann sie lesen. Der Zugang ist durch das Box-Passwort und gekoppelte Geräte geschützt, das Passwort liegt nur als Hash auf der Box; im WLAN der Box läuft die Verbindung ohne TLS. Hat die Box Internet, stellt sie darüber ihre Uhr.
 
 ### Benachrichtigungen
 
@@ -73,7 +73,7 @@ Mitteilungen zu Alarmen und Wächtern erzeugt die App lokal auf dem Gerät; dein
 
 ### Export und Teilen
 
-Berichte (PDF), CSV- und ETS-Exporte werden nur erzeugt, wenn du das auslöst. Wohin sie gehen, bestimmst du über das Teilen-Menü deines Betriebssystems. Zuletzt erzeugte Exporte, auch Diagnosepakete, bleiben als Kopie in der App, damit du sie erneut teilen kannst; du kannst sie dort löschen. Eine Störungsmeldung an deinen Elektriker enthält neben der Busaufzeichnung die Namen der Adressen und Geräte, solange der Schalter dafür an ist; Bildschirmfotos an deinen Kommentaren nur, wenn du sie ausdrücklich einschließt. Sie geht nur an den Empfänger, den du wählst.
+Berichte (PDF), CSV- und ETS-Exporte werden nur erzeugt, wenn du das auslöst. Wohin sie gehen, bestimmst du über das Teilen-Menü deines Betriebssystems. Zuletzt erzeugte Exporte, auch Diagnosepakete, bleiben als Kopie in der App, damit du sie erneut teilen kannst; du kannst sie dort löschen. Eine Störungsmeldung an deinen Elektriker enthält neben der Busaufzeichnung die Kennung der Anlage, damit er sie bei sich zuordnen kann (bei Anlagen aus einem Übergabepaket ab Version 1.11), und die Namen der Adressen und Geräte, solange der Schalter dafür an ist; Bildschirmfotos an deinen Kommentaren nur, wenn du sie ausdrücklich einschließt. Sie geht nur an den Empfänger, den du wählst.
 
 ### Käufe in der App (Plus und Pro)
 

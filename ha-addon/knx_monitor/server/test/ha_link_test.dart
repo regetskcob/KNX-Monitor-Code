@@ -11,6 +11,8 @@ import 'package:test/test.dart';
 class _FakeHa {
   _FakeHa._(this.server) {
     server.listen((r) async {
+      // Not closed here on purpose: the fake server closes it with the request.
+      // ignore: close_sinks
       final ws = await WebSocketTransformer.upgrade(r);
       client = ws;
       ws.add(jsonEncode({'type': 'auth_required'}));
@@ -32,7 +34,7 @@ class _FakeHa {
                   'id': j['id'],
                   'type': 'result',
                   'success': true,
-                  'result': {'items': []},
+                  'result': {'items': <Object?>[]},
                 }),
               );
               return;

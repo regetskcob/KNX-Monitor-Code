@@ -60,7 +60,7 @@ void main() {
     expect(c.taps, hasLength(2));
     expect(c.taps.first['windowMs'], 5000);
     expect(BusConfig.invalidChange({'taps': 'x'}), isNotNull);
-    expect(BusConfig.invalidChange({'taps': List.filled(8, {})}), isNotNull);
+    expect(BusConfig.invalidChange({'taps': List.filled(8, <String, Object?>{})}), isNotNull);
     expect(BusConfig.invalidChange({'taps': []}), isNull);
   });
 
@@ -104,6 +104,69 @@ void main() {
     await _until(() => !identical(links['b'], first));
     expect(bus.state, 'connected');
     await _until(() => (bus.status()['taps'] as List).first['state'] == 'connected');
+    await bus.shutdown();
+  });
+
+  test('Data Secure: the same secured telegram at a further tap point keeps its decryption', () {
+    final bus = BusService(data, describe: (_, _) async => null);
+    final now = DateTime(2026, 11, 9, 12);
+    // Secured frame at tap 0 (hop count 6) and at tap 1 (hop count 5, other control fields).
+    List<int> frame(int ctrl2) => [
+      0x29,
+      0x00,
+      0xBC,
+      ctrl2,
+      0x11,
+      0x05,
+      0x09,
+      0x01,
+      0x05,
+      0x03,
+      0xF1,
+      0xAA,
+      0xBB,
+      0xCC,
+      0xDD,
+    ];
+    final decrypted = Uint8List.fromList([0x29, 0x00, 0xBC, 0xE0, 0x11, 0x05, 0x09, 0x01, 0x01, 0x00, 0x81]);
+    bus.rememberSecure(frame(0xE0), decrypted, now);
+    final again = bus.secureSeenAt(frame(0xD0), now.add(const Duration(milliseconds: 40)));
+    // Its own control fields, the decrypted APDU.
+    expect(again, [0x29, 0x00, 0xBC, 0xD0, 0x11, 0x05, 0x09, 0x01, 0x01, 0x00, 0x81]);
+    // Later it is a replay again, and other bytes are another telegram.
+    expect(bus.secureSeenAt(frame(0xD0), now.add(const Duration(seconds: 4))), isNull);
+    final other = frame(0xD0)..[14] = 0xEE;
+    expect(bus.secureSeenAt(other, now), isNull);
+  });
+
+  test('a tap point that is connected but hears nothing is reported as silent', () async {
+    final links = <String, _Link>{};
+    final bus = BusService(
+      data,
+      link: (c) => links[c.host] = _Link(c.host),
+      describe: (_, _) async => null,
+      telegram: (_, {required secure, required decrypted}) {},
+    );
+    await bus.start();
+    await bus.update({
+      'enabled': true,
+      'mode': 'udp',
+      'host': 'a',
+      'taps': [
+        {'name': 'Routing', 'mode': 'routing', 'host': 'b'},
+      ],
+    });
+    await _until(() => (bus.status()['taps'] as List).first['state'] == 'connected');
+    Map<String, Object?> tap() => (bus.status()['taps'] as List).first as Map<String, Object?>;
+    for (var i = 0; i < 19; i++) {
+      links['a']!.receive(_ind());
+    }
+    await _until(() => bus.today > 0);
+    expect(tap().containsKey('silent'), isFalse);
+    links['a']!.receive(_ind());
+    await _until(() => tap()['silent'] == true);
+    links['b']!.receive(_ind(hop: 5));
+    await _until(() => !tap().containsKey('silent'));
     await bus.shutdown();
   });
 

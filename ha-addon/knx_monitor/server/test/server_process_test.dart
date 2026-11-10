@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -34,8 +35,8 @@ void main() {
       ['run', 'bin/server.dart'],
       environment: {'PORT': '$port', 'DATA_DIR': data.path, 'WEB_DIR': web.path, ...env},
     );
-    server!.stdout.drain<void>();
-    server!.stderr.drain<void>();
+    unawaited(server!.stdout.drain<void>());
+    unawaited(server!.stderr.drain<void>());
     for (var i = 0; i < 300; i++) {
       try {
         await get('healthz');
@@ -208,6 +209,8 @@ void main() {
 
     test('WebSockets: ohne Kompression, zu große Nachricht beendet die Verbindung', () async {
       for (final (path, auth) in [('ws', admin), ('ws/bus', device)]) {
+        // Not closed here on purpose: closed when the test ends.
+        // ignore: close_sinks
         final ws = await WebSocket.connect(
           'ws://127.0.0.1:$port/$path',
           headers: {HttpHeaders.authorizationHeader: auth},

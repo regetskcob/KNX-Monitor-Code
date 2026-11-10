@@ -12,7 +12,7 @@ import 'package:knx_monitor/platform/storage.dart';
 import 'package:knx_monitor/platform/storage_io.dart';
 
 /// Keyring-Dateien und Beispiele aus den Tests von xknx (MIT). Data Secure selbst testet
-/// packages/knx (test/data_secure_test.dart); hier geht es um den Keyring der App.
+/// package knx (dart-knx, test/data_secure_test.dart); hier geht es um den Keyring der App.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Keyring secureTest;

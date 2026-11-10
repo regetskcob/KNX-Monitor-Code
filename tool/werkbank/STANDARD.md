@@ -213,6 +213,16 @@ gilt der Text als fehlend: Die PR-Titel sind englisch und technisch, die Texte s
 Claude oder du in Nutzersprache. `werkbank notes` prüft und legt den Play-Block in die
 Zwischenablage; `upload-play` nimmt ihn mit.
 
+**Inhalt der Store-Texte:** Nur was sich in der App selbst ändert, in Nutzersprache. Nicht
+hinein gehören Add-on, Server, Box, Website, CI, Tests, Werkzeuge und Release-Skript; die
+stehen im Changelog des jeweiligen Produkts. Neues aus einem Begleitprodukt nur, wenn die App
+es selbst zeigt oder nutzt, dann aus Sicht der App. Keine Issue- oder PR-Nummern.
+
+**Wann:** Claude schreibt beide Dateien fertig (ohne `ENTWURF`, Länge per `wc -m` geprüft) im
+selben Schritt wie den Versionssprung, vor dem App-Build, und gibt den Play-Block in der
+Abschlussnachricht zum Einfügen aus. Der Entwurf von `notes --draft` ist nur Rohstoff, nie das
+Ergebnis für den Nutzer; ein eigener Kürzungsschritt fällt damit weg.
+
 ### Hochladen
 
 - **Apple:** `werkbank upload-apple <archiv>` macht, was „Distribute App“ im Organizer tut,

@@ -720,7 +720,7 @@ class _HistoryCardState extends State<_HistoryCard> {
       final now = DateTime.now();
       final earliest = now.subtract(const Duration(days: 399));
       final from = days.last.date.isBefore(earliest) ? earliest : days.last.date;
-      final list = await Addon.outages(from, now, installation: _installation);
+      final list = await Addon.outages(from, now, installation: _installation, taps: true);
       return outagesByDay([for (final o in list) Outage.fromJson((o! as Map).cast<String, Object?>())]);
     } on Object {
       return const {};
@@ -993,19 +993,26 @@ class _HistoryCardState extends State<_HistoryCard> {
                                 leading: Icon(AppIcons.history, color: hz.textMuted),
                                 title: Text(formatDate(d.date), style: dayStyle),
                                 subtitle: switch (outages[DateUtils.dateOnly(d.date)]) {
-                                  final list? when list.isNotEmpty => Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Icon(HorizontStatus.critical.icon, size: 14, color: hz.critical),
-                                      const SizedBox(width: HzSpace.s4),
-                                      Expanded(
-                                        child: Text(
-                                          outageSummary(list),
-                                          style: theme.textTheme.bodySmall?.copyWith(color: hz.critical),
+                                  final list? when list.isNotEmpty => () {
+                                    // Only tap points missing: a gap, not a bus fault (issue #8).
+                                    final status = list.every((o) => o.kind == OutageKind.tap)
+                                        ? HorizontStatus.warning
+                                        : HorizontStatus.critical;
+                                    final color = status == HorizontStatus.warning ? hz.warning : hz.critical;
+                                    return Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(status.icon, size: 14, color: color),
+                                        const SizedBox(width: HzSpace.s4),
+                                        Expanded(
+                                          child: Text(
+                                            outageSummary(list),
+                                            style: theme.textTheme.bodySmall?.copyWith(color: color),
+                                          ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
+                                      ],
+                                    );
+                                  }(),
                                   _ => null,
                                 },
                                 trailing: Text(_size(d.bytes), style: dayStyle),

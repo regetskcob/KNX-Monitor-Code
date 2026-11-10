@@ -13,19 +13,45 @@ import 'recorder.dart';
 /// An installation (customer, construction site, home) with its own bus connection,
 /// ETS catalog, keyring and long-term history under `installations/<id>/`.
 class Installation {
-  Installation({required this.id, required this.name, required this.created});
+  Installation({required this.id, required this.name, required this.created, this.key});
 
+  /// Folder name under `installations/`; unique on this box only (`default` exists on every one).
   final String id;
   String name;
   final DateTime created;
 
-  Map<String, Object?> toJson() => {'id': id, 'name': name, 'created': created.millisecondsSinceEpoch};
+  /// Installation key (docs/keys.md): the same UUID wherever this installation is known, app,
+  /// box and handover package alike. The app sends it along; for an installation the server
+  /// created itself it is generated here. `null` only for one an older app created with its
+  /// own id, until an app supplies the key. Set once, never replaced.
+  String? key;
+
+  Map<String, Object?> toJson() => {'id': id, 'name': name, 'created': created.millisecondsSinceEpoch, 'key': ?key};
 
   factory Installation.fromJson(Map<String, Object?> j) => Installation(
     id: j['id']! as String,
     name: j['name'] as String? ?? '',
     created: DateTime.fromMillisecondsSinceEpoch(j['created'] as int? ?? 0),
+    key: switch (j['key']) {
+      final String k when isKey(k) => k,
+      _ => null,
+    },
   );
+}
+
+final _keyPattern = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
+
+/// Whether [value] has the form of a key (lower-case UUID), see docs/keys.md.
+bool isKey(Object? value) => value is String && _keyPattern.hasMatch(value);
+
+/// A new random key (UUID version 4).
+String newKey([Random? random]) {
+  final r = random ?? Random.secure();
+  final b = List.generate(16, (_) => r.nextInt(256));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  final h = b.map((x) => x.toRadixString(16).padLeft(2, '0')).join();
+  return '${h.substring(0, 8)}-${h.substring(8, 12)}-${h.substring(12, 16)}-${h.substring(16, 20)}-${h.substring(20)}';
 }
 
 /// Error while managing installations (status for the HTTP response).
@@ -48,6 +74,16 @@ class Installations {
   final Directory data;
   final _list = <Installation>[];
   late String _active;
+
+  /// Key of this box or add-on (docs/keys.md): generated on first start, kept in
+  /// `installations.json`. It names the box, it proves nothing: access stays with the password
+  /// and the device tokens.
+  String get boxKey => _boxKey;
+  String _boxKey = '';
+
+  /// Ids the app generates (12 hex characters). The app derives the key of such an installation
+  /// from the id, so the server never invents one for them.
+  static final _appId = RegExp(r'^[0-9a-f]{12}$');
 
   /// Ids as they come from the app (12 hex characters, UUIDs) – they end up in the file path.
   static final validId = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
@@ -125,7 +161,23 @@ class Installations {
       await result._save();
     }
     await result.root.create(recursive: true);
+    await result._ensureKeys();
     return result;
+  }
+
+  /// Older index: the box and the installations the server named itself get their keys once.
+  Future<void> _ensureKeys() async {
+    var changed = false;
+    if (!isKey(_boxKey)) {
+      _boxKey = newKey();
+      changed = true;
+    }
+    for (final i in _list) {
+      if (i.key != null || _appId.hasMatch(i.id)) continue;
+      i.key = newKey();
+      changed = true;
+    }
+    if (changed) await _save();
   }
 
   File get _backup => File('${_index.path}.bak');
@@ -141,6 +193,7 @@ class Installations {
     }
     final active = j['active'];
     _active = active is String ? active : '';
+    if (j['box'] case final String box when isKey(box)) _boxKey = box;
   }
 
   /// List built from the folders under `installations/` (name from the project).
@@ -220,11 +273,15 @@ class Installations {
       _index,
       text: jsonEncode({
         'version': 1,
+        if (_boxKey.isNotEmpty) 'box': _boxKey,
         'active': _active,
         'list': [for (final i in _list) i.toJson()],
       }),
     );
   });
+
+  /// Throws [InstallationException] if [name] cannot name an installation.
+  static void checkName(Object? name) => _cleanName(name);
 
   static String _cleanName(Object? name) {
     final text = name is String ? name.trim() : '';
@@ -233,15 +290,31 @@ class Installations {
   }
 
   /// Creates an installation. The app sends its own [id] so that box and app
-  /// use the same one; otherwise one is generated.
-  Future<Installation> create({String? id, required Object? name}) async {
+  /// use the same one, and the installation's [key]; otherwise both are generated.
+  Future<Installation> create({String? id, required Object? name, Object? key}) async {
     final clean = _cleanName(name);
     final newId = id ?? _newId();
     if (!validId.hasMatch(newId)) throw InstallationException(HttpStatus.badRequest, 'Ungültige Id.');
     if (byId(newId) != null) throw InstallationException(HttpStatus.conflict, 'Id gibt es schon.');
-    await rootOf(newId).create(recursive: true);
-    final installation = Installation(id: newId, name: clean, created: DateTime.now());
+    if (key != null && !isKey(key)) throw InstallationException(HttpStatus.badRequest, 'Ungültiger Schlüssel.');
+    if (key != null && _list.any((i) => i.key == key)) {
+      throw InstallationException(HttpStatus.conflict, 'Diese Installation gibt es schon.');
+    }
+    final installation = Installation(
+      id: newId,
+      name: clean,
+      created: DateTime.now(),
+      key: key as String? ?? (id == null ? newKey() : null),
+    );
+    // Into the list before the first await: a second request with the same id or key that
+    // arrives meanwhile is refused by the checks above.
     _list.add(installation);
+    try {
+      await rootOf(newId).create(recursive: true);
+    } on Object {
+      _list.remove(installation);
+      rethrow;
+    }
     await _save();
     return installation;
   }
@@ -249,6 +322,20 @@ class Installations {
   Future<Installation> rename(String id, Object? name) async {
     final installation = _require(id);
     installation.name = _cleanName(name);
+    await _save();
+    return installation;
+  }
+
+  /// Supplies the key of an installation that has none yet (created by an older app). A key
+  /// that is set stays: the same one is accepted, another one refused.
+  Future<Installation> setKey(String id, Object? key) async {
+    final installation = _require(id);
+    if (!isKey(key)) throw InstallationException(HttpStatus.badRequest, 'Ungültiger Schlüssel.');
+    if (installation.key == key) return installation;
+    if (installation.key != null || _list.any((i) => i.key == key)) {
+      throw InstallationException(HttpStatus.conflict, 'Der Schlüssel der Installation steht fest.');
+    }
+    installation.key = key! as String;
     await _save();
     return installation;
   }
@@ -281,6 +368,7 @@ class Installations {
 
   /// [toJson] with the active installation only (for devices without admin rights).
   Map<String, Object?> activeJson() => {
+    'box': _boxKey,
     'active': _active,
     'list': [
       {...active.toJson(), 'active': true},
@@ -288,6 +376,7 @@ class Installations {
   };
 
   Map<String, Object?> toJson() => {
+    'box': _boxKey,
     'active': _active,
     'list': [
       for (final i in _list) {...i.toJson(), 'active': i.id == _active},
@@ -316,7 +405,11 @@ class InstallationService {
   /// they are converted as soon as the clock is set.
   final _unsynced = <Recorder>[];
 
-  Map<String, Object?> get info => {'id': installations.activeId, 'name': installations.active.name};
+  Map<String, Object?> get info => {
+    'id': installations.activeId,
+    'name': installations.active.name,
+    'key': ?installations.active.key,
+  };
 
   Future<void> start() async {
     bus = _createBus(installations.root, info);
@@ -360,6 +453,13 @@ class InstallationService {
   /// Renames; for the active one also in the bus status.
   Future<Installation> rename(String id, Object? name) async {
     final result = await installations.rename(id, name);
+    if (id == installations.activeId) bus.installation = info;
+    return result;
+  }
+
+  /// Supplies a missing key ([Installations.setKey]); for the active one also in the bus status.
+  Future<Installation> setKey(String id, Object? key) async {
+    final result = await installations.setKey(id, key);
     if (id == installations.activeId) bus.installation = info;
     return result;
   }
@@ -457,7 +557,7 @@ Future<bool> serveInstallations(HttpRequest request, InstallationService service
       case ('POST', []):
         final id = body['id'];
         if (id != null && id is! String) throw InstallationException(HttpStatus.badRequest, 'Ungültige Id.');
-        final created = await installations.create(id: id as String?, name: body['name']);
+        final created = await installations.create(id: id as String?, name: body['name'], key: body['key']);
         response.statusCode = HttpStatus.created;
         await sendJson(response, {...created.toJson(), 'active': false});
       case ('POST', ['active']):
@@ -466,8 +566,14 @@ Future<bool> serveInstallations(HttpRequest request, InstallationService service
         await service.activate(id);
         await sendJson(response, installations.toJson());
       case ('PATCH', [final id]):
-        final renamed = await service.rename(id, body['name']);
-        await sendJson(response, {...renamed.toJson(), 'active': id == installations.activeId});
+        // Name, key or both. Both are checked before either is stored, so a refused request
+        // changes nothing.
+        var changed = installations.byId(id);
+        final both = body.containsKey('key') && body.containsKey('name');
+        if (both) Installations.checkName(body['name']);
+        if (body.containsKey('key')) changed = await service.setKey(id, body['key']);
+        if (body.containsKey('name') || !body.containsKey('key')) changed = await service.rename(id, body['name']);
+        await sendJson(response, {...changed!.toJson(), 'active': id == installations.activeId});
       case ('DELETE', [final id]):
         await installations.delete(id);
         response.statusCode = HttpStatus.noContent;

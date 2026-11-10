@@ -166,7 +166,7 @@ class _Rule {
     final label = j['label'] as String? ?? '$address';
     final name = j['name'] as String?;
     if (check['any'] == true) return _Rule(id: id, address: address, label: label, name: name, any: true);
-    if (check['values'] case final List values) {
+    if (check['values'] case final List<Object?> values) {
       return _Rule(
         id: id,
         address: address,

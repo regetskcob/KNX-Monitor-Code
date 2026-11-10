@@ -151,7 +151,7 @@ class ArtChannel {
           : null,
       label: _rect(j['label']),
       contact: switch (j['contact']) {
-        final Map c => (
+        final Map<Object?, Object?> c => (
           Offset((c['x']! as num).toDouble(), (c['y']! as num).toDouble()),
           Offset((c['openX']! as num).toDouble(), (c['openY']! as num).toDouble()),
           Offset((c['closedX']! as num).toDouble(), (c['closedY']! as num).toDouble()),

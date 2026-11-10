@@ -6,6 +6,22 @@ slug: "changelog"
 ---
 What the latest versions of Busclear brought, newest first. App, Home Assistant add-on and Busclear Box share one version number. Every version is on [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant the add-on shows the same notes before an update.
 
+## 1.11.0 – 10 Nov 2026
+
+- Fewer false "stopped sending" alerts: group addresses that send in bursts (dimming, blinds while moving, switching with status feedback) no longer count as cyclic. This affects the repair in the Home Assistant integration and the app's health check.
+- New card "Last 7 days" in the overview (add-on and Busclear Box): telegrams per day, bus load, repeats, how long the recording ran, and what is worth a look, such as several clocks, read storms, very chatty addresses, silent devices, unknown senders and dropped connections.
+- Project against bus: with the add-on or the box the project check also uses the recording. It names devices that send where the project says they do not, commands whose status never answers, unanswered read requests, contacts and alarms stuck at 1 for days, and presence detectors that trigger most nights. For addresses without a datapoint type it suggests one. New without a recording too: devices never programmed, or not since the last change.
+- XKNX Editor: Busclear opens projects of the [XKNX Editor](https://github.com/XKNX/xknx-editor) (`.xknx`), also password-protected ones. In the add-on, "From Home Assistant" takes over the project of the KNX integration. Findings go to the editor as corrections and comments, and a device can be compared with the project, read only. Nothing is programmed.
+- AI access (MCP): AI tools such as Claude can read the recording, device activity, findings and the project check. Read only, off by default, with its own token; switch it on under Exports › Continuous › AI access (MCP).
+- Tap points ([#8](https://github.com/regetskcob/KNX-Monitor/issues/8)): a connected tap point that hears nothing is reported. The time window for merging measures itself. When a tap point was gone, the recordings show a gap instead of a bus fault. The telegram list filters by tap point or by "seen at one tap point only", and with tap points on several lines the topology checks the couplers' filter tables against the project. The origin is the tap point on the sender's line (highest hop count), not the fastest one: a kBerry reports about 40 ms after a KNX IP interface. And the evaluations in the background no longer hold up the bus for a moment, so telegrams are no longer listed twice.
+- Bus load in percent as a key figure and chart template, also on the dashboard card. Connection drops go to the availability log at once with their reason, also when the connection comes back within a minute.
+- MQTT ([#11](https://github.com/regetskcob/KNX-Monitor/issues/11)): with the option "Keep last value per address" (Docker and box: `MQTT_RETAIN_VALUES=true`) each new value also goes to `knx_monitor/value/1/2/3`, retained. Whoever subscribes later gets the current state at once. The guide has a Node-RED example.
+- Home Assistant integration 1.2.0 ([#12](https://github.com/regetskcob/KNX-Monitor/issues/12)): if a Busclear Box or container no longer accepts the key, Home Assistant asks for a new pairing link instead of only failing.
+- Docker: with `PUID`/`PGID` the server runs without root rights; the template sets 1000:1000.
+- Lessons: "Try it" goes straight to the place in the app the lesson talks about. On the Mac, sharing first asks "Save As…" or "Share…".
+- Several Busclear Boxes with one app: every installation and every box now has its own identifier. Two boxes whose installation has the same name stay two separate installations in the app, and an installation stays the same when it is passed on in a handover package. The identifier grants no access.
+- The KNX protocol now comes from the open packages [knx](https://pub.dev/packages/knx) and [knx_io](https://pub.dev/packages/knx_io).
+
 ## 1.10.0 – 8 Nov 2026
 
 - KNX Monitor is now **Busclear**, the KNX box is now the **Busclear Box**. Same add-on, same features: projects, recordings, settings and automations stay. Existing entities keep their IDs (`knx_monitor_…`), add-on slug and MQTT topics stay, the box keeps its Wi-Fi `KNX-Box-…`. The website is now busclear.de (knx-monitor.de redirects), support via support@busclear.de.

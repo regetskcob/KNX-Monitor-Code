@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:knx_monitor_server/box.dart';
 import 'package:knx_monitor_server/bus.dart';
 import 'package:test/test.dart';
 

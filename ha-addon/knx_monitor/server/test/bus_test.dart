@@ -74,7 +74,7 @@ void main() {
       final tunnel = KnxIpTunnel(host: '127.0.0.1', port: gw.port);
       await expectLater(
         tunnel.connect(),
-        throwsA(isA<LinkException>().having((e) => e.message, 'message', contains('keine freien Tunnel'))),
+        throwsA(isA<LinkException>().having((e) => linkText(e), 'message', contains('keine freien Tunnel'))),
       );
     });
 
@@ -82,7 +82,7 @@ void main() {
       final tunnel = KnxIpTunnel(host: '127.0.0.1', port: gw.port);
       await tunnel.connect();
       gw.kick();
-      expect(await tunnel.lost.timeout(const Duration(seconds: 2)), contains('beendet'));
+      expect(linkText(await tunnel.lost.timeout(const Duration(seconds: 2))), contains('beendet'));
     });
 
     test('UDP: Wiederholung wird nur quittiert, nicht doppelt gemeldet', () async {
@@ -151,6 +151,8 @@ void main() {
     Future<_WsClient> client({bool maySend = true}) async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       server.listen((r) async => bus.serve(await WebSocketTransformer.upgrade(r), maySend: maySend));
+      // Not closed here on purpose: closed when the test ends.
+      // ignore: close_sinks
       final ws = await WebSocket.connect('ws://127.0.0.1:${server.port}');
       return _WsClient(ws, server);
     }
@@ -243,7 +245,7 @@ void main() {
       );
       await own.start();
       // Zweistufige Adressen: Das Ereignis nutzt den Stil des Projekts.
-      await File('${dir.path}/catalog.json').writeAsString(jsonEncode({'style': 'twoLevel', 'groups': []}));
+      await File('${dir.path}/catalog.json').writeAsString(jsonEncode({'style': 'twoLevel', 'groups': <Object?>[]}));
       await File('${dir.path}/watch_rules.json').writeAsString(
         jsonEncode({
           'rules': [
@@ -509,6 +511,72 @@ void main() {
     expect(outages.map((o) => o['kind']), ['disconnected', 'offline']);
     expect(outages.first['from'], t0.add(const Duration(minutes: 4)).millisecondsSinceEpoch);
     expect(outages.first['to'], t0.add(const Duration(minutes: 7)).millisecondsSinceEpoch);
+  });
+
+  test('drops keep their reason, also when they reconnect within the minute', () async {
+    final data = await Directory.systemTemp.createTemp('knx_avail');
+    addTearDown(() => data.delete(recursive: true));
+    final a = Availability(data);
+    final t0 = DateTime(2026, 11, 9, 12);
+    for (var m = 0; m < 10; m++) {
+      await a.beat(
+        connected: m != 6,
+        telegrams: 3,
+        now: t0.add(Duration(minutes: m)),
+      );
+    }
+    // Short drop between two heartbeats: invisible in the heartbeats alone.
+    await a.connectionEvent(reason: 'Gira X1: Tunnel beendet', now: t0.add(const Duration(minutes: 2, seconds: 10)));
+    await a.connectionEvent(now: t0.add(const Duration(minutes: 2, seconds: 13)));
+    // Longer drop, seen by the heartbeat at minute 6 too.
+    await a.connectionEvent(reason: 'Gira X1: keine Antwort', now: t0.add(const Duration(minutes: 5, seconds: 50)));
+    await a.connectionEvent(now: t0.add(const Duration(minutes: 6, seconds: 40)));
+    final outages = await a.outages(t0, t0.add(const Duration(minutes: 9)));
+    expect(outages, hasLength(2));
+    expect(outages.first, {
+      'from': t0.add(const Duration(minutes: 2, seconds: 10)).millisecondsSinceEpoch,
+      'to': t0.add(const Duration(minutes: 2, seconds: 13)).millisecondsSinceEpoch,
+      'kind': 'disconnected',
+      'reason': 'Gira X1: Tunnel beendet',
+    });
+    expect(outages.last['from'], t0.add(const Duration(minutes: 5)).millisecondsSinceEpoch);
+    expect(outages.last['reason'], 'Gira X1: keine Antwort');
+    // Event lines are no heartbeats: the share stays as before.
+    expect(await a.ratio(t0, t0.add(const Duration(minutes: 9))), closeTo(7 / 9, 0.001));
+  });
+
+  test('a tap point that was not reachable is a gap of its own, not a bus outage', () async {
+    final data = await Directory.systemTemp.createTemp('knx_avail');
+    addTearDown(() => data.delete(recursive: true));
+    final a = Availability(data);
+    final t0 = DateTime(2026, 11, 9, 12);
+    for (var m = 0; m < 10; m++) {
+      await a.beat(connected: true, telegrams: 3, now: t0.add(Duration(minutes: m)));
+    }
+    await a.connectionEvent(reason: 'keine Antwort', tap: 'Linie 1.2', now: t0.add(const Duration(minutes: 2)));
+    await a.connectionEvent(tap: 'Linie 1.2', now: t0.add(const Duration(minutes: 5)));
+    await a.connectionEvent(reason: 'VPN weg', tap: 'Ferienhaus', now: t0.add(const Duration(minutes: 8)));
+    final to = t0.add(const Duration(minutes: 9));
+    // Without taps: as before, the bus was connected throughout.
+    expect(await a.outages(t0, to), isEmpty);
+    expect(await a.ratio(t0, to), 1.0);
+    final gaps = await a.outages(t0, to, taps: true);
+    expect(gaps, [
+      {
+        'from': t0.add(const Duration(minutes: 2)).millisecondsSinceEpoch,
+        'to': t0.add(const Duration(minutes: 5)).millisecondsSinceEpoch,
+        'kind': 'tap',
+        'tap': 'Linie 1.2',
+        'reason': 'keine Antwort',
+      },
+      {
+        'from': t0.add(const Duration(minutes: 8)).millisecondsSinceEpoch,
+        'to': to.millisecondsSinceEpoch,
+        'kind': 'tap',
+        'tap': 'Ferienhaus',
+        'reason': 'VPN weg',
+      },
+    ]);
   });
 
   test('requests with invalid settings are rejected instead of clamped', () {

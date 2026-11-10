@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:horizont/horizont.dart';
@@ -164,7 +166,7 @@ class _ReplaySheetState extends State<_ReplaySheet> {
     if (!await confirmReplay(context) || !mounted) return;
     final replay = BusReplay.overTunnel(widget.tunnel, plan, maxGap: _shorten ? _shortGap : null);
     setState(() => _replay = replay);
-    replay.run();
+    unawaited(replay.run());
   }
 
   @override

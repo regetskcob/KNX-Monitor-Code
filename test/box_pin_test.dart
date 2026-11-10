@@ -23,6 +23,8 @@ void main() {
     server = await HttpServer.bindSecure(InternetAddress.loopbackIPv4, 0, context);
     server.listen((request) async {
       if (WebSocketTransformer.isUpgradeRequest(request)) {
+        // Not closed on purpose: the test server closes it with the request.
+        // ignore: close_sinks
         final ws = await WebSocketTransformer.upgrade(request);
         ws.add(utf8.encode('hallo'));
         return;

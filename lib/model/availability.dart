@@ -7,20 +7,32 @@ enum OutageKind {
 
   /// The add-on was not running (no sign of life).
   offline,
+
+  /// A further tap point was not reachable ([Outage.tap]); the bus itself was recorded, only
+  /// what stays in that tap point's line is missing (issue #8). No bus fault.
+  tap,
 }
 
 class Outage {
-  const Outage(this.from, this.to, this.kind);
+  const Outage(this.from, this.to, this.kind, {this.tap});
 
   factory Outage.fromJson(Map<String, Object?> j) => Outage(
     DateTime.fromMillisecondsSinceEpoch(j['from']! as int),
     DateTime.fromMillisecondsSinceEpoch(j['to']! as int),
-    j['kind'] == 'offline' ? OutageKind.offline : OutageKind.disconnected,
+    switch (j['kind']) {
+      'offline' => OutageKind.offline,
+      'tap' => OutageKind.tap,
+      _ => OutageKind.disconnected,
+    },
+    tap: j['tap'] as String?,
   );
 
   final DateTime from;
   final DateTime to;
   final OutageKind kind;
+
+  /// Name of the tap point with [OutageKind.tap].
+  final String? tap;
 
   Duration get duration => to.difference(from);
 }
@@ -34,7 +46,7 @@ Map<DateTime, List<Outage>> outagesByDay(List<Outage> outages) {
       final day = DateTime(start.year, start.month, start.day);
       final next = DateTime(day.year, day.month, day.day + 1);
       final end = o.to.isBefore(next) ? o.to : next;
-      (result[day] ??= []).add(Outage(start, end, o.kind));
+      (result[day] ??= []).add(Outage(start, end, o.kind, tap: o.tap));
       start = end;
     }
   }
@@ -46,9 +58,14 @@ String outageSummary(List<Outage> outages) {
   Duration sum(OutageKind k) => outages.where((o) => o.kind == k).fold(Duration.zero, (a, o) => a + o.duration);
   final offline = sum(OutageKind.offline);
   final disconnected = sum(OutageKind.disconnected);
+  final taps = <String, Duration>{};
+  for (final o in outages.where((o) => o.kind == OutageKind.tap)) {
+    taps[o.tap ?? ''] = (taps[o.tap ?? ''] ?? Duration.zero) + o.duration;
+  }
   return [
     if (offline > Duration.zero) s.outageOffline(formatDuration(offline)),
     if (disconnected > Duration.zero) s.outageDisconnected(formatDuration(disconnected)),
+    for (final MapEntry(key: name, value: d) in taps.entries) s.outageTap(name, formatDuration(d)),
   ].join(' · ');
 }
 

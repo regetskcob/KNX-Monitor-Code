@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../platform/addon.dart';
 import '../platform/box_link.dart';
 
-/// The paired KNX box and whether the app currently runs through it instead of
+/// The paired Busclear Box and whether the app currently runs through it instead of
 /// a gateway (native only; in the browser on the box this is the normal case).
 ///
 /// Also receives pairing links that the system passes to the app when the QR

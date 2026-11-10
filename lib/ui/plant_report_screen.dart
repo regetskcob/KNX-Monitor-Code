@@ -497,5 +497,14 @@ class PlantReportDetailScreen extends StatelessWidget {
 String plantOutageText(Map<String, Object?> o) {
   final from = DateTime.fromMillisecondsSinceEpoch(o['from']! as int);
   final to = DateTime.fromMillisecondsSinceEpoch(o['to']! as int);
-  return '${formatDate(from)} ${formatTime(from, seconds: false)} – ${formatDate(to)} ${formatTime(to, seconds: false)}';
+  // A drop that reconnected within the minute: with seconds, else it reads "12:46 – 12:46".
+  final short = to.difference(from) < const Duration(minutes: 1);
+  final span = short
+      ? '${formatDate(from)} ${formatTime(from, millis: false)} – ${formatTime(to, millis: false)}'
+      : '${formatDate(from)} ${formatTime(from, seconds: false)} – ${formatDate(to)} ${formatTime(to, seconds: false)}';
+  // Reason of the drop, recorded by the server since the tunnel investigation of 9 Nov 2026.
+  return switch (o['reason']) {
+    final String r when r.isNotEmpty => '$span · $r',
+    _ => span,
+  };
 }

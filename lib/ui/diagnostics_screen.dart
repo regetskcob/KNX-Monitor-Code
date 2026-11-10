@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:horizont/horizont.dart';
 
@@ -6,12 +7,15 @@ import '../knx/diagnostics.dart';
 import '../knx/knx_tunnel.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
+import '../model/xknx_editor_settings.dart';
+import '../platform/xknx_editor_client.dart';
 import '../theme/app_icons.dart';
 import '../theme/tokens.dart';
 import '../theme/palette.dart';
 import 'common.dart';
 import 'inventory_view.dart';
 import 'statistics_screen.dart' show FigureBox;
+import 'xknx_editor_sheet.dart' show xknxEditorErrorText;
 
 /// Diagnostic tools: read the status of all addresses, find devices in
 /// programming mode, check an individual address. Read-only.
@@ -193,6 +197,30 @@ class _AddressCheckCardState extends State<_AddressCheckCard> {
   DeviceDetails? _details;
   bool _detailsBusy = false;
   String? _detailsError;
+  XknxDevicePreview? _preview;
+  bool _previewBusy = false;
+  String? _previewError;
+
+  /// Download preview through the XKNX Editor: does the device carry the project?
+  Future<void> _comparePreview(int address) async {
+    setState(() {
+      _previewBusy = true;
+      _previewError = null;
+      _preview = null;
+    });
+    final client = await XknxEditorSettings.client();
+    try {
+      final preview = await client.previewDownload(formatIndividual(address));
+      if (mounted) setState(() => _preview = preview);
+    } on XknxEditorException catch (e) {
+      if (mounted) {
+        setState(() => _previewError = xknxEditorErrorText(e));
+      }
+    } finally {
+      client.close();
+      if (mounted) setState(() => _previewBusy = false);
+    }
+  }
 
   Future<void> _readDetails(int address) async {
     setState(() {
@@ -228,6 +256,8 @@ class _AddressCheckCardState extends State<_AddressCheckCard> {
       _result = null;
       _details = null;
       _detailsError = null;
+      _preview = null;
+      _previewError = null;
     });
     try {
       final result = await Diagnostics(widget.tunnel).checkAddress(address);
@@ -292,13 +322,34 @@ class _AddressCheckCardState extends State<_AddressCheckCard> {
           ]),
           if (r.state == AddressState.present) ...[
             const SizedBox(height: Gap.item),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                onPressed: _detailsBusy ? null : () => _readDetails(r.address),
-                icon: _detailsBusy ? _spinner : const Icon(AppIcons.info, size: 18),
-                label: Text(s.diagDeviceInfo),
-              ),
+            Wrap(
+              spacing: Gap.item,
+              runSpacing: Gap.item,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _detailsBusy ? null : () => _readDetails(r.address),
+                  icon: _detailsBusy ? _spinner : const Icon(AppIcons.info, size: 18),
+                  label: Text(s.diagDeviceInfo),
+                ),
+                // The editor runs on the user's computer; the browser cannot reach it.
+                if (!kIsWeb && CatalogStore.instance.device(r.address) != null)
+                  Tooltip(
+                    message: s.xknxEditorPreviewHint,
+                    child: OutlinedButton.icon(
+                      onPressed: _previewBusy ? null : () => _comparePreview(r.address),
+                      icon: _previewBusy ? _spinner : const Icon(AppIcons.etsTasks, size: 18),
+                      label: Text(s.xknxEditorPreview),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+          if (_previewError != null) ...[const SizedBox(height: Gap.item), _ErrorLine(_previewError!)],
+          if (_preview case final p?) ...[
+            const SizedBox(height: Gap.item),
+            HorizontNotice(
+              p.config == 0 ? HorizontStatus.positive : HorizontStatus.warning,
+              child: Text(p.config == 0 ? s.xknxEditorPreviewSame : s.xknxEditorPreviewDiff(p.config)),
             ),
           ],
           if (_detailsError != null) ...[const SizedBox(height: Gap.item), _ErrorLine(_detailsError!)],

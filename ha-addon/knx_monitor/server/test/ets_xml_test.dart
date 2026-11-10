@@ -63,6 +63,40 @@ void main() {
       expect(content.stdout, expected);
     });
 
+    test('nur ein Export zur Zeit: der zweite bekommt 429', () async {
+      // Enough history that the first download blocks while nobody reads it.
+      final big = [
+        for (var i = 0; i < 60000; i++)
+          jsonEncode({
+            't': first.microsecondsSinceEpoch + i * 1000,
+            's': 4402,
+            'd': 4096 + i % 50,
+            'y': 2,
+            'x': '0c33',
+          }),
+      ];
+      File('${data.path}/history/$day.ndjson').writeAsStringSync('${big.join('\n')}\n');
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((r) => serveEtsXml(r, recorder));
+      final uri = Uri.parse('http://127.0.0.1:${server.port}$etsXmlPath?all=1');
+      final socket = await Socket.connect(InternetAddress.loopbackIPv4, server.port);
+      socket.write('GET ${uri.path}?all=1 HTTP/1.1\r\nHost: x\r\n\r\n');
+      // The first export runs; its answer is not read.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      final client = HttpClient();
+      final second = await (await client.getUrl(uri)).close();
+      expect(second.statusCode, HttpStatus.tooManyRequests);
+      expect(second.headers.value(HttpHeaders.retryAfterHeader), '30');
+      await second.drain<void>();
+      // The check without a body goes through meanwhile.
+      final check = await (await client.getUrl(uri.replace(query: 'check=1&from=0&to=1'))).close();
+      expect(check.statusCode, isNot(HttpStatus.tooManyRequests));
+      await check.drain<void>();
+      socket.destroy();
+      client.close(force: true);
+      await server.close(force: true);
+    });
+
     test('crc32 like zlib', () {
       expect(crc32(utf8.encode('123456789')), 0xCBF43926);
       expect(crc32(utf8.encode('6789'), crc32(utf8.encode('12345'))), 0xCBF43926);

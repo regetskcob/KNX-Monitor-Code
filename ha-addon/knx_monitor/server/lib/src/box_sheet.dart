@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-/// What is printed on the KNX box sheet; firstboot.sh passes it on first start
+/// What is printed on the Busclear Box sheet; firstboot.sh passes it on first start
 /// (`server sheet <folder>`), and the box writes it as `knx-box-de.pdf` and
 /// `knx-box-en.pdf` to the SD card.
 class BoxSheet {
@@ -459,14 +459,14 @@ const _de = _Texts(
 );
 
 const _en = _Texts(
-  title: 'KNX box',
+  title: 'Busclear Box',
   site: 'busclear.de/en/box',
   stickersLabel: 'Two labels for the box',
   cutHint:
       'Cut both out along the dashed line. Same size, but do not swap them: each label shows its number and place.',
   appTag: 'Label 1 · top',
   appTitle: 'Scan in the app',
-  appText: 'Open Busclear, choose "Add KNX box" and scan this code. Not with the camera app.',
+  appText: 'Open Busclear, choose "Add Busclear Box" and scan this code. Not with the camera app.',
   appPlace: 'On top of the box',
   appWhere: 'For the app: one scan sets up the box (Wi-Fi, pairing, clock, gateway). Holds the box password until you set your own.',
   wifiTag: 'Label 2 · bottom',
@@ -494,11 +494,11 @@ const _en = _Texts(
     ),
     (
       'With a phone or tablet.',
-      'In the app, "Add KNX box" and scan label 1. The app joins the Wi-Fi, pairs, sets the clock and looks for the gateway.',
+      'In the app, "Add Busclear Box" and scan label 1. The app joins the Wi-Fi, pairs, sets the clock and looks for the gateway.',
     ),
     (
       'With Linux.',
-      "On the computer, switch to the box's Wi-Fi (name and password above). In the app, \"Add KNX box\" and paste the link above.",
+      "On the computer, switch to the box's Wi-Fi (name and password above). In the app, \"Add Busclear Box\" and paste the link above.",
     ),
     (
       'Without the app.',

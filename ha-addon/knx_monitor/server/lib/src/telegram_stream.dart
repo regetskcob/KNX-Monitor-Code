@@ -28,6 +28,7 @@ class TelegramStream {
     bool raw = false,
     this.rawOnly = false,
     this.filter = GroupFilter.all,
+    this.retainValues = false,
   }) : raw = raw || rawOnly;
 
   final String prefix;
@@ -47,6 +48,14 @@ class TelegramStream {
 
   /// Group addresses that are sent; [GroupFilter.all] by default.
   final GroupFilter filter;
+
+  /// "Keep last value": on top of the stream, `<prefix>/value/<ga>` retained,
+  /// only when the value of the address changes (add-on option
+  /// `mqtt_retain_values`, MQTT_RETAIN_VALUES=true).
+  final bool retainValues;
+
+  /// Topic of the last value of [group] (see [retainValues]).
+  String valueTopic(int group) => '$prefix/value/${formatGroup3(group)}';
 
   static const _types = ['read', 'response', 'write'];
   static const _priorities = ['system', 'normal', 'urgent', 'low'];

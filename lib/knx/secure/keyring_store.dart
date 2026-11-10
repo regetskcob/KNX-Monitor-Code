@@ -230,7 +230,7 @@ class KeyringStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Via the KNX box: put the keyring there too so it records secured telegrams in readable form
+  /// Via the Busclear Box: put the keyring there too so it records secured telegrams in readable form
   /// (the same file as in the add-on).
   Future<void> shareWithBox() async {
     if (kIsWeb || Addon.box == null) return;

@@ -25,10 +25,26 @@ the ETS catalog, recordings and long-term history in the add-on's data folder
 
 1. Start the add-on and open **Busclear** in the sidebar.
 2. Pick your gateway (discovered automatically) or enter its IP address.
-3. Optionally import your ETS project (`.knxproj` or group address CSV) to get
-   names, datapoint types and devices.
+3. Optionally import your project to get names, datapoint types and devices:
+   an ETS project (`.knxproj`), a project of the
+   [XKNX Editor](https://github.com/XKNX/xknx-editor) (`.xknx`), a group
+   address CSV, or with **From Home Assistant** the project Home Assistant's
+   KNX integration already has (uploaded in its KNX panel or sent from the XKNX
+   Editor). Taken from Home Assistant, the group addresses its entities and
+   exposes write to count as having a sender in the project check.
 
 Gateway address and language are chosen in the app and remembered per browser.
+
+## AI access (MCP)
+
+AI tools such as Claude can read the recording through Busclear's MCP server:
+telegrams, device activity, findings over the last days and the project
+check. Off by default; switch it on in the app under Exports › Continuous ›
+AI access (MCP), which shows the address (`http://<Home Assistant host>:8765/api/mcp`),
+the token and the command for Claude Code. It only reads: nothing goes to the
+bus. Whoever has the token can read the whole history, and the connection in
+the home network is not encrypted, so keep the token to your own tools and
+renew it if in doubt.
 
 ## Continuous recording
 
@@ -69,6 +85,17 @@ history are explained in the day list ("bus disconnected for 3 min",
 
 The history, settings and an imported keyring are part of Home Assistant
 backups.
+
+### Overview of the last seven days
+
+With the add-on or the box, the app's overview shows a card "Last 7 days" from the
+continuous recording: telegrams per day, bus load (average and peak minute),
+repeats, how much of the time the recording ran, and the findings worth a look:
+several clocks sending date/time, reads answered by more than one device (the R flag
+belongs to the sender only), read storms (e.g. Home Assistant's state sync), very
+chatty group addresses, project devices that sent nothing, senders outside the
+project, dropped connections and tap point gaps. The server works it out at most
+once an hour per installation; the same data is at `/api/summary`.
 
 ## Comments, reporting a problem, exports
 
@@ -135,19 +162,42 @@ app under Connect (expert mode) › Tap points; the add-on and the box then hold
 all of them, also while no app is open.
 
 - A telegram seen at several tap points becomes one entry. The history keeps
-  where it was seen first (`tp`) and the other sightings with offset and hop
-  count (`sg`). Older apps read such a history as before.
+  the tap point on the sender's line (`tp`, the sighting with the highest hop
+  count: each coupler lowers it by one) and the other sightings with offset and
+  hop count (`sg`). Arrival order does not decide it, because interfaces report
+  with different delay (a kBerry about 40 ms after a KNX IP interface). The time
+  is that of the earliest sighting. Older apps read such a history as before.
 - A telegram seen at one tap point only stayed in its line or was filtered by a
   coupler. The app shows the lines as chips in the list and the path in the
-  telegram details.
+  telegram details. With tap points in two or more lines, the topology marks
+  the lines that have one and checks the couplers' filter tables live against
+  the project: an address that never reaches a line where devices listen to it
+  (blocked), or one that reaches a line where nobody does (needless load).
+  Lines without a tap point, and times a tap point was down, are not judged.
 - Each tunnel tap point occupies a tunnel on its interface. A tap point that
-  drops reconnects on its own; the others keep running.
+  drops reconnects on its own; the others keep running. The time a tap point was
+  not reachable is kept as a gap of its own (`/api/bus/availability?taps=1`,
+  kind `tap`) and shown in the recordings by day: what stayed in that line is
+  missing then, but it is no bus fault.
 - Over VPN use a TCP tunnel and a larger merge window (e.g. 250 ms): the
   receive time is taken here, not on the bus. Routing usually does not get
   through a VPN.
-- KNX Data Secure telegrams are decrypted once, at the tap point that sees them
-  first. At further tap points the same telegram counts as a replay and is
-  left out.
+- The merge window measures itself: if the same telegram turns up at a tap
+  point only after the window (it then appears twice), three such late copies
+  widen that tap point's window to 1.5 times the lag seen, at most 2 s. It
+  never narrows, and a window set by hand stays as it is. The status shows a
+  widened window as `autoWindowMs`; it applies until the next restart.
+- KNX Data Secure telegrams are decrypted at the tap point that sees them
+  first. The same telegram at further tap points (identical bytes within 3
+  seconds) gets that decryption and becomes a sighting like any other
+  telegram; a replay later is still refused.
+- A tap point that is connected but hears nothing while the others deliver is
+  reported as silent (`silent` in the status, a notice in the app). Typical
+  case: routing in a network without an IP router – tunnelling interfaces
+  such as the Gira X1 or S1 do not forward routing.
+- In the list, `tap:1.2` (`messpunkt:1.2`) shows telegrams seen at that tap
+  point, several with `|` (`tap:1.2|1.3`), and `is:single` (`ist:einzeln`)
+  those seen at one tap point only.
 
 ## KNX Data Secure
 
@@ -390,6 +440,16 @@ EMQX rule into TimescaleDB):
 - **Raw data only** (`mqtt_raw_only`; `MQTT_RAW_ONLY=true`): raw data, but
   without `ga_name`, `src_name`, `dpt`, `value` and
   `unit`, for databases that decode the values themselves. It implies raw data.
+- **Keep last value per address** (`mqtt_retain_values`;
+  `MQTT_RETAIN_VALUES=true`): on top of the stream, the same message once more
+  to `knx_monitor/value/<ga>` (e.g. `knx_monitor/value/1/2/3`), retained and
+  with QoS 1, but only when the value of the address changes. A dashboard or
+  a flow that subscribes later gets the latest state of every address at once,
+  without reading the bus. Read requests carry no value and are left out.
+  After a restart of the add-on a topic is filled again by the next telegram
+  of its address; the broker keeps the old value until then. To clear the
+  values, delete the retained topics on the broker (e.g.
+  `mosquitto_pub -t knx_monitor/value/1/2/3 -r -n`).
 - **Only these group addresses to MQTT** (`mqtt_filter`; `MQTT_FILTER`):
   three-level addresses or ranges separated by commas, `#` as the last level
   takes everything below it, e.g. `1/#,3/2/#,4/1/7`. Empty sends everything.
@@ -420,9 +480,8 @@ Security:
   `knx_monitor/telegram/`, so nothing on the broker can write to the bus
   through it.
 
-Not in this preview yet (planned in the issue): settings in the app, address
-filters, sender device names, retained last values, a switch and counters on
-the MQTT device. Feedback is welcome in the issue.
+Not there yet (planned in the issue): settings in the app, and a switch and
+counters on the MQTT device. Feedback is welcome in the issue.
 
 Telegraf example (to InfluxDB or TimescaleDB):
 
@@ -443,6 +502,26 @@ Telegraf example (to InfluxDB or TimescaleDB):
       path = "value"
       type = "float"
 ```
+
+Node-RED example: warns when the bathroom temperature (`1/2/3`) goes above
+25 °C. With "Keep last value" on, the flow knows the current value right after
+a deploy. Import it under Menu → Import and set the broker (in Home Assistant
+`core-mosquitto` with the Mosquitto user):
+
+```json
+[
+  {"id": "b1", "type": "mqtt-broker", "name": "Mosquitto", "broker": "core-mosquitto", "port": "1883"},
+  {"id": "n1", "type": "mqtt in", "name": "Temperatur Bad", "topic": "knx_monitor/value/1/2/3",
+   "qos": "1", "datatype": "json", "broker": "b1", "x": 140, "y": 80, "wires": [["n2"]]},
+  {"id": "n2", "type": "switch", "name": "über 25 °C", "property": "payload.value", "propertyType": "msg",
+   "rules": [{"t": "gt", "v": "25", "vt": "num"}], "checkall": "true", "outputs": 1,
+   "x": 340, "y": 80, "wires": [["n3"]]},
+  {"id": "n3", "type": "debug", "name": "Warnung", "complete": "payload", "x": 520, "y": 80, "wires": []}
+]
+```
+
+For every telegram instead of the last value, subscribe to
+`knx_monitor/telegram/#` (QoS 0) and switch on `payload.ga`.
 
 ## Busclear integration (without MQTT)
 
@@ -480,7 +559,9 @@ the values at a point in time; 1 h, 6 h, 24 h and 7 days can be switched on
 the card itself.
 
 Besides group addresses, charts can show the bus itself: telegrams per
-minute, repeats per minute and the load per line. In Busclear they are
+minute, repeats per minute, the load per line and the bus load in percent
+(share of the time the line is busy at 9600 bit/s; sustained values above
+50 % point to a problem). In Busclear they are
 in the chart library under "Bus"; on the card the add-on computes them from
 the continuous recording.
 

@@ -27,7 +27,7 @@
 ///   most 20, oldest silence first; `POST /api/ha/silent/ignore`
 ///   `{"address": "1/2/3"}` stops reporting one until it sends again.
 ///
-/// Without Supervisor (KNX box, Docker; `BOX=1`) there is no discovery and no
+/// Without Supervisor (Busclear Box, Docker; `BOX=1`) there is no discovery and no
 /// token ([tokenAccess] off): the server lets a paired device with admin
 /// rights (box_access.dart, bearer token from the pairing link) through to the
 /// same endpoints and calls [touch] for it.

@@ -1,6 +1,5 @@
 import '../catalog_store.dart';
 import '../knx/dpt_codec.dart';
-import '../knx/dpt_guess.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
 import 'commissioning.dart' show isStatusGroup;

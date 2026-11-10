@@ -1,5 +1,74 @@
 # Changelog
 
+## 1.11.0
+
+- Fewer false "stopped sending" alerts: group addresses that send in bursts
+  (dimming, blinds while moving, switching with status feedback) no longer
+  count as cyclic. This affects the repair in the Busclear integration and the
+  app's health check. The hourly check now reads only the current day and keeps
+  the completed days, which matters on a very busy bus.
+- Keep last value per address
+  ([#11](https://github.com/regetskcob/KNX-Monitor/issues/11)): the new option
+  "Keep last value per address" (`mqtt_retain_values`; Docker and box
+  `MQTT_RETAIN_VALUES=true`) also sends each new value to
+  `knx_monitor/value/<ga>`, retained, only when it changes. A dashboard or flow
+  that subscribes later gets the current state at once. The documentation has a
+  Node-RED example.
+- Overview of the last seven days: the app shows a card "Last 7 days" with
+  telegrams per day, bus load, repeats, recording time and the findings worth a
+  look (several clocks, read storms, chatty addresses, silent devices, unknown
+  senders, dropped connections). Also at `/api/summary`.
+- Project against bus: the project check of the app now also uses the
+  recording. It names devices that send where the project says they do not,
+  commands whose status never answers, unanswered read requests, contacts and
+  alarms stuck at 1 for days, presence detectors that trigger most nights, and
+  suggests datapoint types for addresses without one.
+- XKNX Editor: the add-on and the box read `.xknx` projects of the
+  [XKNX Editor](https://github.com/XKNX/xknx-editor), also password-protected
+  ones. "From Home Assistant" takes over the project the KNX integration has
+  (uploaded there or sent from the editor). Findings can be handed to the
+  editor as corrections and comments; nothing is programmed.
+- AI access (MCP): AI tools such as Claude can read the recording, device
+  activity, findings and the project check through `/api/mcp`. Read only, off
+  by default, with its own token; switch it on in the app under Exports ›
+  Continuous › AI access (MCP). On the box with its certificate the token is only
+  accepted over HTTPS.
+- Tap points ([#8](https://github.com/regetskcob/KNX-Monitor/issues/8)):
+  - a tap point that is connected but hears nothing while the others deliver is
+    reported as silent;
+  - the time window for merging measures itself and widens after late
+    arrivals (at most 2 s);
+  - the availability log notes when a tap point was unreachable, and the
+    recordings show it as a gap instead of a bus fault;
+  - KNX Data Secure telegrams seen at a further tap point are decrypted like
+    at the first one;
+  - with tap points on several lines the topology checks the couplers' filter
+    tables against the project;
+  - the tap point on the sender's line counts as the origin (highest hop
+    count), not the one that reported first: a kBerry reports about 40 ms after
+    a KNX IP interface, so telegrams from its own line looked as if they came
+    over the coupler;
+  - the silence check and the weekly overview read the history in the
+    background: before, the first check after a start held up the bus for a
+    moment, and telegrams of that moment were listed twice.
+- Bus load in percent as a key figure and chart template, next to telegrams and
+  repeats; also on the dashboard card.
+- Connection drops are written to the availability log at once, with their
+  reason, also when the connection comes back within a minute.
+- Busclear integration 1.2.0
+  ([#12](https://github.com/regetskcob/KNX-Monitor/issues/12)): if a Busclear
+  Box or container no longer accepts the key (device revoked or without admin
+  rights), Home Assistant asks for a new pairing link instead of failing.
+- Docker: with `PUID`/`PGID` the server hands the data folder to that user and
+  drops root for good; the template sets 1000:1000. Telegrams from devices
+  without admin rights go out as plain frames (low priority, hop count 6, the
+  gateway as sender), and one ETS export runs at a time.
+- The KNX protocol now comes from the open-source packages
+  [knx](https://pub.dev/packages/knx) and
+  [knx_io](https://pub.dev/packages/knx_io) on pub.dev.
+- Texts: the box is the "Busclear Box" in English too. Its Wi-Fi name
+  `KNX-Box-…` and `knx-box.local` stay.
+
 ## 1.10.0
 
 - KNX Monitor is now **Busclear**, and the KNX box is now the **Busclear Box**.

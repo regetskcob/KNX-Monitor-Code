@@ -33,7 +33,7 @@ void main() {
     expect(back.series.map((s) => s.role ?? '${s.metric}'), ['temperature', '-2']);
     expect(() => TemplateRule.fromJson({'name': 'x'}), throwsFormatException);
     expect(
-      () => TemplateRule.fromJson({'format': TemplateRule.format, 'name': 'x', 'series': []}),
+      () => TemplateRule.fromJson({'format': TemplateRule.format, 'name': 'x', 'series': <Object?>[]}),
       throwsFormatException,
     );
   });

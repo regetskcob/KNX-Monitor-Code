@@ -505,6 +505,8 @@ class Recorder {
       }
       return stats;
     } finally {
+      // Drops the shared read; whoever awaits it handles its result.
+      // ignore: unawaited_futures
       _statsCounting.remove(day);
     }
   }
@@ -688,13 +690,56 @@ class Availability {
     }
   }
 
+  /// The bus connection dropped ([reason]) or came back ([reason] `null`), at
+  /// once rather than with the next heartbeat: a drop that reconnects within
+  /// the minute is otherwise invisible, and only these lines keep the reason
+  /// (the journal of a box may be volatile).
+  ///
+  /// With [tap] the event is about that further tap point (issue #8), not the
+  /// bus connection: such a gap is no bus fault and only shows with `taps`.
+  Future<void> connectionEvent({String? reason, String? tap, DateTime? now}) async {
+    final t = now ?? DateTime.now();
+    await _dir.create(recursive: true);
+    await File('${_dir.path}/availability-${_month(t)}.ndjson').writeAsString(
+      '${jsonEncode({'t': t.millisecondsSinceEpoch, 'e': reason == null ? 'back' : 'lost', 'r': ?reason, 'p': ?tap})}\n',
+      mode: FileMode.append,
+      flush: true,
+    );
+  }
+
   /// Outages in the period: stretches without a connection or without
   /// heartbeats (longer than [gap]). Time before the first line counts as unknown.
+  /// A drop recorded by [connectionEvent] adds its `reason` to the outage it
+  /// falls in, or becomes a short `disconnected` outage of its own. With
+  /// [taps] the gaps of further tap points come along as kind `tap` (with
+  /// `tap` and `reason`); without it older apps get the list they know.
   Future<List<Map<String, Object?>>> outages(
     DateTime from,
     DateTime to, {
     Duration gap = const Duration(minutes: 3),
-  }) async => _outages(await _beats(from, to, gap), to, gap);
+    bool taps = false,
+  }) async {
+    final events = <(DateTime, String?)>[];
+    final tapEvents = <(DateTime, String?, String)>[];
+    final result = _outages(await _beats(from, to, gap, events: events, tapEvents: tapEvents), to, gap);
+    if (taps) result.addAll(_tapGaps(tapEvents, from, to));
+    for (var i = 0; i < events.length; i++) {
+      final (at, reason) = events[i];
+      if (reason == null || at.isBefore(from) || at.isAfter(to)) continue;
+      final back = i + 1 < events.length && events[i + 1].$2 == null ? events[i + 1].$1 : at;
+      final t0 = at.millisecondsSinceEpoch, t1 = back.millisecondsSinceEpoch;
+      final within = result.where(
+        (o) => o['kind'] == 'disconnected' && (o['from']! as int) <= t1 && (o['to']! as int) >= t0,
+      );
+      if (within.isNotEmpty) {
+        within.first['reason'] ??= reason;
+      } else {
+        result.add({'from': t0, 'to': t1, 'kind': 'disconnected', 'reason': reason});
+      }
+    }
+    result.sort((a, b) => (a['from']! as int).compareTo(b['from']! as int));
+    return result;
+  }
 
   /// Share (0–1) of the period in which the bus was connected: 1 minus the
   /// [outages] (clipped to the period) divided by the known time, which starts
@@ -714,7 +759,44 @@ class Availability {
     return (1 - out / known).clamp(0.0, 1.0);
   }
 
-  Future<List<(DateTime, bool)>> _beats(DateTime from, DateTime to, Duration gap) async {
+  /// Gaps of further tap points from their events: from `lost` to the next
+  /// `back` of the same tap point, open ones up to [to] (or now).
+  static List<Map<String, Object?>> _tapGaps(List<(DateTime, String?, String)> events, DateTime from, DateTime to) {
+    final open = <String, (DateTime, String)>{};
+    final out = <Map<String, Object?>>[];
+    void close(String tap, DateTime end) {
+      final (start, reason) = open.remove(tap)!;
+      if (end.isBefore(from) || start.isAfter(to)) return;
+      out.add({
+        'from': (start.isBefore(from) ? from : start).millisecondsSinceEpoch,
+        'to': (end.isAfter(to) ? to : end).millisecondsSinceEpoch,
+        'kind': 'tap',
+        'tap': tap,
+        if (reason.isNotEmpty) 'reason': reason,
+      });
+    }
+
+    for (final (at, reason, tap) in events) {
+      if (reason != null) {
+        open.putIfAbsent(tap, () => (at, reason));
+      } else if (open.containsKey(tap)) {
+        close(tap, at);
+      }
+    }
+    final now = DateTime.now();
+    for (final tap in [...open.keys]) {
+      close(tap, now.isBefore(to) ? now : to);
+    }
+    return out;
+  }
+
+  Future<List<(DateTime, bool)>> _beats(
+    DateTime from,
+    DateTime to,
+    Duration gap, {
+    List<(DateTime, String?)>? events,
+    List<(DateTime, String?, String)>? tapEvents,
+  }) async {
     final beats = <(DateTime, bool)>[];
     for (var m = DateTime(from.year, from.month); !m.isAfter(to); m = DateTime(m.year, m.month + 1)) {
       final f = File('${_dir.path}/availability-${_month(m)}.ndjson');
@@ -724,6 +806,16 @@ class Availability {
           final j = jsonDecode(line) as Map<String, Object?>;
           final t = DateTime.fromMillisecondsSinceEpoch(j['t']! as int);
           if (t.isBefore(from.subtract(gap)) || t.isAfter(to.add(gap))) continue;
+          // Event lines (connectionEvent) are no heartbeats.
+          if (j['e'] case final String e) {
+            final reason = e == 'lost' ? (j['r'] as String? ?? '') : null;
+            if (j['p'] case final String tap) {
+              tapEvents?.add((t, reason, tap));
+            } else {
+              events?.add((t, reason));
+            }
+            continue;
+          }
           beats.add((t, j['c'] == true));
         } on Object {
           // truncated line
@@ -731,6 +823,8 @@ class Availability {
       }
     }
     beats.sort((a, b) => a.$1.compareTo(b.$1));
+    events?.sort((a, b) => a.$1.compareTo(b.$1));
+    tapEvents?.sort((a, b) => a.$1.compareTo(b.$1));
     return beats;
   }
 

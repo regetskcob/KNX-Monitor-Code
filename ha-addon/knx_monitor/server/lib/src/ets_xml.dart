@@ -266,14 +266,38 @@ const _maxEpochMs = 8640000000000000;
   return (from: DateTime.fromMillisecondsSinceEpoch(from!), to: DateTime.fromMillisecondsSinceEpoch(to!));
 }
 
+/// An ETS export is running: it reads and packs whole days, so a second one at the same time would
+/// only slow both down and load the server (security review, 07.11.).
+var _etsExportRunning = false;
+
 /// Answers [etsXmlPath] with the history of [recorder] as a download. Read
 /// access like `/api/bus/stats`; the caller checks access and installation.
+/// One export at a time; another one meanwhile gets `429` with `Retry-After`.
 Future<void> serveEtsXml(HttpRequest request, Recorder recorder, {String? host}) async {
   final response = request.response;
   if (request.method != 'GET') {
     response.statusCode = HttpStatus.methodNotAllowed;
     return response.close();
   }
+  final checkOnly = request.uri.queryParameters['check'] == '1';
+  if (_etsExportRunning && !checkOnly) {
+    response
+      ..statusCode = HttpStatus.tooManyRequests
+      ..headers.set(HttpHeaders.retryAfterHeader, '30')
+      ..headers.contentType = ContentType.text
+      ..write('Es läuft schon ein ETS-Export.');
+    return response.close();
+  }
+  if (!checkOnly) _etsExportRunning = true;
+  try {
+    await _serveEtsXml(request, recorder, host: host);
+  } finally {
+    if (!checkOnly) _etsExportRunning = false;
+  }
+}
+
+Future<void> _serveEtsXml(HttpRequest request, Recorder recorder, {String? host}) async {
+  final response = request.response;
   if (request.uri.queryParameters['all'] == '1') return _serveEtsZip(request, recorder, host: host);
   String? error;
   final range = etsXmlRange(request.uri.queryParameters, onError: (e) => error = e);

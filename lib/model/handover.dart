@@ -16,6 +16,7 @@ import 'company.dart';
 import 'connection_options.dart';
 import 'customer.dart';
 import 'installation.dart';
+import 'keys.dart';
 import 'recording.dart';
 
 /// Where an installation at the customer's comes from: stored as
@@ -23,19 +24,29 @@ import 'recording.dart';
 /// melden" (report to the company).
 @immutable
 class HandoverOrigin {
-  const HandoverOrigin({required this.handover, required this.origin, required this.contact, required this.created});
+  const HandoverOrigin({
+    required this.handover,
+    required this.origin,
+    required this.contact,
+    required this.created,
+    this.key,
+  });
 
   /// ID of the handover package.
   final String handover;
 
   /// ID of the installation at the electrician's.
   final String origin;
+
+  /// Installation key from the package (docs/keys.md); `null` for older packages.
+  final String? key;
   final PackageContact contact;
   final DateTime created;
 
   Map<String, Object?> toJson() => {
     'handover': handover,
     'origin': origin,
+    'key': ?key,
     'contact': contact.toJson(),
     'created': created.millisecondsSinceEpoch,
   };
@@ -43,6 +54,10 @@ class HandoverOrigin {
   factory HandoverOrigin.fromJson(Map<String, Object?> j) => HandoverOrigin(
     handover: j['handover']! as String,
     origin: j['origin'] as String? ?? '',
+    key: switch (j['key']) {
+      final String k when isKey(k) => k,
+      _ => null,
+    },
     contact: PackageContact.fromJson((j['contact'] as Map? ?? const {}).cast()),
     created: DateTime.fromMillisecondsSinceEpoch(j['created'] as int? ?? 0),
   );
@@ -73,7 +88,13 @@ class HandoverStore extends ChangeNotifier {
   }
 
   Future<void> load() async {
-    origin = await read(InstallationStore.instance.active.id);
+    final installations = InstallationStore.instance;
+    origin = await read(installations.active.id);
+    // The installation carries the key from its package. If an older app version dropped it
+    // from the index, it comes back from here.
+    if (origin?.key case final key? when installations.switchable && installations.byKey(key) == null) {
+      await installations.setKey(installations.active.id, key);
+    }
     notifyListeners();
   }
 
@@ -103,6 +124,8 @@ Future<HandoverPackage> buildHandover({required bool includeKeys, DateTime? now}
     installationName: active.name,
     contact: companyContact(CompanyStore.instance.company),
     origin: active.id,
+    // A placeholder (add-on on an older server) says nothing about the installation.
+    key: active.keyIsPlaceholder ? null : active.key,
     catalog: handoverCatalog(catalog.catalog),
     overrides: Map.of(catalog.overrides),
     projectNames: catalog.projectNames,
@@ -148,13 +171,23 @@ Future<HandoverPackage> openHandover(Uint8List bytes, {String? password}) async 
 
 /// Whether importing this package needs a new installation (for the tier
 /// limit). Not if it already exists or the active one is still empty.
-Future<bool> handoverNeedsNewInstallation(String handoverId) async => await _targetFor(handoverId) == null;
+///
+/// [key]: the package's installation key. A newer package for an installation that came by
+/// handover before lands in that one instead of creating a second.
+Future<bool> handoverNeedsNewInstallation(String handoverId, {String? key}) async =>
+    await _targetFor(handoverId, key) == null;
 
-Future<Installation?> _targetFor(String handoverId) async {
+Future<Installation?> _targetFor(String handoverId, String? key) async {
   final installations = InstallationStore.instance;
+  Installation? sameInstallation;
   for (final i in installations.list) {
-    if ((await HandoverStore.read(i.id))?.handover == handoverId) return i;
+    final origin = await HandoverStore.read(i.id);
+    if (origin?.handover == handoverId) return i;
+    // Only one that came by handover: on the electrician's own device the package must never
+    // overwrite the installation it was made from.
+    if (key != null && origin != null && i.key == key) sameInstallation ??= i;
   }
+  if (sameInstallation != null) return sameInstallation;
   final active = installations.active;
   // Freshly installed: take over the empty first installation. In the add-on
   // there is only the one anyway.
@@ -173,8 +206,11 @@ Future<Installation?> _targetFor(String handoverId) async {
 Future<Installation> applyHandover(HandoverPackage p) async {
   final installations = InstallationStore.instance;
   final previous = installations.active.id;
-  final existing = await _targetFor(p.id);
-  final target = existing ?? await installations.create(p.installationName, gateway: p.gateway);
+  final existing = await _targetFor(p.id, p.key);
+  // The installation keeps its key here. Not if it is on this device already (the electrician
+  // opens their own package): two installations here never share a key.
+  final key = installations.byKey(p.key) == null ? p.key : null;
+  final target = existing ?? await installations.create(p.installationName, gateway: p.gateway, key: key);
   try {
     if (target.id != previous) await installations.switchTo(target.id);
     // In the add-on the server manages the installation; its name stays there.
@@ -203,7 +239,7 @@ Future<Installation> applyHandover(HandoverPackage p) async {
     await options.save();
     await HandoverStore.instance.write(
       target.id,
-      HandoverOrigin(handover: p.id, origin: p.origin, contact: p.contact, created: p.created),
+      HandoverOrigin(handover: p.id, origin: p.origin, contact: p.contact, created: p.created, key: p.key),
     );
     return installations.byId(target.id) ?? target;
   } on Object {
@@ -243,6 +279,7 @@ FaultReport buildFaultReport({
     created: time,
     origin: origin.origin,
     handover: origin.handover,
+    key: origin.key,
     installationName: installationName,
     package: buildDiagnosticsPackage(
       telegrams: telegrams,

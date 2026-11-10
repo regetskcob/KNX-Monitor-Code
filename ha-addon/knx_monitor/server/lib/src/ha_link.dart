@@ -5,7 +5,7 @@ import 'dart:typed_data';
 
 import 'package:knx/knx.dart';
 
-import 'link.dart';
+import 'package:knx_io/knx_io.dart';
 
 /// No tunnel of its own: reads the telegrams that Home Assistant's KNX
 /// integration receives anyway (WebSocket `knx/subscribe_telegrams`), and

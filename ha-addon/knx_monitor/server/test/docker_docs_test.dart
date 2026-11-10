@@ -65,6 +65,12 @@ void main() {
     'VPN',
     'ON',
     'OFF',
+    // Linux capabilities in cap_add (PUID/PGID)
+    'CHOWN',
+    'SETUID',
+    'SETGID',
+    'DAC_OVERRIDE',
+    'FOWNER',
   };
   // Read by the server, but not for Docker users: Home Assistant, the box image, the
   // build and the project's own tests.

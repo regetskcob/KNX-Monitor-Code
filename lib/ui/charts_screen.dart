@@ -54,11 +54,11 @@ class ChartSeries {
 
   /// The unit determines the panel: series with the same unit share a y-axis.
   String get unit =>
-      metric != null ? BusMetric.unit : (kind == ChartKind.step ? '0/1' : (dpt == null ? '' : dptUnit(dpt!)));
+      metric != null ? metric!.unit : (kind == ChartKind.step ? '0/1' : (dpt == null ? '' : dptUnit(dpt!)));
 
   /// Value of a point for the legend and crosshair.
   String valueOf(ChartPoint p) =>
-      metric != null ? '${chartNumber(p.value)} ${BusMetric.unit}' : CatalogStore.instance.value(p.telegram);
+      metric != null ? '${chartNumber(p.value)} ${metric!.unit}' : CatalogStore.instance.value(p.telegram);
 
   /// Value that applied at time [t] (last point before it).
   ChartPoint? valueAt(DateTime t) {

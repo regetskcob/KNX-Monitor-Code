@@ -55,7 +55,7 @@ void main([List<String> args = const []]) {
   registerHorizontLicenses();
   // Purchase path: stores via RevenueCat, Windows via the account; see planSourceFor.
   PlanSource.forPlatform = storePlanSource;
-  // Intercept pairing links of the KNX box (QR code) before the navigator sees them.
+  // Intercept pairing links of the Busclear Box (QR code) before the navigator sees them.
   if (!kIsWeb) BoxConnection.instance.listen();
   Account.instance.listen();
   // Files from mail, AirDrop, file manager; opened only once the UI is up.

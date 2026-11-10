@@ -1,4 +1,5 @@
-import '../knx/dpt_guess.dart';
+import 'package:knx/knx.dart';
+
 import '../knx/group_catalog.dart';
 import '../knx/telegram.dart';
 
@@ -361,6 +362,7 @@ GroupCatalog mergeLearned(GroupCatalog project, GroupCatalog learned) {
     projectName: project.projectName,
     manufacturers: project.manufacturers,
     style: project.style,
+    externalSenders: project.externalSenders,
   );
 }
 
@@ -387,6 +389,7 @@ GroupCatalog withNames(GroupCatalog catalog, Map<int, String> names) {
     projectName: catalog.projectName,
     manufacturers: catalog.manufacturers,
     style: catalog.style,
+    externalSenders: catalog.externalSenders,
   );
 }
 

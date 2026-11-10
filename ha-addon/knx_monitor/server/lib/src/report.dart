@@ -290,6 +290,9 @@ abstract class ReportCatalog {
   Iterable<int> get groups;
 }
 
+/// The catalog of the alarm watch as a [ReportCatalog] (names, types, kinds of the installation).
+ReportCatalog reportCatalogOf(AlarmWatch alarms) => _AlarmCatalog(alarms);
+
 class _AlarmCatalog implements ReportCatalog {
   _AlarmCatalog(this.alarms);
   final AlarmWatch alarms;

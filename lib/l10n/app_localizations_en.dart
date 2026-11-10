@@ -66,7 +66,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogImported => 'imported';
 
   @override
-  String get catalogHint => 'ETS project (.knxproj) or group address CSV for names, datapoint types & devices';
+  String get catalogHint =>
+      'ETS project (.knxproj), XKNX Editor project (.xknx) or group address CSV for names, datapoint types & devices';
 
   @override
   String get catalogReplace => 'Replace';
@@ -85,7 +86,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get catalogPickFile => 'Please choose a .knxproj or .csv file.';
+  String get catalogPickFile => 'Please choose a .knxproj, .xknx or .csv file.';
 
   @override
   String get passwordTitle => 'Project password';
@@ -1053,7 +1054,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get filterHelpBody =>
-      'Space = AND · comma = OR · -term = NOT\n\n1/2/3 exact · 1/2 range · 1/*/3 or 1/2/1* with wildcard\n1.1.5 sender · 1.1.* line · from:1.1.5\n\ntype:w|r|a (write, read, response)\ndpt:9 or dpt:9.001\ntime:14:05 · time:14:05-14:10 (time of day, end excluded)\nis:alarm · is:repeated · is:unanswered · is:unknown\nis:own · is:received (sent by you or from the bus)\n\nAnything else searches name, range, device and value – umlauts optional.\n\nSeveral OR groups each get a colour in the list. \"Context\" shows the seconds before and after every match.\n\nExamples:\n1/*/* is:unanswered – unanswered reads in main group 1\nkitchen, bath -switch – kitchen or bath, without switch';
+      'Space = AND · comma = OR · -term = NOT\n\n1/2/3 exact · 1/2 range · 1/*/3 or 1/2/1* with wildcard\n1.1.5 sender · 1.1.* line · from:1.1.5\n\ntype:w|r|a (write, read, response)\ndpt:9 or dpt:9.001\ntime:14:05 · time:14:05-14:10 (time of day, end excluded)\nis:alarm · is:repeated · is:unanswered · is:unknown\nis:own · is:received (sent by you or from the bus)\ntap:1.2 or tap:1.2|1.3 (seen at these tap points) · is:single (seen at one tap point only)\n\nAnything else searches name, range, device and value – umlauts optional.\n\nSeveral OR groups each get a colour in the list. \"Context\" shows the seconds before and after every match.\n\nExamples:\n1/*/* is:unanswered – unanswered reads in main group 1\nkitchen, bath -switch – kitchen or bath, without switch';
 
   @override
   String get checkTitle => 'Project check';
@@ -2376,10 +2377,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addonOpen => 'Open monitor';
 
   @override
-  String get boxSection => 'KNX box';
+  String get boxSection => 'Busclear Box';
 
   @override
-  String get boxPair => 'Pair with KNX box';
+  String get boxPair => 'Pair with Busclear Box';
 
   @override
   String get boxPairHint =>
@@ -2392,7 +2393,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boxLinkInvalid => 'Not a valid pairing link.';
 
   @override
-  String get boxPairTitle => 'Connect to KNX box?';
+  String get boxPairTitle => 'Connect to Busclear Box?';
 
   @override
   String get boxPairBody =>
@@ -2400,7 +2401,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String boxVia(String name) {
-    return 'Via KNX box $name';
+    return 'Via Busclear Box $name';
   }
 
   @override
@@ -2413,14 +2414,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boxForget => 'Forget box';
 
   @override
-  String get boxNone => 'No KNX box paired.';
+  String get boxNone => 'No Busclear Box paired.';
 
   @override
   String get boxUnauthorized => 'The box rejected access. Scan the box\'s QR code again.';
 
   @override
   String boxUnreachable(String address) {
-    return 'KNX box $address not reachable. Is this device on the box\'s Wi-Fi?';
+    return 'Busclear Box $address not reachable. Is this device on the box\'s Wi-Fi?';
   }
 
   @override
@@ -3136,7 +3137,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chartTemplateNoMatch => 'Does not match any address in this installation yet.';
 
   @override
-  String get boxAdd => 'Add KNX box';
+  String get boxAdd => 'Add Busclear Box';
 
   @override
   String get boxScanTitle => 'Box QR code';
@@ -3151,7 +3152,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boxScanNoCamera => 'No camera available.';
 
   @override
-  String get boxSetupTitle => 'Set up KNX box';
+  String get boxSetupTitle => 'Set up Busclear Box';
 
   @override
   String boxStepWifi(String ssid) {
@@ -3381,16 +3382,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get installationAll => 'All';
 
   @override
-  String get installationBoxRecording => 'KNX box records here';
+  String get installationBoxRecording => 'Busclear Box records here';
 
   @override
   String get installationHistoryOf => 'History of';
 
   @override
-  String get installationDeleteOnBox => 'Also on the KNX box, including its long-term history.';
+  String get installationDeleteOnBox => 'Also on the Busclear Box, including its long-term history.';
 
   @override
-  String get boxRecordingTitle => 'Continuous recording on the KNX box';
+  String get boxRecordingTitle => 'Continuous recording on the Busclear Box';
 
   @override
   String get planTitle => 'Plus and Pro';
@@ -5006,7 +5007,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tourHistoryText =>
-      'The long-term history keeps whole days, in the add-on and on the KNX box around the clock. You rewind what happened at night, with a timeline per group address and playback at 1 to 60 times the speed.';
+      'The long-term history keeps whole days, in the add-on and on the Busclear Box around the clock. You rewind what happened at night, with a timeline per group address and playback at 1 to 60 times the speed.';
 
   @override
   String get tourChipTimeline => 'Timeline';
@@ -5110,7 +5111,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Send like the ETS group monitor, delayed or cyclic too. Trigger recordings start on a value, a fault or a repeat, with lead time. A recording can be played back onto the bus, after you confirm it explicitly.';
 
   @override
-  String get tourBoxTitle => 'KNX box for the site.';
+  String get tourBoxTitle => 'Busclear Box for the site.';
 
   @override
   String get tourBoxText =>
@@ -5335,14 +5336,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get huntTitle => 'Fault hunt';
 
   @override
-  String get huntTool => 'Catch sporadic faults over days – with the KNX box';
+  String get huntTool => 'Catch sporadic faults over days – with the Busclear Box';
 
   @override
   String get huntRefresh => 'Refresh';
 
   @override
   String get huntNeedsBox =>
-      'The fault hunt runs on the KNX box or in the Home Assistant add-on, around the clock. Pair the app with a box to set it up.';
+      'The fault hunt runs on the Busclear Box or in the Home Assistant add-on, around the clock. Pair the app with a box to set it up.';
 
   @override
   String get huntExplain =>
@@ -6141,7 +6142,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String weekBasisPartial(String time, int days, String checks) {
     String _temp0 = intl.Intl.pluralLogic(days, locale: localeName, other: '$days days', one: '1 day');
-    return 'Basis: the app listened for about $time on $_temp0 this week ($checks). The report can\'t see what happened in between – only a KNX box or the Home Assistant add-on listens around the clock.';
+    return 'Basis: the app listened for about $time on $_temp0 this week ($checks). The report can\'t see what happened in between – only a Busclear Box or the Home Assistant add-on listens around the clock.';
   }
 
   @override
@@ -6177,7 +6178,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get weekServerBox => 'KNX box';
+  String get weekServerBox => 'Busclear Box';
 
   @override
   String get weekServerAddon => 'Home Assistant add-on';
@@ -9284,6 +9285,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'KNX Secure telegrams go out decrypted too. Anyone who can read the broker sees their values.';
 
   @override
+  String dataExportMqttRetain(int count) {
+    return 'Last value per address at knx_monitor/value/…, retained; $count values sent.';
+  }
+
+  @override
   String dataExportMqttDetails(String mode, String filter, int seq) {
     String _temp0 = intl.Intl.selectLogic(mode, {
       'raw': 'With raw data',
@@ -9355,6 +9361,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tapDownHint => 'The others keep running. The disconnected one reconnects on its own.';
 
   @override
+  String tapSilent(String name) {
+    return 'Connected, but nothing arrives here: $name';
+  }
+
+  @override
+  String get tapSilentHint =>
+      'With routing there is often no IP router in the network (tunnelling interfaces do not forward routing). Otherwise check the line and the coupler\'s filter table.';
+
+  @override
   String get detailsPath => 'Path through the installation';
 
   @override
@@ -9364,9 +9379,403 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String detailsPathFirst(int hop) {
-    return 'first · hop $hop';
+    return 'origin · hop $hop';
   }
 
   @override
   String get detailsPathMissing => 'not seen, filtered or line-local';
+
+  @override
+  String get projectXknxInvalid => 'Not a readable XKNX Editor project (.xknx).';
+
+  @override
+  String get checkDevicesNeverProgrammed => 'Devices never programmed';
+
+  @override
+  String get checkDevicesNeverProgrammedHint =>
+      'According to the project, these devices have never been downloaded: not commissioned yet or not installed at all. Check whether they respond, then program them or remove them from the project.';
+
+  @override
+  String get checkDevicesPendingDownload => 'Download pending';
+
+  @override
+  String get checkDevicesPendingDownloadHint =>
+      'Changed in the project after the last download but not loaded into the device yet (like Adr/Prg/Par/Grp/Cfg in ETS). Until it is programmed, the device works with the old state.';
+
+  @override
+  String get downloadPartAddress => 'address';
+
+  @override
+  String get downloadPartApplication => 'application';
+
+  @override
+  String get downloadPartParameters => 'parameters';
+
+  @override
+  String get downloadPartGroups => 'group addresses';
+
+  @override
+  String get downloadPartMedium => 'medium';
+
+  @override
+  String get xknxEditorTitle => 'Hand over to XKNX Editor';
+
+  @override
+  String get xknxEditorText =>
+      'Busclear hands over corrections (datapoint types, names, new addresses, C and R flags) and writes the remaining findings as comments on addresses and devices. Nothing is programmed; everything can be undone in the editor.';
+
+  @override
+  String xknxEditorSummary(int corrections, int notes) {
+    return '$corrections corrections, $notes notes';
+  }
+
+  @override
+  String get xknxEditorNothing => 'Nothing to hand over: the project check has no tasks.';
+
+  @override
+  String get xknxEditorEndpoint => 'MCP server address';
+
+  @override
+  String get xknxEditorToken => 'Bearer token (optional)';
+
+  @override
+  String get xknxEditorConnectionHint =>
+      'Start the server in the XKNX Editor under Settings › AI/MCP; address and token are shown there.';
+
+  @override
+  String get xknxEditorSend => 'Hand over';
+
+  @override
+  String get xknxEditorSaveFile => 'Save as file';
+
+  @override
+  String get xknxEditorFile => 'XKNX Editor tasks';
+
+  @override
+  String get xknxEditorNoProject => 'No project is open in the XKNX Editor.';
+
+  @override
+  String xknxEditorOtherProject(String editor, String busclear) {
+    return 'The editor has “$editor” open, Busclear “$busclear”. Hand over anyway?';
+  }
+
+  @override
+  String xknxEditorUnreachable(String error) {
+    return 'XKNX Editor not reachable: $error';
+  }
+
+  @override
+  String get xknxEditorUnauthorized => 'The editor requires a token (Settings › AI/MCP).';
+
+  @override
+  String xknxEditorDone(int corrections, int notes) {
+    return '$corrections corrections applied, $notes notes written. Program the changed devices in the editor.';
+  }
+
+  @override
+  String get xknxEditorFailed => 'Not applied:';
+
+  @override
+  String get xknxEditorPreview => 'Compare with project (XKNX Editor)';
+
+  @override
+  String get xknxEditorPreviewSame => 'The device matches the project in the editor.';
+
+  @override
+  String xknxEditorPreviewDiff(int bytes) {
+    return 'A download would change $bytes configuration bytes: device and project differ.';
+  }
+
+  @override
+  String get xknxEditorPreviewHint =>
+      'Reads the device through the editor\'s bus connection and writes nothing. May take a few minutes depending on the device.';
+
+  @override
+  String get xknxNoteNeverProgrammed =>
+      'Never programmed: according to the project, this device has never been downloaded.';
+
+  @override
+  String get catalogFromHomeAssistant => 'From Home Assistant';
+
+  @override
+  String get catalogFromHomeAssistantTooltip =>
+      'Take over the project of the KNX integration (uploaded there or sent by the XKNX Editor)';
+
+  @override
+  String get catalogHaNoProject =>
+      'Home Assistant\'s KNX integration has no project. Upload one in the KNX panel or send it from the XKNX Editor.';
+
+  @override
+  String catalogHaFailed(String error) {
+    return 'Could not get the project from Home Assistant: $error';
+  }
+
+  @override
+  String get xknxEditorInsecure =>
+      'Busclear sends the token only over HTTPS or to this computer. For an editor on another computer, run it with HTTPS.';
+
+  @override
+  String get aiAccessTitle => 'AI access (MCP)';
+
+  @override
+  String get aiAccessMeta => 'History, findings and project check for AI tools';
+
+  @override
+  String get aiAccessText =>
+      'AI tools such as Claude read the recorded bus, the findings and the project check through the Model Context Protocol and, together with the XKNX Editor, can propose corrections. Busclear sends nothing to the bus and changes nothing.';
+
+  @override
+  String get aiAccessEnable => 'Allow AI access';
+
+  @override
+  String get aiAccessReadOnly => 'Read-only, with token';
+
+  @override
+  String get aiAccessPrivacy =>
+      'Whoever has the token reads the whole history, which reveals presence. Enter the token only in your own tools and renew it if in doubt. In the add-on the connection in the home network is not encrypted (HTTP); the box uses HTTPS.';
+
+  @override
+  String get aiAccessEndpoint => 'Address';
+
+  @override
+  String get aiAccessToken => 'Token';
+
+  @override
+  String get aiAccessCommand => 'For Claude Code';
+
+  @override
+  String get aiAccessCopyCommand => 'Copy command';
+
+  @override
+  String get aiAccessRenew => 'Issue new token';
+
+  @override
+  String get aiAccessCopied => 'Copied';
+
+  @override
+  String checkSectionEvidence(int days) {
+    return 'Project against bus ($days days)';
+  }
+
+  @override
+  String get checkUnexpectedSenders => 'Device sends differently from the project';
+
+  @override
+  String get checkUnexpectedSendersHint =>
+      'These devices send on addresses where, according to the project, they do not send. The device then does not carry the project: changed after the last download, replaced, or the project is outdated. Compare it with the XKNX Editor (Diagnostics › Compare with project).';
+
+  @override
+  String checkUnexpectedSenderRow(String group) {
+    return 'sends on $group';
+  }
+
+  @override
+  String get checkNoFeedback => 'Command without feedback';
+
+  @override
+  String get checkNoFeedbackHint =>
+      'The status of the same channel rarely or never answers commands within 5 seconds. Possible causes: the actuator does not execute, the filter table, a pending download, or the actuator reports only on a change.';
+
+  @override
+  String checkNoFeedbackRow(String status, String device, int answered, int commands) {
+    return 'Status $status of $device: $answered of $commands answered';
+  }
+
+  @override
+  String get checkSendersConfirmed => 'Several senders, confirmed by the history';
+
+  @override
+  String get checkSendersConfirmedHint =>
+      'Of the addresses with several senders in the project, several really sent here. With controllers or valve outputs they overwrite each other.';
+
+  @override
+  String get checkReadsUnanswered => 'Reads without answer';
+
+  @override
+  String get checkReadsUnansweredHint =>
+      'Status addresses without R flag that were read in the history: how often the answer stayed out.';
+
+  @override
+  String checkReadsRow(int reads, int answered) {
+    return '$reads reads, $answered answered';
+  }
+
+  @override
+  String get checkDptSuggestions => 'Datapoint type from the history';
+
+  @override
+  String get checkDptSuggestionsHint =>
+      'For addresses without a datapoint type Busclear suggests one, from the length and values of the telegrams and the name. “Sure” means: one length and a matching name. Enter it via “Hand over to XKNX Editor” or in ETS.';
+
+  @override
+  String get checkDptSure => 'sure';
+
+  @override
+  String get checkDptLikely => 'likely';
+
+  @override
+  String get checkLongStates => 'State unusually long unchanged';
+
+  @override
+  String get checkLongStatesHint =>
+      'Contact or alarm addresses that send 1 again and again for days without ever changing, such as “tilted” on a closed window. A stuck contact or a wrong polarity.';
+
+  @override
+  String checkLongStateRow(String days, int count) {
+    return '1 for $days days, $count telegrams';
+  }
+
+  @override
+  String get checkNightActivity => 'Triggers at night';
+
+  @override
+  String get checkNightActivityHint =>
+      'Presence or motion detectors that trigger on most nights between 0 and 5 o\'clock. Does the detector see into a bedroom, react to a pet, or is it too sensitive?';
+
+  @override
+  String checkNightRow(int nights, int recorded, String per) {
+    return 'on $nights of $recorded nights, $per triggers per night';
+  }
+
+  @override
+  String get xknxEditorCompareAll => 'Compare all devices';
+
+  @override
+  String get xknxEditorCompareAllHint =>
+      'The editor reads every programmed device through its bus connection and compares it with the project. It writes nothing, but it loads the bus and takes up to a few minutes per device: best run it in the evening or at night.';
+
+  @override
+  String xknxEditorCompareProgress(int done, int total, String device) {
+    return '$done of $total: $device';
+  }
+
+  @override
+  String xknxEditorCompareResult(int differ, int total, int failed) {
+    return '$differ of $total devices differ from the project, $failed not reachable.';
+  }
+
+  @override
+  String get xknxEditorCompareStop => 'Stop';
+
+  @override
+  String xknxNoteDptLikely(String dpt) {
+    return 'Datapoint type according to the history probably $dpt: check and set it.';
+  }
+
+  @override
+  String get shareSaveAs => 'Save As…';
+
+  @override
+  String get shareShare => 'Share…';
+
+  @override
+  String outageTap(String name, String duration) {
+    return 'Tap point $name unreachable for $duration';
+  }
+
+  @override
+  String get topoTapPoint => 'Tap point';
+
+  @override
+  String topoFilterBlocked(String ga, String name, String from, String to, int count) {
+    return '$ga $name from line $from never reaches line $to ($count telegrams), although devices there listen to it. Check the coupler\'s filter table.';
+  }
+
+  @override
+  String topoFilterLeaked(String ga, String name, String from, String to, int count) {
+    return '$ga $name from line $from reaches line $to ($count telegrams), although nobody there listens to it.';
+  }
+
+  @override
+  String get busMetricLoad => 'Bus load';
+
+  @override
+  String weekSumTitle(int days) {
+    return 'Last $days days';
+  }
+
+  @override
+  String get weekSumAllGood => 'The bus ran without issues.';
+
+  @override
+  String weekSumHints(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count hints', one: 'one hint');
+    return 'The bus ran steadily, $_temp0 for the installation.';
+  }
+
+  @override
+  String get weekSumWarn => 'There were issues worth a look.';
+
+  @override
+  String get weekSumPerDay => 'Telegrams/day';
+
+  @override
+  String get weekSumLoad => 'Bus load avg / max';
+
+  @override
+  String get weekSumAvailability => 'Recording';
+
+  @override
+  String get weekSumRepeatsLabel => 'Repeats';
+
+  @override
+  String weekSumMore(int count) {
+    return '$count more';
+  }
+
+  @override
+  String get weekSumLess => 'Less';
+
+  @override
+  String weekSumClocks(String senders, String groups, String share) {
+    return 'Several clocks: $senders send date/time on $groups, together $share of the traffic. One, every 10 to 60 minutes, is enough.';
+  }
+
+  @override
+  String weekSumMultiResponders(String groups, int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: ' ($count addresses)', one: '');
+    return 'Several devices answer reads: $groups$_temp0. Only the sender should have the R flag.';
+  }
+
+  @override
+  String weekSumReadStorms(String sender, int perMinute) {
+    return '$sender reads many addresses at once, up to $perMinute reads a minute (e.g. Home Assistant\'s state sync).';
+  }
+
+  @override
+  String weekSumChatty(String groups) {
+    return 'Sent very often: $groups. A higher send threshold relieves the bus.';
+  }
+
+  @override
+  String weekSumSilent(String devices, int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: ' ($count devices)', one: '');
+    return 'No telegram from: $devices$_temp0.';
+  }
+
+  @override
+  String weekSumUnknown(String senders) {
+    return 'Senders not in the project: $senders.';
+  }
+
+  @override
+  String weekSumRepeats(int count, String share) {
+    return '$count repeats ($share): acknowledgements are missing, check the line or device.';
+  }
+
+  @override
+  String weekSumLoadHigh(String max) {
+    return 'Bus load high at times, up to $max in a minute.';
+  }
+
+  @override
+  String weekSumDisconnected(int count, int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count times', one: 'once');
+    return 'The bus connection dropped $_temp0, $minutes min in all.';
+  }
+
+  @override
+  String weekSumTapGaps(String taps, int minutes) {
+    return 'Tap point $taps was unreachable at times, $minutes min in all.';
+  }
 }

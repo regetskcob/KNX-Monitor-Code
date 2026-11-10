@@ -119,6 +119,8 @@ class ProjectLint {
     required this.multipleSenders,
     required this.readWithoutReadFlag,
     required this.devicesWithoutLinks,
+    required this.devicesNeverProgrammed,
+    required this.devicesPendingDownload,
     required this.objectsWithoutCommunication,
     required this.multipleReadAnswers,
     required this.withoutSender,
@@ -169,7 +171,8 @@ class ProjectLint {
       if (!isStatusGroup(g)) {
         // Status feedback has its own checks; there "no receiver" is common (only a
         // visualization or push-button LED outside the project).
-        if (senders == 0) withoutSender.add(g);
+        // Written from outside the project (Home Assistant): it has a sender.
+        if (senders == 0 && !catalog.externalSenders.contains(g.address)) withoutSender.add(g);
         if (!g.links.any((l) => l.flags!.communication && l.flags!.write)) withoutReceiver.add(g);
         continue;
       }
@@ -198,6 +201,14 @@ class ProjectLint {
       devicesWithoutLinks: [
         for (final d in catalog.devices.values)
           if (!d.isTunnel && d.address & 0xFF != 0 && !linked.contains(d.address)) d,
+      ]..sort((a, b) => a.address.compareTo(b.address)),
+      devicesNeverProgrammed: [
+        for (final d in catalog.devices.values)
+          if (d.neverProgrammed && !d.isTunnel) d,
+      ]..sort((a, b) => a.address.compareTo(b.address)),
+      devicesPendingDownload: [
+        for (final d in catalog.devices.values)
+          if (d.pendingDownload.isNotEmpty && !d.isTunnel) d,
       ]..sort((a, b) => a.address.compareTo(b.address)),
       objectsWithoutCommunication: withoutCommunication,
       multipleReadAnswers: multipleReadAnswers,
@@ -233,6 +244,13 @@ class ProjectLint {
 
   /// Devices without any associated group address.
   final List<DeviceInfo> devicesWithoutLinks;
+
+  /// Devices that, according to the project, were never downloaded (only from .knxproj and .xknx
+  /// that record downloads).
+  final List<DeviceInfo> devicesNeverProgrammed;
+
+  /// Devices changed in the project since their last download ([DeviceInfo.pendingDownload]).
+  final List<DeviceInfo> devicesPendingDownload;
 
   /// Objects with a group address but without the C flag.
   final List<(GroupInfo, GroupLink)> objectsWithoutCommunication;

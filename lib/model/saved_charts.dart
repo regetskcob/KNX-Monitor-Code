@@ -154,7 +154,7 @@ class SavedCharts extends ChangeNotifier {
         'name': m.name,
         'metric': m.key,
         'line': ?m.line,
-        'unit': BusMetric.unit,
+        'unit': m.unit,
       };
     }
     final catalog = CatalogStore.instance;

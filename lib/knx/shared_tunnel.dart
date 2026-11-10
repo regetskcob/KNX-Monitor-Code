@@ -10,7 +10,7 @@ import 'knx_tunnel.dart';
 import '../model/tap_points.dart';
 import 'telegram.dart';
 
-/// The shared tunnel of the Home Assistant add-on or the KNX box.
+/// The shared tunnel of the Home Assistant add-on or the Busclear Box.
 ///
 /// The add-on server holds the bus connection permanently, records and distributes the frames to
 /// all open views; this class is one of them. To the outside a perfectly normal [KnxTunnel]:
@@ -194,6 +194,10 @@ class SharedTunnel extends KnxTunnel {
         label: tapLabel(j['address'] as int?, '1'),
         state: mainState,
         error: j['error'] as String?,
+        autoWindow: switch (j['autoWindowMs']) {
+          final int ms => Duration(milliseconds: ms),
+          _ => null,
+        },
       ),
       for (final (i, raw) in taps.indexed)
         if (raw is Map)
@@ -204,6 +208,11 @@ class SharedTunnel extends KnxTunnel {
             state: raw['state'] == 'connected' ? TunnelState.connected : TunnelState.disconnected,
             error: raw['error'] as String?,
             paused: raw['paused'] == true,
+            silent: raw['silent'] == true,
+            autoWindow: switch (raw['autoWindowMs']) {
+              final int ms => Duration(milliseconds: ms),
+              _ => null,
+            },
           ),
     ];
     tapPoints.value = list;

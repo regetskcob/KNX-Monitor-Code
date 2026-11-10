@@ -59,6 +59,12 @@ class MqttTelegramState {
   /// Whether only raw data goes out (no names, DPT, value, unit).
   bool get rawOnly => json['rawOnly'] == true;
 
+  /// Whether the last value per address also goes to `knx_monitor/value/…`, retained.
+  bool get retainValues => json['retainValues'] == true;
+
+  /// Values sent to the value topics since the server started.
+  int get valuesSent => json['valuesSent'] as int? ?? 0;
+
   /// Group address filter as set on the server, e.g. `1/#,3/2/#`; empty = all.
   String get filter => json['filter'] as String? ?? '';
 

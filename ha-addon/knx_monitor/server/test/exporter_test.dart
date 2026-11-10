@@ -346,10 +346,10 @@ void main() {
       ).allMatches(exporter.prometheusText()).map((m) => m[1]).toSet();
       final board = jsonDecode(jsonEncode(grafanaDashboard('prometheus'))) as Map<String, Object?>;
       expect(board['title'], 'Busclear');
-      expect((board['__inputs']! as List).cast<Map>().single['pluginId'], 'prometheus');
+      expect((board['__inputs']! as List).cast<Map<Object?, Object?>>().single['pluginId'], 'prometheus');
       final used = <String>{};
-      for (final panel in (board['panels']! as List).cast<Map>()) {
-        for (final target in (panel['targets'] as List).cast<Map>()) {
+      for (final panel in (board['panels']! as List).cast<Map<Object?, Object?>>()) {
+        for (final target in (panel['targets'] as List).cast<Map<Object?, Object?>>()) {
           used.addAll(RegExp(r'knx_monitor_\w+').allMatches(target['expr'] as String).map((m) => m[0]!));
         }
       }
@@ -368,8 +368,8 @@ void main() {
       exporter.add(line());
       final board = grafanaDashboard('influxdb');
       final queries = [
-        for (final panel in (board['panels']! as List).cast<Map>())
-          for (final target in (panel['targets'] as List).cast<Map>()) target['query'] as String,
+        for (final panel in (board['panels']! as List).cast<Map<Object?, Object?>>())
+          for (final target in (panel['targets'] as List).cast<Map<Object?, Object?>>()) target['query'] as String,
       ];
       expect(queries, isNotEmpty);
       const fields = {

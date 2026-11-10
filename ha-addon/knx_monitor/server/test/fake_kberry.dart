@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:knx_monitor_server/box.dart';
+import 'package:knx_io/knx_io.dart';
 
 /// Simuliertes kBerry-Modul hinter einer seriellen Leitung: quittiert Reset und
 /// Rahmen, beantwortet Property-Anfragen und PEI-Identify und schickt im Link

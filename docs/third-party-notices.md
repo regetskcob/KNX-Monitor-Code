@@ -7,13 +7,14 @@ this repository but come from elsewhere.
 
 ## xknx
 
-KNX Secure in this repository (`packages/knx/lib/src/secure/knx_crypto.dart`
-and `data_secure.dart`, used by the app and the add-on server) follows the
-structure of [xknx](https://github.com/XKNX/xknx) and is checked against its
-examples. The test keyrings in `test/resources/` (`SecureTest.knxkeys`,
-`testcase.knxkeys`) and the keys and frames in
-`packages/knx/test/data_secure_test.dart` are taken from the xknx tests. The
-package carries the same notice in `packages/knx/NOTICE`. xknx is licensed
+KNX Secure in the package [knx](https://pub.dev/packages/knx)
+(`lib/src/secure/knx_crypto.dart` and `data_secure.dart`, used by the app and
+the add-on server; BSD-3-Clause, Kalkar IT Solutions, source at
+github.com/regetskcob/dart-knx) follows the structure of
+[xknx](https://github.com/XKNX/xknx) and is checked against its examples; the
+package carries this notice in its `NOTICE`. The test keyrings in
+`test/resources/` (`SecureTest.knxkeys`, `testcase.knxkeys`) are taken from the
+xknx tests. xknx is licensed
 under the MIT License:
 
 > Permission is hereby granted, free of charge, to any person obtaining a copy

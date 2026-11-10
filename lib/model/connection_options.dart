@@ -31,7 +31,7 @@ enum ConnectionMode {
   /// its own.
   homeAssistant,
 
-  /// Only via the KNX box: an attached KNX HAT (kBerry), no gateway.
+  /// Only via the Busclear Box: an attached KNX HAT (kBerry), no gateway.
   hat,
 }
 

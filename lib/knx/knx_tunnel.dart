@@ -10,6 +10,7 @@ import 'gateway_info.dart';
 
 import 'package:knx/secure.dart';
 
+import 'secure/secure_tap_cache.dart';
 import 'secure/keyring_store.dart';
 import '../model/tap_points.dart';
 import 'telegram.dart';
@@ -293,9 +294,13 @@ class KnxTunnel {
       if (ds == null) {
         keys.withoutKey.value++;
       } else {
-        final (result, plain) = ds.receive(cemi);
+        // Several tap points: the copy from a further one gets the first one's decryption.
+        final several = tapLabels.value.length > 1;
+        final again = several ? secureTapCache.seen(cemi) : null;
+        final (result, plain) = again != null ? (SecureResult.decrypted, again) : ds.receive(cemi);
         switch (result) {
           case SecureResult.decrypted:
+            if (several && again == null) secureTapCache.remember(cemi, plain);
             cemi = plain;
           case SecureResult.noKey:
             keys.withoutKey.value++;

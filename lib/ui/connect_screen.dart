@@ -532,7 +532,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
     await _loadAddon(autoOpen: true, report: true);
   }
 
-  /// "Busclear Box hinzufügen" (add KNX box): scan the QR code, paste it on desktop.
+  /// "Busclear Box hinzufügen" (add Busclear Box): scan the QR code, paste it on desktop.
   Future<void> _addBox() async {
     if (!await unlock(context, Feature.box) || !mounted) return;
     if (canScanBox) {
@@ -650,7 +650,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
     }
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => MonitorScreen(tunnel: tunnel)));
     tunnel.dispose();
-    if (mounted) _loadAddon();
+    if (mounted) unawaited(_loadAddon());
     await _onIncoming();
   }
 
@@ -774,7 +774,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
     final switchTo = await Navigator.of(context)
         .push(MaterialPageRoute<String>(builder: (_) => MonitorScreen(tunnel: tunnel)));
     tunnel.dispose();
-    if (mounted && Addon.available) _loadAddon();
+    if (mounted && Addon.available) unawaited(_loadAddon());
     await _onIncoming();
     // Switch from the monitor: go there and reconnect right away.
     final target = InstallationStore.instance.byId(switchTo);
@@ -1207,7 +1207,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
     ];
   }
 
-  /// Recently used, KNX box, offline, settings. [first]: own column, no spacing
+  /// Recently used, Busclear Box, offline, settings. [first]: own column, no spacing
   /// at the top.
   List<Widget> _secondary(BuildContext context, {bool first = false}) {
     final data = context.hzTheme.data;
@@ -1216,7 +1216,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
     final installations = expert && InstallationStore.instance.switchable;
     final history = !installations && _history.isNotEmpty;
     return [
-      // Native, expert mode: via the KNX box instead of directly at the
+      // Native, expert mode: via the Busclear Box instead of directly at the
       // gateway. Sits as the second path right below "Verbinden" (connect).
       if (expert && !Addon.embedded && Addon.box == null) ...[
         if (!first) const SizedBox(height: HzSpace.s8),

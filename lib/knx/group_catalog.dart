@@ -94,7 +94,7 @@ class ComFlags {
 
 /// Association of a group address with a communication object of a device.
 class GroupLink {
-  const GroupLink({required this.device, this.object, this.text, this.sends = false, this.flags});
+  const GroupLink({required this.device, this.object, this.text, this.sends = false, this.flags, this.ref});
 
   /// Individual address of the device.
   final int device;
@@ -113,12 +113,17 @@ class GroupLink {
   /// the export).
   final ComFlags? flags;
 
+  /// Reference of the communication object in the project, as the ETS and the XKNX Editor name it
+  /// (`M-0083_A-…_O-236_R-62`): identifies the object when handing a correction to the editor.
+  final String? ref;
+
   Map<String, Object?> toJson() => {
     'd': device,
     'o': object,
     't': text,
     if (sends) 's': true,
     if (flags != null) 'f': flags!.code,
+    if (ref != null) 'r': ref,
   };
 
   factory GroupLink.fromJson(Map<String, Object?> j) => GroupLink(
@@ -127,6 +132,7 @@ class GroupLink {
     text: j['t'] as String?,
     sends: j['s'] == true,
     flags: j['f'] is String ? ComFlags.fromCode(j['f']! as String) : null,
+    ref: j['r'] as String?,
   );
 }
 
@@ -141,9 +147,20 @@ class DeviceInfo {
     this.description,
     this.serial,
     this.tunnelOf,
+    this.neverProgrammed = false,
+    this.pendingDownload = const [],
   });
 
   final int address;
+
+  /// The project knows when devices were downloaded, and this one never was: configured but not
+  /// put into operation, or not installed at all. `false` when the source does not tell.
+  final bool neverProgrammed;
+
+  /// Parts changed in the project since the last download and not yet loaded into the device, as
+  /// the ETS and the XKNX Editor mark them ("Adr Prg Par Grp Cfg"). Empty when nothing is pending
+  /// or the source does not tell.
+  final List<DownloadPart> pendingDownload;
 
   /// Additional address (tunnel) of the IP interface with this address – not a separate device.
   final int? tunnelOf;
@@ -171,6 +188,8 @@ class DeviceInfo {
     'ds': description,
     if (serial != null) 'sn': serial,
     if (tunnelOf != null) 'tu': tunnelOf,
+    if (neverProgrammed) 'np': true,
+    if (pendingDownload.isNotEmpty) 'pd': [for (final p in pendingDownload) p.name],
   };
 
   factory DeviceInfo.fromJson(Map<String, Object?> j) => DeviceInfo(
@@ -182,6 +201,8 @@ class DeviceInfo {
     description: j['ds'] as String?,
     serial: j['sn'] as String?,
     tunnelOf: j['tu'] as int?,
+    neverProgrammed: j['np'] == true,
+    pendingDownload: [for (final n in (j['pd'] as List? ?? const [])) ?DownloadPart.values.asNameMap()[n]],
   );
 
   DeviceInfo _asTunnelOf(int parent) => DeviceInfo(
@@ -196,6 +217,24 @@ class DeviceInfo {
   );
 }
 
+/// Part of a device download, as the ETS and the XKNX Editor track it per device.
+enum DownloadPart {
+  /// Individual address.
+  address,
+
+  /// Application program.
+  application,
+
+  /// Parameters.
+  parameters,
+
+  /// Group communication (association and group address tables).
+  groups,
+
+  /// Medium configuration.
+  medium,
+}
+
 /// Group addresses and devices, imported from ETS CSV or .knxproj.
 class GroupCatalog {
   GroupCatalog(
@@ -204,6 +243,7 @@ class GroupCatalog {
     this.projectName,
     this.manufacturers = const {},
     this.style = GroupStyle.threeLevel,
+    this.externalSenders = const {},
   });
 
   /// Address style of the project (ETS: 3-level, 2-level, free).
@@ -218,6 +258,11 @@ class GroupCatalog {
   /// KNX manufacturer ID → name (from the master data of the .knxproj).
   final Map<int, String> manufacturers;
 
+  /// Group addresses something outside the project writes to, e.g. Home Assistant entities and
+  /// exposes (taken over with the project of its KNX integration). They have a sender even without
+  /// one in the project.
+  final Set<int> externalSenders;
+
   bool get isEmpty => groups.isEmpty;
   int get length => groups.length;
 
@@ -230,6 +275,7 @@ class GroupCatalog {
     'groups': [for (final g in groups.values) g.toJson()],
     'devices': [for (final d in devices.values) d.toJson()],
     'manufacturers': {for (final MapEntry(:key, :value) in manufacturers.entries) '$key': value},
+    if (externalSenders.isNotEmpty) 'xs': (externalSenders.toList()..sort()),
   };
 
   factory GroupCatalog.fromJson(Map<String, Object?> j) {
@@ -263,6 +309,7 @@ class GroupCatalog {
         for (final MapEntry(:key, :value) in ((j['manufacturers'] as Map?) ?? const {}).entries)
           int.parse(key as String): value as String,
       },
+      externalSenders: {...?(j['xs'] as List?)?.whereType<int>()},
     );
   }
 

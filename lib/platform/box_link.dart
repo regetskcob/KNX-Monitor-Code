@@ -1,4 +1,4 @@
-/// Pairing with a KNX box (Raspberry Pi with continuous recording, see docs/knx-box.md).
+/// Pairing with a Busclear Box (Raspberry Pi with continuous recording, see docs/knx-box.md).
 ///
 /// The box shows a QR code with the pairing link
 /// `knxmonitor://box?url=http://knx-box.local/&key=…&name=KNX-Box-1A2B`.

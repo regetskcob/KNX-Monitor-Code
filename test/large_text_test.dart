@@ -57,6 +57,8 @@ List<Telegram> _demoTraffic() {
 class _FakeTunnel extends KnxTunnel {
   _FakeTunnel() : super('test');
 
+  // Not closed on purpose: lives as long as the fake.
+  // ignore: close_sinks
   final controller = StreamController<Telegram>.broadcast();
 
   @override
@@ -102,7 +104,14 @@ void main() {
   });
   tearDown(() => LocaleController.instance.debugSetLocale(const Locale('de')));
 
-  Future<List<String>> shoot(WidgetTester tester, Widget home, {Future<void> Function()? then}) async {
+  Future<List<String>> shoot(
+    WidgetTester tester,
+    Widget home, {
+    Future<void> Function()? then,
+    Locale locale = const Locale('en'),
+    double scale = 2,
+  }) async {
+    LocaleController.instance.debugSetLocale(locale);
     final errors = <String>[];
     final previous = FlutterError.onError;
     FlutterError.onError = (d) {
@@ -117,11 +126,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.dark(),
-        locale: const Locale('en'),
+        locale: locale,
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(2)),
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scale)),
           child: child!,
         ),
         home: home,
@@ -145,6 +154,26 @@ void main() {
       final problems = await shoot(
         tester,
         LogView(data: log, title: const Kennung('Demo house'), exportTitle: 'Demo', initialTab: tab),
+      );
+      await tester.pumpWidget(const SizedBox());
+      log.dispose();
+      await tunnel.controller.close();
+      expect(problems, isEmpty);
+    });
+  }
+
+  // Test round 29 Oct: German "Über-sicht" broke in the word at 2.0, and at 3.0 the monitor head ran
+  // over on 375 × 667.
+  for (final (scale, tab) in [(2.0, LogTab.overview), (2.0, LogTab.live), (3.0, LogTab.overview), (3.0, LogTab.live)]) {
+    testWidgets('Monitor deutsch ${tab.name} bei Schrift $scale', (tester) async {
+      CatalogStore.instance.catalog = demoCatalog();
+      final tunnel = _FakeTunnel();
+      final log = MonitorModel(tunnel)..addAll(_demoTraffic());
+      final problems = await shoot(
+        tester,
+        LogView(data: log, title: const Kennung('Demohaus'), exportTitle: 'Demo', initialTab: tab),
+        locale: const Locale('de'),
+        scale: scale,
       );
       await tester.pumpWidget(const SizedBox());
       log.dispose();

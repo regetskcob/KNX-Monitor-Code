@@ -266,6 +266,9 @@ class DayLinesCache {
   final _reading = <String, Future<void>>{};
   int _lines = 0;
 
+  /// Lines held right now (tests).
+  int get cachedLines => _lines;
+
   /// Lines (no read requests) of [day] for [addresses]; `null` without the day.
   Future<Map<int, List<String>>?> lines(Recorder recorder, String day, Set<int> addresses) async {
     final stamp = await recorder.packedDayStamp(day);
@@ -284,12 +287,24 @@ class DayLinesCache {
       cached ??= _CachedDay(stamp);
       _days[day] = cached; // most recently used last
       final missing = addresses.difference(cached.scanned);
-      if (missing.isEmpty) return {for (final a in addresses) a: cached.byAddress[a] ?? const []};
+      if (missing.isEmpty) {
+        final result = {for (final a in addresses) a: cached.byAddress[a] ?? const <String>[]};
+        // A single day bigger than the whole budget (a storm, a very busy bus) is answered but not
+        // kept: otherwise it would stay in memory beyond the budget, since the newest day never
+        // goes first.
+        if (cached.count > budget) {
+          _days.remove(day);
+          _lines -= cached.count;
+        }
+        return result;
+      }
       final read = _fill(recorder, day, cached, missing);
       _reading[day] = read;
       try {
         await read;
       } finally {
+        // Drops the shared read; whoever awaits it handles its result.
+        // ignore: unawaited_futures
         _reading.remove(day);
       }
     }

@@ -3,7 +3,7 @@
 # the commit locally and tool/release.sh push (or app, for the tag) marked it on GitHub
 # (status werkbank/verify, job gate; tool/werkbank/STANDARD.md, "Stempel"). main changes only through pull requests, so
 # there is no second run after the merge. Changes only to the website or docs
-# start no run. Desktop (Linux, Windows) builds run only on an app-v* tag
+# run only the cheap gate and the ci-ok check (required by the main ruleset). Desktop (Linux, Windows) builds run only on an app-v* tag
 # (tool/release.sh app pushes it) or by hand; the Android test APK only by hand
 # (store builds come from tool/release.sh android). The repository is private,
 # so Actions minutes and artifact storage count against the quota;
@@ -14,13 +14,15 @@ on:
   push:
     tags: ['app-v*']
     paths-ignore: ['site/**', 'docs/**', '**.md']
+  # No paths filter here: the required check "ci-ok" must report on every pull request.
+  # The gate skips the heavy jobs for pull requests that only touch site, docs or Markdown.
   pull_request:
-    paths-ignore: ['site/**', 'docs/**', '**.md']
   workflow_dispatch:
 
 permissions:
   contents: read
   statuses: read
+  pull-requests: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -40,6 +42,16 @@ jobs:
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           verified=false
+          # Only site, docs or Markdown changed: nothing to build or test.
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            other=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/${{ github.event.pull_request.number }}/files" \
+              --jq '.[] | .filename, (.previous_filename // empty)' \
+              | grep -v -E '^(site/|docs/)|\.md$' || true)
+            if [ -z "$other" ]; then
+              echo "verified=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
           # Pull requests and app-v* tags (tool/release.sh app marks the tagged commit).
           if [ "$GITHUB_EVENT_NAME" = pull_request ] || [[ "$GITHUB_REF" == refs/tags/* ]]; then
             for _ in 1 2 3; do
@@ -146,7 +158,7 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 7
 
-  # Add-on server and the internal package it shares with the app (packages/knx).
+  # Add-on server.
   addon-server:
     needs: gate
     if: ${{ !cancelled() && needs.gate.outputs.verified != 'true' }}
@@ -160,16 +172,25 @@ jobs:
       - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
         with:
           sdk: 3.13.6
-      - name: Package knx
-        working-directory: packages/knx
-        run: |
-          dart pub get --enforce-lockfile
-          dart format --output=none --set-exit-if-changed lib test
-          dart analyze
-          dart test
       - run: dart pub get --enforce-lockfile
       - name: Formatting
         run: dart format --output=none --set-exit-if-changed bin lib test
       - run: dart analyze
       - run: dart test
       - run: dart compile exe bin/server.dart -o /tmp/server
+
+  # The one check the main ruleset requires. Skipped jobs (stamp or docs-only) count as
+  # passed; a failed or cancelled job does not.
+  ci-ok:
+    needs: [gate, app, addon-server]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "results: $RESULTS"
+          case " $RESULTS " in
+            *" failure "*|*" cancelled "*) exit 1 ;;
+          esac

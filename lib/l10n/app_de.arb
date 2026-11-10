@@ -70,7 +70,7 @@
   "@catalogImported": {
     "description": "Catalog tile subtitle fallback when no project/file name is known."
   },
-  "catalogHint": "ETS-Projekt (.knxproj) oder Gruppenadressen-CSV für Namen, Datentypen & Geräte",
+  "catalogHint": "ETS-Projekt (.knxproj), XKNX-Editor-Projekt (.xknx) oder Gruppenadressen-CSV für Namen, Datentypen & Geräte",
   "@catalogHint": {
     "description": "Catalog tile hint when nothing is imported."
   },
@@ -100,7 +100,7 @@
       }
     }
   },
-  "catalogPickFile": "Bitte eine .knxproj- oder .csv-Datei wählen.",
+  "catalogPickFile": "Bitte eine .knxproj-, .xknx- oder .csv-Datei wählen.",
   "@catalogPickFile": {
     "description": "Import error for an unsupported file type."
   },
@@ -1461,7 +1461,7 @@
   "@filterHelp": {
     "description": "Tooltip/Titel: Hilfe zur Filtersyntax"
   },
-  "filterHelpBody": "Leerzeichen = UND · Komma = ODER · -begriff = NICHT\n\n1/2/3 exakt · 1/2 Bereich · 1/*/3 oder 1/2/1* mit Platzhalter\n1.1.5 Absender · 1.1.* Linie · von:1.1.5\n\ntyp:w|r|a (Schreiben, Lesen, Antwort)\ndpt:9 oder dpt:9.001\nzeit:14:05 · zeit:14:05-14:10 (Uhrzeit, ohne das Ende)\nist:alarm · ist:wiederholt · ist:antwort · ist:projekt\nist:eigen · ist:fremd (selbst gesendet bzw. vom Bus)\n\nAlles andere sucht in Name, Bereich, Gerät und Wert – Umlaute egal (kuche findet Küche).\n\nMehrere ODER-Gruppen bekommen in der Liste je eine Farbe. „Kontext“ zeigt die Sekunden vor und nach jedem Treffer.\n\nBeispiele:\n1/*/* ist:antwort – unbeantwortete Leseanfragen in Hauptgruppe 1\nküche, bad -schalten – Küche oder Bad, ohne Schalten",
+  "filterHelpBody": "Leerzeichen = UND · Komma = ODER · -begriff = NICHT\n\n1/2/3 exakt · 1/2 Bereich · 1/*/3 oder 1/2/1* mit Platzhalter\n1.1.5 Absender · 1.1.* Linie · von:1.1.5\n\ntyp:w|r|a (Schreiben, Lesen, Antwort)\ndpt:9 oder dpt:9.001\nzeit:14:05 · zeit:14:05-14:10 (Uhrzeit, ohne das Ende)\nist:alarm · ist:wiederholt · ist:antwort · ist:projekt\nist:eigen · ist:fremd (selbst gesendet bzw. vom Bus)\nmesspunkt:1.2 oder messpunkt:1.2|1.3 (gesehen an diesen Messpunkten) · ist:einzeln (nur an einem Messpunkt)\n\nAlles andere sucht in Name, Bereich, Gerät und Wert – Umlaute egal (kuche findet Küche).\n\nMehrere ODER-Gruppen bekommen in der Liste je eine Farbe. „Kontext“ zeigt die Sekunden vor und nach jedem Treffer.\n\nBeispiele:\n1/*/* ist:antwort – unbeantwortete Leseanfragen in Hauptgruppe 1\nküche, bad -schalten – Küche oder Bad, ohne Schalten",
   "@filterHelpBody": {
     "description": "Hilfetext zur Filtersyntax"
   },
@@ -3393,7 +3393,7 @@
   },
   "boxPair": "Mit Busclear Box koppeln",
   "@boxPair": {
-    "description": "Button: pair with a KNX box."
+    "description": "Button: pair with a Busclear Box."
   },
   "boxPairHint": "QR-Code der Box mit der Kamera scannen, oder Kopplungslink bzw. IP-Adresse der Box hier einfügen. Den Link findest du auch als knx-box-link.txt auf der SD-Karte.",
   "@boxPairHint": {
@@ -3417,7 +3417,7 @@
   },
   "boxVia": "Über Busclear Box {name}",
   "@boxVia": {
-    "description": "Banner: app runs through a KNX box.",
+    "description": "Banner: app runs through a Busclear Box.",
     "placeholders": {
       "name": {
         "type": "String"
@@ -6746,7 +6746,7 @@
   },
   "versionBox": "Box {version}",
   "@versionBox": {
-    "description": "Version line in the menu: KNX box server version.",
+    "description": "Version line in the menu: Busclear Box server version.",
     "placeholders": {
       "version": {
         "type": "String"
@@ -7255,11 +7255,11 @@
   },
   "tourBoxTitle": "Busclear Box für die Baustelle.",
   "@tourBoxTitle": {
-    "description": "Introduction: KNX box, title."
+    "description": "Introduction: Busclear Box, title."
   },
   "tourBoxText": "Ein Raspberry Pi, der rund um die Uhr mitschreibt und ein eigenes WLAN aufspannt. Gekoppelt wird per Aufkleber, den Verlauf holt die App direkt von der Box. Noch eine Vorschau.",
   "@tourBoxText": {
-    "description": "Introduction: KNX box, text."
+    "description": "Introduction: Busclear Box, text."
   },
   "tourChipWifi": "Eigenes WLAN",
   "@tourChipWifi": {
@@ -12776,6 +12776,15 @@
   "@dataExportMqttSecureOn": {
     "description": "Datenexport: Secure-Telegramme an"
   },
+  "dataExportMqttRetain": "Letzter Wert je Adresse unter knx_monitor/value/… mit retain, {count} Werte gesendet.",
+  "@dataExportMqttRetain": {
+    "description": "Datenexport: Option „Letzten Wert je Adresse behalten“ an",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "dataExportMqttDetails": "{mode, select, raw{Mit Rohdaten} rawOnly{Nur Rohdaten} other{Ohne Rohdaten}} · Gruppenadressen: {filter} · letzte Nr. (seq) {seq}",
   "@dataExportMqttDetails": {
     "description": "Data export, MQTT telegram stream: raw data mode, group address filter and running number of the last telegram",
@@ -12875,6 +12884,19 @@
     }
   },
   "tapDownHint": "Die anderen laufen weiter. Der getrennte verbindet sich von selbst neu.",
+  "tapSilent": "Verbunden, aber hier kommt nichts an: {name}",
+  "@tapSilent": {
+    "description": "Monitor: Hinweis, ein Messpunkt ist verbunden, sieht aber nichts",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tapSilentHint": "Bei Routing gibt es im Netz oft keinen IP-Router (Tunnel-Schnittstellen leiten kein Routing weiter). Sonst Linie und Filtertabelle des Kopplers prüfen.",
+  "@tapSilentHint": {
+    "description": "Monitor: Hinweis stiller Messpunkt, zweiter Teil"
+  },
   "@tapDownHint": {
     "description": "Monitor: Banner Messpunkt getrennt, zweite Zeile"
   },
@@ -12894,9 +12916,9 @@
       }
     }
   },
-  "detailsPathFirst": "zuerst · Hop {hop}",
+  "detailsPathFirst": "Ursprung · Hop {hop}",
   "@detailsPathFirst": {
-    "description": "Telegramm-Details: erste Sichtung",
+    "description": "Telegramm-Details: Messpunkt auf der Linie des Senders (höchster Hop)",
     "placeholders": {
       "hop": {
         "type": "int"
@@ -12906,5 +12928,665 @@
   "detailsPathMissing": "nicht gesehen, gefiltert oder nur lokal",
   "@detailsPathMissing": {
     "description": "Telegramm-Details: an diesem Messpunkt nicht gesehen"
+  },
+  "projectXknxInvalid": "Keine lesbare Projektdatei des XKNX Editors (.xknx).",
+  "@projectXknxInvalid": {
+    "description": "Import error: .xknx file cannot be read"
+  },
+  "checkDevicesNeverProgrammed": "Geräte nie programmiert",
+  "@checkDevicesNeverProgrammed": {
+    "description": "Project check section: devices without any download"
+  },
+  "checkDevicesNeverProgrammedHint": "Laut Projekt wurde auf diese Geräte noch nie ein Download gemacht: noch nicht in Betrieb genommen oder gar nicht verbaut. Prüfen, ob sie antworten, dann programmieren oder aus dem Projekt löschen.",
+  "@checkDevicesNeverProgrammedHint": {
+    "description": "Explanation for checkDevicesNeverProgrammed"
+  },
+  "checkDevicesPendingDownload": "Download ausstehend",
+  "@checkDevicesPendingDownload": {
+    "description": "Project check section: devices changed since the last download"
+  },
+  "checkDevicesPendingDownloadHint": "Im Projekt nach dem letzten Download geändert, aber noch nicht ins Gerät geladen (wie Adr/Prg/Par/Grp/Kfg in der ETS). Bis zum Programmieren arbeitet das Gerät mit dem alten Stand.",
+  "@checkDevicesPendingDownloadHint": {
+    "description": "Explanation for checkDevicesPendingDownload"
+  },
+  "downloadPartAddress": "Adresse",
+  "@downloadPartAddress": {
+    "description": "Part of a device download: individual address"
+  },
+  "downloadPartApplication": "Applikation",
+  "@downloadPartApplication": {
+    "description": "Part of a device download: application program"
+  },
+  "downloadPartParameters": "Parameter",
+  "@downloadPartParameters": {
+    "description": "Part of a device download: parameters"
+  },
+  "downloadPartGroups": "Gruppenadressen",
+  "@downloadPartGroups": {
+    "description": "Part of a device download: group communication"
+  },
+  "downloadPartMedium": "Medium",
+  "@downloadPartMedium": {
+    "description": "Part of a device download: medium configuration"
+  },
+  "xknxEditorTitle": "An XKNX Editor übergeben",
+  "@xknxEditorTitle": {
+    "description": "Title of the handover to the XKNX Editor"
+  },
+  "xknxEditorText": "Busclear übergibt Korrekturen (Datentypen, Namen, neue Adressen, K- und L-Flags) und schreibt die übrigen Befunde als Kommentar an Adressen und Geräte. Programmiert wird nichts; im Editor lässt sich alles rückgängig machen.",
+  "@xknxEditorText": {
+    "description": "Explanation of the handover to the XKNX Editor"
+  },
+  "xknxEditorSummary": "{corrections} Korrekturen, {notes} Notizen",
+  "@xknxEditorSummary": {
+    "description": "Size of the handover",
+    "placeholders": {
+      "corrections": {
+        "type": "int"
+      },
+      "notes": {
+        "type": "int"
+      }
+    }
+  },
+  "xknxEditorNothing": "Nichts zu übergeben: keine Aufgaben aus der Projektprüfung.",
+  "@xknxEditorNothing": {
+    "description": "Handover without content"
+  },
+  "xknxEditorEndpoint": "Adresse des MCP-Servers",
+  "@xknxEditorEndpoint": {
+    "description": "Field: address of the editor's MCP server"
+  },
+  "xknxEditorToken": "Bearer-Token (optional)",
+  "@xknxEditorToken": {
+    "description": "Field: token of the editor's MCP server"
+  },
+  "xknxEditorConnectionHint": "Im XKNX Editor unter Einstellungen › KI/MCP den Server starten; Adresse und Token stehen dort.",
+  "@xknxEditorConnectionHint": {
+    "description": "Hint where to find the MCP settings"
+  },
+  "xknxEditorSend": "Übergeben",
+  "@xknxEditorSend": {
+    "description": "Button: hand over to the editor"
+  },
+  "xknxEditorSaveFile": "Als Datei speichern",
+  "@xknxEditorSaveFile": {
+    "description": "Button: save the handover as JSON"
+  },
+  "xknxEditorFile": "XKNX-Editor-Aufgaben",
+  "@xknxEditorFile": {
+    "description": "File name prefix of the handover file"
+  },
+  "xknxEditorNoProject": "Im XKNX Editor ist kein Projekt geöffnet.",
+  "@xknxEditorNoProject": {
+    "description": "Handover error: no project open"
+  },
+  "xknxEditorOtherProject": "Im Editor ist „{editor}“ geöffnet, in Busclear „{busclear}“. Trotzdem übergeben?",
+  "@xknxEditorOtherProject": {
+    "description": "Warning: different projects",
+    "placeholders": {
+      "editor": {
+        "type": "String"
+      },
+      "busclear": {
+        "type": "String"
+      }
+    }
+  },
+  "xknxEditorUnreachable": "XKNX Editor nicht erreichbar: {error}",
+  "@xknxEditorUnreachable": {
+    "description": "Handover error: connection",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "xknxEditorUnauthorized": "Der Editor verlangt ein Token (Einstellungen › KI/MCP).",
+  "@xknxEditorUnauthorized": {
+    "description": "Handover error: token missing or wrong"
+  },
+  "xknxEditorDone": "{corrections} Korrekturen übernommen, {notes} Notizen geschrieben. Geänderte Geräte im Editor programmieren.",
+  "@xknxEditorDone": {
+    "description": "Handover result",
+    "placeholders": {
+      "corrections": {
+        "type": "int"
+      },
+      "notes": {
+        "type": "int"
+      }
+    }
+  },
+  "xknxEditorFailed": "Nicht übernommen:",
+  "@xknxEditorFailed": {
+    "description": "Heading of the failed handover steps"
+  },
+  "xknxEditorPreview": "Mit Projekt vergleichen (XKNX Editor)",
+  "@xknxEditorPreview": {
+    "description": "Button: download preview through the editor"
+  },
+  "xknxEditorPreviewSame": "Gerät entspricht dem Projekt im Editor.",
+  "@xknxEditorPreviewSame": {
+    "description": "Download preview: no difference"
+  },
+  "xknxEditorPreviewDiff": "Ein Download würde {bytes} Byte der Konfiguration ändern: Gerät und Projekt weichen ab.",
+  "@xknxEditorPreviewDiff": {
+    "description": "Download preview: difference",
+    "placeholders": {
+      "bytes": {
+        "type": "int"
+      }
+    }
+  },
+  "xknxEditorPreviewHint": "Liest das Gerät über die Busverbindung des Editors und schreibt nichts. Kann je nach Gerät einige Minuten dauern.",
+  "@xknxEditorPreviewHint": {
+    "description": "Explanation of the download preview"
+  },
+  "xknxNoteNeverProgrammed": "Nie programmiert: laut Projekt noch kein Download auf dieses Gerät.",
+  "@xknxNoteNeverProgrammed": {
+    "description": "Note in the XKNX Editor for a never programmed device"
+  },
+  "catalogFromHomeAssistant": "Aus Home Assistant",
+  "@catalogFromHomeAssistant": {
+    "description": "Button: take over the project of Home Assistant's KNX integration"
+  },
+  "catalogFromHomeAssistantTooltip": "Projekt der KNX-Integration übernehmen (dort hochgeladen oder vom XKNX Editor gesendet)",
+  "@catalogFromHomeAssistantTooltip": {
+    "description": "Tooltip of catalogFromHomeAssistant"
+  },
+  "catalogHaNoProject": "Die KNX-Integration von Home Assistant hat kein Projekt. Im KNX-Panel ein Projekt hochladen oder es aus dem XKNX Editor senden.",
+  "@catalogHaNoProject": {
+    "description": "Import from Home Assistant: no project there"
+  },
+  "catalogHaFailed": "Projekt aus Home Assistant nicht abrufbar: {error}",
+  "@catalogHaFailed": {
+    "description": "Import from Home Assistant failed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "xknxEditorInsecure": "Den Token schickt Busclear nur über HTTPS oder an diesen Rechner. Für einen anderen Rechner im Netz den Editor mit HTTPS betreiben.",
+  "@xknxEditorInsecure": {
+    "description": "Error: token would be sent over plain HTTP on the network"
+  },
+  "aiAccessTitle": "KI-Zugriff (MCP)",
+  "@aiAccessTitle": {
+    "description": "Title of the AI access settings"
+  },
+  "aiAccessMeta": "Verlauf, Befunde und Projektprüfung für KI-Werkzeuge",
+  "@aiAccessMeta": {
+    "description": "Subtitle of the AI access row"
+  },
+  "aiAccessText": "KI-Werkzeuge wie Claude lesen über das Model Context Protocol den aufgezeichneten Bus, die Befunde und die Projektprüfung und können zusammen mit dem XKNX Editor Korrekturen vorschlagen. Busclear sendet dabei nichts auf den Bus und ändert nichts.",
+  "@aiAccessText": {
+    "description": "Explanation of the AI access"
+  },
+  "aiAccessEnable": "KI-Zugriff erlauben",
+  "@aiAccessEnable": {
+    "description": "Switch for the MCP server"
+  },
+  "aiAccessReadOnly": "Nur lesen, mit Token",
+  "@aiAccessReadOnly": {
+    "description": "Subtitle of the switch"
+  },
+  "aiAccessPrivacy": "Wer den Token hat, liest den ganzen Verlauf, aus dem sich Anwesenheit ablesen lässt. Token nur in eigenen Werkzeugen eintragen und bei Verdacht erneuern. Im Add-on geht die Verbindung im Heimnetz unverschlüsselt (HTTP); die Box nutzt HTTPS.",
+  "@aiAccessPrivacy": {
+    "description": "Privacy notice of the AI access"
+  },
+  "aiAccessEndpoint": "Adresse",
+  "@aiAccessEndpoint": {
+    "description": "Label: MCP endpoint"
+  },
+  "aiAccessToken": "Token",
+  "@aiAccessToken": {
+    "description": "Label: MCP bearer token"
+  },
+  "aiAccessCommand": "Für Claude Code",
+  "@aiAccessCommand": {
+    "description": "Heading of the setup command"
+  },
+  "aiAccessCopyCommand": "Befehl kopieren",
+  "@aiAccessCopyCommand": {
+    "description": "Button: copy the setup command"
+  },
+  "aiAccessRenew": "Neuen Token erzeugen",
+  "@aiAccessRenew": {
+    "description": "Button: renew the MCP token"
+  },
+  "aiAccessCopied": "Kopiert",
+  "@aiAccessCopied": {
+    "description": "Message after copying"
+  },
+  "checkSectionEvidence": "Projekt gegen Bus ({days} Tage)",
+  "@checkSectionEvidence": {
+    "description": "Section of the project check: evaluation of the recorded history",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "checkUnexpectedSenders": "Gerät sendet anders als im Projekt",
+  "@checkUnexpectedSenders": {
+    "description": "Finding: device sends where the project says it cannot"
+  },
+  "checkUnexpectedSendersHint": "Diese Geräte senden auf Adressen, auf denen sie laut Projekt nicht senden. Das Gerät trägt dann nicht den Projektstand: nach dem letzten Download geändert, getauscht oder das Projekt ist veraltet. Mit dem XKNX Editor vergleichen (Diagnose › Mit Projekt vergleichen).",
+  "@checkUnexpectedSendersHint": {
+    "description": "Explanation of checkUnexpectedSenders"
+  },
+  "checkUnexpectedSenderRow": "sendet auf {group}",
+  "@checkUnexpectedSenderRow": {
+    "description": "Row of an unexpected sender",
+    "placeholders": {
+      "group": {
+        "type": "String"
+      }
+    }
+  },
+  "checkNoFeedback": "Befehl ohne Rückmeldung",
+  "@checkNoFeedback": {
+    "description": "Finding: actuator status does not answer commands"
+  },
+  "checkNoFeedbackHint": "Auf Befehle antwortet der Status desselben Kanals selten oder nie innerhalb von 5 Sekunden. Mögliche Ursachen: Aktor führt nicht aus, Filtertabelle, ausstehender Download, oder der Aktor meldet nur bei einer Änderung.",
+  "@checkNoFeedbackHint": {
+    "description": "Explanation of checkNoFeedback"
+  },
+  "checkNoFeedbackRow": "Status {status} von {device}: {answered} von {commands} beantwortet",
+  "@checkNoFeedbackRow": {
+    "description": "Row of a command without feedback",
+    "placeholders": {
+      "status": {
+        "type": "String"
+      },
+      "device": {
+        "type": "String"
+      },
+      "answered": {
+        "type": "int"
+      },
+      "commands": {
+        "type": "int"
+      }
+    }
+  },
+  "checkSendersConfirmed": "Mehrere Sender, im Verlauf bestätigt",
+  "@checkSendersConfirmed": {
+    "description": "Finding: several project senders really heard"
+  },
+  "checkSendersConfirmedHint": "Von den Adressen mit mehreren Sendern im Projekt haben hier wirklich mehrere gesendet. Bei Reglern oder Stellwerten überschreiben sie sich gegenseitig.",
+  "@checkSendersConfirmedHint": {
+    "description": "Explanation of checkSendersConfirmed"
+  },
+  "checkReadsUnanswered": "Leseanfragen ohne Antwort",
+  "@checkReadsUnanswered": {
+    "description": "Finding: status addresses without R that were read"
+  },
+  "checkReadsUnansweredHint": "Statusadressen ohne L-Flag, die im Verlauf gelesen wurden: so oft blieb die Antwort aus.",
+  "@checkReadsUnansweredHint": {
+    "description": "Explanation of checkReadsUnanswered"
+  },
+  "checkReadsRow": "{reads} Leseanfragen, {answered} beantwortet",
+  "@checkReadsRow": {
+    "description": "Row of reads without answer",
+    "placeholders": {
+      "reads": {
+        "type": "int"
+      },
+      "answered": {
+        "type": "int"
+      }
+    }
+  },
+  "checkDptSuggestions": "Datentyp aus dem Verlauf",
+  "@checkDptSuggestions": {
+    "description": "Finding: DPT suggestions for addresses without one"
+  },
+  "checkDptSuggestionsHint": "Für Adressen ohne Datentyp schlägt Busclear einen vor, aus Länge und Werten der Telegramme und dem Namen. „Sicher“ heißt: eindeutige Länge und passender Name. Über „An XKNX Editor übergeben“ oder in der ETS eintragen.",
+  "@checkDptSuggestionsHint": {
+    "description": "Explanation of checkDptSuggestions"
+  },
+  "checkDptSure": "sicher",
+  "@checkDptSure": {
+    "description": "Certainty of a DPT suggestion: high"
+  },
+  "checkDptLikely": "wahrscheinlich",
+  "@checkDptLikely": {
+    "description": "Certainty of a DPT suggestion: medium"
+  },
+  "checkLongStates": "Zustand ungewöhnlich lange gleich",
+  "@checkLongStates": {
+    "description": "Finding: contact or alarm stuck on 1"
+  },
+  "checkLongStatesHint": "Kontakt- oder Alarmadressen, die über Tage immer wieder 1 senden, ohne je zu wechseln, etwa „gekippt“ bei geschlossenem Fenster. Kontakt klemmt oder die Polarität ist falsch eingestellt.",
+  "@checkLongStatesHint": {
+    "description": "Explanation of checkLongStates"
+  },
+  "checkLongStateRow": "seit {days} Tagen 1, {count} Telegramme",
+  "@checkLongStateRow": {
+    "description": "Row of a long state",
+    "placeholders": {
+      "days": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "checkNightActivity": "Auslösungen in der Nacht",
+  "@checkNightActivity": {
+    "description": "Finding: presence at night"
+  },
+  "checkNightActivityHint": "Präsenz- oder Bewegungsmelder, die in den meisten Nächten zwischen 0 und 5 Uhr auslösen. Sieht der Melder in ein Schlafzimmer, reagiert er auf ein Haustier, oder ist er zu empfindlich?",
+  "@checkNightActivityHint": {
+    "description": "Explanation of checkNightActivity"
+  },
+  "checkNightRow": "in {nights} von {recorded} Nächten, {per} Auslösungen je Nacht",
+  "@checkNightRow": {
+    "description": "Row of night activity",
+    "placeholders": {
+      "nights": {
+        "type": "int"
+      },
+      "recorded": {
+        "type": "int"
+      },
+      "per": {
+        "type": "String"
+      }
+    }
+  },
+  "xknxEditorCompareAll": "Alle Geräte vergleichen",
+  "@xknxEditorCompareAll": {
+    "description": "Button: download preview for all devices through the editor"
+  },
+  "xknxEditorCompareAllHint": "Der Editor liest jedes programmierte Gerät über seine Busverbindung und vergleicht es mit dem Projekt. Schreibt nichts, belastet aber den Bus und dauert je Gerät bis zu einigen Minuten: am besten abends oder nachts laufen lassen.",
+  "@xknxEditorCompareAllHint": {
+    "description": "Explanation of the comparison of all devices"
+  },
+  "xknxEditorCompareProgress": "{done} von {total}: {device}",
+  "@xknxEditorCompareProgress": {
+    "description": "Progress of the comparison",
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "xknxEditorCompareResult": "{differ} von {total} Geräten weichen vom Projekt ab, {failed} nicht erreichbar.",
+  "@xknxEditorCompareResult": {
+    "description": "Result of the comparison",
+    "placeholders": {
+      "differ": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "xknxEditorCompareStop": "Anhalten",
+  "@xknxEditorCompareStop": {
+    "description": "Button: stop the comparison after the current device"
+  },
+  "xknxNoteDptLikely": "Datentyp laut Verlauf wahrscheinlich {dpt}: prüfen und setzen.",
+  "@xknxNoteDptLikely": {
+    "description": "Note in the XKNX Editor for a likely DPT",
+    "placeholders": {
+      "dpt": {
+        "type": "String"
+      }
+    }
+  },
+  "shareSaveAs": "Sichern unter …",
+  "@shareSaveAs": {
+    "description": "Mac: Auswahl beim Teilen einer Datei, im Finder speichern"
+  },
+  "shareShare": "Teilen …",
+  "@shareShare": {
+    "description": "Mac: Auswahl beim Teilen einer Datei, Teilen-Menü des Systems"
+  },
+  "outageTap": "Messpunkt {name} {duration} nicht erreichbar",
+  "@outageTap": {
+    "description": "Verlauf: Lücke, ein weiterer Messpunkt war nicht erreichbar (kein Busfehler)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "topoTapPoint": "Messpunkt",
+  "@topoTapPoint": {
+    "description": "Topologie: Abzeichen an einer Linie mit Messpunkt"
+  },
+  "topoFilterBlocked": "{ga} {name} kommt von Linie {from} nicht in Linie {to} an ({count} Telegramme), obwohl dort Geräte darauf hören. Filtertabelle des Kopplers prüfen.",
+  "@topoFilterBlocked": {
+    "description": "Topologie: Messpunkte zeigen, dass ein Koppler eine benötigte Gruppenadresse sperrt",
+    "placeholders": {
+      "ga": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "topoFilterLeaked": "{ga} {name} kommt von Linie {from} in Linie {to} an ({count} Telegramme), obwohl dort niemand darauf hört.",
+  "@topoFilterLeaked": {
+    "description": "Topologie: Messpunkte zeigen unnötig durchgelassene Telegramme",
+    "placeholders": {
+      "ga": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "busMetricLoad": "Buslast",
+  "@busMetricLoad": {
+    "description": "Diagramm: Kennzahl Belegung der Leitung in Prozent"
+  },
+  "weekSumTitle": "Letzte {days} Tage",
+  "@weekSumTitle": {
+    "description": "Monitor: Überschrift der Wochenübersicht aus der Daueraufzeichnung",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "weekSumAllGood": "Der Bus lief unauffällig.",
+  "@weekSumAllGood": {
+    "description": "Wochenübersicht: keine Befunde"
+  },
+  "weekSumHints": "Der Bus lief stabil, {count, plural, =1{ein Hinweis} other{{count} Hinweise}} für die Anlage.",
+  "@weekSumHints": {
+    "description": "Wochenübersicht: nur Hinweise",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "weekSumWarn": "Es gab Auffälligkeiten, die du dir ansehen solltest.",
+  "@weekSumWarn": {
+    "description": "Wochenübersicht: mindestens eine Warnung"
+  },
+  "weekSumPerDay": "Telegramme/Tag",
+  "@weekSumPerDay": {
+    "description": "Wochenübersicht: Kennzahl"
+  },
+  "weekSumLoad": "Buslast Ø / max",
+  "@weekSumLoad": {
+    "description": "Wochenübersicht: Kennzahl"
+  },
+  "weekSumAvailability": "Aufzeichnung",
+  "@weekSumAvailability": {
+    "description": "Wochenübersicht: Anteil der Zeit mit Aufzeichnung"
+  },
+  "weekSumRepeatsLabel": "Wiederholungen",
+  "@weekSumRepeatsLabel": {
+    "description": "Wochenübersicht: Kennzahl"
+  },
+  "weekSumMore": "{count} weitere",
+  "@weekSumMore": {
+    "description": "Wochenübersicht: weitere Befunde aufklappen",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "weekSumLess": "Weniger",
+  "@weekSumLess": {
+    "description": "Wochenübersicht: Befunde zuklappen"
+  },
+  "weekSumClocks": "Mehrere Zeitgeber: {senders} senden Datum/Uhrzeit auf {groups}, zusammen {share} des Verkehrs. Einer, alle 10 bis 60 Minuten, reicht.",
+  "@weekSumClocks": {
+    "description": "Befund",
+    "placeholders": {
+      "senders": {
+        "type": "String"
+      },
+      "groups": {
+        "type": "String"
+      },
+      "share": {
+        "type": "String"
+      }
+    }
+  },
+  "weekSumMultiResponders": "Auf Leseanfragen antworten mehrere Geräte: {groups}{count, plural, =1{} other{ ({count} Adressen)}}. Das L-Flag gehört nur an den Sender.",
+  "@weekSumMultiResponders": {
+    "description": "Befund",
+    "placeholders": {
+      "groups": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "weekSumReadStorms": "{sender} liest viele Adressen auf einmal, bis {perMinute} Leseanfragen je Minute (z. B. Statusabgleich von Home Assistant).",
+  "@weekSumReadStorms": {
+    "description": "Befund",
+    "placeholders": {
+      "sender": {
+        "type": "String"
+      },
+      "perMinute": {
+        "type": "int"
+      }
+    }
+  },
+  "weekSumChatty": "Sehr häufig gesendet: {groups}. Eine höhere Sendeschwelle entlastet den Bus.",
+  "@weekSumChatty": {
+    "description": "Befund",
+    "placeholders": {
+      "groups": {
+        "type": "String"
+      }
+    }
+  },
+  "weekSumSilent": "Ohne Telegramm: {devices}{count, plural, =1{} other{ ({count} Geräte)}}.",
+  "@weekSumSilent": {
+    "description": "Befund: Projektgeräte, die nichts gesendet haben",
+    "placeholders": {
+      "devices": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "weekSumUnknown": "Absender nicht im Projekt: {senders}.",
+  "@weekSumUnknown": {
+    "description": "Befund",
+    "placeholders": {
+      "senders": {
+        "type": "String"
+      }
+    }
+  },
+  "weekSumRepeats": "{count} Wiederholungen ({share}): Quittungen fehlen, Leitung oder Gerät prüfen.",
+  "@weekSumRepeats": {
+    "description": "Befund",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "share": {
+        "type": "String"
+      }
+    }
+  },
+  "weekSumLoadHigh": "Buslast zeitweise hoch, bis {max} in einer Minute.",
+  "@weekSumLoadHigh": {
+    "description": "Befund",
+    "placeholders": {
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "weekSumDisconnected": "Die Busverbindung brach {count, plural, =1{einmal} other{{count}-mal}} ab, zusammen {minutes} min.",
+  "@weekSumDisconnected": {
+    "description": "Befund",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "weekSumTapGaps": "Messpunkt {taps} war zeitweise nicht erreichbar, zusammen {minutes} min.",
+  "@weekSumTapGaps": {
+    "description": "Befund",
+    "placeholders": {
+      "taps": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
   }
 }

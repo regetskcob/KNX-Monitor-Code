@@ -15,7 +15,7 @@ import 'recordings_screen.dart' show openRecording;
 import 'telegram_row.dart' show formatDate, formatTime;
 import 'watch_screen.dart';
 
-/// Fault hunt (Pro): catch sporadic faults over days with the KNX box (or in
+/// Fault hunt (Pro): catch sporadic faults over days with the Busclear Box (or in
 /// the add-on). Rules come from the watchers; for each hit the server keeps two
 /// minutes before and one after.
 class FaultHuntScreen extends StatefulWidget {

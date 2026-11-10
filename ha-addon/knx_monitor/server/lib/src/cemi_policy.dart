@@ -5,6 +5,8 @@
 /// That would allow reprogramming or disabling any device in the installation.
 library;
 
+import 'dart:typed_data';
+
 import 'package:knx/knx.dart';
 
 /// A_GroupValue_Read, _Response and _Write to a group address, also as
@@ -14,6 +16,25 @@ import 'package:knx/knx.dart';
 /// Not allowed: individual addresses (connections, memory, properties,
 /// restart), group 0/0/0 (system broadcast, used for address assignment and
 /// programming mode) and all other services.
+/// The frame a device without admin rights sends, rebuilt from its group telegram ([deviceMaySend]
+/// must have allowed it): standard frame, low priority, hop count 6, no additional info, source
+/// 0.0.0 (the gateway puts in its tunnel address). So such a device can neither raise its priority,
+/// change the routing counter, nor claim another device's address (security review, 07.11.).
+Uint8List normalizeDeviceCemi(List<int> cemi) {
+  final i = 2 + cemi[1];
+  final apdu = cemi.sublist(i + 7, i + 8 + cemi[i + 6]);
+  return Uint8List.fromList([
+    cemi[0],
+    0, // no additional info
+    0xBC, // standard frame, no repetition, broadcast, low priority
+    0xE0, // group address, hop count 6, standard format
+    0, 0, // source: the gateway's
+    cemi[i + 4], cemi[i + 5],
+    cemi[i + 6],
+    ...apdu,
+  ]);
+}
+
 bool deviceMaySend(List<int> cemi) {
   if (!isLDataRequest(cemi)) return false;
   final i = 2 + cemi[1];

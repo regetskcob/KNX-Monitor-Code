@@ -9,6 +9,7 @@ import '../catalog_store.dart';
 import '../knx/secure/keyring.dart';
 import '../knx/secure/keyring_store.dart';
 import '../l10n/locale_controller.dart';
+import '../platform/addon.dart';
 import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
@@ -71,6 +72,35 @@ Future<void> importCatalog(BuildContext context) async {
     // FormatExceptions above carry a sentence for the user, this one does not.
     debugPrint('Import fehlgeschlagen: $e');
     messenger.showSnackBar(horizontMessageSnackBar(colors, s.actionFailed, status: HorizontStatus.critical));
+  }
+}
+
+/// Takes over the project of Home Assistant's KNX integration (add-on) and reports the result.
+Future<void> importFromHomeAssistant(BuildContext context) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final colors = context.hz;
+  final store = CatalogStore.instance;
+  try {
+    if (!await store.importFromHomeAssistant()) {
+      messenger.showSnackBar(horizontMessageSnackBar(colors, s.catalogHaNoProject, status: HorizontStatus.warning));
+      return;
+    }
+    final c = store.catalog;
+    messenger.showSnackBar(
+      horizontMessageSnackBar(
+        colors,
+        s.catalogImportedSnack(
+          [s.groupAddressCount(c.length), if (c.devices.isNotEmpty) s.deviceCount(c.devices.length)].join(' · '),
+        ),
+        status: HorizontStatus.positive,
+      ),
+    );
+  } on FormatException catch (e) {
+    messenger.showSnackBar(
+      horizontMessageSnackBar(colors, s.catalogImportFailed(e.message), status: HorizontStatus.critical),
+    );
+  } on Object catch (e) {
+    messenger.showSnackBar(horizontMessageSnackBar(colors, s.catalogHaFailed('$e'), status: HorizontStatus.critical));
   }
 }
 
@@ -145,6 +175,15 @@ class CatalogTile extends StatelessWidget {
                 icon: const Icon(AppIcons.help, size: HzIconSize.row),
               ),
             if (onTeachIn != null) TextButton(onPressed: onTeachIn, child: Text(s.learnTitle)),
+            // In the add-on: the project Home Assistant's KNX integration already has.
+            if (Addon.embedded)
+              Tooltip(
+                message: s.catalogFromHomeAssistantTooltip,
+                child: TextButton(
+                  onPressed: () => importFromHomeAssistant(context),
+                  child: Text(s.catalogFromHomeAssistant),
+                ),
+              ),
             TextButton(
               onPressed: () => importCatalog(context),
               child: Text(hasProject ? s.catalogReplace : s.catalogImport),

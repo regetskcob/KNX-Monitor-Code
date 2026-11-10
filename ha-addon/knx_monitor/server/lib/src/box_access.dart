@@ -35,9 +35,15 @@ class BoxDevice {
     this.lastUsed,
     this.admin = false,
     this.viewOnly = false,
+    this.app,
   });
 
   final String id;
+
+  /// Key of the app instance this access belongs to (docs/keys.md), if the app sent it when
+  /// pairing. It says whose access this is (the owner's phone, the electrician's tablet); it grants
+  /// nothing, the token does.
+  final String? app;
   final String name;
   final String hash;
   final DateTime created;
@@ -59,7 +65,13 @@ class BoxDevice {
     if (lastUsed != null) 'lastUsed': lastUsed!.millisecondsSinceEpoch,
     if (admin) 'admin': true,
     if (viewOnly) 'viewOnly': true,
+    'app': ?app,
   };
+
+  static final _appPattern = RegExp(r'^[0-9a-f]{16,64}$');
+
+  /// [value] as an app instance key, or `null` if it is none.
+  static String? appKey(Object? value) => value is String && _appPattern.hasMatch(value) ? value : null;
 
   static BoxDevice fromJson(Map<String, Object?> j) => BoxDevice(
     id: j['id'] as String,
@@ -69,10 +81,11 @@ class BoxDevice {
     lastUsed: j['lastUsed'] == null ? null : DateTime.fromMillisecondsSinceEpoch(j['lastUsed'] as int),
     admin: j['admin'] == true,
     viewOnly: j['viewOnly'] == true,
+    app: appKey(j['app']),
   );
 }
 
-/// Access protection of the KNX box (`BOX=1`), see docs/knx-box.md and docs/security.md.
+/// Access protection of the Busclear Box (`BOX=1`), see docs/knx-box.md and docs/security.md.
 ///
 /// - **Browser:** the page `/login` asks for the password only and then sets
 ///   a session cookie ([sessionCookie]); `/logout` ends it. A browser without
@@ -737,9 +750,20 @@ class BoxAccess {
 
   static final _localHost = RegExp(r'^(localhost|127\.0\.0\.1|\[::1\])(:\d{1,5})?$', caseSensitive: false);
 
-  static bool _sameOrigin(String origin, String? host) {
-    if (host == null) return false;
-    return origin == 'http://$host' || origin == 'https://$host';
+  static bool _sameOrigin(String origin, String? host) => sameOrigin(origin, host);
+
+  /// Whether the browser's `Origin` names the host the request was sent to (`Host`). Compared
+  /// as parsed URIs: host without regard to case, port with the scheme's default (`http://box`
+  /// equals `Host: box:80`). Anything that is not a plain `http`/`https` origin (`null`, a path,
+  /// user info) never matches.
+  static bool sameOrigin(String origin, String? host) {
+    if (host == null || host.isEmpty) return false;
+    final o = Uri.tryParse(origin);
+    if (o == null || (o.scheme != 'http' && o.scheme != 'https') || o.host.isEmpty) return false;
+    if (o.userInfo.isNotEmpty || o.path.isNotEmpty || o.hasQuery || o.hasFragment) return false;
+    final h = Uri.tryParse('${o.scheme}://$host');
+    if (h == null || h.host.isEmpty || h.userInfo.isNotEmpty || h.path.isNotEmpty || h.hasQuery) return false;
+    return o.host.toLowerCase() == h.host.toLowerCase() && o.port == h.port;
   }
 
   void _fail(String peer, DateTime now) {
@@ -895,7 +919,7 @@ class BoxAccess {
   }
 
   /// Pairs a new device; returns the token in plain text (only this once).
-  Future<String> pair(String deviceName, {bool admin = false, bool viewOnly = false}) async {
+  Future<String> pair(String deviceName, {bool admin = false, bool viewOnly = false, String? app}) async {
     final key = base64Url.encode(_bytes(32)).replaceAll('=', '');
     final name = deviceName.trim().isEmpty ? 'Gerät ${_devices.length + 1}' : deviceName.trim();
     _devices.add(
@@ -906,6 +930,7 @@ class BoxAccess {
         created: _clock(),
         admin: admin,
         viewOnly: viewOnly && !admin,
+        app: app,
       ),
     );
     await _save();
@@ -1187,7 +1212,7 @@ class BoxAccess {
           await _deny(response, HttpStatus.forbidden, 'Nur mit dem $_passwordWord.');
           return;
         }
-        final key = await pair(body['name'] as String? ?? '', admin: true);
+        final key = await pair(body['name'] as String? ?? '', admin: true, app: BoxDevice.appKey(body['app']));
         result = {'key': key, 'id': _devices.last.id, 'name': name};
       case '/api/box/devices':
         final self = _selfOf(request);
@@ -1200,6 +1225,7 @@ class BoxAccess {
               if (d.lastUsed != null) 'lastUsed': d.lastUsed!.millisecondsSinceEpoch,
               'admin': d.admin,
               if (d.viewOnly) 'viewOnly': true,
+              'app': ?d.app,
               if (d.id == self) 'self': true,
             },
         ];

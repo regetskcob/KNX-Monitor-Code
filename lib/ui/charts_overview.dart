@@ -391,6 +391,7 @@ List<LibraryTemplate> _busTemplates(TelegramLog log) {
       recipeName: bus,
       addresses: [BusMetric.telegrams.id, BusMetric.repeats.id],
     ),
+    LibraryTemplate(name: '$bus · ${s.busMetricLoad}', recipeName: bus, addresses: [BusMetric.load.id]),
     if (lines.length >= 2)
       LibraryTemplate(
         name: '$bus · ${s.chartBusLines}',

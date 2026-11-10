@@ -5,6 +5,7 @@ import 'package:knx_monitor/catalog_store.dart';
 import 'package:knx_monitor/knx/group_catalog.dart';
 import 'package:knx_monitor/knx/telegram.dart';
 import 'package:knx_monitor/model/filter.dart';
+import 'package:knx_monitor/model/tap_points.dart';
 import 'package:knx_monitor/model/telegram_log.dart';
 
 void main() {
@@ -132,5 +133,29 @@ void main() {
     expect(m('zeit:14:55-14:60', at(14, 59, 59)), isTrue);
     expect(m('zeit:14:55-14:60', at(15, 0, 0)), isFalse);
     expect(m('zeit:14:05 1/2/13', at(14, 5, 1)), isTrue);
+  });
+
+  test('Messpunkte: messpunkt:Linie, mehrere mit |, ist:einzeln', () {
+    tapLabels.value = ['1.1', '1.2', '1.3'];
+    addTearDown(() => tapLabels.value = const []);
+    Telegram seen(int tap, List<int> further) => Telegram(
+      time: DateTime(2026, 11, 9),
+      source: parseIndividual('1.1.5')!,
+      destination: parseGroup('1/2/3')!,
+      type: TelegramType.write,
+      data: Uint8List.fromList([1]),
+      isSmall: true,
+      tap: tap,
+      sightings: [for (final f in further) Sighting(f, const Duration(milliseconds: 5), 5)],
+    );
+    expect(m('messpunkt:1.2', seen(0, [1])), isTrue);
+    expect(m('messpunkt:1.3', seen(0, [1])), isFalse);
+    expect(m('tap:1.3|1.2', seen(0, [1])), isTrue);
+    expect(m('ist:einzeln', seen(2, [])), isTrue);
+    expect(m('ist:einzeln', seen(0, [1])), isFalse);
+    expect(m('messpunkt:1.3 ist:einzeln', seen(2, [])), isTrue);
+    tapLabels.value = const [];
+    // With one tap point every telegram is "single": the filter says nothing then.
+    expect(m('ist:einzeln', seen(0, [])), isFalse);
   });
 }

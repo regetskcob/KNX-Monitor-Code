@@ -20,5 +20,4 @@ site
 test
 test_driver
 ha-addon/knx_monitor/web
-ha-addon/knx_monitor/packages
 .claude

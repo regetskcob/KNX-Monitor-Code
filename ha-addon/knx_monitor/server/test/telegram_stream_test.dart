@@ -145,6 +145,67 @@ void main() {
     expect(off.telegramsDropped, 0, reason: 'stream off: nothing counted');
   });
 
+  test('keep last value: value topic retained, only on a change, no read requests', () async {
+    final data = await Directory.systemTemp.createTemp('knx_stream');
+    final bus = BusService(data, describe: (_, _) async => null);
+    final sink = FakeSink();
+    final bridge = MqttBridge(
+      () => bus,
+      version: 'test',
+      sink: (_) => sink,
+      broker: () async => const MqttBroker(host: 'core-mosquitto', port: 1883),
+      interval: const Duration(hours: 1),
+      telegrams: const TelegramStream(retainValues: true),
+    );
+    try {
+      await bridge.start();
+      List<(String, String, bool)> values() =>
+          sink.published.where((p) => p.$1.startsWith('knx_monitor/value/')).toList();
+      bridge.onTelegram(line(), _Project());
+      bridge.onTelegram(line(), _Project()); // same value again
+      bridge.onTelegram(line(type: 0, x: ''), _Project()); // read request
+      expect(values(), hasLength(1));
+      expect(values().single.$1, 'knx_monitor/value/1/2/3');
+      expect(values().single.$3, isTrue, reason: 'retained');
+      expect((jsonDecode(values().single.$2) as Map)['value'], isTrue);
+      expect(sink.atMostOnce, isNot(contains('knx_monitor/value/1/2/3')), reason: 'QoS 1');
+      bridge.onTelegram(line(x: '00'), _Project());
+      expect(values(), hasLength(2));
+      expect((jsonDecode(sink.retained['knx_monitor/value/1/2/3']!) as Map)['value'], isFalse);
+      // The stream itself still gets every telegram.
+      expect(bridge.telegramsSent, 4);
+      expect(bridge.valuesSent, 2);
+      expect(bridge.telegramStatus()['retainValues'], isTrue);
+    } finally {
+      await bridge.stop();
+      await bus.shutdown();
+      await data.delete(recursive: true);
+    }
+  });
+
+  test('without keep last value: no value topics', () async {
+    final data = await Directory.systemTemp.createTemp('knx_stream');
+    final bus = BusService(data, describe: (_, _) async => null);
+    final sink = FakeSink();
+    final bridge = MqttBridge(
+      () => bus,
+      version: 'test',
+      sink: (_) => sink,
+      broker: () async => const MqttBroker(host: 'core-mosquitto', port: 1883),
+      interval: const Duration(hours: 1),
+      telegrams: const TelegramStream(),
+    );
+    try {
+      await bridge.start();
+      bridge.onTelegram(line(), _Project());
+      expect(sink.published.where((p) => p.$1.startsWith('knx_monitor/value/')), isEmpty);
+    } finally {
+      await bridge.stop();
+      await bus.shutdown();
+      await data.delete(recursive: true);
+    }
+  });
+
   test('bridge publishes topic and payload with QoS 0, not retained', () async {
     final data = await Directory.systemTemp.createTemp('knx_stream');
     final bus = BusService(data, describe: (_, _) async => null);

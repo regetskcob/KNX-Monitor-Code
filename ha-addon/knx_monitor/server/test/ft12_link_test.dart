@@ -38,7 +38,7 @@ void main() {
       expect(module.commMode, 0x00);
       expect(l.baud, 19200);
       expect(l.address, 0xFFFF);
-      expect(l.label, 'KNX-HAT Link Layer 15.15.255');
+      expect(linkLabel(l.label), 'KNX-HAT Link Layer 15.15.255');
       await until(() => frames.isNotEmpty);
       expect(frames.first, module.linkFrames.first);
 
@@ -51,7 +51,7 @@ void main() {
       await l.close();
       expect(module.commMode, 0xF0, reason: 'zurück im BAOS-Modus');
       expect(module.closed, isTrue);
-      expect(await l.lost, 'Getrennt');
+      expect(linkText(await l.lost), 'Getrennt');
     });
 
     test('negative confirmation (NCON) fails the send', () async {
@@ -92,7 +92,7 @@ void main() {
       final l = link(busmonitor: true, fake: FakeKberry(modes: 0x0001));
       await expectLater(
         l.connect(),
-        throwsA(isA<LinkException>().having((e) => e.message, 'message', contains('Busmonitor'))),
+        throwsA(isA<LinkException>().having((e) => linkText(e), 'message', contains('Busmonitor'))),
       );
       expect(module.commMode, 0xF0);
       expect(module.closed, isTrue);
@@ -121,7 +121,7 @@ void main() {
       final l = link();
       await l.connect();
       module.restart();
-      expect(await l.lost.timeout(const Duration(seconds: 2)), 'KNX-HAT neu gestartet');
+      expect(linkText(await l.lost.timeout(const Duration(seconds: 2))), 'KNX-HAT neu gestartet');
       await until(() => module.closed);
     });
 
@@ -129,7 +129,7 @@ void main() {
       final l = link();
       await l.connect();
       module.mute = true;
-      expect(await l.lost.timeout(const Duration(seconds: 5)), contains('antwortet nicht'));
+      expect(linkText(await l.lost.timeout(const Duration(seconds: 5))), contains('antwortet nicht'));
       await until(() => module.closed);
     });
 
@@ -138,7 +138,7 @@ void main() {
       final l = link(fake: fake);
       await l.connect();
       fake.broken = true;
-      expect(await l.lost.timeout(const Duration(seconds: 2)), contains('Lesefehler'));
+      expect(linkText(await l.lost.timeout(const Duration(seconds: 2))), contains('Lesefehler'));
     });
 
     test('wiederholter Rahmen (Quittung verloren) kommt nur einmal', () async {

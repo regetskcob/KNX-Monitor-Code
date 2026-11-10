@@ -19,6 +19,7 @@ import '../model/company.dart';
 import '../model/customer.dart';
 import '../model/device_channels.dart';
 import '../model/device_label.dart';
+import '../model/ets_task_text.dart';
 import '../model/ets_tasks.dart';
 import '../model/health.dart';
 import '../model/plant_report.dart';
@@ -645,55 +646,8 @@ Future<Uint8List> buildEtsTasksPdf(
   String deviceText(int a) => [formatIndividual(a), ?catalog.devices[a]?.name].join('  ');
   String dptText(Dpt? d) => d == null ? '—' : '$d';
 
-  String lineText(int line) => '${(line >> 4) & 0x0F}.${line & 0x0F}';
-  String title(EtsTask t) => switch (t.kind) {
-    EtsTaskKind.dpt => s.etsTitleDpt,
-    EtsTaskKind.learnedName => s.etsTitleLearnedName,
-    EtsTaskKind.learnedNew => s.etsTitleLearnedNew,
-    EtsTaskKind.rename => s.etsTitleRename,
-    EtsTaskKind.noName => s.etsTitleNoName,
-    EtsTaskKind.noDpt => s.etsTitleNoDpt,
-    EtsTaskKind.withoutSender => s.checkWithoutSender,
-    EtsTaskKind.withoutReceiver => s.checkWithoutReceiver,
-    EtsTaskKind.mainGroup1415 => s.checkMainGroup1415,
-    EtsTaskKind.filterNotForwarded => s.etsTitleFilterNotForwarded,
-    EtsTaskKind.filterCrossLine => s.etsTitleFilterCrossLine,
-    EtsTaskKind.statusWithoutTransmit => s.checkStatusNoTransmit,
-    EtsTaskKind.readWithoutReadFlag => s.checkReadNoReadFlag,
-    EtsTaskKind.multipleReadAnswers => s.checkMultipleReadAnswers,
-    EtsTaskKind.objectWithoutCommunication => s.etsTitleNoComm,
-    EtsTaskKind.multipleSenders => s.checkMultipleSenders,
-    EtsTaskKind.deviceWithoutLinks => s.etsTitleNoLinks,
-    EtsTaskKind.notInProject => s.etsTitleNotInProject,
-    EtsTaskKind.serialMismatch => s.etsTitleSerial,
-    EtsTaskKind.missingOnBus => s.etsTitleMissing,
-    EtsTaskKind.crowdedLine => s.checkCrowdedLines,
-    EtsTaskKind.standardDeviation => Betrieb.enabled ? s.etsTitleStandard : '',
-  };
-  String todo(EtsTask t) => switch (t.kind) {
-    EtsTaskKind.dpt => s.etsTodoDpt(dptText(t.dpt)),
-    EtsTaskKind.learnedName => s.etsTodoLearnedName(t.name ?? ''),
-    EtsTaskKind.learnedNew => s.etsTodoLearnedNew(t.name ?? ''),
-    EtsTaskKind.rename => s.etsTodoRename(t.name ?? ''),
-    EtsTaskKind.noName => s.etsTodoNoName,
-    EtsTaskKind.noDpt => s.etsTodoNoDpt,
-    EtsTaskKind.withoutSender => s.etsTodoWithoutSender,
-    EtsTaskKind.withoutReceiver => s.etsTodoWithoutReceiver,
-    EtsTaskKind.mainGroup1415 => s.etsTodoMainGroup1415,
-    EtsTaskKind.filterNotForwarded => s.etsTodoFilterNotForwarded(lineText(t.line ?? 0)),
-    EtsTaskKind.filterCrossLine => s.etsTodoFilterCrossLine(lineText(t.line ?? 0), t.count ?? 0),
-    EtsTaskKind.statusWithoutTransmit => s.etsTodoStatusNoTransmit,
-    EtsTaskKind.readWithoutReadFlag => s.etsTodoReadNoReadFlag,
-    EtsTaskKind.multipleReadAnswers => s.etsTodoMultipleReadAnswers,
-    EtsTaskKind.objectWithoutCommunication => s.etsTodoNoComm,
-    EtsTaskKind.multipleSenders => s.etsTodoMultipleSenders,
-    EtsTaskKind.deviceWithoutLinks => s.etsTodoNoLinks,
-    EtsTaskKind.notInProject => s.etsTodoNotInProject,
-    EtsTaskKind.serialMismatch => s.etsTodoSerial(t.serial ?? '—'),
-    EtsTaskKind.missingOnBus => s.etsTodoMissing,
-    EtsTaskKind.crowdedLine => s.etsTodoCrowdedLine(lineText(t.line ?? 0), t.count ?? 0),
-    EtsTaskKind.standardDeviation => t.name ?? '',
-  };
+  String title(EtsTask t) => etsTaskTitle(t);
+  String todo(EtsTask t) => etsTaskTodo(t);
   String why(EtsTask t) => switch (t.kind) {
     EtsTaskKind.statusWithoutTransmit => s.checkStatusNoTransmitHint,
     EtsTaskKind.readWithoutReadFlag => s.checkReadNoReadFlagHint,

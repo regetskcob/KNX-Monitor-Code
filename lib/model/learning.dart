@@ -92,10 +92,13 @@ String flagLetters(ComFlags f) {
   ].join(' ');
 }
 
+/// Where a lesson's "try it" leads in the monitor.
+enum LessonTarget { live, overview, health, gateway }
+
 /// A short lesson: what it is about, which terms, what can be tried out in the
 /// demo house.
 class Lesson {
-  const Lesson(this.title, this.text, this.terms, this.tryIt);
+  const Lesson(this.title, this.text, this.terms, this.tryIt, this.target);
 
   final String title;
   final String text;
@@ -103,15 +106,30 @@ class Lesson {
 
   /// To try out (demo house or own installation).
   final String tryIt;
+
+  /// The place in the monitor [tryIt] talks about.
+  final LessonTarget target;
 }
 
 /// The lessons in learning order.
 List<Lesson> get lessons => [
-  Lesson(s.lessonSwitchTitle, s.lessonSwitchText, const [Term.groupAddress, Term.status], s.lessonSwitchTry),
-  Lesson(s.lessonWhoTitle, s.lessonWhoText, const [Term.individualAddress, Term.line], s.lessonWhoTry),
-  Lesson(s.lessonValuesTitle, s.lessonValuesText, const [Term.dpt], s.lessonValuesTry),
-  Lesson(s.lessonReadTitle, s.lessonReadText, const [Term.flags, Term.status], s.lessonReadTry),
-  Lesson(s.lessonConnectTitle, s.lessonConnectText, const [Term.tunnel], s.lessonConnectTry),
+  Lesson(
+    s.lessonSwitchTitle,
+    s.lessonSwitchText,
+    const [Term.groupAddress, Term.status],
+    s.lessonSwitchTry,
+    LessonTarget.live,
+  ),
+  Lesson(
+    s.lessonWhoTitle,
+    s.lessonWhoText,
+    const [Term.individualAddress, Term.line],
+    s.lessonWhoTry,
+    LessonTarget.live,
+  ),
+  Lesson(s.lessonValuesTitle, s.lessonValuesText, const [Term.dpt], s.lessonValuesTry, LessonTarget.overview),
+  Lesson(s.lessonReadTitle, s.lessonReadText, const [Term.flags, Term.status], s.lessonReadTry, LessonTarget.health),
+  Lesson(s.lessonConnectTitle, s.lessonConnectText, const [Term.tunnel], s.lessonConnectTry, LessonTarget.gateway),
 ];
 
 /// A quiz question with answers; [correct] is the index of the right one.

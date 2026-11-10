@@ -304,4 +304,35 @@ void main() {
     );
     expect(unknown[parseGroup('1/1/2')!]!.links.last.object, isNull);
   });
+
+  test('letzter Download: nie programmierte Geräte, nur wenn das Projekt Downloads kennt', () {
+    // Ohne LastDownload im ganzen Export: unbekannt, kein Befund.
+    final unknown = parseKnxproj(_knxproj());
+    expect(unknown.devices.values.where((d) => d.neverProgrammed), isEmpty);
+
+    final project = _project.replaceFirst(
+      'Address="5" Description',
+      'Address="5" LastDownload="2026-10-17T14:24:40.5856424Z" IndividualAddressLoaded="true" '
+          'ApplicationProgramLoaded="true" ParametersLoaded="true" MediumConfigLoaded="true" Description',
+    );
+    final c = parseKnxproj(_knxproj(project: project));
+    expect(c.devices[parseIndividual('1.1.5')]!.neverProgrammed, isFalse);
+    // Ohne CommunicationPartLoaded="true": Gruppenadressen noch nicht geladen.
+    expect(c.devices[parseIndividual('1.1.5')]!.pendingDownload, [DownloadPart.groups]);
+    expect(c.devices[parseIndividual('1.1.18')]!.pendingDownload, isEmpty);
+    expect(c.devices[parseIndividual('1.1.18')]!.neverProgrammed, isTrue);
+    // Tunnel sind keine Geräte.
+    expect(c.devices[parseIndividual('1.1.6')]!.neverProgrammed, isFalse);
+    final back = GroupCatalog.fromJson(c.toJson());
+    expect(back.devices[parseIndividual('1.1.18')]!.neverProgrammed, isTrue);
+  });
+
+  test('Objekt-Referenz wie im XKNX Editor (Applikation + Instanz)', () {
+    final c = parseKnxproj(_knxproj());
+    final temp = c[parseGroup('2/0/0')!]!.links;
+    // 1.1.18 hat eine Applikation, 1.1.5 nicht.
+    expect(temp.firstWhere((l) => l.device == parseIndividual('1.1.18')).ref, 'M-0008_A-1_O-12_R-9');
+    expect(temp.firstWhere((l) => l.device == parseIndividual('1.1.5')).ref, isNull);
+    expect(GroupCatalog.fromJson(c.toJson())[parseGroup('2/0/0')!]!.links.last.ref, 'M-0008_A-1_O-12_R-9');
+  });
 }

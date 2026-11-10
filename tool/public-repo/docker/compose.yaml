@@ -10,23 +10,28 @@ services:
   knx-monitor:
     # A fixed version, so an update only happens when you decide. Newer version:
     # KNX_MONITOR_VERSION=x.y.z in .env, or download this file again.
-    image: ghcr.io/regetskcob/knx-monitor:${KNX_MONITOR_VERSION:-1.10.0}
+    image: ghcr.io/regetskcob/knx-monitor:${KNX_MONITOR_VERSION:-1.11.0}
     container_name: knx-monitor
     restart: unless-stopped
     # Host network: KNXnet/IP over UDP, gateway search and routing need it.
     network_mode: host
     # The server needs no privileges: ports 8765 and 8443 are above 1024 and
     # KNXnet/IP uses plain UDP sockets. Without NET_RAW it cannot sniff or spoof
-    # traffic on the host network. Kept: DAC_OVERRIDE and FOWNER, only for
-    # ./data, so a data folder created by a host user (not by Docker as root)
-    # stays writable and the server can still set it to 0700.
-    # No "user:" on purpose: existing data folders belong to root, an update
-    # would no longer be able to read them.
+    # traffic on the host network.
+    # It starts as root only to hand ./data to PUID:PGID (CHOWN, also for data
+    # folders of older versions, which belong to root) and to switch to that
+    # user (SETUID, SETGID). After the switch it holds no capabilities at all.
+    # DAC_OVERRIDE and FOWNER let it read and chmod a ./data that a host user
+    # created. No "user:": the server switches itself, after the hand-over.
     cap_drop: [ALL]
-    cap_add: [DAC_OVERRIDE, FOWNER]
+    cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE, FOWNER]
     security_opt: ["no-new-privileges:true"]
     environment:
       BOX: "1"                       # standalone mode with password
+      # User and group the server runs as (not root). ./data gets handed over to
+      # them on start. On the host, "id -u" and "id -g" show your own.
+      PUID: "${PUID:-1000}"
+      PGID: "${PGID:-1000}"
       # No default on purpose. Only used on the first start; change it later in
       # the app or on /pair. To read it from a file instead (Docker secrets,
       # not visible in "docker inspect"), replace this line with

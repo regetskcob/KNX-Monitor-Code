@@ -4,7 +4,7 @@ import 'dart:io';
 
 /// Home Assistant from within the add-on, via the Supervisor API: events for
 /// automations and whether the KNX integration is set up. Without a Supervisor
-/// (KNX box, development) it does nothing.
+/// (Busclear Box, development) it does nothing.
 ///
 /// Events (trigger "Event" in automations, blueprints in the public repo under
 /// `blueprints/`):

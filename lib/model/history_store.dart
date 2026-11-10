@@ -180,7 +180,7 @@ class HistoryStore extends ChangeNotifier {
 
   Future<List<StoredFile>> _files(String? installation) async {
     final id = installation ?? InstallationStore.instance.active.id;
-    // Via the KNX box: its history, not the (empty) one on this device.
+    // Via the Busclear Box: its history, not the (empty) one on this device.
     return Addon.box != null
         ? [
             for (final f in (await _boxFiles(id)).cast<Map<Object?, Object?>>())
@@ -199,7 +199,7 @@ class HistoryStore extends ChangeNotifier {
   /// history would appear under another installation's name.
   Future<List<Object?>> _boxFiles(String installation) async {
     try {
-      return await Addon.listInstallationFiles(installation, _dir);
+      return await Addon.listInstallationFiles(InstallationStore.instance.boxIdOf(installation), _dir);
     } on AddonException catch (e) {
       if (e.status != 404) rethrow;
       return Addon.listFiles(_dir);
@@ -209,7 +209,7 @@ class HistoryStore extends ChangeNotifier {
   Future<List<int>?> _boxFile(HistoryDay day) async {
     final id = day.installation ?? InstallationStore.instance.active.id;
     try {
-      return await Addon.getInstallationFile(id, day.path);
+      return await Addon.getInstallationFile(InstallationStore.instance.boxIdOf(id), day.path);
     } on AddonException catch (e) {
       if (e.status != 404) rethrow;
       return Addon.getFile(day.path);

@@ -22,6 +22,7 @@ import '../platform/addon.dart';
 import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
+import 'ai_access_screen.dart';
 import 'common.dart';
 import 'data_export_screen.dart';
 import 'figure_box.dart';
@@ -393,6 +394,14 @@ class _ExportsScreenState extends State<ExportsScreen> {
     final continuous = RowCard(
       children: [
         CardRow(title: s.exportsEtsHistory, meta: s.exportsEtsHistoryMeta, chevron: true, onTap: _exportEtsHistory),
+        // AI access to the recording (MCP server of the add-on or box); the server lets only an
+        // admin change it.
+        CardRow(
+          title: s.aiAccessTitle,
+          meta: s.aiAccessMeta,
+          chevron: true,
+          onTap: () => pushTool<void>(context, (_) => const AiAccessScreen()),
+        ),
         if (expert)
           CardRow(
             title: s.dataExportTitle,

@@ -28,7 +28,6 @@ RUN flutter config --no-analytics --no-cli-animations >/dev/null && flutter prec
 WORKDIR /src
 # Dependencies first, so a code change does not download them again.
 COPY pubspec.yaml pubspec.lock ./
-COPY packages/ packages/
 COPY third_party/ third_party/
 RUN flutter pub get --enforce-lockfile
 COPY . .
@@ -41,7 +40,6 @@ FROM dart:3.13.7@sha256:517cbeb4612c4dff11c983edea521d5aef3f47a674c23684fad5e898
 # Time zones: the history's day change should be local (TZ).
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata && rm -rf /var/lib/apt/lists/*
 WORKDIR /src/ha-addon/knx_monitor/server
-COPY packages/ /src/packages/
 COPY ha-addon/knx_monitor/server/pubspec.yaml ha-addon/knx_monitor/server/pubspec.lock ./
 RUN dart pub get --enforce-lockfile
 COPY ha-addon/knx_monitor/server/ ./

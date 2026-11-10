@@ -52,7 +52,7 @@ enum Feature {
   /// Acceptance protocol with signature on the device.
   acceptance(Tier.pro),
 
-  /// Fault hunt: catch sporadic faults over days with the KNX box.
+  /// Fault hunt: catch sporadic faults over days with the Busclear Box.
   faultHunt(Tier.pro),
 
   /// Configuration for the Home Assistant KNX integration from the project.

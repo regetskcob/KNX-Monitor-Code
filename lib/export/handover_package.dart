@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../knx/group_catalog.dart';
 import '../knx/secure/package_crypto.dart';
 import '../model/installation.dart';
+import '../model/keys.dart';
 import '../platform/safe_zip.dart';
 import 'diagnostics_bundle.dart';
 
@@ -124,6 +125,7 @@ class HandoverPackage {
     required this.contact,
     required this.origin,
     required this.catalog,
+    this.key,
     this.overrides = const {},
     this.projectNames = const {},
     this.gateway,
@@ -139,6 +141,10 @@ class HandoverPackage {
 
   /// ID of the installation at the electrician: a fault report uses it to find its way back.
   final String origin;
+
+  /// Installation key (docs/keys.md): the installation keeps it at the customer's, so electrician
+  /// and customer mean the same one. `null` in packages from before keys existed.
+  final String? key;
   final GroupCatalog catalog;
   final Map<int, Dpt> overrides;
 
@@ -177,6 +183,7 @@ class HandoverPackage {
 
   Map<String, Object?> _payload() => {
     'origin': origin,
+    'key': ?key,
     'catalog': catalog.toJson(),
     'overrides': {
       for (final MapEntry(:key, :value) in overrides.entries) '$key': [value.main, value.sub],
@@ -266,6 +273,10 @@ class HandoverPackage {
         installationName: manifest.installationName,
         contact: manifest.contact,
         origin: payload['origin'] as String? ?? '',
+        key: switch (payload['key']) {
+          final String k when isKey(k) => k,
+          _ => null,
+        },
         catalog: GroupCatalog.fromJson((payload['catalog']! as Map).cast()),
         overrides: {
           for (final MapEntry(:key, :value) in ((payload['overrides'] as Map?) ?? const {}).entries)
@@ -386,11 +397,14 @@ GroupCatalog handoverCatalog(GroupCatalog c) => GroupCatalog(
         manufacturer: d.manufacturer,
         location: d.location,
         tunnelOf: d.tunnelOf,
+        neverProgrammed: d.neverProgrammed,
+        pendingDownload: d.pendingDownload,
       ),
   },
   projectName: c.projectName,
   manufacturers: c.manufacturers,
   style: c.style,
+  externalSenders: c.externalSenders,
 );
 
 /// Fault report from the customer: a diagnostics package (without keys, Data Secure contents only
@@ -404,6 +418,7 @@ class FaultReport {
     required this.installationName,
     required this.package,
     this.handover = '',
+    this.key,
   });
 
   static const fileName = 'fault_report.json';
@@ -416,6 +431,10 @@ class FaultReport {
 
   /// ID of the handover package.
   final String handover;
+
+  /// Installation key (docs/keys.md): finds the installation also on a device where it has
+  /// another id than [origin] (a colleague's, a restored one).
+  final String? key;
   final String installationName;
   final DiagnosticsPackage package;
 
@@ -428,6 +447,7 @@ class FaultReport {
         'created': created.toIso8601String(),
         'origin': origin,
         'handover': handover,
+        'key': ?key,
         'installation': installationName,
       }),
     },
@@ -449,6 +469,10 @@ class FaultReport {
         created: DateTime.parse(m['created']! as String),
         origin: m['origin'] as String? ?? '',
         handover: m['handover'] as String? ?? '',
+        key: switch (m['key']) {
+          final String k when isKey(k) => k,
+          _ => null,
+        },
         installationName: m['installation'] as String? ?? '',
         package: DiagnosticsPackage.fromZip(bytes),
       );

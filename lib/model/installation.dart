@@ -23,6 +23,7 @@ import 'handover.dart';
 import 'health.dart';
 import 'history_store.dart';
 import 'home_plan/home_plan_store.dart';
+import 'keys.dart';
 import 'pinned_sections.dart';
 import 'site_photos.dart';
 import 'tap_points.dart';
@@ -60,16 +61,30 @@ class GatewayRef {
 /// keyring, health, commissioning, long-term history and settings.
 @immutable
 class Installation {
-  const Installation({
+  Installation({
     required this.id,
     required this.name,
     required this.created,
+    String? key,
     this.gateway,
     this.lastUsed,
     this.taps = const [],
-  });
+  }) : key = key ?? derivedInstallationKey(id);
 
+  /// Name of the folder and part of the settings keys on this device. Local: the same
+  /// installation can have another id on another device (handover, box).
   final String id;
+
+  /// Installation key (docs/keys.md): the same UUID wherever this installation is known, at the
+  /// electrician's, at the customer's and on a box. It stays when the installation is handed
+  /// over or moves to another device, and it never grants access.
+  final String key;
+
+  /// The key is only derived from an id that is not unique beyond this device (`default`): the
+  /// real one comes from the box that manages the installation, or is generated before the
+  /// installation goes anywhere else.
+  bool get keyIsPlaceholder => !isRandomInstallationId(id) && key == derivedInstallationKey(id);
+
   final String name;
   final GatewayRef? gateway;
 
@@ -85,17 +100,20 @@ class Installation {
   /// Further tap points besides the normal connection (issue #8). Empty for most installations.
   final List<TapPoint> taps;
 
-  Installation copyWith({String? name, GatewayRef? gateway, DateTime? lastUsed, List<TapPoint>? taps}) => Installation(
-    id: id,
-    name: name ?? this.name,
-    created: created,
-    gateway: gateway ?? this.gateway,
-    lastUsed: lastUsed ?? this.lastUsed,
-    taps: taps ?? this.taps,
-  );
+  Installation copyWith({String? name, String? key, GatewayRef? gateway, DateTime? lastUsed, List<TapPoint>? taps}) =>
+      Installation(
+        id: id,
+        name: name ?? this.name,
+        created: created,
+        key: key ?? this.key,
+        gateway: gateway ?? this.gateway,
+        lastUsed: lastUsed ?? this.lastUsed,
+        taps: taps ?? this.taps,
+      );
 
   Map<String, Object?> toJson() => {
     'id': id,
+    'key': key,
     'name': name,
     'created': created.millisecondsSinceEpoch,
     'gateway': ?gateway?.toJson(),
@@ -106,6 +124,11 @@ class Installation {
   /// Throws [FormatException] for an invalid id ([isValidId]); the index then skips the entry.
   factory Installation.fromJson(Map<String, Object?> j) => Installation(
     id: _checkedId(j['id']! as String),
+    // Missing (older version) or not a key: derived from the id.
+    key: switch (j['key']) {
+      final String k when isKey(k) => k,
+      _ => null,
+    },
     name: j['name'] as String? ?? '',
     created: DateTime.fromMillisecondsSinceEpoch(j['created'] as int? ?? 0),
     gateway: j['gateway'] == null ? null : GatewayRef.fromJson((j['gateway']! as Map).cast<String, Object?>()),
@@ -211,6 +234,8 @@ class InstallationStore extends ChangeNotifier {
     if (kIsWeb) {
       _list = [active];
       notifyListeners();
+      // The server manages the one installation; its key comes from there.
+      unawaited(_loadServerKey());
       return;
     }
     final prefs = await SharedPreferences.getInstance();
@@ -242,6 +267,24 @@ class InstallationStore extends ChangeNotifier {
     if (!_list.any((i) => i.id == _activeId)) _activeId = _list.first.id;
     _sort();
     notifyListeners();
+  }
+
+  /// Add-on (browser): key of the server's installation and of the add-on itself. Without them
+  /// (older server, not reachable yet) the placeholder stays.
+  Future<void> _loadServerKey() async {
+    try {
+      final j = await Addon.installations().timeout(const Duration(seconds: 10));
+      if (j['box'] case final String box when isKey(box)) boxKey = box;
+      final current = (j['list'] as List? ?? const []).whereType<Map<Object?, Object?>>().where(
+        (e) => e['id'] == j['active'],
+      );
+      if (current.firstOrNull?['key'] case final String key when isKey(key)) {
+        _list = [active.copyWith(key: key)];
+      }
+      notifyListeners();
+    } on Object catch (e) {
+      debugPrint('Installation: Schlüssel vom Server nicht gelesen: $e');
+    }
   }
 
   static bool _isNewer(String? text) {
@@ -446,6 +489,30 @@ class InstallationStore extends ChangeNotifier {
 
   Installation? byId(String? id) => _list.where((i) => i.id == id).firstOrNull;
 
+  /// Installation with this key (docs/keys.md): the same one, whatever its id is here.
+  Installation? byKey(String? key) => key == null ? null : _list.where((i) => i.key == key).firstOrNull;
+
+  /// Sets the key of installation [id]: from the box that manages it, from the handover package
+  /// it came with, or a fresh one in place of a placeholder.
+  ///
+  /// A key is set once. Only one that was never stored (still the one derived from the id) can
+  /// be set, and never to the key of another installation here; anything else is ignored.
+  Future<void> setKey(String id, String key) async {
+    final current = byId(id);
+    if (current == null || !isKey(key) || current.key == key) return;
+    if (current.key != derivedInstallationKey(id) || byKey(key) != null) {
+      debugPrint('Installation: Schlüssel steht fest, nicht ersetzt');
+      return;
+    }
+    if (kIsWeb) {
+      // Add-on: the server keeps the installation; here it only lives in memory.
+      _list = [for (final i in _list) i.id == id ? i.copyWith(key: key) : i];
+      notifyListeners();
+      return;
+    }
+    await _update(id, (i) => i.copyWith(key: key));
+  }
+
   /// Installation with this gateway (serial number).
   Installation? bySerial(String serial) =>
       serial.isEmpty ? null : _list.where((i) => i.gateway?.serial == serial).firstOrNull;
@@ -466,9 +533,19 @@ class InstallationStore extends ChangeNotifier {
 
   /// Creates an empty installation (does not become active).
   /// Throws [ArgumentError] for an invalid [id] ([Installation.isValidId]).
-  Future<Installation> create(String name, {GatewayRef? gateway, String? id}) async {
+  ///
+  /// [key]: the installation exists elsewhere already (box, handover package) and keeps its key.
+  Future<Installation> create(String name, {GatewayRef? gateway, String? id, String? key}) async {
     if (id != null && !Installation.isValidId(id)) throw ArgumentError.value(id, 'id', 'invalid installation id');
-    final i = Installation(id: id ?? newId(), name: name.trim(), created: DateTime.now(), gateway: gateway);
+    // Two installations here never share a key.
+    if (isKey(key) && byKey(key) != null) throw ArgumentError.value(key, 'key', 'installation key exists');
+    final i = Installation(
+      id: id ?? newId(),
+      name: name.trim(),
+      created: DateTime.now(),
+      gateway: gateway,
+      key: isKey(key) ? key : null,
+    );
     _list.add(i);
     _sort();
     await _save();
@@ -476,12 +553,12 @@ class InstallationStore extends ChangeNotifier {
     return i;
   }
 
-  /// Renames – via the KNX box also there, if it manages the installation.
+  /// Renames – via the Busclear Box also there, if it manages the installation.
   Future<void> rename(String id, String name) async {
     await _update(id, (i) => i.copyWith(name: name.trim()));
     if (Addon.box == null || !boxList.containsKey(id)) return;
     try {
-      await Addon.renameInstallation(id, name.trim());
+      await Addon.renameInstallation(boxIdOf(id), name.trim());
       boxList = {...boxList, id: name.trim()};
     } on AddonException catch (e) {
       debugPrint('Box: $e');
@@ -545,7 +622,7 @@ class InstallationStore extends ChangeNotifier {
     if (id == active.id || byId(id) == null) return;
     // Via the box: delete there with its history (the box refuses its active one).
     if (onBox(id) && id != boxActive) {
-      await Addon.deleteInstallation(id);
+      await Addon.deleteInstallation(boxIdOf(id));
       boxList = {...boxList}..remove(id);
     }
     final storage = ScopedStorage(AppStorage.instance, 'installations/$id/');
@@ -576,54 +653,188 @@ class InstallationStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- KNX box ---------------------------------------------------------------------
+  // --- Busclear Box ---------------------------------------------------------------------
 
-  /// Box mode: installation the box is currently recording into.
+  /// Box mode: installation the box is currently recording into (id on this device);
+  /// [boxActiveUnconnected] if that one is not connected with any installation here.
   String? boxActive;
 
-  /// Installations on the box (id → name).
+  /// [boxActive] while the box records into an installation that is only claimed ([boxClaims]).
+  /// It is no installation's id, so nothing here counts as "the one on the box" and nothing is
+  /// shared with it.
+  static const boxActiveUnconnected = '';
+
+  /// Installations on the box (id on this device → name).
   Map<String, String> boxList = const {};
 
+  /// Key of the paired box or, in the browser, of the add-on (docs/keys.md); `null` for an older
+  /// one. It tells boxes apart, also after their address or certificate changed. It is the box's
+  /// own claim: what may go to a box is still decided per address and certificate
+  /// (`BoxProjectConsent`, `BoxKeyringConsent`).
+  String? boxKey;
+
+  /// Id on the box of the installations that have another one here: every box calls its first
+  /// installation `default`, so the second box's one cannot keep that id on this device.
+  Map<String, String> _boxIds = const {};
+
+  /// Id of installation [id] on the paired box (mostly the same).
+  String boxIdOf(String id) => _boxIds[id] ?? id;
+
+  /// Installations here whose key the paired box names for one of its own (id here → id on the
+  /// box) without this app ever having connected the two. Nothing is exchanged for them: an
+  /// installation key travels in handover packages and fault reports, so a box that merely
+  /// knows it must not get the project by it. [acceptBoxClaim] connects them.
+  Map<String, String> boxClaims = const {};
+
+  static const _boundKey = 'box_bound';
+
+  /// Whether this app connected installation [id] with the paired box before.
+  Future<bool> _boundToBox(String id) async {
+    final box = boxKey;
+    if (box == null) return false;
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getStringList(scopedKey(id, _boundKey)) ?? const []).contains(box);
+  }
+
+  Future<void> _bindToBox(String id) async {
+    final box = boxKey;
+    if (box == null || await _boundToBox(id)) return;
+    final prefs = await SharedPreferences.getInstance();
+    final key = scopedKey(id, _boundKey);
+    await prefs.setStringList(key, [...?prefs.getStringList(key), box]);
+  }
+
+  /// The user confirms that installation [id] here is the one the paired box names
+  /// ([boxClaims]), e.g. a home owner's box that holds an installation the electrician got back
+  /// by other means. From then on the two are matched like any other.
+  Future<void> acceptBoxClaim(String id) async {
+    if (!boxClaims.containsKey(id)) return;
+    await _bindToBox(id);
+    await syncBox(adopt: false);
+  }
+
   /// Reads the box's installations. [adopt]: take over those that do not exist
-  /// here yet (same id, with ETS project) – empty ones only if the box is currently
+  /// here yet (with ETS project) – empty ones only if the box is currently
   /// recording into them.
+  ///
+  /// Which installation here is which one there is decided by the installation key; the id only
+  /// counts for a box that does not know keys yet.
   Future<void> syncBox({bool adopt = true}) async {
     if (Addon.box == null) {
       boxActive = null;
       boxList = const {};
+      boxKey = null;
+      _boxIds = const {};
+      boxClaims = const {};
       notifyListeners();
       return;
     }
     try {
       final j = await Addon.installations();
-      // The box is a device on the network: an id that cannot be a folder name is ignored.
-      final active = j['active'] as String?;
-      boxActive = active != null && Installation.isValidId(active) ? active : null;
-      boxList = {
-        for (final e in (j['list'] as List? ?? const []).cast<Map<Object?, Object?>>())
-          if (e['id'] case final String id when Installation.isValidId(id)) id: e['name'] as String? ?? '',
+      boxKey = switch (j['box']) {
+        final String k when isKey(k) => k,
+        _ => null,
       };
-      if (adopt) {
-        for (final MapEntry(key: id, value: name) in boxList.entries) {
-          if (byId(id) != null) continue;
-          final project = await Addon.getInstallationFile(id, 'catalog.json');
-          if (project == null && id != boxActive) continue;
-          final target = ScopedStorage(AppStorage.instance, 'installations/$id/');
-          if (project != null) await target.write('catalog.json', utf8.decode(project));
-          for (final file in const ['dpt_overrides.json', 'name_overrides.json', 'learned.json']) {
-            final bytes = await Addon.getInstallationFile(id, file);
-            if (bytes != null) await target.write(file, utf8.decode(bytes));
-          }
-          await create(name.isEmpty ? defaultName : name, id: id);
+      final names = <String, String>{};
+      final ids = <String, String>{};
+      final claims = <String, String>{};
+      String? active;
+      for (final e in (j['list'] as List? ?? const []).whereType<Map<Object?, Object?>>()) {
+        // The box is a device on the network: an id that cannot be a folder name is ignored.
+        final boxId = e['id'];
+        if (boxId is! String || !Installation.isValidId(boxId)) continue;
+        final name = e['name'] as String? ?? '';
+        final key = switch (e['key']) {
+          final String k when isKey(k) => k,
+          _ => null,
+        };
+        final (local, taken, claimed) = await _localFor(boxId, key);
+        if (claimed != null) {
+          claims[claimed] = boxId;
+          if (boxId == j['active']) active = boxActiveUnconnected;
+          continue;
         }
+        var id = local?.id;
+        if (id == null) {
+          // Unknown here. With the id taken by another installation it gets a new one.
+          final target = taken ? newId() : boxId;
+          if (adopt && await _adoptFromBox(boxId, target, name, key, isActive: boxId == j['active'])) {
+            id = target;
+          } else if (!taken) {
+            id = boxId;
+          } else {
+            // Not taken over, and its id means another installation here: if the box records
+            // into it, no installation here is "the one on the box", so nothing is shared.
+            if (boxId == j['active']) active = boxActiveUnconnected;
+            continue;
+          }
+        } else if (key == null && boxKey != null && !local!.keyIsPlaceholder) {
+          // Created by an older app: the box learns the key (admin only, otherwise next time).
+          try {
+            await Addon.setInstallationKey(boxId, local.key);
+          } on Object catch (error) {
+            debugPrint('Box: Schlüssel der Installation nicht gesetzt: $error');
+          }
+        }
+        names[id] = name;
+        if (id != boxId) ids[id] = boxId;
+        if (boxId == j['active']) active = id;
       }
+      boxActive = active;
+      boxList = names;
+      _boxIds = ids;
+      boxClaims = claims;
     } on Object catch (e) {
       // Older box without installations, or unreachable.
       debugPrint('Installationen der Box: $e');
       boxActive = null;
       boxList = const {};
+      _boxIds = const {};
+      boxClaims = const {};
     }
     notifyListeners();
+  }
+
+  /// The installation here that is the box's [boxId] with [key]; `taken` if there is none but
+  /// the id belongs to another installation here; `claimed` (its id) if the box names the key of
+  /// an installation here that this app never connected with it ([boxClaims]).
+  Future<(Installation?, bool taken, String? claimed)> _localFor(String boxId, String? key) async {
+    final same = byId(boxId);
+    if (key == null) return (same, false, null);
+    if (byKey(key) case final known?) {
+      // The key alone connects nothing: same id as before keys existed, or connected by this app.
+      if (known.id == boxId || await _boundToBox(known.id)) return (known, false, null);
+      return (null, false, known.id);
+    }
+    if (same == null) return (null, false, null);
+    if (isRandomInstallationId(boxId)) {
+      // Same random id, another key. A box this app put the installation on never says that
+      // (it has the key from here), so the id alone connects nothing either.
+      if (await _boundToBox(same.id)) return (same, false, null);
+      return (null, false, same.id);
+    }
+    if (same.keyIsPlaceholder) {
+      // Taken over from this box before keys existed: it gets the box's key now.
+      await setKey(boxId, key);
+      return (byId(boxId), false, null);
+    }
+    return (null, true, null);
+  }
+
+  /// Takes over the box's installation [boxId] as [id] here; `false` if there is nothing to take.
+  Future<bool> _adoptFromBox(String boxId, String id, String name, String? key, {required bool isActive}) async {
+    final project = await Addon.getInstallationFile(boxId, 'catalog.json');
+    if (project == null && !isActive) return false;
+    final target = ScopedStorage(AppStorage.instance, 'installations/$id/');
+    if (project != null) await target.write('catalog.json', utf8.decode(project));
+    for (final file in const ['dpt_overrides.json', 'name_overrides.json', 'learned.json']) {
+      final bytes = await Addon.getInstallationFile(boxId, file);
+      if (bytes != null) await target.write(file, utf8.decode(bytes));
+    }
+    await create(name.isEmpty ? defaultName : name, id: id, key: key);
+    // It came from this box: under another id here it is still the box's one next time.
+    await _bindToBox(id);
+    return true;
   }
 
   /// The box moves: from now on it records into [id], and the app switches along.
@@ -636,10 +847,20 @@ class InstallationStore extends ChangeNotifier {
     await switchTo(id);
     final box = Addon.box;
     if (box == null || !await BoxProjectConsent.allowed(box)) return;
-    final i = active;
     try {
-      if (!boxList.containsKey(id)) await Addon.createInstallation(id, i.name);
-      if (boxActive != id) await Addon.activateInstallation(id);
+      if (!boxList.containsKey(id)) {
+        // Before it leaves this device, a placeholder becomes a real key.
+        if (active.keyIsPlaceholder) await setKey(id, newKey());
+        // An id like `default` is taken on every box; a box that knows keys gets a fresh one
+        // and is matched by the key afterwards.
+        final fresh = boxKey != null && !isRandomInstallationId(id);
+        await Addon.createInstallation(fresh ? newId() : id, active.name, key: active.key);
+        // Put there by this app: connected, also under another id.
+        await _bindToBox(id);
+        if (fresh) await syncBox(adopt: false);
+      }
+      final i = active;
+      if (boxActive != id) await Addon.activateInstallation(boxIdOf(id));
       await CatalogStore.instance.shareWithBox();
       await KeyringStore.instance.shareWithBox();
       if (i.gateway case final g?) {

@@ -278,10 +278,10 @@ With continuous recording these run on the server, not in the browser:
 
 ## Code sharing between app and server
 
-App and server share the KNX protocol code through the internal package
-`packages/knx` (addresses, cEMI, the history's JSON line `Telegram.toJson`,
+App and server share the KNX protocol code through the open-source package
+`knx` from pub.dev (addresses, cEMI, the history's JSON line `Telegram.toJson`,
 KNXnet/IP frames, DPT values, KNX Secure); see
-[architecture.md](architecture.md#the-package-knx). Connections, recording and
+[architecture.md](architecture.md#the-packages-knx-and-knx_io). Connections, recording and
 everything with Flutter stay separate. The server test above still guards the
 shared history format.
 

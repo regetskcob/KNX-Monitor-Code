@@ -6,15 +6,15 @@ import 'dart:typed_data';
 import 'alarms.dart';
 import 'atomic_file.dart';
 import 'exporter.dart';
-import 'ft12_link.dart';
 import 'ha.dart';
 import 'ha_history.dart';
 import 'ha_link.dart';
-import 'kberry.dart' show TtyLine;
 
 import 'package:knx/knx.dart';
 
-import 'link.dart';
+import 'package:knx_io/knx_io.dart';
+
+import 'link_texts.dart';
 import 'box_clock.dart';
 import 'cemi_policy.dart';
 import 'read_only.dart';
@@ -23,6 +23,8 @@ import 'report.dart';
 
 import 'package:knx/secure.dart';
 
+import 'tap_silence.dart';
+import 'tap_window.dart';
 import 'telegram_json.dart';
 import 'fault_hunt.dart';
 import 'watchers.dart';
@@ -380,7 +382,7 @@ class BusService {
   /// Installation report and notifications; off until the user enables it.
   late final ReportService report;
 
-  /// Clock of the KNX box; `null` in the add-on (Home Assistant sets the time).
+  /// Clock of the Busclear Box; `null` in the add-on (Home Assistant sets the time).
   final BoxClock? clock;
   KnxTimeWatch? _knxTime;
 
@@ -475,6 +477,38 @@ class BusService {
     } on Object catch (e) {
       stderr.writeln('$sequenceFileName: $e');
     }
+  }
+
+  /// Secured telegrams decrypted just now, by sender, destination and secured APDU (without the
+  /// control fields, which couplers change on the way): the decrypted APDU and when.
+  final _recentSecure = <String, (List<int>, DateTime)>{};
+
+  /// How long a secured telegram from one tap point counts as the same one at another.
+  static const secureTapWindow = Duration(seconds: 3);
+
+  static String _secureKey(List<int> cemi) {
+    final i = 2 + cemi[1];
+    return [
+      ...cemi.sublist(i + 2, i + 6),
+      ...cemi.sublist(i + 7),
+    ].map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
+  /// Notes the decrypted form of [cemi] (secured, accepted by the replay check) for [secureSeenAt].
+  void rememberSecure(List<int> cemi, Uint8List decrypted, DateTime now) {
+    _recentSecure.removeWhere((_, v) => now.difference(v.$2) > secureTapWindow);
+    final j = 2 + decrypted[1];
+    _recentSecure[_secureKey(cemi)] = (decrypted.sublist(j + 7, j + 8 + decrypted[j + 6]), now);
+  }
+
+  /// [cemi] rebuilt with the decrypted APDU if the same secured telegram was decrypted at another
+  /// tap point within [secureTapWindow]; `null` otherwise.
+  Uint8List? secureSeenAt(List<int> cemi, DateTime now) {
+    final hit = _recentSecure[_secureKey(cemi)];
+    if (hit == null || now.difference(hit.$2) > secureTapWindow) return null;
+    final i = 2 + cemi[1];
+    final apdu = hit.$1;
+    return Uint8List.fromList([...cemi.sublist(0, i + 6), apdu.length - 1, ...apdu]);
   }
 
   /// Notes the sequence number of a telegram that [DataSecure.receive] accepted.
@@ -763,7 +797,7 @@ class BusService {
       await link.close();
       stdout.writeln('Neue Busverbindung nicht möglich: $e – bisherige bleibt');
       _restart();
-      throw BusProbeException('$e', problem: e is LinkException ? e.problem : null);
+      throw BusProbeException(linkText(e), problem: e is LinkException ? e.problem : null);
     }
   }
 
@@ -786,6 +820,7 @@ class BusService {
   /// Starts the further tap points of [config] (issue #8), each in its own reconnect loop.
   void _startTaps(int generation) {
     final taps = config.taps;
+    _silence = TapSilence();
     final active = [
       for (final (i, t) in taps.indexed)
         if (t['paused'] != true) i + 1,
@@ -796,6 +831,18 @@ class BusService {
             windows: {
               for (final (i, t) in taps.indexed)
                 if (t['windowMs'] case final int ms) i + 1: Duration(milliseconds: ms),
+            },
+          );
+    final merger = _merger;
+    _autoWindows.clear();
+    _meter = merger == null
+        ? null
+        : TapWindowMeter(
+            current: (tap) => merger.windows[tap] ?? merger.window,
+            auto: {
+              0,
+              for (final (i, t) in taps.indexed)
+                if (t['windowMs'] == null) i + 1,
             },
           );
     _updateMergerTaps();
@@ -820,6 +867,15 @@ class BusService {
     }
   }
 
+  /// Measures the lag between tap points and widens their windows ([TapWindowMeter]).
+  TapWindowMeter? _meter;
+
+  /// Windows widened by [_meter], by tap point (0 = main connection).
+  final _autoWindows = <int, Duration>{};
+
+  /// Tap points that say connected but hear nothing (routing without an IP router).
+  TapSilence _silence = TapSilence();
+
   void _updateMergerTaps() {
     final m = _merger;
     if (m == null) return;
@@ -829,6 +885,11 @@ class BusService {
 
   void _setTapState(int i, Map<String, Object?> next) {
     _tapState[i] = next;
+    if (next['state'] == 'connected') {
+      _silence.connected(i);
+    } else {
+      _silence.disconnected(i);
+    }
     _updateMergerTaps();
     _broadcastState();
   }
@@ -836,6 +897,7 @@ class BusService {
   Future<void> _runTap(int generation, int i, Map<String, Object?> t) async {
     var failures = 0;
     var reported = false;
+    var gapOpen = false;
     final mode = t['mode']! as String;
     final c = BusConfig(
       enabled: true,
@@ -859,21 +921,34 @@ class BusService {
         reported = false;
         final sub = link.frames.listen((f) => _onFrame(f, tap: i));
         _setTapState(i, {'state': 'connected', 'address': link.address});
-        stdout.writeln('Messpunkt ${t['name']} verbunden: ${link.label}');
+        stdout.writeln('Messpunkt ${t['name']} verbunden: ${linkLabel(link.label)}');
+        if (gapOpen) {
+          gapOpen = false;
+          unawaited(availability.connectionEvent(tap: '${t['name']}').catchError((Object _) {}));
+        }
         final reason = await link.lost;
         await sub.cancel();
         if (!_current(generation)) return;
         _tapLinks.remove(i);
-        stdout.writeln('Messpunkt ${t['name']} getrennt: $reason');
-        _setTapState(i, {'state': 'disconnected', 'error': reason});
+        stdout.writeln('Messpunkt ${t['name']} getrennt: ${linkText(reason)}');
+        gapOpen = true;
+        unawaited(
+          availability.connectionEvent(reason: linkText(reason), tap: '${t['name']}').catchError((Object _) {}),
+        );
+        _setTapState(i, {'state': 'disconnected', 'error': linkText(reason)});
       } on Object catch (e) {
         await link.close();
         if (!_current(generation)) return;
         if (!reported) {
           stdout.writeln('Messpunkt ${t['name']} nicht erreichbar: $e – versuche weiter');
           reported = true;
+          // Not reachable from the start (or again): a gap too, until it connects.
+          if (!gapOpen) {
+            gapOpen = true;
+            unawaited(availability.connectionEvent(reason: linkText(e), tap: '${t['name']}').catchError((Object _) {}));
+          }
         }
-        _setTapState(i, {'state': 'disconnected', 'error': '$e'});
+        _setTapState(i, {'state': 'disconnected', 'error': linkText(e)});
         final seconds = const [1, 2, 4, 8, 15, 30, 60][failures.clamp(0, 6)];
         failures++;
         await Future<void>.delayed(Duration(seconds: seconds));
@@ -933,7 +1008,8 @@ class BusService {
         busmon.resync();
         final sub = link.frames.listen(_onFrame);
         _setState('connected');
-        stdout.writeln('Bus verbunden: ${link.label}');
+        stdout.writeln('Bus verbunden: ${linkLabel(link.label)}');
+        if (lastLost != null) unawaited(availability.connectionEvent().catchError((Object _) {}));
         unawaited(_askTime(link));
         unawaited(_fillGap(link, generation));
         final reason = await link.lost;
@@ -941,15 +1017,16 @@ class BusService {
         if (!_current(generation)) return;
         _link = null;
         lastLost = DateTime.now();
-        error = reason;
+        error = linkText(reason);
         problem = null;
-        stdout.writeln('Bus getrennt: $reason');
+        stdout.writeln('Bus getrennt: $error');
+        unawaited(availability.connectionEvent(reason: '${linkLabel(link.label)}: $error').catchError((Object _) {}));
         // Reconnect immediately – short dropouts should not leave a gap.
         continue;
       } on Object catch (e) {
         await link.close();
         if (!_current(generation)) return;
-        error = '$e';
+        error = linkText(e);
         problem = e is LinkException ? e.problem : (e is TimeoutException ? 'noResponse' : null);
         // Report an outage once, not on every attempt.
         if (!reported) {
@@ -1017,6 +1094,7 @@ class BusService {
   /// Whatever comes from the bus must never stop the server: frames can be
   /// forged (UDP), and a listener error would otherwise end the process.
   void _onFrame(Uint8List frame, {int tap = 0}) {
+    if (_merger != null && _silence.heard(tap)) _broadcastState();
     try {
       _handleFrame(frame, tap: tap);
     } on Object catch (e) {
@@ -1054,10 +1132,23 @@ class BusService {
     final secured = DataSecure.isSecure(cemi);
     var decryptedOk = false;
     if (ds != null && secured) {
-      final (result, decrypted) = ds.receive(cemi);
-      decryptedOk = result == SecureResult.decrypted;
-      if (decryptedOk) _noteSequence(cemi);
-      plain = decrypted;
+      // The same secured telegram seen at a further tap point (issue #8): its sequence number is
+      // spent, so the replay check would refuse it and it would go missing there. Within a few
+      // seconds the bytes from another tap point get the result of the first; a real replay later
+      // still meets the check.
+      final again = _merger == null ? null : secureSeenAt(cemi, now);
+      if (again != null) {
+        plain = again;
+        decryptedOk = true;
+      } else {
+        final (result, decrypted) = ds.receive(cemi);
+        decryptedOk = result == SecureResult.decrypted;
+        if (decryptedOk) {
+          _noteSequence(cemi);
+          if (_merger != null) rememberSecure(cemi, decrypted, now);
+        }
+        plain = decrypted;
+      }
     }
     final merger = _merger;
     if (merger == null) {
@@ -1090,6 +1181,14 @@ class BusService {
   }
 
   void _processMerged(Telegram t) {
+    if (_meter?.released(t) case (final tap, final window)?) {
+      _merger?.windows[tap] = window;
+      _autoWindows[tap] = window;
+      stdout.writeln(
+        'Messpunkt ${tap == 0 ? 'Hauptanschluss' : config.taps[tap - 1]['name']}: Zeitfenster auf ${window.inMilliseconds} ms erweitert (gemessener Versatz)',
+      );
+      _broadcastState();
+    }
     try {
       final (secured, decrypted) = _secureOf[t.raw] ?? (false, false);
       _process(t.toJson(), t.time, secured: secured, decrypted: decrypted);
@@ -1154,8 +1253,9 @@ class BusService {
     'restarts': ?restartSummary?.call(),
     'since': since?.millisecondsSinceEpoch,
     'lastLost': lastLost?.millisecondsSinceEpoch,
-    'link': _link?.label,
+    'link': _link == null ? null : linkLabel(_link!.label),
     'address': _link?.address,
+    if (_autoWindows[0] case final w? when config.taps.isNotEmpty) 'autoWindowMs': w.inMilliseconds,
     if (config.taps.isNotEmpty)
       'taps': [
         for (final (i, t) in config.taps.indexed)
@@ -1166,6 +1266,8 @@ class BusService {
             'state': t['paused'] == true ? 'paused' : (_tapState[i + 1]?['state'] ?? 'disconnected'),
             'error': ?_tapState[i + 1]?['error'],
             'address': ?_tapState[i + 1]?['address'],
+            if (_silence.silent(i + 1)) 'silent': true,
+            if (_autoWindows[i + 1] case final w?) 'autoWindowMs': w.inMilliseconds,
           },
       ],
     'description': _description == null ? null : hexOf(_description!),
@@ -1290,7 +1392,8 @@ class BusService {
   /// rights, nothing at all for a viewer), 6 read-only is on. Never throws: an error here would end as an
   /// unhandled error in process exit (`exit(255)`), and any logged-in client
   /// could have sent recording into a restart loop that way.
-  Future<void> _clientSend(_Client client, int id, Uint8List cemi) async {
+  Future<void> _clientSend(_Client client, int id, Uint8List frame) async {
+    var cemi = frame;
     void reply(int result, [String text = '']) => client.send([0x11, id >> 8, id & 0xFF, result, ...utf8.encode(text)]);
 
     try {
@@ -1301,13 +1404,14 @@ class BusService {
       if (!client.admin && !deviceMaySend(cemi)) {
         return reply(5, 'Dieses Gerät darf nur Gruppenwerte senden. Mit dem Box-Passwort koppeln.');
       }
+      if (!client.admin) cemi = normalizeDeviceCemi(cemi);
       final link = _link;
       if (link == null || state != 'connected') return reply(1, 'Nicht verbunden');
       if (!_lockDevice(client, cemi)) return reply(4, 'Gerät wird gerade von einer anderen Ansicht geprüft');
       await link.send(cemi);
       reply(0);
     } on LinkException catch (e) {
-      reply(2, e.message);
+      reply(2, linkText(e));
     } on Object catch (e) {
       try {
         reply(2, '$e');

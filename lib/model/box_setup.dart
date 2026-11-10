@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../knx/gateway_info.dart';
 import '../platform/addon.dart';
+import '../platform/app_instance.dart';
 import '../platform/box_link.dart';
 import '../platform/native_bridge.dart';
 import 'box_connection.dart';
@@ -23,7 +24,7 @@ class BoxGateway {
   final GatewayInfo? info;
 }
 
-/// Sets up a KNX box from the app, without a browser:
+/// Sets up a Busclear Box from the app, without a browser:
 ///
 /// 1. join the box's Wi-Fi (iOS, Android 10+; otherwise by hand),
 /// 2. wait until the box responds,
@@ -139,7 +140,7 @@ class BoxSetup extends ChangeNotifier {
     }
     _set(BoxSetupStep.pair, BoxStepState.running);
     try {
-      final key = await Addon.pairBox(link, link.password, deviceName);
+      final key = await Addon.pairBox(link, link.password, deviceName, app: await AppInstance.id());
       await BoxConnection.instance.use(link.paired(key));
       await _ownPassword();
       _set(BoxSetupStep.pair, BoxStepState.done);

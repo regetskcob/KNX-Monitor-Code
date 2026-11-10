@@ -136,7 +136,7 @@ void main() {
       await File('${data.path}/status/availability-2026-10.ndjson')
           .writeAsString(beats.map((l) => '${jsonEncode(l)}\n').join());
       final r = (await computeDayRollup(data.path, Recorder.dayName(d)))!;
-      final kinds = [for (final o in (r['out']! as List).cast<Map>()) o['kind']];
+      final kinds = [for (final o in (r['out']! as List).cast<Map<Object?, Object?>>()) o['kind']];
       expect(kinds, ['offline', 'offline', 'disconnected', 'offline']);
       expect(r['conn'], 3);
     });
@@ -186,7 +186,9 @@ void main() {
       final safety = (report['safety']! as List).cast<Map<String, Object?>>();
       expect(safety.firstWhere((x) => x['address'] == 0x0801)['state'], 'active');
       expect(safety.firstWhere((x) => x['address'] == 0x0802)['state'], 'unknown');
-      final finding = (report['findings']! as List).cast<Map>().firstWhere((f) => f['kind'] == 'alarmActive');
+      final finding = (report['findings']! as List).cast<Map<Object?, Object?>>().firstWhere(
+        (f) => f['kind'] == 'alarmActive',
+      );
       expect(finding['level'], 'critical');
       expect(finding['name'], 'Rauchmelder Flur');
     });
@@ -211,14 +213,14 @@ void main() {
           'to': DateTime(2026, 10).millisecondsSinceEpoch,
           'generated': 0,
           'findings': [f('deviceSilent:$sensor'), f('repeats:7')],
-          'resolved': const [],
+          'resolved': const <Object?>[],
         }),
       );
       await s.tick();
       final report = (await s.read('2026-10'))!;
-      final findings = (report['findings']! as List).cast<Map>();
+      final findings = (report['findings']! as List).cast<Map<Object?, Object?>>();
       expect(findings.firstWhere((x) => x['key'] == 'deviceSilent:$sensor')['status'], 'unchanged');
-      expect((report['resolved']! as List).cast<Map>().single['key'], 'repeats:7');
+      expect((report['resolved']! as List).cast<Map<Object?, Object?>>().single['key'], 'repeats:7');
     });
 
     test('Tage ohne Lebenszeichen zählen als Ausfall, die Zeit davor nicht', () async {
@@ -231,7 +233,7 @@ void main() {
       await s.tick();
       final report = (await s.read('2026-10'))!;
       final availability = report['availability']! as Map;
-      final outages = (availability['outages']! as List).cast<Map>();
+      final outages = (availability['outages']! as List).cast<Map<Object?, Object?>>();
       expect(DateTime.fromMillisecondsSinceEpoch(outages.first['from'] as int).day, 11);
       expect(DateTime.fromMillisecondsSinceEpoch(outages.first['to'] as int).day, 13);
       expect(availability['ratio'], lessThan(1));
@@ -251,7 +253,7 @@ void main() {
         now: DateTime(2026, 11, 1),
       );
       final bad = build(50);
-      expect((bad['findings']! as List).cast<Map>().single['kind'], 'busErrors');
+      expect((bad['findings']! as List).cast<Map<Object?, Object?>>().single['kind'], 'busErrors');
       expect((bad['busmon']! as Map)['orphanAcks'], 2);
       expect(build(1)['findings'], isEmpty);
     });
@@ -268,7 +270,7 @@ void main() {
         ],
       );
       expect((report['availability']! as Map)['restarts'], hasLength(1));
-      expect((report['findings']! as List).cast<Map>().single['kind'], 'restarts');
+      expect((report['findings']! as List).cast<Map<Object?, Object?>>().single['kind'], 'restarts');
     });
 
     test('hält Tagessummen, auch wenn der Verlauf längst weg ist', () async {

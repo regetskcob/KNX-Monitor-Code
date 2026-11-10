@@ -49,6 +49,8 @@ class _IoTcp implements TcpStream {
 
 Future<TcpStream> openTcp(String host, int port) async {
   try {
+    // Closed by the returned TcpStream.
+    // ignore: close_sinks
     final socket = await Socket.connect(host, port, timeout: const Duration(seconds: 5));
     socket.setOption(SocketOption.tcpNoDelay, true);
     return _IoTcp(socket);

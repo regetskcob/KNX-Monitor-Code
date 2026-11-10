@@ -66,7 +66,7 @@ On **Android**, Google's ML Kit recognises the QR code. ML Kit works on the devi
 
 ### KNX box
 
-When you connect the app to a KNX box, it also puts your ETS project, your own datapoint types and the keyring on the box and reads its history. The box is your own device on the local network. The data only leaves it if you set up a destination yourself (see “The Home Assistant add-on”); it does not go to us. It is unencrypted on the SD card or SSD, so whoever has the medium can read it. Access is protected by the box password and paired devices, the password is stored only as a hash on the box; inside the box's Wi-Fi the connection has no TLS. If the box has internet, it sets its clock that way.
+When you connect the app to a KNX box, it also puts your ETS project, your own datapoint types and the keyring on the box and reads its history. From version 1.11, when pairing, the app also tells the box a random identifier of this app on this device; the box uses it to show in its device list which access belongs to which device. Installation and box each have an identifier of their own by which app and box recognise each other. None of these identifiers grants access. The box is your own device on the local network. The data only leaves it if you set up a destination yourself (see “The Home Assistant add-on”); it does not go to us. It is unencrypted on the SD card or SSD, so whoever has the medium can read it. Access is protected by the box password and paired devices, the password is stored only as a hash on the box; inside the box's Wi-Fi the connection has no TLS. If the box has internet, it sets its clock that way.
 
 ### Notifications
 
@@ -74,7 +74,7 @@ The app creates notifications about alarms and watchers locally on the device; y
 
 ### Export and sharing
 
-Reports (PDF), CSV and ETS exports are only created when you trigger them. Where they go is up to you, via your operating system's share sheet. Recently created exports, including diagnostics packages, stay in the app as a copy so that you can share them again; you can delete them there. A fault report to your electrician includes the names of addresses and devices along with the bus recording while the switch for them is on; screenshots on your comments only if you explicitly include them. It only goes to the recipient you choose.
+Reports (PDF), CSV and ETS exports are only created when you trigger them. Where they go is up to you, via your operating system's share sheet. Recently created exports, including diagnostics packages, stay in the app as a copy so that you can share them again; you can delete them there. A fault report to your electrician includes, along with the bus recording, the identifier of the installation so they can match it on their side (for installations from a handover package made with version 1.11 or later), and the names of addresses and devices while the switch for them is on; screenshots on your comments only if you explicitly include them. It only goes to the recipient you choose.
 
 ### In-app purchases (Plus and Pro)
 

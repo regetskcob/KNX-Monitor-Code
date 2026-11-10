@@ -190,6 +190,18 @@ void main() {
     expect(bus.config.enabled, isFalse);
   });
 
+  test('Schalter Aufzeichnung: nur ON und OFF, alles andere ändert nichts', () async {
+    await bridge.start();
+    sink.receive('knx_monitor/recording/set', 'ON');
+    await until(() => sink.json('knx_monitor/state')['recording'] == true);
+    for (final junk in ['', 'off please', '0', 'false', '{"state":"OFF"}']) {
+      sink.receive('knx_monitor/recording/set', junk);
+    }
+    await bridge.settled;
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(bus.config.enabled, isTrue);
+  });
+
   test('Home Assistant neu gestartet: alles erneut ankündigen', () async {
     await bridge.start();
     final before = sink.published.length;

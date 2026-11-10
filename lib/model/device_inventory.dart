@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../knx/diagnostics.dart';
+import '../knx/gateway_info.dart';
 import '../knx/group_catalog.dart';
 import '../knx/knx_tunnel.dart';
 import '../knx/telegram.dart';
@@ -134,7 +135,7 @@ class DeviceInventory extends ChangeNotifier {
     final gateway = tunnel.gatewayInfo.value;
     return {
       ?tunnel.tunnelAddress,
-      for (final slot in gateway?.slots ?? const []) slot.address,
+      for (final slot in gateway?.slots ?? const <TunnelSlot>[]) slot.address,
       for (final d in catalog.devices.values)
         if (d.isTunnel) d.address,
     };

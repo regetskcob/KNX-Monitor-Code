@@ -9,12 +9,15 @@ import '../l10n/locale_controller.dart';
 import '../model/coupler_filter.dart';
 import '../model/project_check.dart';
 import '../model/telegram_log.dart';
+import '../model/xknx_editor_handover.dart';
+import '../platform/addon.dart';
 import '../theme/app_icons.dart';
 import '../theme/tokens.dart';
 import '../theme/palette.dart';
 import '../model/filter.dart';
 import 'common.dart';
 import 'ets_tasks_export.dart';
+import 'xknx_editor_sheet.dart';
 import 'group_names.dart';
 import 'filter_observations.dart';
 
@@ -36,6 +39,12 @@ class _ProjectCheckScreenState extends State<ProjectCheckScreen> {
 
   /// Loaded once, not on every repaint: it reads recordings.
   Future<List<FilterObservation>>? _observations;
+
+  /// Days of history the server compares with the project.
+  static const _evidenceDays = 7;
+
+  /// Project against the recorded bus, from the add-on or box server (it holds the long history).
+  Future<Map<String, Object?>?>? _evidence;
 
   TelegramLog get log => widget.log;
   ValueChanged<String> get onFilter => widget.onFilter;
@@ -246,6 +255,93 @@ class _ProjectCheckScreenState extends State<ProjectCheckScreen> {
       for (final c in filterCheck.crossLine)
         if (c.open.isEmpty) c,
     ];
+    // Project against bus (add-on or box): what the recorded history says about the project.
+    Widget evidenceCard(Map<String, Object?> e) {
+      List<Map<String, Object?>> list(String key) => (e[key] as List? ?? const []).cast<Map<String, Object?>>();
+      final confirmed = list('multiple_senders').where((m) => m['confirmed'] == true).toList();
+      final unread = list('read_without_answer').where((m) => (m['reads'] as int? ?? 0) > 0).toList();
+      return group(s.checkSectionEvidence(_evidenceDays), [
+        section(s.checkUnexpectedSenders, list('unexpected_senders').length, [
+          for (final u in list('unexpected_senders'))
+            row(
+              title: '${u['device']}  ${u['device_name'] ?? ''}',
+              subtitle: '${s.checkUnexpectedSenderRow('${u['group_address']}')} ${u['name'] ?? ''}',
+              trailing: '${u['telegrams']}',
+              query: u['group_address'] as String?,
+            ),
+        ], hint: s.checkUnexpectedSendersHint),
+        section(s.checkNoFeedback, list('commands_without_feedback').length, [
+          for (final f in list('commands_without_feedback'))
+            row(
+              title: '${f['command']}  ${f['command_name'] ?? ''}',
+              subtitle: s.checkNoFeedbackRow(
+                '${f['status']}',
+                '${f['device']}',
+                f['answered'] as int? ?? 0,
+                f['commands'] as int? ?? 0,
+              ),
+              query: f['command'] as String?,
+            ),
+        ], hint: s.checkNoFeedbackHint),
+        section(s.checkSendersConfirmed, confirmed.length, [
+          for (final m in confirmed)
+            row(
+              title: '${m['group_address']}  ${m['name'] ?? ''}',
+              subtitle: (m['heard'] as Map? ?? const {}).entries
+                  .map((h) => '${h.key} (${h.value})')
+                  .join(metaSeparator),
+              query: m['group_address'] as String?,
+            ),
+        ], hint: s.checkSendersConfirmedHint),
+        section(s.checkReadsUnanswered, unread.length, [
+          for (final r in unread)
+            row(
+              title: '${r['group_address']}  ${r['name'] ?? ''}',
+              subtitle: s.checkReadsRow(r['reads'] as int? ?? 0, r['answered'] as int? ?? 0),
+              query: r['group_address'] as String?,
+            ),
+        ], hint: s.checkReadsUnansweredHint),
+        section(s.checkLongStates, list('long_states').length, [
+          for (final l in list('long_states'))
+            row(
+              title: '${l['group_address']}  ${l['name'] ?? ''}',
+              subtitle: s.checkLongStateRow('${l['days']}', l['telegrams'] as int? ?? 0),
+              query: l['group_address'] as String?,
+            ),
+        ], hint: s.checkLongStatesHint),
+        section(s.checkNightActivity, list('night_activity').length, [
+          for (final n in list('night_activity'))
+            row(
+              title: '${n['group_address']}  ${n['name'] ?? ''}',
+              subtitle: s.checkNightRow(
+                n['nights'] as int? ?? 0,
+                n['nights_recorded'] as int? ?? 0,
+                '${n['triggers_per_night']}',
+              ),
+              query: n['group_address'] as String?,
+            ),
+        ], hint: s.checkNightActivityHint),
+        section(
+          s.checkDptSuggestions,
+          list('dpt_suggestions').length,
+          [
+            for (final d in list('dpt_suggestions'))
+              row(
+                title: '${d['group_address']}  ${d['name'] ?? ''}',
+                subtitle: d['certainty'] == 'high' ? s.checkDptSure : s.checkDptLikely,
+                trailing: '${d['dpt']}'.replaceFirstMapped(
+                  RegExp(r'^DPST-(\d+)-(\d+)$'),
+                  (m) => '${m[1]}.${m[2]!.padLeft(3, '0')}',
+                ),
+                query: d['group_address'] as String?,
+              ),
+          ],
+          hint: s.checkDptSuggestionsHint,
+          warning: false,
+        ),
+      ]);
+    }
+
     final projectCard = store.catalog.devices.isEmpty && dptSection == null && incompleteSection == null
         ? null
         : group(s.checkSectionProject, [
@@ -283,6 +379,22 @@ class _ProjectCheckScreenState extends State<ProjectCheckScreen> {
                     query: senderQuery(formatIndividual(d.address)),
                   ),
               ], hint: s.checkDevicesNoLinksHint),
+              section(s.checkDevicesNeverProgrammed, lint.devicesNeverProgrammed.length, [
+                for (final d in lint.devicesNeverProgrammed)
+                  row(
+                    title: '${formatIndividual(d.address)}  ${d.name}',
+                    subtitle: [?d.product, ?d.location].join(metaSeparator),
+                    query: senderQuery(formatIndividual(d.address)),
+                  ),
+              ], hint: s.checkDevicesNeverProgrammedHint),
+              section(s.checkDevicesPendingDownload, lint.devicesPendingDownload.length, [
+                for (final d in lint.devicesPendingDownload)
+                  row(
+                    title: '${formatIndividual(d.address)}  ${d.name}',
+                    subtitle: [d.pendingDownload.map(downloadPartName).join(', '), ?d.location].join(metaSeparator),
+                    query: senderQuery(formatIndividual(d.address)),
+                  ),
+              ], hint: s.checkDevicesPendingDownloadHint),
               section(
                 s.checkMultipleSenders,
                 lint.multipleSenders.length,
@@ -466,6 +578,14 @@ class _ProjectCheckScreenState extends State<ProjectCheckScreen> {
                 onPressed: () => exportEtsTasks(context, origin: rectOf(button), log: log),
               ),
             ),
+          if (!store.catalog.isEmpty)
+            Builder(
+              builder: (button) => IconButton(
+                icon: const Icon(AppIcons.send),
+                tooltip: s.xknxEditorTitle,
+                onPressed: () => showXknxEditorHandover(context, log: log, origin: rectOf(button)),
+              ),
+            ),
         ],
       ),
       body: store.catalog.isEmpty
@@ -499,6 +619,19 @@ class _ProjectCheckScreenState extends State<ProjectCheckScreen> {
                           if (projectCard != null) ...[projectCard, const SizedBox(height: Gap.section)],
                           traffic,
                         ],
+                        if (Addon.available && store.catalog.devices.isNotEmpty)
+                          FutureBuilder(
+                            future: _evidence ??= Addon.projectEvidence(_evidenceDays)
+                                .then<Map<String, Object?>?>((v) => v)
+                                .catchError((Object _) => null),
+                            builder: (context, snapshot) => switch (snapshot.data) {
+                              final e? => Padding(
+                                padding: const EdgeInsets.only(top: Gap.section),
+                                child: evidenceCard(e),
+                              ),
+                              _ => const SizedBox.shrink(),
+                            },
+                          ),
                       ],
                     ),
                   ),

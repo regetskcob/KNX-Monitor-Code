@@ -173,6 +173,17 @@ void main() {
     expect((await send('/api/bus', auth: 'Bearer $key')).$1, 401);
   });
 
+  test('Kopplung merkt sich die App-Instanz; ihr Schlüssel allein öffnet nichts', () async {
+    const app = '00112233445566778899aabbccddeeff';
+    final key = await access.pair('Tablet', app: app);
+    expect(access.devices.single.app, app);
+    expect(BoxDevice.appKey('../x'), isNull);
+    expect(BoxDevice.appKey(app), app);
+    expect((await send('/api/bus', auth: 'Bearer $key')).$1, isNot(401));
+    expect((await send('/api/bus', auth: 'Bearer $app')).$1, 401);
+    expect((await send('/api/bus', auth: basic(app))).$1, 401);
+  });
+
   test('Sperren und Passwortwechsel trennen offene Verbindungen', () async {
     var closed = 0;
     access.onAccessChanged = () => closed++;
@@ -232,6 +243,8 @@ void main() {
 
   test('WebSocket /ws/bus: mit Zugang ja, ohne nein', () async {
     final key = await pairDevice();
+    // Not closed here on purpose: closed when the test ends.
+    // ignore: close_sinks
     final ws = await WebSocket.connect(
       'ws://127.0.0.1:${server.port}/ws/bus',
       headers: {'Authorization': 'Bearer $key'},
@@ -335,6 +348,8 @@ void main() {
         (await send('/api/bus', auth: basic('richtig123'), cookie: cookie)).$3[HttpHeaders.setCookieHeader],
         isNull,
       );
+      // Not closed here on purpose: closed when the test ends.
+      // ignore: close_sinks
       final ws = await WebSocket.connect(
         'ws://127.0.0.1:${server.port}/ws/bus',
         headers: {'Cookie': '${BoxAccess.sessionCookie}=$cookie', 'Origin': own()},
@@ -355,6 +370,23 @@ void main() {
       expect(status, 401);
       expect(headers.value(HttpHeaders.wwwAuthenticateHeader), startsWith('Basic'));
       expect((await send('/api/bus', auth: 'Digest x', cookie: cookie, site: 'cross-site')).$1, 401);
+    });
+
+    test('Herkunft: Groß-/Kleinschreibung und Standard-Port zählen nicht, alles andere schon', () {
+      expect(BoxAccess.sameOrigin('http://knx-box.local', 'knx-box.local'), isTrue);
+      expect(BoxAccess.sameOrigin('http://KNX-Box.local', 'knx-box.local'), isTrue);
+      expect(BoxAccess.sameOrigin('http://knx-box.local', 'knx-box.local:80'), isTrue);
+      expect(BoxAccess.sameOrigin('https://10.42.0.1', '10.42.0.1:443'), isTrue);
+      expect(BoxAccess.sameOrigin('http://[fd00::5]:8765', '[FD00::5]:8765'), isTrue);
+      expect(BoxAccess.sameOrigin('http://knx-box.local', 'knx-box.local:8765'), isFalse);
+      expect(BoxAccess.sameOrigin('https://knx-box.local', 'knx-box.local:80'), isFalse);
+      expect(BoxAccess.sameOrigin('http://evil.example', 'knx-box.local'), isFalse);
+      expect(BoxAccess.sameOrigin('null', 'knx-box.local'), isFalse);
+      expect(BoxAccess.sameOrigin('http://knx-box.local/x', 'knx-box.local'), isFalse);
+      expect(BoxAccess.sameOrigin('http://a@knx-box.local', 'knx-box.local'), isFalse);
+      expect(BoxAccess.sameOrigin('ftp://knx-box.local', 'knx-box.local'), isFalse);
+      expect(BoxAccess.sameOrigin('http://knx-box.local', 'knx-box.local/x'), isFalse);
+      expect(BoxAccess.sameOrigin('http://knx-box.local', null), isFalse);
     });
 
     test('fremde Herkunft abgelehnt, ohne Herkunft nur lesen', () async {

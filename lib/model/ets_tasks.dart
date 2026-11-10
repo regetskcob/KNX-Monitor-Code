@@ -112,6 +112,8 @@ class EtsTask {
     this.serial,
     this.beforeDpt,
     this.beforeName,
+    this.ref,
+    this.sends = false,
   });
 
   final EtsTaskKind kind;
@@ -151,6 +153,12 @@ class EtsTask {
   /// Serial number read on the bus ([EtsTaskKind.serialMismatch],
   /// [EtsTaskKind.notInProject]).
   final String? serial;
+
+  /// Reference of the object in the project ([GroupLink.ref]), for a correction in the XKNX Editor.
+  final String? ref;
+
+  /// Whether the object sends to [group] ([GroupLink.sends]).
+  final bool sends;
 
   /// Only a notice (intended or not), not a definite deviation.
   bool get hint => switch (kind) {
@@ -284,6 +292,8 @@ class EtsTasks {
             device: l.device,
             object: l.object,
             objectText: l.text,
+            ref: l.ref,
+            sends: l.sends,
             others: [
               for (final o in all)
                 if (!identical(o, l)) EtsObject(o.device, o.object, o.text),

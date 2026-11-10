@@ -9,10 +9,9 @@ environment:
 dev_dependencies:
   test: ^1.25.0
 dependencies:
-  # KNX protocol code shared with the app. The Docker build copies packages/
-  # into the add-on folder so this path also resolves there (Dockerfile).
-  knx:
-    path: ../../../packages/knx
+  # KNX protocol core and bus connections, open source (github.com/regetskcob/dart-knx).
+  knx: ^0.2.3
+  knx_io: ^0.1.0
   mqtt_client: ^10.14.0
   pdf: ^3.13.1
   pointycastle: ^4.0.0

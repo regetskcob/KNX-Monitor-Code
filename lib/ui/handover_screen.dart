@@ -435,18 +435,6 @@ Future<void> _importHandover(BuildContext context, Uint8List bytes) async {
     ),
   );
   if (ok != true || !context.mounted) return;
-  // Tier limit as when creating an installation.
-  if (await handoverNeedsNewInstallation(manifest.id) && installations.list.length >= Plan.instance.maxInstallations) {
-    if (!context.mounted) return;
-    final plan = Plan.instance;
-    if (plan.installationsCapped) return say(s.planOneInstallationHere, HorizontStatus.warning);
-    await showPlanScreen(
-      context,
-      reason: s.planMoreInstallations(tierName(plan.value), plan.maxInstallations),
-      need: plan.value == Tier.free ? Tier.plus : Tier.pro,
-    );
-    if (installations.list.length >= plan.maxInstallations || !context.mounted) return;
-  }
   var wrong = false;
   while (true) {
     if (!context.mounted) return;
@@ -461,9 +449,23 @@ Future<void> _importHandover(BuildContext context, Uint8List bytes) async {
     }
     try {
       final entered = password;
-      final installation = await withProgress(context, s.handoverOpening, () async {
-        return applyHandover(await openHandover(bytes, password: entered));
-      });
+      final package = await withProgress(context, s.handoverOpening, () => openHandover(bytes, password: entered));
+      // Tier limit as when creating an installation. Only now: whether the package belongs to an
+      // installation that is here already is decided by its key, which is part of the payload.
+      if (await handoverNeedsNewInstallation(package.id, key: package.key) &&
+          installations.list.length >= Plan.instance.maxInstallations) {
+        if (!context.mounted) return;
+        final plan = Plan.instance;
+        if (plan.installationsCapped) return say(s.planOneInstallationHere, HorizontStatus.warning);
+        await showPlanScreen(
+          context,
+          reason: s.planMoreInstallations(tierName(plan.value), plan.maxInstallations),
+          need: plan.value == Tier.free ? Tier.plus : Tier.pro,
+        );
+        if (installations.list.length >= plan.maxInstallations) return;
+      }
+      if (!context.mounted) return;
+      final installation = await withProgress(context, s.handoverOpening, () => applyHandover(package));
       return say(s.handoverImported(company, installation.name), HorizontStatus.positive);
     } on PackageException catch (e) {
       if (e.problem != PackageProblem.wrongPassword) return say(packageProblemText(e.problem), HorizontStatus.critical);
@@ -491,7 +493,8 @@ Future<void> _receiveReport(BuildContext context, Uint8List bytes) async {
   if (!await unlock(context, Feature.customerRecords) || !context.mounted) return;
   final installations = InstallationStore.instance;
   // The installation from the package; otherwise (other device) ask.
-  var target = installations.byId(report.origin);
+  // The key first: an id from another device may by chance be another installation's id here.
+  var target = installations.byKey(report.key) ?? installations.byId(report.origin);
   if (target == null) {
     target = await showAdaptiveDialog<Installation>(
       context: context,

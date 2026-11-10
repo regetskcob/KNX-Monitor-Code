@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'dpt_value.dart';
 import 'recorder.dart';
+import 'report.dart' show busySeconds;
 
 /// The app's saved charts as history for the dashboard card
 /// (`knx-monitor-chart-card`, see [LovelaceCard]).
@@ -94,9 +95,12 @@ class ChartService {
   }
 
   /// Metric (`metric`: `telegrams`, `repeats`, `line` with `line`) as
-  /// telegrams per minute, in at most [buckets] columns.
+  /// telegrams per minute, `load` as the share of time the line was busy in
+  /// percent, in at most [buckets] columns.
   Map<String, Object?> _withRates(Map<String, Object?> s, _Minutes minutes, DateTime from, DateTime to) {
+    final load = s['metric'] == 'load';
     final counts = switch (s['metric']) {
+      'load' => minutes.busyMs,
       'telegrams' => minutes.telegrams,
       'repeats' => minutes.repeats,
       'line' => minutes.lines[s['line']] ?? List.filled(minutes.telegrams.length, 0),
@@ -111,7 +115,8 @@ class ChartService {
       final sum = counts.skip(i).take(per).fold(0, (a, b) => a + b);
       // The last, incomplete column is scaled by the elapsed time.
       final span = math.min(per * 60000, end - at);
-      points.add([at, double.parse((sum / (math.max(span, 10000) / 60000)).toStringAsFixed(2))]);
+      final value = load ? sum / math.max(span, 10000) * 100 : sum / (math.max(span, 10000) / 60000);
+      points.add([at, double.parse(value.toStringAsFixed(2))]);
     }
     return {..._describe(s), 'kind': 'line', 'points': points, if (points.isNotEmpty) 'last': points.last};
   }
@@ -157,6 +162,7 @@ class ChartService {
       if (i < 0 || i >= out.telegrams.length) continue;
       out.telegrams[i]++;
       if (line.contains('"rp":true')) out.repeats[i]++;
+      out.busyMs[i] += (busySeconds(_payload(line), small: line.contains('"m":true')) * 1000).round();
       if (!line.contains('"o":true')) {
         final src = int.tryParse(Recorder.field(line, 's') ?? '');
         if (src != null) (out.lines[src >> 8] ??= List.filled(out.telegrams.length, 0))[i]++;
@@ -271,11 +277,14 @@ class ChartService {
     }
   }
 
-  static Iterable<Map<String, Object?>> _seriesOf(Map<String, Object?> chart) sync* {
-    for (final s in chart['series'] as List? ?? const []) {
-      if (s is Map && s['address'] is int) yield s.cast<String, Object?>();
-    }
-  }
+  /// Most series of one chart, as in the app; a chart file written by hand or by an old app version
+  /// cannot make the server read hundreds of addresses at once.
+  static const maxSeries = 8;
+
+  static Iterable<Map<String, Object?>> _seriesOf(Map<String, Object?> chart) => [
+    for (final s in chart['series'] as List? ?? const [])
+      if (s is Map && s['address'] is int) s.cast<String, Object?>(),
+  ].take(maxSeries);
 
   static Map<String, Object?> _describe(Map<String, Object?> s) => {
     'address': s['address'],
@@ -329,12 +338,23 @@ List<(int, double)> thin(List<(int, double)> points, int from, int to, int bucke
 }
 
 /// Telegrams per minute from [start]: total, repeated, per line (`s >> 8`).
+/// Payload hex (`"x":"…"`) of a history line; [Recorder.field] only reads numbers.
+String _payload(String line) {
+  final i = line.indexOf('"x":"');
+  if (i < 0) return '';
+  final end = line.indexOf('"', i + 5);
+  return end < 0 ? '' : line.substring(i + 5, end);
+}
+
 class _Minutes {
-  _Minutes(this.start, int n) : telegrams = List.filled(n, 0), repeats = List.filled(n, 0);
+  _Minutes(this.start, int n) : telegrams = List.filled(n, 0), repeats = List.filled(n, 0), busyMs = List.filled(n, 0);
 
   final DateTime start;
   final List<int> telegrams;
   final List<int> repeats;
+
+  /// Milliseconds the line was busy (TP, 9600 bit/s), for the bus load.
+  final List<int> busyMs;
   final lines = <int, List<int>>{};
 
   /// Adds the minutes of [other] that fall within this time span.
@@ -349,6 +369,7 @@ class _Minutes {
 
     into(telegrams, other.telegrams);
     into(repeats, other.repeats);
+    into(busyMs, other.busyMs);
     for (final MapEntry(key: line, value: counts) in other.lines.entries) {
       into(lines[line] ??= List.filled(telegrams.length, 0), counts);
     }

@@ -15,7 +15,7 @@ import 'trigger.dart';
 
 /// Watcher: alerts with a sound and notification as soon as a group address is
 /// sent (optionally with a value). Same condition as the trigger recording
-/// ([TriggerConfig]); the JSON format is designed so that the KNX box and the
+/// ([TriggerConfig]); the JSON format is designed so that the Busclear Box and the
 /// add-on server can evaluate the same rules.
 class WatchRule {
   const WatchRule({

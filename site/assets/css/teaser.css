@@ -135,6 +135,8 @@ body.tz { overflow-x: clip; }
 
 /* Prices in the roadmap, under its text: name in mono capitals, the price
    large, Pro tinted like on the landing page. */
+/* .hz-feld-section p (Horizont) sets margin 0 and is more specific than the class alone. */
+.tz-section > div > .tz-prices-beta,
 .tz-prices-beta { margin: var(--s-24) 0 0; padding: var(--s-12); background: var(--accent-tint); border-radius: var(--r-6); }
 .tz-section--plan > div { min-width: 0; }
 .tz-prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr)); gap: var(--s-8); margin: var(--s-24) 0 0; }

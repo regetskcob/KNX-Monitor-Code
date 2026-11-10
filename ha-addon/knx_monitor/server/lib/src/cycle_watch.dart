@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:knx/knx.dart';
 
@@ -24,6 +26,13 @@ import 'recorder.dart';
 ///   at the next check.
 /// - Ignored addresses ([ignore]) are kept in `cycle_watch.json` of the
 ///   installation and come back by themselves once they send again.
+/// - Completed (packed) days are read once and kept as times per address,
+///   checked against the stamp of their `.gz` ([Recorder.packedDayStamp]).
+///   Each hourly check then only reads the open day; on a very full bus
+///   (100,000 telegrams a day) that saves unpacking six days every hour.
+/// - Days are read in a separate isolate ([readDayTimes]). Read on the main isolate, the first
+///   check after a start held up the bus for some 180 ms on a Pi 4 (10 Nov 2026): telegrams of
+///   two tap points got one late receive time and fell out of the merge window.
 class CycleWatch {
   CycleWatch(
     this.currentBus, {
@@ -57,6 +66,12 @@ class CycleWatch {
   /// Ignored address → time (µs) of its last telegram when it was ignored.
   final _ignored = <int, int>{};
 
+  /// Completed day → its stamp and the sender times (µs) per address.
+  final _days = <String, ({String stamp, Map<int, Int64List> times})>{};
+
+  /// Number of days read from disk so far (for tests).
+  int daysRead = 0;
+
   File _file(BusService bus) => File('${bus.data.path}/cycle_watch.json');
 
   /// First check soon after start (the history is read in the background),
@@ -87,19 +102,22 @@ class CycleWatch {
     final times = <int, List<int>>{};
     // Lines in the buffer count too.
     await bus.recorder.flush();
+    final wanted = <String>{};
     for (var d = DateTime(from.year, from.month, from.day); !d.isAfter(now); d = DateTime(d.year, d.month, d.day + 1)) {
-      final lines = await bus.recorder.dayLines(Recorder.dayName(d));
-      if (lines == null) continue;
-      await for (final line in lines) {
-        // Only the fields the rule needs, without decoding the whole line.
-        final t = int.tryParse(Recorder.field(line, 't') ?? '');
-        final ga = int.tryParse(Recorder.field(line, 'd') ?? '');
-        if (t == null || ga == null || t < start) continue;
-        // Read requests and our own telegrams say nothing about the sender.
-        if (Recorder.field(line, 'y') == '0' || line.contains('"o":true')) continue;
-        (times[ga] ??= []).add(t);
+      final day = Recorder.dayName(d);
+      wanted.add(day);
+      final dayTimes = await _dayTimes(bus.recorder, day);
+      if (dayTimes == null) continue;
+      for (final MapEntry(key: ga, value: list) in dayTimes.entries) {
+        // Days come in order, and within a day the lines too.
+        final into = times[ga] ??= [];
+        for (final t in list) {
+          if (t >= start) into.add(t);
+        }
+        if (into.isEmpty) times.remove(ga);
       }
     }
+    _days.removeWhere((day, _) => !wanted.contains(day));
     if (!identical(bus, currentBus())) return; // installation changed meanwhile
     _found
       ..clear()
@@ -116,8 +134,30 @@ class CycleWatch {
     if (changed) await _save(bus);
   }
 
+  /// Sender times per address of [day], from [_days] if the day is completed
+  /// and unchanged; `null` if the day does not exist.
+  Future<Map<int, Int64List>?> _dayTimes(Recorder recorder, String day) async {
+    final stamp = await recorder.packedDayStamp(day);
+    final cached = _days[day];
+    if (stamp != null && cached != null && cached.stamp == stamp) return cached.times;
+    final path = recorder.data.path;
+    final times = await Isolate.run(() => readDayTimes(path, day));
+    if (times == null) {
+      _days.remove(day);
+      return null;
+    }
+    daysRead++;
+    if (stamp != null) {
+      _days[day] = (stamp: stamp, times: times);
+    } else {
+      _days.remove(day);
+    }
+    return times;
+  }
+
   Future<void> _switchTo(BusService bus) async {
     _bus = bus;
+    _days.clear();
     _found.clear();
     _ignored.clear();
     try {
@@ -191,4 +231,22 @@ class CycleWatch {
     await _save(bus);
     return true;
   }
+}
+
+/// Sender times (µs) per group address of [day] in the history below [dataPath]; `null` if the
+/// day does not exist. Read requests and the server's own telegrams say nothing about a sender
+/// and are left out. Top level so that [Isolate.run] only captures the two texts.
+Future<Map<int, Int64List>?> readDayTimes(String dataPath, String day) async {
+  final lines = await Recorder(Directory(dataPath)).dayLines(day);
+  if (lines == null) return null;
+  final read = <int, List<int>>{};
+  await for (final line in lines) {
+    // Only the fields the rule needs, without decoding the whole line.
+    final t = int.tryParse(Recorder.field(line, 't') ?? '');
+    final ga = int.tryParse(Recorder.field(line, 'd') ?? '');
+    if (t == null || ga == null) continue;
+    if (Recorder.field(line, 'y') == '0' || line.contains('"o":true')) continue;
+    (read[ga] ??= []).add(t);
+  }
+  return {for (final MapEntry(:key, :value) in read.entries) key: Int64List.fromList(value)};
 }

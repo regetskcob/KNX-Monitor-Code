@@ -582,7 +582,9 @@ wb_site_build() {
   out="$PWD/build/site/$dir"
   rm -rf "$out"
   mkdir -p "$out"
-  hugo --quiet --source "$dir" --minify --baseURL "$url" --destination "$out" --cleanDestinationDir "$@" >/dev/null
+  # Runs in $(…), where set -e does not apply: report hugo's failure itself.
+  hugo --quiet --source "$dir" --minify --baseURL "$url" --destination "$out" --cleanDestinationDir "$@" >/dev/null ||
+    { warn "hugo failed for $dir"; return 1; }
   echo "$out"
 }
 
@@ -920,7 +922,7 @@ wb_site_deploy() {
       die "WB_SITES entry $entry: <name>=<folder>|<url>|<target>"
     fi
     say "Site $key ($folder → $target)"
-    out=$(wb_site_build "$folder" "$url")
+    out=$(wb_site_build "$folder" "$url") || die "site $key: build failed"
     if wb_has_hook "site_post_$key"; then "site_post_$key" "$out"; fi
     if ! $live; then
       say "Preview: $out/index.html (--live deploys to $target)"

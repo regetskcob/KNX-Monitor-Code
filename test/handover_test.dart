@@ -300,6 +300,44 @@ void main() {
       expect(installs.list.length, 2);
     });
 
+    // docs/keys.md: Die Anlage behält beim Kunden ihren Schlüssel.
+    test('Anlagenschlüssel reist mit; neueres Paket landet in derselben Anlage', () async {
+      const key = '0b6a1c1e-7d0e-4f6e-9a55-3f2a9c01be77';
+      HandoverPackage package(String id) => HandoverPackage(
+        id: id,
+        created: DateTime(2026, 11, 10),
+        installationName: 'Haus Muster',
+        contact: const PackageContact(name: 'Elektro Muster'),
+        origin: 'abc123',
+        key: key,
+        catalog: handoverCatalog(_catalog),
+      );
+      final mine = installs.active.id;
+      await CatalogStore.instance.adopt(_catalog, name: 'eigen.csv');
+      final first = await applyHandover(
+        await openHandover(package('paket-a').toFile(password: 'ABC'), password: 'ABC'),
+      );
+      expect(first.id, isNot(mine));
+      expect(first.key, key);
+      expect(HandoverStore.instance.origin?.key, key);
+      final second = await applyHandover(await openHandover(package('paket-b').toFile()));
+      expect(second.id, first.id);
+      expect(installs.list.length, 2);
+      // Die eigene Anlage hat mit dem Paket nichts zu tun.
+      expect(installs.byId(mine)!.key, isNot(key));
+    });
+
+    test('eigenes Paket auf dem eigenen Gerät überschreibt die Anlage nicht', () async {
+      await CatalogStore.instance.adopt(_catalog, name: 'eigen.csv');
+      final mine = installs.active;
+      final p = await openHandover((await buildHandover(includeKeys: false)).toFile());
+      expect(p.key, mine.key);
+      final copy = await applyHandover(p);
+      expect(copy.id, isNot(mine.id));
+      expect(copy.key, isNot(mine.key), reason: 'zwei Anlagen hier teilen keinen Schlüssel');
+      expect(installs.byKey(mine.key)!.id, mine.id);
+    });
+
     test('Korrigierte Namen kommen als Korrektur an, nicht als Projektname', () async {
       final store = CatalogStore.instance;
       await store.adopt(_catalog, name: 'eigen.csv');

@@ -15,6 +15,11 @@ export 'src/fault_hunt.dart';
 export 'src/free_space.dart';
 export 'src/grafana.dart';
 export 'src/ha.dart';
+export 'src/ha_knx_project.dart';
+export 'src/mcp_server.dart';
+export 'src/mcp_tools.dart';
+export 'src/project_evidence.dart';
+export 'src/project_lint.dart';
 export 'src/ha_history.dart';
 export 'src/ha_integration.dart';
 export 'src/ha_link.dart';
@@ -26,12 +31,15 @@ export 'src/key_figures.dart';
 
 export 'package:knx/knx.dart';
 
-export 'src/link.dart';
+export 'package:knx_io/knx_io.dart';
+
+export 'src/link_texts.dart';
 export 'src/lovelace_card.dart';
 export 'src/outbound.dart';
 export 'src/read_only.dart';
 export 'src/recorder.dart';
 export 'src/report.dart';
 export 'src/watchers.dart';
+export 'src/week_summary.dart';
 export 'src/telegram_json.dart';
 export 'src/relay_policy.dart';

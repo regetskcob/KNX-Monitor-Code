@@ -12,6 +12,7 @@ import '../export/telegram_files.dart';
 import '../knx/knx_tunnel.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
+import '../platform/addon.dart';
 import '../theme/tokens.dart';
 import '../model/analysis.dart';
 import '../model/expert_mode.dart';
@@ -39,6 +40,7 @@ import 'project_check_screen.dart';
 import 'statistics_screen.dart';
 import 'send_sheet.dart';
 import 'teach_in_screen.dart';
+import 'week_summary_card.dart';
 import 'weekly_report_screen.dart';
 import 'telegram_row.dart';
 import 'tool_shell.dart';
@@ -86,6 +88,7 @@ class LogView extends StatefulWidget {
     this.onReadStatus,
     this.initialTab = LogTab.overview,
     this.openAddress,
+    this.openTab,
   });
 
   final TelegramLog data;
@@ -121,6 +124,9 @@ class LogView extends StatefulWidget {
   /// Group addresses whose details are to be opened from outside (for example
   /// from a watcher's notification).
   final Stream<int>? openAddress;
+
+  /// Switches the view from outside (a lesson's "try it"); ignored where the tab is not shown.
+  final Stream<LogTab>? openTab;
 
   /// Control of the live view in the header (pause); on phones [floatingStart]
   /// floats instead.
@@ -202,9 +208,13 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
     _openSub = widget.openAddress?.listen((ga) {
       if (mounted) _openAddress(ga);
     });
+    _tabSub = widget.openTab?.listen((t) {
+      if (mounted && _tabs.contains(t)) setState(() => _tab = t);
+    });
   }
 
   StreamSubscription<int>? _openSub;
+  StreamSubscription<LogTab>? _tabSub;
 
   /// Whether the project hint above the overview was dismissed in this session.
   static bool _projectHintDismissed = false;
@@ -212,6 +222,7 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
   @override
   void dispose() {
     _openSub?.cancel();
+    _tabSub?.cancel();
     _throttled.dispose();
     _store.removeListener(_rebuild);
     ExpertMode.instance.removeListener(_rebuild);
@@ -811,6 +822,9 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
                     : HealthStatusLine(tunnel: widget.tunnel, onOpenHealth: widget.onReadStatus),
               ),
             ),
+            // Add-on and box: what the continuous recording says about the last seven days.
+            if (Addon.available && widget.tunnel != null && _tab == LogTab.overview)
+              Padding(padding: EdgeInsets.fromLTRB(gutter, 0, gutter, Gap.inner), child: const WeekSummaryCard()),
             // What is currently filtered, as chips; otherwise it is only visible
             // in the search field.
             AnimatedSize(

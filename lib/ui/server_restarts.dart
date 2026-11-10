@@ -45,7 +45,7 @@ class ServerRestartsLine extends StatelessWidget {
 
   final Map<String, Object?> restarts;
 
-  /// Whether the server runs on the KNX box (systemd restarts it); `null` if
+  /// Whether the server runs on the Busclear Box (systemd restarts it); `null` if
   /// not known (e.g. in the browser).
   final bool? box;
 

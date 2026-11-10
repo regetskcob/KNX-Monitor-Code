@@ -1,5 +1,5 @@
 name: Busclear
-version: "1.10.0"
+version: "1.11.0"
 slug: knx_monitor
 description: KNX bus monitor, continuous recording, health check and commissioning in the sidebar
 url: https://busclear.de
@@ -38,6 +38,7 @@ options:
   mqtt_secure_telegrams: false
   mqtt_raw: false
   mqtt_raw_only: false
+  mqtt_retain_values: false
   mqtt_filter: ""
   mqtt_installation: ""
 schema:
@@ -50,6 +51,7 @@ schema:
   mqtt_secure_telegrams: bool
   mqtt_raw: bool
   mqtt_raw_only: bool
+  mqtt_retain_values: bool
   mqtt_filter: str?
   mqtt_installation: str?
 ingress: true

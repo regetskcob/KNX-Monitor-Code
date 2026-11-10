@@ -196,9 +196,18 @@ packages:
   knx:
     dependency: "direct main"
     description:
-      path: "../../../packages/knx"
-      relative: true
-    source: path
+      name: knx
+      sha256: e8305bae24ef84c059b3a4afe4151570a59577c7c023bda37bad218f2f89f150
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.3"
+  knx_io:
+    dependency: "direct main"
+    description:
+      name: knx_io
+      sha256: "005371da9838cebb3014fccbcd57c66d060714936bd0ca30d23738a95cc8fa3e"
+      url: "https://pub.dev"
+    source: hosted
     version: "0.1.0"
   logging:
     dependency: transitive

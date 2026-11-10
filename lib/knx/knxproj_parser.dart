@@ -122,6 +122,9 @@ GroupCatalog parseKnxproj(Uint8List bytes, {String? password, String? ets6Passwo
   // Datapoint types of the associated objects per group address – fallback when the group address
   // itself has none (always in ETS4, often in ETS5/6).
   final objectDpts = <int, List<Dpt?>>{};
+  // The ETS notes the last download on the device; only when the export carries it at all does a
+  // missing value mean "never programmed".
+  final downloadKnown = doc.findAllElements('DeviceInstance').any((di) => di.getAttribute('LastDownload') != null);
   for (final di in doc.findAllElements('DeviceInstance')) {
     final address = _deviceAddress(di);
     if (address == null) continue;
@@ -136,6 +139,14 @@ GroupCatalog parseKnxproj(Uint8List bytes, {String? password, String? ets6Passwo
       location: locations[di.getAttribute('Id')],
       description: _nonEmpty(di.getAttribute('Description')),
       serial: _serial(di.getAttribute('SerialNumber')),
+      neverProgrammed: downloadKnown && _nonEmpty(di.getAttribute('LastDownload')) == null,
+      // The ETS writes the "…Loaded" flags only when a part is loaded.
+      pendingDownload: _nonEmpty(di.getAttribute('LastDownload')) == null
+          ? const []
+          : [
+              for (final (part, attribute) in _loadedAttributes)
+                if (di.getAttribute(attribute) != 'true') part,
+            ],
     );
 
     // Additional addresses of IP interfaces (tunnels) – otherwise "foreign".
@@ -220,6 +231,7 @@ GroupCatalog parseKnxproj(Uint8List bytes, {String? password, String? ets6Passwo
             // Without flags (application missing from the export): first address = sending.
             sends: i == 0 && (flag ?? true),
             flags: flags,
+            ref: app == null || refId.isEmpty ? null : (refId.startsWith('M-') ? refId : '${app}_$refId'),
           ),
         );
       }
@@ -665,6 +677,17 @@ String _unescape(String s) => s
     .replaceAll('&gt;', '>');
 
 /// Serial number from the ETS (Base64, 6 bytes) as 12 hex characters.
+const _loadedAttributes = [
+  (DownloadPart.address, 'IndividualAddressLoaded'),
+  (DownloadPart.application, 'ApplicationProgramLoaded'),
+  (DownloadPart.parameters, 'ParametersLoaded'),
+  (DownloadPart.groups, 'CommunicationPartLoaded'),
+  (DownloadPart.medium, 'MediumConfigLoaded'),
+];
+
+/// Serial number as stored by the ETS (Base64 of 6 bytes) → 12 hex characters.
+String? serialFromBase64(String? value) => _serial(value);
+
 String? _serial(String? value) {
   if (value == null || value.isEmpty) return null;
   try {
@@ -679,6 +702,9 @@ String? _serial(String? value) {
 /// Datapoint type from the associated communication objects – deliberately cautious: a wrong type
 /// decodes every telegram wrongly. Only if all objects that specify one name the same main type;
 /// the subtype only if it matches too.
+/// Datapoint type of a group address from its objects' types (see [_dptFromObjects]).
+Dpt? dptFromObjects(List<Dpt?>? candidates) => _dptFromObjects(candidates);
+
 Dpt? _dptFromObjects(List<Dpt?>? candidates) {
   final known = [...?candidates?.whereType<Dpt>()];
   if (known.isEmpty) return null;

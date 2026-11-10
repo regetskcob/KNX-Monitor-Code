@@ -71,6 +71,8 @@ class FullBackup {
       key.contains('auth-token') ||
       key.contains('account_') ||
       key.contains('device_id') ||
+      // Which box an installation was connected with (`InstallationStore.acceptBoxClaim`).
+      key.endsWith(':box_bound') ||
       key.startsWith('cloud_sync_') ||
       key.startsWith('flutter.cloud_sync_') ||
       key.contains('box_keyring_') ||

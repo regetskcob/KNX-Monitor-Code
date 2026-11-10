@@ -14,7 +14,8 @@ library;
 import 'dart:typed_data';
 
 import 'ha_link.dart';
-import 'link.dart';
+
+import 'package:knx_io/knx_io.dart';
 
 /// Text for log and view when a telegram is rejected.
 const readOnlyMessage = 'Nur-Lesen ist an: Der Server sendet nichts auf den Bus.';

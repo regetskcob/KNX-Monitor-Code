@@ -66,7 +66,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get catalogImported => 'importiert';
 
   @override
-  String get catalogHint => 'ETS-Projekt (.knxproj) oder Gruppenadressen-CSV für Namen, Datentypen & Geräte';
+  String get catalogHint =>
+      'ETS-Projekt (.knxproj), XKNX-Editor-Projekt (.xknx) oder Gruppenadressen-CSV für Namen, Datentypen & Geräte';
 
   @override
   String get catalogReplace => 'Ersetzen';
@@ -85,7 +86,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get catalogPickFile => 'Bitte eine .knxproj- oder .csv-Datei wählen.';
+  String get catalogPickFile => 'Bitte eine .knxproj-, .xknx- oder .csv-Datei wählen.';
 
   @override
   String get passwordTitle => 'Projektpasswort';
@@ -1055,7 +1056,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get filterHelpBody =>
-      'Leerzeichen = UND · Komma = ODER · -begriff = NICHT\n\n1/2/3 exakt · 1/2 Bereich · 1/*/3 oder 1/2/1* mit Platzhalter\n1.1.5 Absender · 1.1.* Linie · von:1.1.5\n\ntyp:w|r|a (Schreiben, Lesen, Antwort)\ndpt:9 oder dpt:9.001\nzeit:14:05 · zeit:14:05-14:10 (Uhrzeit, ohne das Ende)\nist:alarm · ist:wiederholt · ist:antwort · ist:projekt\nist:eigen · ist:fremd (selbst gesendet bzw. vom Bus)\n\nAlles andere sucht in Name, Bereich, Gerät und Wert – Umlaute egal (kuche findet Küche).\n\nMehrere ODER-Gruppen bekommen in der Liste je eine Farbe. „Kontext“ zeigt die Sekunden vor und nach jedem Treffer.\n\nBeispiele:\n1/*/* ist:antwort – unbeantwortete Leseanfragen in Hauptgruppe 1\nküche, bad -schalten – Küche oder Bad, ohne Schalten';
+      'Leerzeichen = UND · Komma = ODER · -begriff = NICHT\n\n1/2/3 exakt · 1/2 Bereich · 1/*/3 oder 1/2/1* mit Platzhalter\n1.1.5 Absender · 1.1.* Linie · von:1.1.5\n\ntyp:w|r|a (Schreiben, Lesen, Antwort)\ndpt:9 oder dpt:9.001\nzeit:14:05 · zeit:14:05-14:10 (Uhrzeit, ohne das Ende)\nist:alarm · ist:wiederholt · ist:antwort · ist:projekt\nist:eigen · ist:fremd (selbst gesendet bzw. vom Bus)\nmesspunkt:1.2 oder messpunkt:1.2|1.3 (gesehen an diesen Messpunkten) · ist:einzeln (nur an einem Messpunkt)\n\nAlles andere sucht in Name, Bereich, Gerät und Wert – Umlaute egal (kuche findet Küche).\n\nMehrere ODER-Gruppen bekommen in der Liste je eine Farbe. „Kontext“ zeigt die Sekunden vor und nach jedem Treffer.\n\nBeispiele:\n1/*/* ist:antwort – unbeantwortete Leseanfragen in Hauptgruppe 1\nküche, bad -schalten – Küche oder Bad, ohne Schalten';
 
   @override
   String get checkTitle => 'Projekt-Abgleich';
@@ -9318,6 +9319,11 @@ class AppLocalizationsDe extends AppLocalizations {
       'Auch KNX-Secure-Telegramme gehen entschlüsselt hinaus. Jeder, der den Broker lesen kann, sieht ihre Werte.';
 
   @override
+  String dataExportMqttRetain(int count) {
+    return 'Letzter Wert je Adresse unter knx_monitor/value/… mit retain, $count Werte gesendet.';
+  }
+
+  @override
   String dataExportMqttDetails(String mode, String filter, int seq) {
     String _temp0 = intl.Intl.selectLogic(mode, {
       'raw': 'Mit Rohdaten',
@@ -9389,6 +9395,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get tapDownHint => 'Die anderen laufen weiter. Der getrennte verbindet sich von selbst neu.';
 
   @override
+  String tapSilent(String name) {
+    return 'Verbunden, aber hier kommt nichts an: $name';
+  }
+
+  @override
+  String get tapSilentHint =>
+      'Bei Routing gibt es im Netz oft keinen IP-Router (Tunnel-Schnittstellen leiten kein Routing weiter). Sonst Linie und Filtertabelle des Kopplers prüfen.';
+
+  @override
   String get detailsPath => 'Weg durch die Anlage';
 
   @override
@@ -9398,9 +9413,402 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String detailsPathFirst(int hop) {
-    return 'zuerst · Hop $hop';
+    return 'Ursprung · Hop $hop';
   }
 
   @override
   String get detailsPathMissing => 'nicht gesehen, gefiltert oder nur lokal';
+
+  @override
+  String get projectXknxInvalid => 'Keine lesbare Projektdatei des XKNX Editors (.xknx).';
+
+  @override
+  String get checkDevicesNeverProgrammed => 'Geräte nie programmiert';
+
+  @override
+  String get checkDevicesNeverProgrammedHint =>
+      'Laut Projekt wurde auf diese Geräte noch nie ein Download gemacht: noch nicht in Betrieb genommen oder gar nicht verbaut. Prüfen, ob sie antworten, dann programmieren oder aus dem Projekt löschen.';
+
+  @override
+  String get checkDevicesPendingDownload => 'Download ausstehend';
+
+  @override
+  String get checkDevicesPendingDownloadHint =>
+      'Im Projekt nach dem letzten Download geändert, aber noch nicht ins Gerät geladen (wie Adr/Prg/Par/Grp/Kfg in der ETS). Bis zum Programmieren arbeitet das Gerät mit dem alten Stand.';
+
+  @override
+  String get downloadPartAddress => 'Adresse';
+
+  @override
+  String get downloadPartApplication => 'Applikation';
+
+  @override
+  String get downloadPartParameters => 'Parameter';
+
+  @override
+  String get downloadPartGroups => 'Gruppenadressen';
+
+  @override
+  String get downloadPartMedium => 'Medium';
+
+  @override
+  String get xknxEditorTitle => 'An XKNX Editor übergeben';
+
+  @override
+  String get xknxEditorText =>
+      'Busclear übergibt Korrekturen (Datentypen, Namen, neue Adressen, K- und L-Flags) und schreibt die übrigen Befunde als Kommentar an Adressen und Geräte. Programmiert wird nichts; im Editor lässt sich alles rückgängig machen.';
+
+  @override
+  String xknxEditorSummary(int corrections, int notes) {
+    return '$corrections Korrekturen, $notes Notizen';
+  }
+
+  @override
+  String get xknxEditorNothing => 'Nichts zu übergeben: keine Aufgaben aus der Projektprüfung.';
+
+  @override
+  String get xknxEditorEndpoint => 'Adresse des MCP-Servers';
+
+  @override
+  String get xknxEditorToken => 'Bearer-Token (optional)';
+
+  @override
+  String get xknxEditorConnectionHint =>
+      'Im XKNX Editor unter Einstellungen › KI/MCP den Server starten; Adresse und Token stehen dort.';
+
+  @override
+  String get xknxEditorSend => 'Übergeben';
+
+  @override
+  String get xknxEditorSaveFile => 'Als Datei speichern';
+
+  @override
+  String get xknxEditorFile => 'XKNX-Editor-Aufgaben';
+
+  @override
+  String get xknxEditorNoProject => 'Im XKNX Editor ist kein Projekt geöffnet.';
+
+  @override
+  String xknxEditorOtherProject(String editor, String busclear) {
+    return 'Im Editor ist „$editor“ geöffnet, in Busclear „$busclear“. Trotzdem übergeben?';
+  }
+
+  @override
+  String xknxEditorUnreachable(String error) {
+    return 'XKNX Editor nicht erreichbar: $error';
+  }
+
+  @override
+  String get xknxEditorUnauthorized => 'Der Editor verlangt ein Token (Einstellungen › KI/MCP).';
+
+  @override
+  String xknxEditorDone(int corrections, int notes) {
+    return '$corrections Korrekturen übernommen, $notes Notizen geschrieben. Geänderte Geräte im Editor programmieren.';
+  }
+
+  @override
+  String get xknxEditorFailed => 'Nicht übernommen:';
+
+  @override
+  String get xknxEditorPreview => 'Mit Projekt vergleichen (XKNX Editor)';
+
+  @override
+  String get xknxEditorPreviewSame => 'Gerät entspricht dem Projekt im Editor.';
+
+  @override
+  String xknxEditorPreviewDiff(int bytes) {
+    return 'Ein Download würde $bytes Byte der Konfiguration ändern: Gerät und Projekt weichen ab.';
+  }
+
+  @override
+  String get xknxEditorPreviewHint =>
+      'Liest das Gerät über die Busverbindung des Editors und schreibt nichts. Kann je nach Gerät einige Minuten dauern.';
+
+  @override
+  String get xknxNoteNeverProgrammed => 'Nie programmiert: laut Projekt noch kein Download auf dieses Gerät.';
+
+  @override
+  String get catalogFromHomeAssistant => 'Aus Home Assistant';
+
+  @override
+  String get catalogFromHomeAssistantTooltip =>
+      'Projekt der KNX-Integration übernehmen (dort hochgeladen oder vom XKNX Editor gesendet)';
+
+  @override
+  String get catalogHaNoProject =>
+      'Die KNX-Integration von Home Assistant hat kein Projekt. Im KNX-Panel ein Projekt hochladen oder es aus dem XKNX Editor senden.';
+
+  @override
+  String catalogHaFailed(String error) {
+    return 'Projekt aus Home Assistant nicht abrufbar: $error';
+  }
+
+  @override
+  String get xknxEditorInsecure =>
+      'Den Token schickt Busclear nur über HTTPS oder an diesen Rechner. Für einen anderen Rechner im Netz den Editor mit HTTPS betreiben.';
+
+  @override
+  String get aiAccessTitle => 'KI-Zugriff (MCP)';
+
+  @override
+  String get aiAccessMeta => 'Verlauf, Befunde und Projektprüfung für KI-Werkzeuge';
+
+  @override
+  String get aiAccessText =>
+      'KI-Werkzeuge wie Claude lesen über das Model Context Protocol den aufgezeichneten Bus, die Befunde und die Projektprüfung und können zusammen mit dem XKNX Editor Korrekturen vorschlagen. Busclear sendet dabei nichts auf den Bus und ändert nichts.';
+
+  @override
+  String get aiAccessEnable => 'KI-Zugriff erlauben';
+
+  @override
+  String get aiAccessReadOnly => 'Nur lesen, mit Token';
+
+  @override
+  String get aiAccessPrivacy =>
+      'Wer den Token hat, liest den ganzen Verlauf, aus dem sich Anwesenheit ablesen lässt. Token nur in eigenen Werkzeugen eintragen und bei Verdacht erneuern. Im Add-on geht die Verbindung im Heimnetz unverschlüsselt (HTTP); die Box nutzt HTTPS.';
+
+  @override
+  String get aiAccessEndpoint => 'Adresse';
+
+  @override
+  String get aiAccessToken => 'Token';
+
+  @override
+  String get aiAccessCommand => 'Für Claude Code';
+
+  @override
+  String get aiAccessCopyCommand => 'Befehl kopieren';
+
+  @override
+  String get aiAccessRenew => 'Neuen Token erzeugen';
+
+  @override
+  String get aiAccessCopied => 'Kopiert';
+
+  @override
+  String checkSectionEvidence(int days) {
+    return 'Projekt gegen Bus ($days Tage)';
+  }
+
+  @override
+  String get checkUnexpectedSenders => 'Gerät sendet anders als im Projekt';
+
+  @override
+  String get checkUnexpectedSendersHint =>
+      'Diese Geräte senden auf Adressen, auf denen sie laut Projekt nicht senden. Das Gerät trägt dann nicht den Projektstand: nach dem letzten Download geändert, getauscht oder das Projekt ist veraltet. Mit dem XKNX Editor vergleichen (Diagnose › Mit Projekt vergleichen).';
+
+  @override
+  String checkUnexpectedSenderRow(String group) {
+    return 'sendet auf $group';
+  }
+
+  @override
+  String get checkNoFeedback => 'Befehl ohne Rückmeldung';
+
+  @override
+  String get checkNoFeedbackHint =>
+      'Auf Befehle antwortet der Status desselben Kanals selten oder nie innerhalb von 5 Sekunden. Mögliche Ursachen: Aktor führt nicht aus, Filtertabelle, ausstehender Download, oder der Aktor meldet nur bei einer Änderung.';
+
+  @override
+  String checkNoFeedbackRow(String status, String device, int answered, int commands) {
+    return 'Status $status von $device: $answered von $commands beantwortet';
+  }
+
+  @override
+  String get checkSendersConfirmed => 'Mehrere Sender, im Verlauf bestätigt';
+
+  @override
+  String get checkSendersConfirmedHint =>
+      'Von den Adressen mit mehreren Sendern im Projekt haben hier wirklich mehrere gesendet. Bei Reglern oder Stellwerten überschreiben sie sich gegenseitig.';
+
+  @override
+  String get checkReadsUnanswered => 'Leseanfragen ohne Antwort';
+
+  @override
+  String get checkReadsUnansweredHint =>
+      'Statusadressen ohne L-Flag, die im Verlauf gelesen wurden: so oft blieb die Antwort aus.';
+
+  @override
+  String checkReadsRow(int reads, int answered) {
+    return '$reads Leseanfragen, $answered beantwortet';
+  }
+
+  @override
+  String get checkDptSuggestions => 'Datentyp aus dem Verlauf';
+
+  @override
+  String get checkDptSuggestionsHint =>
+      'Für Adressen ohne Datentyp schlägt Busclear einen vor, aus Länge und Werten der Telegramme und dem Namen. „Sicher“ heißt: eindeutige Länge und passender Name. Über „An XKNX Editor übergeben“ oder in der ETS eintragen.';
+
+  @override
+  String get checkDptSure => 'sicher';
+
+  @override
+  String get checkDptLikely => 'wahrscheinlich';
+
+  @override
+  String get checkLongStates => 'Zustand ungewöhnlich lange gleich';
+
+  @override
+  String get checkLongStatesHint =>
+      'Kontakt- oder Alarmadressen, die über Tage immer wieder 1 senden, ohne je zu wechseln, etwa „gekippt“ bei geschlossenem Fenster. Kontakt klemmt oder die Polarität ist falsch eingestellt.';
+
+  @override
+  String checkLongStateRow(String days, int count) {
+    return 'seit $days Tagen 1, $count Telegramme';
+  }
+
+  @override
+  String get checkNightActivity => 'Auslösungen in der Nacht';
+
+  @override
+  String get checkNightActivityHint =>
+      'Präsenz- oder Bewegungsmelder, die in den meisten Nächten zwischen 0 und 5 Uhr auslösen. Sieht der Melder in ein Schlafzimmer, reagiert er auf ein Haustier, oder ist er zu empfindlich?';
+
+  @override
+  String checkNightRow(int nights, int recorded, String per) {
+    return 'in $nights von $recorded Nächten, $per Auslösungen je Nacht';
+  }
+
+  @override
+  String get xknxEditorCompareAll => 'Alle Geräte vergleichen';
+
+  @override
+  String get xknxEditorCompareAllHint =>
+      'Der Editor liest jedes programmierte Gerät über seine Busverbindung und vergleicht es mit dem Projekt. Schreibt nichts, belastet aber den Bus und dauert je Gerät bis zu einigen Minuten: am besten abends oder nachts laufen lassen.';
+
+  @override
+  String xknxEditorCompareProgress(int done, int total, String device) {
+    return '$done von $total: $device';
+  }
+
+  @override
+  String xknxEditorCompareResult(int differ, int total, int failed) {
+    return '$differ von $total Geräten weichen vom Projekt ab, $failed nicht erreichbar.';
+  }
+
+  @override
+  String get xknxEditorCompareStop => 'Anhalten';
+
+  @override
+  String xknxNoteDptLikely(String dpt) {
+    return 'Datentyp laut Verlauf wahrscheinlich $dpt: prüfen und setzen.';
+  }
+
+  @override
+  String get shareSaveAs => 'Sichern unter …';
+
+  @override
+  String get shareShare => 'Teilen …';
+
+  @override
+  String outageTap(String name, String duration) {
+    return 'Messpunkt $name $duration nicht erreichbar';
+  }
+
+  @override
+  String get topoTapPoint => 'Messpunkt';
+
+  @override
+  String topoFilterBlocked(String ga, String name, String from, String to, int count) {
+    return '$ga $name kommt von Linie $from nicht in Linie $to an ($count Telegramme), obwohl dort Geräte darauf hören. Filtertabelle des Kopplers prüfen.';
+  }
+
+  @override
+  String topoFilterLeaked(String ga, String name, String from, String to, int count) {
+    return '$ga $name kommt von Linie $from in Linie $to an ($count Telegramme), obwohl dort niemand darauf hört.';
+  }
+
+  @override
+  String get busMetricLoad => 'Buslast';
+
+  @override
+  String weekSumTitle(int days) {
+    return 'Letzte $days Tage';
+  }
+
+  @override
+  String get weekSumAllGood => 'Der Bus lief unauffällig.';
+
+  @override
+  String weekSumHints(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count Hinweise', one: 'ein Hinweis');
+    return 'Der Bus lief stabil, $_temp0 für die Anlage.';
+  }
+
+  @override
+  String get weekSumWarn => 'Es gab Auffälligkeiten, die du dir ansehen solltest.';
+
+  @override
+  String get weekSumPerDay => 'Telegramme/Tag';
+
+  @override
+  String get weekSumLoad => 'Buslast Ø / max';
+
+  @override
+  String get weekSumAvailability => 'Aufzeichnung';
+
+  @override
+  String get weekSumRepeatsLabel => 'Wiederholungen';
+
+  @override
+  String weekSumMore(int count) {
+    return '$count weitere';
+  }
+
+  @override
+  String get weekSumLess => 'Weniger';
+
+  @override
+  String weekSumClocks(String senders, String groups, String share) {
+    return 'Mehrere Zeitgeber: $senders senden Datum/Uhrzeit auf $groups, zusammen $share des Verkehrs. Einer, alle 10 bis 60 Minuten, reicht.';
+  }
+
+  @override
+  String weekSumMultiResponders(String groups, int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: ' ($count Adressen)', one: '');
+    return 'Auf Leseanfragen antworten mehrere Geräte: $groups$_temp0. Das L-Flag gehört nur an den Sender.';
+  }
+
+  @override
+  String weekSumReadStorms(String sender, int perMinute) {
+    return '$sender liest viele Adressen auf einmal, bis $perMinute Leseanfragen je Minute (z. B. Statusabgleich von Home Assistant).';
+  }
+
+  @override
+  String weekSumChatty(String groups) {
+    return 'Sehr häufig gesendet: $groups. Eine höhere Sendeschwelle entlastet den Bus.';
+  }
+
+  @override
+  String weekSumSilent(String devices, int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: ' ($count Geräte)', one: '');
+    return 'Ohne Telegramm: $devices$_temp0.';
+  }
+
+  @override
+  String weekSumUnknown(String senders) {
+    return 'Absender nicht im Projekt: $senders.';
+  }
+
+  @override
+  String weekSumRepeats(int count, String share) {
+    return '$count Wiederholungen ($share): Quittungen fehlen, Leitung oder Gerät prüfen.';
+  }
+
+  @override
+  String weekSumLoadHigh(String max) {
+    return 'Buslast zeitweise hoch, bis $max in einer Minute.';
+  }
+
+  @override
+  String weekSumDisconnected(int count, int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count-mal', one: 'einmal');
+    return 'Die Busverbindung brach $_temp0 ab, zusammen $minutes min.';
+  }
+
+  @override
+  String weekSumTapGaps(String taps, int minutes) {
+    return 'Messpunkt $taps war zeitweise nicht erreichbar, zusammen $minutes min.';
+  }
 }

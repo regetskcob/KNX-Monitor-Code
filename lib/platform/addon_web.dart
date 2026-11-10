@@ -144,5 +144,5 @@ Future<Uint8List?> addonDownload(String path, String fileName, {Duration? timeou
 /// In the browser the app only talks to the server that delivers it.
 Future<bool> addonReachable(BoxLink link) async => true;
 
-Future<String> addonPairBox(BoxLink link, String password, String deviceName) =>
+Future<String> addonPairBox(BoxLink link, String password, String deviceName, {String? app}) =>
     throw const AddonException('Nur in der App');

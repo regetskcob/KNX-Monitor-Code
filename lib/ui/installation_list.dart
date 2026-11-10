@@ -19,7 +19,7 @@ import 'customers_screen.dart';
 import 'handover_screen.dart';
 import 'plan_screen.dart';
 
-/// Switches to the installation; switches the KNX box along with it (which then
+/// Switches to the installation; switches the Busclear Box along with it (which then
 /// records there).
 Future<void> _useInstallation(String id) {
   final store = InstallationStore.instance;

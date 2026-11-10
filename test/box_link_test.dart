@@ -135,6 +135,8 @@ void main() {
           return;
         }
         if (request.uri.path == '/ws/bus') {
+          // Not closed on purpose: the test server closes it with the request.
+          // ignore: close_sinks
           final ws = await WebSocketTransformer.upgrade(request);
           ws.add([
             0x02,

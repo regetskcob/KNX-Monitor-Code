@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:knx_monitor/catalog_store.dart';
-import 'package:knx_monitor/knx/dpt_guess.dart';
 import 'package:knx_monitor/knx/group_catalog.dart';
 import 'package:knx_monitor/knx/telegram.dart';
 import 'package:knx_monitor/l10n/locale_controller.dart';

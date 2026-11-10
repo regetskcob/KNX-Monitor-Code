@@ -219,6 +219,14 @@ class MqttBridge {
 
   Map<String, Object?>? _lastTelegram;
 
+  /// Last values sent to `knx_monitor/value/…` ([TelegramStream.retainValues]).
+  int valuesSent = 0;
+
+  /// Group address → payload (hex) last sent to its value topic, for the bus
+  /// in [_valuesOf]; a new installation starts empty.
+  final _lastValues = <int, String>{};
+  BusService? _valuesOf;
+
   /// Upper limit of telegrams sent per second. A TP line carries about 50; the
   /// cap keeps a flood (forged routing frames, a looping device) from filling
   /// the broker connection's send buffer. Beyond it telegrams count as dropped.
@@ -407,10 +415,29 @@ class MqttBridge {
       sink.publish(topic, payload, atMostOnce: true);
       telegramsSent++;
       _lastTelegram = {'topic': topic, 'payload': payload};
+      if (stream.retainValues) _retainValue(stream, bus, line, payload, sink);
     } on Object catch (_) {
       // A broker hiccup must not disturb the recording.
       telegramsDropped++;
     }
+  }
+
+  /// "Keep last value": [payload] once more, retained, to the value topic of
+  /// the address, if the telegram carries a value that differs from the last
+  /// one sent there. Read requests carry none.
+  void _retainValue(TelegramStream stream, BusService? bus, Map<String, Object?> line, String payload, MqttSink sink) {
+    final group = line['d'];
+    final type = line['y'];
+    if (group is! int || type is! int || type == 0) return;
+    if (!identical(bus, _valuesOf)) {
+      _valuesOf = bus;
+      _lastValues.clear();
+    }
+    final value = '${line['m'] == true ? 's' : ''}${line['x'] ?? ''}';
+    if (_lastValues[group] == value) return;
+    _lastValues[group] = value;
+    sink.publish(stream.valueTopic(group), payload, retain: true);
+    valuesSent++;
   }
 
   /// The active bus, `null` where there is none (tests).
@@ -461,6 +488,8 @@ class MqttBridge {
       'repeats': t.repeats,
       'raw': t.raw,
       'rawOnly': t.rawOnly,
+      'retainValues': t.retainValues,
+      'valuesSent': valuesSent,
       'filter': t.filter.text,
       'boot': boot,
       'seq': telegramSeq,
@@ -474,8 +503,15 @@ class MqttBridge {
   Future<void> _onMessage((String, String) m) async {
     final (topic, payload) = m;
     if (topic == '$base/recording/set') {
-      final on = payload.trim().toUpperCase() == 'ON';
-      await currentBus().update({'enabled': on});
+      // Only ON and OFF: anything else used to switch the recording off. Every change is logged,
+      // because anyone on the broker can send it (security review, 07.11.).
+      final command = payload.trim().toUpperCase();
+      if (command != 'ON' && command != 'OFF') {
+        stderr.writeln('MQTT: recording/set mit "$command" ignoriert (nur ON oder OFF)');
+        return;
+      }
+      stdout.writeln('MQTT: Aufzeichnung über recording/set ${command == 'ON' ? 'eingeschaltet' : 'ausgeschaltet'}');
+      await currentBus().update({'enabled': command == 'ON'});
       _publishState();
     } else if (topic == '$_discovery/status' && payload.trim() == 'online') {
       await announce();

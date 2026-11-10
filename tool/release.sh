@@ -115,7 +115,7 @@ cmd_smoke() {
     say "Starting the podman machine"
     podman machine start >/dev/null
   fi
-  say "Web app and packages for the image"
+  say "Web app for the image"
   tool/build_ha_addon.sh >/dev/null
   say "Building $SMOKE_IMAGE ($engine)"
   "$engine" build -q -t "$SMOKE_IMAGE" ha-addon/knx_monitor >/dev/null
@@ -185,8 +185,13 @@ cmd_addon() {
   say "Updating public repository – Home Assistant now offers $v"
   tool/sync_public.sh "addon-v$v" --push
   say "Creating GitHub release"
+  # SBOM of the server (CycloneDX, tool/sbom.py) as a release file: what is inside, for the CRA.
+  local sbom; sbom=$(mktemp -d)
+  python3 tool/sbom.py "$sbom" >/dev/null
   # --latest=false: "latest" stays the app release (desktop downloads link there).
-  gh release create "addon-v$v" -R "$PUBLIC_REPO" --title "Home Assistant add-on $v" --notes "$notes" --latest=false >/dev/null
+  gh release create "addon-v$v" -R "$PUBLIC_REPO" --title "Home Assistant add-on $v" --notes "$notes" --latest=false \
+    "$sbom/busclear-server.cdx.json" >/dev/null
+  rm -rf "$sbom"
 }
 
 cmd_verify_images() {
@@ -382,7 +387,9 @@ cmd_desktop() {
   mkdir -p "$tmp/out"
   (cd "$tmp/linux" && tar -xzf knx-monitor-linux-x64.tar.gz && cp "$OLDPWD/tool/public-repo/LICENSE" bundle/LICENSE.txt &&
     tar -czf "$tmp/out/knx-monitor-$name-linux-x64.tar.gz" bundle)
-  (cd "$tmp/out" && shasum -a 256 ./*.tar.gz | sed 's| \./| |' >SHA256SUMS.txt)
+  # SBOM of the app (CycloneDX, tool/sbom.py), covered by SHA256SUMS.txt as well.
+  python3 tool/sbom.py "$tmp/sbom" >/dev/null && cp "$tmp/sbom/busclear-app.cdx.json" "$tmp/out/"
+  (cd "$tmp/out" && shasum -a 256 ./*.tar.gz ./*.cdx.json | sed 's| \./| |' >SHA256SUMS.txt)
   say "Creating public release app-v$v"
   gh release create "app-v$v" -R "$PUBLIC_REPO" --title "Busclear $name" --latest \
     --notes "Linux build of Busclear $name: unpack and run \`./install.sh\` in the \`bundle\` folder: it installs Busclear to \`~/.local/opt/knx-monitor\` and adds it with its icon to the app menu, then the download can go. For an update, do the same with the new version. Step by step (German and English): \`README.txt\` in the \`bundle\` folder. Windows, iPhone, iPad, Mac and Android follow (App Store, Google Play)." \

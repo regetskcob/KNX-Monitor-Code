@@ -40,6 +40,13 @@ class MultiTunnel extends KnxTunnel {
     for (var i = 0; i < windows.length; i++) {
       if (windows[i] case final w?) _merger.windows[i] = w;
     }
+    _meter = TapWindowMeter(
+      current: (tap) => _merger.windows[tap] ?? _merger.window,
+      auto: {
+        for (var i = 0; i < children.length; i++)
+          if (i >= windows.length || windows[i] == null) i,
+      },
+    );
     for (var i = 0; i < children.length; i++) {
       final c = children[i];
       _subs.add(c.telegrams.listen((t) => _onTelegram(i, t)));
@@ -59,6 +66,12 @@ class MultiTunnel extends KnxTunnel {
   final List<Duration> retryDelays;
 
   final _merger = TapMerger();
+  final _silence = TapSilence();
+  late final TapWindowMeter _meter;
+
+  /// Windows widened by measurement ([TapWindowMeter]), by tap point.
+  final _autoWindows = <int, Duration>{};
+  final _live = <int>{};
   final _subs = <StreamSubscription<Telegram>>[];
   final _retry = <int, Timer>{};
   final _attempts = <int, int>{};
@@ -95,15 +108,23 @@ class MultiTunnel extends KnxTunnel {
 
   void _onTelegram(int tap, Telegram t) {
     if (_disposed) return;
+    if (children.length > 1 && _silence.heard(tap)) _update();
     _emit(_merger.add(tap, t));
     _scheduleFlush();
   }
 
   void _emit(List<Telegram> ready) {
     if (_disposed) return;
+    var widened = false;
     for (final t in ready) {
+      if (_meter.released(t) case (final tap, final window)?) {
+        _merger.windows[tap] = window;
+        _autoWindows[tap] = window;
+        widened = true;
+      }
       inject(t);
     }
+    if (widened) _update();
   }
 
   void _scheduleFlush() {
@@ -120,6 +141,11 @@ class MultiTunnel extends KnxTunnel {
 
   void _update() {
     if (_disposed) return;
+    for (var i = 1; i < children.length; i++) {
+      final up = children[i].state.value == TunnelState.connected;
+      if (up && _live.add(i)) _silence.connected(i);
+      if (!up && _live.remove(i)) _silence.disconnected(i);
+    }
     final list = [
       for (var i = 0; i < children.length; i++)
         TapStatus(
@@ -129,6 +155,8 @@ class MultiTunnel extends KnxTunnel {
           state: children[i].state.value,
           error: children[i].error.value,
           paused: _paused.contains(i),
+          silent: _silence.silent(i),
+          autoWindow: _autoWindows[i],
         ),
     ];
     tapPoints.value = list;

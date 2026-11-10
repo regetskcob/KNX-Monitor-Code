@@ -25,6 +25,8 @@ import '../model/device_art.dart';
 import '../model/device_shapes.dart';
 import '../model/object_groups.dart';
 import '../model/telegram_log.dart';
+import '../model/tap_coverage.dart';
+import '../model/tap_points.dart';
 import '../model/topology.dart';
 import '../theme/app_icons.dart';
 import '../theme/tokens.dart';
@@ -59,6 +61,10 @@ class TopologyScreen extends StatefulWidget {
 class _TopologyScreenState extends State<TopologyScreen> {
   late Topology _topo = _build();
   late _Live _live = _liveOf(_topo);
+  late TapCoverage? _coverage = _coverageOf();
+
+  /// With tap points in several lines: coverage and the couplers' filter tables, live (#8).
+  TapCoverage? _coverageOf() => TapCoverage.build(CatalogStore.instance.catalog, widget.log.log, tapLabels.value);
   Timer? _refresh;
   CouplerCheckRun? _check;
   int _checked = 0;
@@ -103,6 +109,7 @@ class _TopologyScreenState extends State<TopologyScreen> {
     setState(() {
       _topo = _build();
       _live = _liveOf(_topo);
+      _coverage = _coverageOf();
     });
   }
 
@@ -390,6 +397,7 @@ class _TopologyScreenState extends State<TopologyScreen> {
           line: line,
           bins: _live.lineBins[line.line] ?? const [],
           gateway: line.line == _topo.gatewayLine,
+          tapPoint: _coverage?.lines.contains(line.line) ?? false,
           showTitle: false,
         ),
         // Couplers of the line above the long device list, reachable without scrolling.
@@ -556,7 +564,14 @@ class _TopologyScreenState extends State<TopologyScreen> {
     final detail = ListView(
       padding: Gap.page,
       children: [
-        _Lines(topo: topo, log: widget.log, bins: _live.lineBins, selected: _coupler?.$1, onCoupler: _selectCoupler),
+        _Lines(
+          topo: topo,
+          log: widget.log,
+          bins: _live.lineBins,
+          tapLines: _coverage?.lines ?? const {},
+          selected: _coupler?.$1,
+          onCoupler: _selectCoupler,
+        ),
         const SizedBox(height: Gap.section),
         below,
       ],
@@ -638,7 +653,13 @@ class _TopologyScreenState extends State<TopologyScreen> {
             ],
           ),
         );
-        final issues = _Issues(topo: topo, flat: stacked, onGroup: _openGroup, onDevice: _openDevice);
+        final issues = _Issues(
+          topo: topo,
+          coverage: _coverage,
+          flat: stacked,
+          onGroup: _openGroup,
+          onDevice: _openDevice,
+        );
         if (stacked || area.maxWidth < 2 * Widths.column + Gap.section) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -874,9 +895,19 @@ class _TreeRow extends StatelessWidget {
 
 /// Lines as cards, connected via their couplers; the gateway line first.
 class _Lines extends StatelessWidget {
-  const _Lines({required this.topo, required this.log, required this.bins, required this.onCoupler, this.selected});
+  const _Lines({
+    required this.topo,
+    required this.log,
+    required this.bins,
+    required this.onCoupler,
+    this.tapLines = const {},
+    this.selected,
+  });
 
   final Topology topo;
+
+  /// Lines with a tap point (issue #8).
+  final Set<int> tapLines;
 
   /// Traffic for the coupler graphics (traffic LEDs, pulse on the wires).
   final TelegramLog log;
@@ -901,7 +932,12 @@ class _Lines extends StatelessWidget {
         final perRow = ((c.maxWidth + HzSpace.s64) / (minCard + HzSpace.s64)).floor().clamp(1, 4);
         final cards = [
           for (final l in lines)
-            _LineCard(line: l, bins: bins[l.line] ?? const [], gateway: l.line == topo.gatewayLine),
+            _LineCard(
+              line: l,
+              bins: bins[l.line] ?? const [],
+              gateway: l.line == topo.gatewayLine,
+              tapPoint: tapLines.contains(l.line),
+            ),
         ];
         // Noch keine Linie (kein Projekt, kein Verkehr): Hinweis statt Reihe.
         if (lines.isEmpty) {
@@ -1158,7 +1194,16 @@ class _LinkState extends State<_Link> {
 
 /// Key figures of a line as a green box, its history on the right.
 class _LineCard extends StatelessWidget {
-  const _LineCard({required this.line, required this.bins, required this.gateway, this.showTitle = true});
+  const _LineCard({
+    required this.line,
+    required this.bins,
+    required this.gateway,
+    this.tapPoint = false,
+    this.showTitle = true,
+  });
+
+  /// A tap point measures in this line (issue #8): what stays in it is seen.
+  final bool tapPoint;
 
   /// History of the line within the time span of the activity bar.
   final List<int> bins;
@@ -1176,7 +1221,11 @@ class _LineCard extends StatelessWidget {
     return SectionCard(
       soft: true,
       title: showTitle ? s.topoLine(formatLine(line.line)) : null,
-      trailing: gateway ? HorizontBadge(HorizontStatus.info, label: s.topoGatewayHere) : null,
+      trailing: gateway
+          ? HorizontBadge(HorizontStatus.info, label: s.topoGatewayHere)
+          : tapPoint
+          ? HorizontBadge(HorizontStatus.positive, label: s.topoTapPoint)
+          : null,
       child: FigureRow(
         figures: [
           // Project and observed devices together, like the list below; active
@@ -1637,9 +1686,12 @@ class _CrossRow extends StatelessWidget {
 }
 
 class _Issues extends StatelessWidget {
-  const _Issues({required this.topo, this.flat = false, this.onGroup, this.onDevice});
+  const _Issues({required this.topo, this.coverage, this.flat = false, this.onGroup, this.onDevice});
 
   final Topology topo;
+
+  /// Filter table findings from tap points in several lines.
+  final TapCoverage? coverage;
 
   /// Opens the address or device of the anomaly.
   final ValueChanged<int>? onGroup;
@@ -1663,6 +1715,28 @@ class _Issues extends StatelessWidget {
         (
           s.topoUnneeded(formatGroup(ga), store.info(ga)?.name ?? '', count),
           onGroup == null ? null : () => onGroup!(ga),
+        ),
+      for (final f in coverage?.blocked ?? const <FilterFinding>[])
+        (
+          s.topoFilterBlocked(
+            formatGroup(f.group),
+            store.info(f.group)?.name ?? '',
+            formatLine(f.from),
+            formatLine(f.to),
+            f.count,
+          ),
+          onGroup == null ? null : () => onGroup!(f.group),
+        ),
+      for (final f in coverage?.leaked ?? const <FilterFinding>[])
+        (
+          s.topoFilterLeaked(
+            formatGroup(f.group),
+            store.info(f.group)?.name ?? '',
+            formatLine(f.from),
+            formatLine(f.to),
+            f.count,
+          ),
+          onGroup == null ? null : () => onGroup!(f.group),
         ),
     ];
     return SectionCard(

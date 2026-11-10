@@ -1,4 +1,5 @@
 import '../catalog_store.dart';
+import 'tap_points.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
 import 'alarms.dart';
@@ -201,9 +202,20 @@ class _Term {
                 _ => null,
               },
           ];
-          return (t, log) => quick.any((q) => matchesQuick(q, t, log));
+          // Seen at one tap point only, while several record (issue #8).
+          final single = value.split('|').any((v) => const {'einzeln', 'single', 'einmal'}.contains(v));
+          return (t, log) =>
+              quick.any((q) => matchesQuick(q, t, log)) ||
+              (single && tapLabels.value.length > 1 && t.sightings.isEmpty);
         case 'zeit' || 'time':
           return _time(value);
+        // Tap point by its chip label (the line, e.g. "1.2"), several with |: seen there (issue #8).
+        case 'messpunkt' || 'tap':
+          final wanted = value.split('|').where((v) => v.isNotEmpty).toSet();
+          return (t, _) {
+            final labels = tapLabels.value;
+            return t.taps.any((tap) => tap < labels.length && wanted.contains(labels[tap]));
+          };
       }
     }
     if (_group.hasMatch(body) && body.contains('/')) {

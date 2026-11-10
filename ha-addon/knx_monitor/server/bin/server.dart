@@ -22,7 +22,7 @@ import 'package:knx_monitor_server/files.dart';
 /// throwaway container behind -p, see refuseToStart).
 /// BOX_PASSWORD_FILE and MQTT_PASSWORD_FILE: the password from a file (Docker
 /// secrets) instead of the environment.
-/// BOX=1: KNX box without Home Assistant – access with the box password or
+/// BOX=1: Busclear Box without Home Assistant – access with the box password or
 /// device access instead of Ingress (BOX_PASSWORD for the first password, BOX_NAME;
 /// LAN_ACCESS=yes allows access over the cable, otherwise only from the box
 /// Wi-Fi, or in Docker only from the host itself). BOX=1 without BOX_STICKER=1
@@ -70,7 +70,8 @@ Future<void> main(List<String> args) async {
       onStep: (step) => stderr.writeln('… $step'),
     ).run(listen: Duration(seconds: seconds.clamp(1, 120)));
     stdout.writeln(
-      const JsonEncoder.withIndent('  ').convert({'system': await kberrySystem(hat.device), 'report': report}),
+      const JsonEncoder.withIndent('  ')
+          .convert({'system': await kberrySystem(hat.device), 'report': linkReport(report)}),
     );
     return;
   }
@@ -78,6 +79,14 @@ Future<void> main(List<String> args) async {
   final web = Directory(env['WEB_DIR'] ?? '/app/web');
   final data = Directory(env['DATA_DIR'] ?? '/data/app');
   await data.create(recursive: true);
+  // Docker with PUID/PGID: hand the data folder over and give up root before
+  // anything else touches it. Secret files (*_FILE) were read above, as root.
+  try {
+    if (dropRoot(env, data) case final user?) stdout.writeln('Busclear: läuft als ${user.uid}:${user.gid}, ohne Root');
+  } on DropRootException catch (e) {
+    stderr.writeln('Busclear: $e');
+    exit(78); // EX_CONFIG
+  }
   // Docker (box mode without the real box's sticker): the data folder is a
   // bind mount on the host, keys must not be readable there for everyone.
   // The real box (systemd StateDirectory) and the add-on set their own modes.
@@ -210,6 +219,8 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
     'health': ?health?.status(),
     'waiting': installations.bus.recorder.waiting,
     'installation': installations.info,
+    // Key of this box (docs/keys.md): the app tells boxes apart by it, not by their address.
+    'key': installations.installations.boxKey,
     'restarts': ?crash.summary(),
   };
   await installations.start();
@@ -235,6 +246,28 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
         )
       : null;
   await ha?.start();
+  // MCP server for AI tools (mcp_server.dart): off until an admin switches it on.
+  mcp = McpService(
+    data,
+    () {
+      final bus = installations.bus;
+      return McpSource(
+        data: bus.data,
+        recorder: bus.recorder,
+        alarms: bus.alarms,
+        status: () {
+          final s = bus.status();
+          return {'state': s['state'], 'since': s['since'], 'link': s['link'], 'read_only': s['readOnly'] == true};
+        },
+      );
+    },
+    version: env['ADDON_VERSION'] ?? BusService.version ?? 'dev',
+    // Box with its certificate: the token only over HTTPS (plain HTTP stays for the browser setup).
+    plainHttp: box == null
+        ? null
+        : (request) => box.tlsFingerprint != null && request.connectionInfo?.localPort != box.tlsPort,
+  );
+  await mcp!.load();
   // Device "Busclear" via MQTT: in the add-on with the Supervisor's broker,
   // otherwise (Docker, box) with MQTT_HOST and friends.
   final envBroker = MqttBroker.fromEnvironment(env);
@@ -275,6 +308,8 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
               raw: raw,
               rawOnly: rawOnly,
               filter: filter,
+              // Last value per address, retained (`knx_monitor/value/…`).
+              retainValues: await option('MQTT_RETAIN_VALUES', 'mqtt_retain_values'),
             )
           : null,
       installation: installationId == null || installationId.isEmpty ? null : installationId,
@@ -287,7 +322,8 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
             : raw
             ? ', mit Rohdaten'
             : ''}'
-        '${filter.isAll ? '' : ', nur ${filter.text}'}',
+        '${filter.isAll ? '' : ', nur ${filter.text}'}'
+        '${mqtt.telegrams?.retainValues ?? false ? ', letzter Wert je Adresse unter knx_monitor/value/…' : ''}',
       );
     }
     unawaited(mqtt.start());
@@ -443,6 +479,8 @@ Future<void> _handle(
         ..headers.set(HttpHeaders.allowHeader, _methods.join(', '));
       return await response.close();
     }
+    // AI tools with the MCP token: only /api/mcp, read-only.
+    if (mcp != null && mcp!.authorized(request)) return await mcp!.serve(request);
     // The Busclear integration with its token: only the endpoints below /api/ha/.
     if (ha != null && HaIntegration.handles(request.uri.path) && ha.authorized(request)) {
       await ha.serve(request);
@@ -505,6 +543,7 @@ Future<void> _handle(
     if (path == '/api/bus') return await _bus(request, bus, admin: admin, maySend: maySend);
     if (path == '/api/bus/availability' ||
         path == '/api/bus/stats' ||
+        path == '/api/summary' ||
         path == etsXmlPath ||
         path == historyTelegramsPath) {
       // `?installation=<id>`: history of another installation (read-only).
@@ -524,6 +563,16 @@ Future<void> _handle(
       if (path == etsXmlPath) return await serveEtsXml(request, installations.recorderOf(id));
       if (path == historyTelegramsPath) return await serveHistoryTelegrams(request, installations.recorderOf(id));
       if (path == '/api/bus/availability') return await _availability(request, installations.availabilityOf(id));
+      if (path == '/api/summary') {
+        final recorder = installations.recorderOf(id);
+        return await sendJson(
+          response,
+          await _summaries.get(id, () async {
+            await recorder.flush();
+            return weekSummaryInIsolate(recorder.data.path, installations.availabilityOf(id).data.path, DateTime.now());
+          }),
+        );
+      }
       final days = (int.tryParse(request.uri.queryParameters['days'] ?? '') ?? 7).clamp(1, 366);
       return await sendJson(response, await installations.recorderOf(id).stats(days));
     }
@@ -554,6 +603,32 @@ Future<void> _handle(
       }
       return await _resolve(request);
     }
+    // The KNX project of Home Assistant's KNX integration, for the import (admin only: the
+    // project is the whole installation).
+    if (path == '/api/knx-project' && HomeAssistant.instance.available) {
+      if (!admin) {
+        response.statusCode = HttpStatus.forbidden;
+        return await response.close();
+      }
+      try {
+        return await sendJson(response, await HaKnxProject().fetch());
+      } on Object catch (e) {
+        response.statusCode = HttpStatus.badGateway;
+        return await sendJson(response, {'error': '$e'});
+      }
+    }
+    if (mcp != null && await mcp!.serveSettings(request, admin: admin)) return;
+    // Project against the recorded bus for the app's project check (read access).
+    if (path == '/api/project-evidence') {
+      final days = (int.tryParse(request.uri.queryParameters['days'] ?? '') ?? 7).clamp(1, McpTools.maxDays);
+      final e = await ProjectEvidence.of(
+        await LintCatalog.load(bus.data),
+        bus.recorder,
+        now: DateTime.now(),
+        days: days,
+      );
+      return await sendJson(response, e.result);
+    }
     if (path == '/api/notify' && request.method == 'POST') return await _notify(request);
     await _static(request, web);
   } on BodyBudgetException {
@@ -573,6 +648,9 @@ Future<void> _handle(
   }
 }
 
+/// Overviews for the app's start card, at most one computation per hour and installation.
+final _summaries = WeekSummaryCache();
+
 // --- UDP relay -----------------------------------------------------------------
 
 /// One UDP socket per WebSocket. Messages: 4 bytes IPv4, 2 bytes port, payload.
@@ -581,6 +659,9 @@ final _relays = <WebSocket>{};
 
 /// Read-only, set at startup in [_serve].
 var _readOnly = false;
+
+/// MCP server for AI tools (set in [_serve]).
+McpService? mcp;
 
 /// Each relay holds a UDP socket; a gateway has only a few tunnels anyway.
 const _maxRelays = 16;
@@ -927,7 +1008,8 @@ Future<void> _availability(HttpRequest request, Availability availability) async
       ..write(error);
     return request.response.close();
   }
-  return sendJson(request.response, await availability.outages(range.from!, range.to!));
+  final taps = request.uri.queryParameters['taps'] == '1';
+  return sendJson(request.response, await availability.outages(range.from!, range.to!, taps: taps));
 }
 
 /// Value from the add-on options (/data/options.json).

@@ -33,6 +33,8 @@ void main() {
         );
         return r.response.close();
       }
+      // Not closed here on purpose: the fake server closes it with the request.
+      // ignore: close_sinks
       final ws = await WebSocketTransformer.upgrade(r);
       ws.add(jsonEncode({'type': 'auth_required'}));
       ws.listen((raw) {

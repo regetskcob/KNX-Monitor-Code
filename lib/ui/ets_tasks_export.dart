@@ -39,18 +39,8 @@ Future<void> exportEtsTasks(BuildContext context, {Rect? origin, TelegramLog? lo
   final messenger = ScaffoldMessenger.of(context);
   final colors = context.hz;
   final store = CatalogStore.instance;
-  final deviations = await standardDeviations(store);
-  final observations = await loadFilterObservations(log);
+  final tasks = await currentEtsTasks(log: log);
   if (!context.mounted) return;
-  final tasks = EtsTasks.of(
-    store.project,
-    Map.of(store.overrides),
-    names: Map.of(store.names),
-    learned: store.learned,
-    inventory: DeviceInventory.lastFor(InstallationStore.instance.active.id),
-    deviations: deviations,
-    observations: observations,
-  );
   try {
     final (bytes, name, mime) = await withProgress(context, s.etsTasksBuilding, () async {
       final drawings = await _drawings(context, tasks);
@@ -76,6 +66,23 @@ Future<void> exportEtsTasks(BuildContext context, {Rect? origin, TelegramLog? lo
     debugPrint('Aufgaben für die ETS fehlgeschlagen: $e\n$stack');
     messenger.showSnackBar(horizontMessageSnackBar(colors, s.exportFailedGeneric, status: HorizontStatus.critical));
   }
+}
+
+/// The tasks for ETS as they stand: project checks, what was set or learned in the app, the last
+/// inventory, the company standard and the coupler observations.
+Future<EtsTasks> currentEtsTasks({TelegramLog? log}) async {
+  final store = CatalogStore.instance;
+  final deviations = await standardDeviations(store);
+  final observations = await loadFilterObservations(log);
+  return EtsTasks.of(
+    store.project,
+    Map.of(store.overrides),
+    names: Map.of(store.names),
+    learned: store.learned,
+    inventory: DeviceInventory.lastFor(InstallationStore.instance.active.id),
+    deviations: deviations,
+    observations: observations,
+  );
 }
 
 /// Drawing per device with tasks, in the light appearance (paper), without live

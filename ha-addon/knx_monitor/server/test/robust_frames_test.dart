@@ -4,7 +4,6 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:knx_monitor_server/box.dart';
 import 'package:knx_monitor_server/bus.dart';
 import 'package:knx/secure.dart';
 import 'package:test/test.dart';
@@ -72,6 +71,15 @@ void main() {
       expect(deviceMaySend(_req(group: true, tpdu: [0x00, 0x41])), isTrue, reason: 'Response kurz');
       expect(deviceMaySend(_req(group: true, tpdu: [0x00, 0x81])), isTrue, reason: 'Write kurz');
       expect(deviceMaySend(_req(group: true, tpdu: [0x00, 0x80, 0x12, 0x34])), isTrue, reason: 'Write lang');
+    });
+
+    test('Normalisierung: Priorität, Hop-Count, Zusatzinfo und Absender', () {
+      // Additional info (2 bytes), system priority, hop count 2, source 1.1.5, write 0x1234 to 0x0901.
+      final frame = [0x11, 0x02, 0x03, 0x00, 0x8C, 0xA0, 0x11, 0x05, 0x09, 0x01, 0x03, 0x00, 0x80, 0x12, 0x34];
+      expect(deviceMaySend(frame), isTrue);
+      final n = normalizeDeviceCemi(frame);
+      expect(n, [0x11, 0x00, 0xBC, 0xE0, 0x00, 0x00, 0x09, 0x01, 0x03, 0x00, 0x80, 0x12, 0x34]);
+      expect(deviceMaySend(n), isTrue);
     });
 
     test('gesicherter Gruppenwert (A_SecureService)', () {
@@ -244,6 +252,8 @@ void main() {
     });
 
     test('zu große Nachricht über den WebSocket schließt die Verbindung (1009)', () async {
+      // Not closed here on purpose: closed when the test ends.
+      // ignore: close_sinks
       final ws = await WebSocket.connect('ws://127.0.0.1:${server.port}/device');
       ws.listen((_) {}, onError: (Object _) {});
       ws.add(Uint8List(BusService.maxClientMessage + 1));

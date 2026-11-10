@@ -145,7 +145,7 @@ abstract final class AppIcons {
   static const qrScan = HorizontSymbols.qrCodeScanner;
   static const manual = HorizontSymbols.menuBook;
 
-  /// Fault hunting with the KNX box.
+  /// Fault hunting with the Busclear Box.
   static const hunt = HorizontSymbols.bugReport;
 
   /// Learning an installation without an ETS project.

@@ -30,6 +30,8 @@ this folder on every release; changes go here.
 - [security.md](security.md): encryption at rest, backups, app lock, KNX IP
   Secure and Data Secure, access to add-on and box, read-only mode, outbound
   connections, reporting vulnerabilities.
+- [keys.md](keys.md): the keys that tell installations, boxes and app
+  instances apart, who creates them and where they travel.
 - [backup-format.md](backup-format.md): the `.knxbackup` file format, with a
   decryption example.
 - [diagnostics-package.md](diagnostics-package.md): what the diagnostics
@@ -38,6 +40,10 @@ this folder on every release; changes go here.
 ## KNX and ETS
 
 - [group-addresses.md](group-addresses.md): naming schemes the app recognises.
+- [mcp-server.md](mcp-server.md): the MCP server for AI tools: read-only
+  access to history, findings and the project check.
+- [xknx-editor.md](xknx-editor.md): working with the XKNX Editor: importing
+  `.xknx` projects and handing findings over.
 - [ets-round-trip.md](ets-round-trip.md): taking changes from Busclear
   back into the ETS project.
 

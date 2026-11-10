@@ -167,7 +167,8 @@ void main() {
     );
     await setup.run();
     expect(setup.error, isNull, reason: '$requests');
-    expect(jsonDecode(pairBody!), {'name': 'iPhone'});
+    // Die App nennt beim Koppeln auch ihre Instanz (docs/keys.md).
+    expect(jsonDecode(pairBody!), {'name': 'iPhone', 'app': matches(RegExp(r'^[0-9a-f]{32}$'))});
     expect(joined, ['KNX-Box-1A2B/wlanpass12']);
     expect(setup.states.values, everyElement(BoxStepState.done));
     // Gespeichert ist der Gerätezugang, nicht das Box-Passwort.

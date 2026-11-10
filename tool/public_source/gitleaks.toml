@@ -4,11 +4,14 @@
 useDefault = true
 
 [allowlist]
-description = "Public test keyrings from xknx, test passwords, preference keys, RFC 6455 sample nonce"
-paths = ['''test/resources/.*\.knxkeys''', '''^build/''']
+description = "Public test keyrings from xknx, test passwords, preference keys, RFC 6455 sample nonce, test identifiers"
+paths = ['''test/resources/.*\.knxkeys''', '''test/fixtures/xknx/.*\.xknx''', '''^build/''']
 regexes = [
   '''collapsed_sections_v2''',
   '''Tunnel-Passwort-1''',
   '''MTIzNDU2Nzg5MDEyMzQ1Ng==''',
   '''dGhlIHNhbXBsZSBub25jZQ==''',
+  # Installation and app instance keys in tests (docs/keys.md): identifiers, no credentials.
+  '''0b6a1c1e-7d0e-4f6e-9a55-3f2a9c01be77''',
+  '''00112233445566778899aabbccddeeff''',
 ]

@@ -14,9 +14,10 @@ import '../theme/tokens.dart';
 import 'common.dart';
 import 'figure_box.dart';
 
-/// Opens lessons and the quiz, also without a connection.
-Future<void> openLearn(BuildContext context) =>
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LearnScreen()));
+/// Opens lessons and the quiz, also without a connection. With [onTry] (in the monitor) each
+/// lesson's "try it" is a link: it closes the lessons and goes to that place.
+Future<void> openLearn(BuildContext context, {void Function(LessonTarget target)? onTry}) =>
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => LearnScreen(onTry: onTry)));
 
 /// Explains [term] in one sentence with an example from the loaded project
 /// (otherwise from the demo house).
@@ -89,7 +90,10 @@ class TermChips extends StatelessWidget {
 
 /// Learning on your own installation: terms, five lessons, a mini quiz.
 class LearnScreen extends StatelessWidget {
-  const LearnScreen({super.key});
+  const LearnScreen({super.key, this.onTry});
+
+  /// Leads to the place a lesson talks about; `null` outside the monitor (plain text then).
+  final void Function(LessonTarget target)? onTry;
 
   void _open(BuildContext context, String title, List<Widget> children) => unawaited(
     Navigator.of(context).push(
@@ -140,10 +144,26 @@ class LearnScreen extends StatelessWidget {
                       onTap: () => _open(context, lesson.title, [
                         Text(lesson.text, style: theme.textTheme.bodyLarge),
                         const SizedBox(height: Gap.section),
-                        Text(
-                          s.lessonsTry(lesson.tryIt),
-                          style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted),
-                        ),
+                        if (onTry case final go?)
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: TextButton.icon(
+                              onPressed: () {
+                                // Lesson and lessons list are closed, the monitor shows the place.
+                                Navigator.of(context)
+                                  ..pop()
+                                  ..pop();
+                                go(lesson.target);
+                              },
+                              icon: const Icon(AppIcons.next, size: 18),
+                              label: Text(s.lessonsTry(lesson.tryIt), textAlign: TextAlign.start),
+                            ),
+                          )
+                        else
+                          Text(
+                            s.lessonsTry(lesson.tryIt),
+                            style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted),
+                          ),
                         const SizedBox(height: Gap.section),
                         TermChips(terms: lesson.terms, more: false),
                       ]),

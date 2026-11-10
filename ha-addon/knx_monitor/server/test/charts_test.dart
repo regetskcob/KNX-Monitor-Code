@@ -69,6 +69,24 @@ void main() {
     }),
   );
 
+  test('höchstens acht Reihen je Diagramm', () async {
+    await File('${data.path}/${ChartService.fileName}').writeAsString(
+      jsonEncode({
+        'allowed': true,
+        'charts': [
+          {
+            'name': 'Viele',
+            'series': [
+              for (var i = 0; i < 40; i++) {'address': 2048 + i, 'label': 'x$i'},
+            ],
+          },
+        ],
+      }),
+    );
+    final list = await ChartService().list(data);
+    expect(((list['charts']! as List).single as Map)['series'], hasLength(ChartService.maxSeries));
+  });
+
   test('Liste ohne Werte, ohne Datei leer', () async {
     final service = ChartService();
     expect(await service.list(data), {'allowed': true, 'charts': <Object?>[]});
@@ -185,6 +203,7 @@ void main() {
               {'address': -1, 'label': 'telegrams', 'metric': 'telegrams', 'unit': '/min'},
               {'address': -2, 'label': 'repeats', 'metric': 'repeats', 'unit': '/min'},
               {'address': -(256 + 0x11), 'label': '1.1', 'metric': 'line', 'line': 0x11, 'unit': '/min'},
+              {'address': -3, 'label': 'load', 'metric': 'load', 'unit': '%'},
             ],
           },
         ],
@@ -198,7 +217,7 @@ void main() {
     };
     await day(now, [at(1), at(2, rp: true), at(3, src: 0x1201), at(70)]);
     final result = (await ChartService().series(data, recorder, 'Bus', hours: 1, now: now))!;
-    final [telegrams, repeats, lineLoad] = (result['series']! as List).cast<Map<String, Object?>>();
+    final [telegrams, repeats, lineLoad, busLoad] = (result['series']! as List).cast<Map<String, Object?>>();
     List<num> valueAt(Map<String, Object?> s, DateTime t) =>
         (s['points']! as List).cast<List<num>>().firstWhere((p) => p[0] == t.millisecondsSinceEpoch);
     expect(telegrams['metric'], 'telegrams');
@@ -207,6 +226,10 @@ void main() {
     expect(valueAt(repeats, minute)[1], 1);
     expect(valueAt(lineLoad, minute)[1], 2);
     expect((telegrams['points']! as List).length, 61);
+    // Bus load: three telegrams with 2 bytes payload, each (50 + 13 × 11 + 28) bits at 9600 bit/s
+    // = 23 ms, in one minute: 69 ms of 60 s.
+    expect(busLoad['unit'], '%');
+    expect(valueAt(busLoad, minute)[1], closeTo(69 / 60000 * 100, 0.01));
   });
 
   group('thin', () {

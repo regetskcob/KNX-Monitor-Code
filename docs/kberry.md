@@ -40,7 +40,7 @@ All paths below are relative to the repository root. Server code lives in
   module to **link layer** (`0x00`: send and receive `L_Data`) or **link-layer bus monitor**
   (`0x01`: receive every frame on the wire, *including* ACK/NAK/BUSY, but no sending).
   `0xF0` switches back to BAOS mode.
-- Busclear implements this as `Ft12CemiLink` (`server/lib/src/ft12_link.dart`), a
+- Busclear implements this as `Ft12CemiLink` (`package:knx_io`, `lib/src/ft12_link.dart`), a
   `BusLink` like the KNXnet/IP tunnel. Everything above it (recording, watchers, WebSocket
   clients) is unchanged.
 - On the Raspberry Pi the PL011 UART must be routed to GPIO 14/15 as `/dev/ttyAMA0`, and the
@@ -183,8 +183,8 @@ picocom -b 19200 -y e /dev/ttyAMA0
 ## 4. Serial protocol: FT1.2
 
 Reference: *KNX BAOS Starter Kit User's Guide*, ch. 5.4; implementation in
-[`server/lib/src/ft12.dart`](../ha-addon/knx_monitor/server/lib/src/ft12.dart) and
-`Ft12Session` in [`server/lib/src/kberry.dart`](../ha-addon/knx_monitor/server/lib/src/kberry.dart).
+[`knx_io: lib/src/ft12.dart`](https://github.com/regetskcob/dart-knx/blob/main/packages/knx_io/lib/src/ft12.dart) and
+`Ft12Session` in [`knx_io: lib/src/kberry.dart`](https://github.com/regetskcob/dart-knx/blob/main/packages/knx_io/lib/src/kberry.dart).
 
 ### Line settings
 
@@ -317,9 +317,9 @@ module sends back is acknowledged with `E5` by the host.
 
 ## 6. Connection lifecycle
 
-`Ft12CemiLink` ([`server/lib/src/ft12_link.dart`](../ha-addon/knx_monitor/server/lib/src/ft12_link.dart))
+`Ft12CemiLink` ([`knx_io: lib/src/ft12_link.dart`](https://github.com/regetskcob/dart-knx/blob/main/packages/knx_io/lib/src/ft12_link.dart))
 implements the `BusLink` interface from
-[`server/lib/src/link.dart`](../ha-addon/knx_monitor/server/lib/src/link.dart):
+[`knx_io: lib/src/link.dart`](https://github.com/regetskcob/dart-knx/blob/main/packages/knx_io/lib/src/link.dart):
 `connect()`, `frames` (stream of cEMI frames), `send(cemi)`, `lost` (future completing with a
 reason), `close()`, `address`, `label`.
 
@@ -640,10 +640,11 @@ The app shows this as a test page (`lib/ui/box_hat_screen.dart`).
 
 | File | Contents |
 |---|---|
-| [`server/lib/src/ft12.dart`](../ha-addon/knx_monitor/server/lib/src/ft12.dart) | FT1.2 constants (`ft12Ack`, `ft12Reset`), `ft12Frame` encoder, `Ft12Decoder` and its events. Pure functions, no I/O. |
-| [`server/lib/src/kberry.dart`](../ha-addon/knx_monitor/server/lib/src/kberry.dart) | `SerialLine` interface, `TtyLine` (stty-based Linux tty), `Ft12Session` (ACK, FCB, retries, property services), `KberryProbe`, `classifyBusmon`, `kberrySystem`, `KberryService` |
-| [`server/lib/src/ft12_link.dart`](../ha-addon/knx_monitor/server/lib/src/ft12_link.dart) | `Ft12CemiLink` (the `BusLink`), `busmonToLData`, `BusmonCounters` |
-| [`server/lib/src/link.dart`](../ha-addon/knx_monitor/server/lib/src/link.dart) | `BusLink` interface and `LinkException`, shared with the KNXnet/IP links |
+| [`knx_io: lib/src/ft12.dart`](https://github.com/regetskcob/dart-knx/blob/main/packages/knx_io/lib/src/ft12.dart) | FT1.2 constants (`ft12Ack`, `ft12Reset`), `ft12Frame` encoder, `Ft12Decoder` and its events. Pure functions, no I/O. |
+| [`knx_io: lib/src/kberry.dart`](https://github.com/regetskcob/dart-knx/blob/main/packages/knx_io/lib/src/kberry.dart) | `SerialLine` interface, `TtyLine` (stty-based Linux tty), `Ft12Session` (ACK, FCB, retries, property services), `KberryProbe`, `classifyBusmon` |
+| [`server/lib/src/kberry.dart`](../ha-addon/knx_monitor/server/lib/src/kberry.dart) | Box-specific: `kberrySystem`, `KberryService` (German report texts via `linkReport`) |
+| [`knx_io: lib/src/ft12_link.dart`](https://github.com/regetskcob/dart-knx/blob/main/packages/knx_io/lib/src/ft12_link.dart) | `Ft12CemiLink` (the `BusLink`), `busmonToLData`, `BusmonCounters` |
+| [`knx_io: lib/src/link.dart`](https://github.com/regetskcob/dart-knx/blob/main/packages/knx_io/lib/src/link.dart) | `BusLink` interface and `LinkException`, shared with the KNXnet/IP links |
 | [`server/lib/src/bus.dart`](../ha-addon/knx_monitor/server/lib/src/bus.dart) | `BusConfig` fields for `hat`, `defaultLink`, monitor frame handling in `BusService` |
 | [`server/bin/server.dart`](../ha-addon/knx_monitor/server/bin/server.dart) | `server hat [seconds]` command, `/api/box/hat` handler |
 | [`server/lib/box.dart`](../ha-addon/knx_monitor/server/lib/box.dart) | Library export of the above for the box |
@@ -652,13 +653,13 @@ The app shows this as a test page (`lib/ui/box_hat_screen.dart`).
 
 ### Reusing the transport
 
-The layering is deliberately thin so pieces can be taken individually:
+The protocol part is published as the open-source package [`knx_io`](https://pub.dev/packages/knx_io) (BSD-3-Clause); Busclear keeps only the box-specific `kberry.dart` (`kberrySystem`, `KberryService`). The layering is deliberately thin so pieces can be taken individually:
 
 - `ft12.dart` alone is enough to frame and parse FT1.2 in any Dart program.
 - `Ft12Session` needs only a `SerialLine` (three methods: `write`, `read` with a short timeout,
   `close`). Provide your own implementation for another platform or serial library.
 - `Ft12CemiLink` depends on `Ft12Session`, `link.dart` and `formatIndividual` from
-  `package:knx` (`packages/knx`); it takes the line factory as a parameter (`open`), so it has no hard
+  `package:knx`; it takes the line factory as a parameter (`open`), so it has no hard
   dependency on `TtyLine`.
 
 ### Tests

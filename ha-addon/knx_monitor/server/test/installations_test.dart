@@ -91,6 +91,49 @@ void main() {
     });
   });
 
+  group('Schlüssel', () {
+    test('Box und „default“ bekommen ihren beim ersten Start und behalten ihn', () async {
+      final first = await Installations.open(data);
+      expect(isKey(first.boxKey), isTrue);
+      expect(isKey(first.active.key), isTrue);
+      expect(first.active.key, isNot(first.boxKey));
+      final again = await Installations.open(data);
+      expect(again.boxKey, first.boxKey);
+      expect(again.active.key, first.active.key);
+    });
+
+    test('älteres Verzeichnis: „default“ bekommt einen, die Id der App nicht', () async {
+      await write(
+        'installations.json',
+        jsonEncode({
+          'version': 1,
+          'active': 'default',
+          'list': [
+            {'id': 'default', 'name': 'Haus', 'created': 0},
+            {'id': '3f2a9c01be77', 'name': 'Kunde', 'created': 0},
+            {'id': 'aaaaaaaaaaaa', 'name': 'Falsch', 'created': 0, 'key': '../../x'},
+          ],
+        }),
+      );
+      final installations = await Installations.open(data);
+      expect(isKey(installations.byId('default')!.key), isTrue);
+      // Den leitet die App aus ihrer Id ab; der Server erfindet keinen zweiten.
+      expect(installations.byId('3f2a9c01be77')!.key, isNull);
+      expect(installations.byId('aaaaaaaaaaaa')!.key, isNull);
+      expect(isKey(installations.boxKey), isTrue);
+    });
+
+    test('zwei Datenordner: verschiedene Schlüssel trotz gleicher Id', () async {
+      final other = await Directory.systemTemp.createTemp('installations2');
+      addTearDown(() => other.delete(recursive: true));
+      final a = await Installations.open(data);
+      final b = await Installations.open(other);
+      expect(a.activeId, b.activeId);
+      expect(a.active.key, isNot(b.active.key));
+      expect(a.boxKey, isNot(b.boxKey));
+    });
+  });
+
   group('Verwalten', () {
     test('anlegen mit Id der App, umbenennen, löschen – nicht die aktive', () async {
       final installations = await Installations.open(data);
@@ -177,9 +220,16 @@ void main() {
       var (status, text) = await send('/api/installations');
       expect(status, 200);
       expect(jsonDecode(text), {
+        'box': service.installations.boxKey,
         'active': 'default',
         'list': [
-          {'id': 'default', 'name': 'Alt', 'created': isA<int>(), 'active': true},
+          {
+            'id': 'default',
+            'name': 'Alt',
+            'created': isA<int>(),
+            'key': service.installations.active.key,
+            'active': true,
+          },
         ],
       });
 
@@ -212,6 +262,7 @@ void main() {
       expect((await send('/api/installations/b1/files/catalog.json', admin: false)).$1, 200);
       (status, text) = await send('/api/installations', admin: false);
       expect(jsonDecode(text), {
+        'box': service.installations.boxKey,
         'active': 'b1',
         'list': [containsPair('id', 'b1')],
       });
@@ -240,6 +291,63 @@ void main() {
       expect((await send('/api/installations/default', method: 'DELETE')).$1, 204);
       expect(await Directory('${data.path}/installations/default').exists(), isFalse);
       expect((await send('/api/installations/active', method: 'POST', json: {'id': 'default'})).$1, 404);
+    });
+
+    // docs/keys.md: Ein Schlüssel benennt, er öffnet nichts. Wer den Schlüssel einer
+    // Installation oder der Box kennt (aus einem Übergabepaket, einer Störungsmeldung), kommt
+    // damit an keine Daten und ändert nichts.
+    test('Schlüssel ist kein Zugang: weder als Id noch als Anmeldung', () async {
+      const key = '0b6a1c1e-7d0e-4f6e-9a55-3f2a9c01be77';
+      await service.installations.create(id: 'aaaaaaaaaaaa', name: 'Kunde', key: key);
+      await write('installations/aaaaaaaaaaaa/catalog.json', '{"project":"Kunde"}');
+      final box = service.installations.boxKey;
+      for (final name in [key, box]) {
+        // Als Id taugt er nicht: keine Dateien, kein Wechsel, kein Umbenennen, kein Löschen.
+        expect((await send('/api/installations/$name/files/catalog.json')).$1, 404, reason: name);
+        expect((await send('/api/installations/$name/files/catalog.json', admin: false)).$1, isNot(200));
+        expect((await send('/api/installations/active', method: 'POST', json: {'id': name})).$1, 404);
+        expect((await send('/api/installations/$name', method: 'PATCH', json: {'name': 'x'})).$1, 404);
+        expect((await send('/api/installations/$name', method: 'DELETE')).$1, 404);
+      }
+      // Ein Gerätezugang, der den Schlüssel kennt, bleibt ein Gerätezugang: Die andere
+      // Installation liest er nicht, und er setzt oder legt nichts an.
+      expect((await send('/api/installations/aaaaaaaaaaaa/files/catalog.json', admin: false)).$1, 403);
+      expect((await send('/api/installations', method: 'POST', json: {'name': 'x', 'key': key}, admin: false)).$1, 403);
+      expect((await send('/api/installations/default', method: 'PATCH', json: {'key': key}, admin: false)).$1, 403);
+      // Seine Liste nennt nur die aktive Installation, also auch nur deren Schlüssel.
+      final seen = jsonDecode((await send('/api/installations', admin: false)).$2) as Map<String, Object?>;
+      expect((seen['list']! as List).single, containsPair('id', 'default'));
+      expect(jsonEncode(seen), isNot(contains(key)));
+      expect(service.installations.byId('aaaaaaaaaaaa')!.name, 'Kunde');
+    });
+
+    test('Schlüssel einer Installation: einmal gesetzt, nie ersetzt', () async {
+      const key = '0b6a1c1e-7d0e-4f6e-9a55-3f2a9c01be77';
+      const other = '11111111-2222-4333-8444-555555555555';
+      // Von einer älteren App angelegt: ohne Schlüssel, bis eine App ihn nachträgt.
+      var (status, text) = await send('/api/installations', method: 'POST', json: {'id': 'bbbbbbbbbbbb', 'name': 'B'});
+      expect(status, 201);
+      expect((jsonDecode(text) as Map).containsKey('key'), isFalse);
+      (status, text) = await send('/api/installations/bbbbbbbbbbbb', method: 'PATCH', json: {'key': key});
+      expect(status, 200);
+      expect(jsonDecode(text), allOf(containsPair('key', key), containsPair('name', 'B')));
+      expect((await send('/api/installations/bbbbbbbbbbbb', method: 'PATCH', json: {'key': key})).$1, 200);
+      expect((await send('/api/installations/bbbbbbbbbbbb', method: 'PATCH', json: {'key': other})).$1, 409);
+      expect(
+        (await send('/api/installations/bbbbbbbbbbbb', method: 'PATCH', json: {'key': 'kein-schluessel'})).$1,
+        400,
+      );
+      // Die vom Server benannte hat ihren von Anfang an.
+      expect((await send('/api/installations/default', method: 'PATCH', json: {'key': other})).$1, 409);
+      // Zwei Installationen teilen keinen Schlüssel.
+      expect((await send('/api/installations', method: 'POST', json: {'name': 'C', 'key': key})).$1, 409);
+      expect((await send('/api/installations', method: 'POST', json: {'name': 'C', 'key': '../x'})).$1, 400);
+      (status, text) = await send(
+        '/api/installations',
+        method: 'POST',
+        json: {'id': 'cccccccccccc', 'name': 'C', 'key': other},
+      );
+      expect(jsonDecode(text), containsPair('key', other));
     });
 
     test('Gerätezugang: lesen ja, verwalten nein', () async {
@@ -273,6 +381,8 @@ void main() {
     });
 
     test('Wechsel schließt offene Ansichten, Status nennt die Installation', () async {
+      // Not closed here on purpose: closed when the test ends.
+      // ignore: close_sinks
       final ws = await WebSocket.connect('ws://127.0.0.1:${server.port}/ws/bus');
       final states = <Map<String, Object?>>[];
       final done = Completer<void>();
@@ -282,7 +392,11 @@ void main() {
         }
       }, onDone: done.complete);
       await until(() => states.isNotEmpty);
-      expect(states.first['installation'], {'id': 'default', 'name': 'Alt'});
+      expect(states.first['installation'], {
+        'id': 'default',
+        'name': 'Alt',
+        'key': service.installations.byId('default')!.key,
+      });
       await service.installations.create(id: 'b2', name: 'Zwei');
       await service.activate('b2');
       await done.future.timeout(const Duration(seconds: 5));

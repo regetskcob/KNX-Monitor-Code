@@ -12,7 +12,7 @@ import '../l10n/locale_controller.dart';
 import 'addon.dart';
 import 'box_link.dart';
 
-/// Native: connection to the paired KNX box ([Addon.box]) over the LAN/Wi-Fi.
+/// Native: connection to the paired Busclear Box ([Addon.box]) over the LAN/Wi-Fi.
 const addonAvailable = false;
 
 const _timeout = Duration(seconds: 5);
@@ -143,6 +143,8 @@ Future<AddonSocket> openAddonBus() async {
   final base = box.url.resolve('ws/bus');
   final url = base.replace(scheme: base.scheme == 'https' ? 'wss' : 'ws');
   try {
+    // Closed by the returned AddonSocket.
+    // ignore: close_sinks
     final socket = await WebSocket.connect(
       '$url',
       headers: _headers(box),
@@ -268,7 +270,7 @@ Future<void> addonPutFile(String path, List<int> bytes) async {
 
 /// Pairs using the box password from the sticker's QR code and returns the device access (with
 /// admin rights). Runs before [Addon.box].
-Future<String> addonPairBox(BoxLink link, String password, String deviceName) async {
+Future<String> addonPairBox(BoxLink link, String password, String deviceName, {String? app}) async {
   final http.Response r;
   try {
     r = await _http(link)
@@ -278,7 +280,7 @@ Future<String> addonPairBox(BoxLink link, String password, String deviceName) as
             'Authorization': 'Basic ${base64.encode(utf8.encode('app:$password'))}',
             'Content-Type': 'application/json',
           },
-          body: jsonEncode({'name': deviceName}),
+          body: jsonEncode({'name': deviceName, 'app': ?app}),
         )
         // The box checks the password; on the Pi this takes many seconds.
         .timeout(const Duration(seconds: 60));

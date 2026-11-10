@@ -1,19 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- KNXnet/IP per UDP zum Gateway im lokalen Netz -->
+    <!-- KNXnet/IP over UDP to the gateway in the local network -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
-    <!-- WLAN der Busclear Box aus der App beitreten (WifiNetworkSpecifier). -->
+    <!-- Join the Busclear Box's Wi-Fi from the app (WifiNetworkSpecifier). -->
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>
-    <!-- Gateway-Suche per Multicast (224.0.23.12:3671) -->
+    <!-- Gateway search by multicast (224.0.23.12:3671) -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
-    <!-- Klangquittung: bei gesperrtem Bildschirm weiter mithören (Vordergrunddienst
-         „connectedDevice“ – die Verbindung zum KNX-Gateway), CPU und WLAN wach. -->
+    <!-- Sound acknowledgement: keep listening with the screen locked (foreground
+         service "connectedDevice", the connection to the KNX gateway), CPU and Wi-Fi awake. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    <!-- Android 13+: Mitteilung des Vordergrunddienstes sichtbar machen. -->
+    <!-- Android 13+: make the foreground service's notification visible. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:enableOnBackInvokedCallback="true"
@@ -45,24 +45,27 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Kopplungslink der Busclear Box (QR-Code): knxmonitor://box?url=… -->
+            <!-- Pairing link of the Busclear Box (QR code): knxmonitor://box?url=…
+                 Another app can register the same scheme, so the app confirms every
+                 link from outside (address first) before it pairs. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="knxmonitor" android:host="box"/>
             </intent-filter>
-            <!-- Rücksprung der Browser-Anmeldung (Konto): knxmonitor://login-callback?code=… -->
+            <!-- Return from the browser sign-in (account): knxmonitor://login-callback?code=…
+                 PKCE: the code is useless without the verifier kept in this app. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="knxmonitor" android:host="login-callback"/>
             </intent-filter>
-            <!-- Übergabepaket und Störungsmeldung aus Mail, Messenger, Dateimanager.
-                 Viele Absender nennen bei unbekannter Endung nur octet-stream und
-                 verraten den Namen im content://-Pfad nicht; was keins unserer
-                 Pakete ist, lehnt die App danach mit einer Meldung ab. -->
+            <!-- Handover package and fault report from mail, messenger, file manager.
+                 Many senders only say octet-stream for an unknown extension and do not
+                 reveal the name in the content:// path; the app refuses anything that is
+                 not one of its packages with a message (size limit in incoming_file.dart). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
@@ -71,8 +74,8 @@
                 <data android:mimeType="application/vnd.knx-monitor.report"/>
                 <data android:mimeType="application/octet-stream"/>
             </intent-filter>
-            <!-- Nach Endung, mit und ohne MIME-Typ. pathPattern kennt kein gieriges
-                 „.*“: Punkte davor im Namen brauchen eine eigene Zeile. -->
+            <!-- By extension, with and without MIME type. pathPattern has no greedy ".*":
+                 dots earlier in the name need a line of their own. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>

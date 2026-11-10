@@ -64,6 +64,7 @@ import 'plant_report_screen.dart';
 import 'report_flow.dart';
 import 'support_package_screen.dart';
 import '../knx/active_tunnel.dart';
+import '../model/learning.dart';
 import 'learn_screen.dart';
 import 'teach_in_screen.dart';
 import 'tool_shell.dart';
@@ -157,6 +158,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
 
   /// Tapping a watcher's notification: details in the live list.
   final _openAddress = StreamController<int>.broadcast();
+  final _openTab = StreamController<LogTab>.broadcast();
 
   /// Watcher armed: the screen stays on so the app keeps listening in the
   /// foreground (otherwise iOS disconnects the tunnel in the background).
@@ -234,6 +236,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
     if (activeTunnel.value == _tunnel) activeTunnel.value = null;
     _watchSub.cancel();
     _openAddress.close();
+    _openTab.close();
     WatchRules.instance.removeListener(_syncAwake);
     SoundAck.instance.removeListener(_syncAwake);
     Plan.instance.removeListener(_syncAwake);
@@ -296,6 +299,20 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
       ),
     );
     return ok ?? false;
+  }
+
+  /// "Try it" of a lesson: to the place in the monitor it talks about.
+  void _tryLesson(LessonTarget target) {
+    switch (target) {
+      case LessonTarget.live:
+        _openTab.add(LogTab.live);
+      case LessonTarget.overview:
+        _openTab.add(LogTab.overview);
+      case LessonTarget.health:
+        _openHealth();
+      case LessonTarget.gateway:
+        unawaited(showGatewaySheet(context, _tunnel));
+    }
   }
 
   void _openRecordings() => pushTool<void>(context, (_) => const RecordingsScreen());
@@ -375,7 +392,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
   /// Long press: starts a recording with the last 10 seconds.
   Future<bool> _startWithPreRoll({Duration preRoll = MonitorModel.preRoll}) async {
     if (_model.recording || !await _mayRecord() || !mounted) return false;
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     _model.startRecording(preRoll: preRoll);
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -431,6 +448,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
         confirmLeave: _confirmLeave,
         initialTab: widget.initialTab,
         openAddress: _openAddress.stream,
+        openTab: _openTab.stream,
         title: InkWell(
           borderRadius: Radii.tile,
           onTap: () => showGatewaySheet(context, _tunnel),
@@ -559,7 +577,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             subtitle: s.lessonsTool,
             group: ToolGroup.learn,
             order: 0,
-            open: (_) => openLearn(context),
+            open: (_) => openLearn(context, onTry: _tryLesson),
           ),
           ToolEntry(
             icon: AppIcons.health,
@@ -1165,20 +1183,25 @@ class _TapBanner extends StatelessWidget {
         final active = points.where((p) => !p.paused).toList();
         final live = active.where((p) => p.connected).length;
         final down = active.where((p) => !p.connected && p.state == TunnelState.disconnected).toList();
-        final show = live > 0 && down.isNotEmpty;
+        final silent = active.where((p) => p.connected && p.silent).toList();
         return AnimatedSize(
           duration: Motion.of(context),
           curve: Motion.curve,
-          child: !show
-              ? const SizedBox(width: double.infinity)
-              : _Banner(
+          child: live > 0 && down.isNotEmpty
+              ? _Banner(
                   status: HorizontStatus.warning,
                   text: [
                     s.tapDown(down.map((p) => p.name).join(', '), live, active.length),
                     ?down.first.error,
                     s.tapDownHint,
                   ].join(' · '),
-                ),
+                )
+              : silent.isNotEmpty
+              ? _Banner(
+                  status: HorizontStatus.info,
+                  text: '${s.tapSilent(silent.map((p) => p.name).join(', '))} · ${s.tapSilentHint}',
+                )
+              : const SizedBox(width: double.infinity),
         );
       },
     );
