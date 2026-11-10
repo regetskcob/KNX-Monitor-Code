@@ -97,4 +97,12 @@ rm -f "$WEB/icons/Icon-maskable-192.png"
 cp "$SRC/web/icon-192.png" "$ROOT/ha-addon/knx_monitor/icon.png"
 cp "$SRC/web/icon-512.png" "$ROOT/ha-addon/knx_monitor/logo.png"
 
+# Home Assistant integration: the same icon as the add-on, so both look alike in the update list
+# (256 px and 512 px, as Home Assistant's brand folders expect).
+BRAND="$ROOT/ha-integration/custom_components/knx_monitor/brand"
+cp "$SRC/web/icon-512.png" "$BRAND/icon@2x.png"
+cp "$SRC/web/icon-512.png" "$BRAND/logo@2x.png"
+sips -Z 256 "$SRC/web/icon-512.png" --out "$BRAND/icon.png" >/dev/null
+cp "$BRAND/icon.png" "$BRAND/logo.png"
+
 echo "copied the Horizont icon set from $SRC"

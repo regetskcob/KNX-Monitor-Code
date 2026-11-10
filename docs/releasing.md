@@ -30,6 +30,20 @@ Box images are built by `.github/workflows/box-image.yml` from a
 the `linux` job of `.github/workflows/ci.yml` on an `app-v<version>` tag and
 attached to the release in the add-on repository.
 
+## Home Assistant integration
+
+The Busclear integration (`ha-integration/`) lives in its own public
+repository, `regetskcob/KNX-Monitor-HA`, where HACS finds it. Its version is in
+`manifest.json`. `tool/release.sh integration` copies the state there as one
+commit, tags `v<version>` and creates the GitHub release HACS offers as the
+update. Release it after the add-on version it needs. In HACS it is called
+"Busclear Integration", so it can be told apart from the add-on in Home
+Assistant's update list; both use the same icon.
+
+`tool/release.sh status` lists every artifact with a version (add-on, app,
+box, desktop, integration, public source); a release is complete when none of
+them is behind.
+
 ## Source code
 
 The public source tree is built from the development repository by

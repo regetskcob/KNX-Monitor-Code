@@ -15,7 +15,8 @@
 #   tool/release.sh app              # android + ios, then tag app-v<version>
 #   tool/release.sh desktop          # Linux from CI of tag app-v<version> → public release (latest)
 #   tool/release.sh box <version>    # Busclear Box image from the box-v<version> workflow, plus the case (box/case) → public release
-#   tool/release.sh status           # show versions, tags and open release steps
+#   tool/release.sh integration      # Busclear integration for Home Assistant (HACS): sync, tag v<version>, GitHub release
+#   tool/release.sh status           # show versions, tags and open release steps (add-on, app, box, integration, source)
 #   tool/release.sh notes [--draft]  # release texts of this build (TestFlight, Play) complete? drafts from the PRs
 #   tool/release.sh devicetest [--device <id>] [test …]
 #                                    # integration tests on every connected device, app data backed up first
@@ -64,6 +65,11 @@ PUBLIC_REPO=regetskcob/KNX-Monitor
 ADDON_CONFIG=ha-addon/knx_monitor/config.yaml
 ADDON_CHANGELOG=ha-addon/knx_monitor/CHANGELOG.md
 
+HA_REPO=regetskcob/KNX-Monitor-HA
+CODE_REPO=regetskcob/KNX-Monitor-Code
+HA_MANIFEST=ha-integration/custom_components/knx_monitor/manifest.json
+integration_version() { sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$HA_MANIFEST"; }
+public_release_exists() { gh release view "$2" -R "$1" >/dev/null 2>&1; }
 addon_version() { grep -E '^version:' "$ADDON_CONFIG" | cut -d'"' -f2; }
 app_version() { wb_version; }
 tag_exists() { git rev-parse -q --verify "refs/tags/$1" >/dev/null || git ls-remote --exit-code --tags origin "refs/tags/$1" >/dev/null 2>&1; }
@@ -476,7 +482,24 @@ cmd_status() {
   printf 'add-on  %-10s %s\n' "$av" "$(tag_exists "addon-v$av" && echo published || echo 'not published → tool/release.sh addon')"
   printf 'app     %-10s %s\n' "$pv" "$(tag_exists "app-v$pv" && echo published || echo 'not published → tool/release.sh app')"
   printf 'site    last change %s\n' "$(git log -1 --format=%cs -- site)"
+  # Everything else that carries a version: a release is only complete when none of these is
+  # behind. The integration was forgotten with 1.11.0 because it was not listed here.
+  printf 'box     %-10s %s\n' "$av" "$(public_release_exists "$PUBLIC_REPO" "box-v$av" && echo published || echo "not published → push tag box-v$av, then tool/release.sh box $av")"
+  printf 'desktop %-10s %s\n' "${pv%%+*}" "$(public_release_exists "$PUBLIC_REPO" "app-v$pv" && echo published || echo 'not published → tool/release.sh desktop')"
+  local iv; iv=$(integration_version)
+  printf 'integr. %-10s %s\n' "$iv" "$(public_release_exists "$HA_REPO" "v$iv" && echo published || echo 'not published → tool/release.sh integration')"
+  local synced; synced=$(gh api "repos/$CODE_REPO/commits?per_page=1" --jq '.[0].commit.message' 2>/dev/null | head -1)
+  printf 'source  %-10s %s\n' "${synced#Stand }" "$([ "$(git rev-parse -q --verify "${synced#Stand }^{commit}" 2>/dev/null)" = "$(git rev-parse origin/main)" ] && echo 'public source is at main' || echo 'behind main → tool/sync_public_source.sh')"
   cmd_verify_images "$av" || true
+}
+
+# The Busclear integration (ha-integration/, public repository KNX-Monitor-HA, installed through
+# HACS): one commit per state, tag v<version>, and the GitHub release HACS offers as the update.
+cmd_integration() {
+  require_clean_main
+  local iv; iv=$(integration_version)
+  public_release_exists "$HA_REPO" "v$iv" && die "integration v$iv is already released – bump the version in $HA_MANIFEST"
+  tool/sync_ha_integration.sh --release
 }
 
 case "${1:-}" in
@@ -493,6 +516,7 @@ case "${1:-}" in
   app) cmd_app ;;
   desktop) cmd_desktop ;;
   box) cmd_box "${2:-}" ;;
+  integration) cmd_integration ;;
   status) cmd_status ;;
   notes) shift; wb_store_notes "$@" ;;
   devicetest) shift; wb_devicetest "$@" ;;
