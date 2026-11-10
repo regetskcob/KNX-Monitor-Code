@@ -62,7 +62,8 @@ import 'app_localizations_en.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -70,7 +71,8 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -82,15 +84,19 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[Locale('de'), Locale('en')];
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('de'),
+    Locale('en'),
+  ];
 
   /// Subtitle under the app name on the splash screen.
   ///
@@ -3972,7 +3978,13 @@ abstract class AppLocalizations {
   ///
   /// In de, this message translates to:
   /// **'{sender} sendet {actual}, DPT {dpt} erwartet {expected} ({count}×)'**
-  String healthDptSize(String sender, String actual, String dpt, String expected, int count);
+  String healthDptSize(
+    String sender,
+    String actual,
+    String dpt,
+    String expected,
+    int count,
+  );
 
   /// Befund: ungültiger Wert
   ///
@@ -8196,7 +8208,14 @@ abstract class AppLocalizations {
   ///
   /// In de, this message translates to:
   /// **'{frames} Frames: {ack} ACK, {nak} NAK, {busy} BUSY, {repeated} Wiederholungen, {errors} mit Fehlern'**
-  String boxHatBusmonCounts(int frames, int ack, int nak, int busy, int repeated, int errors);
+  String boxHatBusmonCounts(
+    int frames,
+    int ack,
+    int nak,
+    int busy,
+    int repeated,
+    int errors,
+  );
 
   /// KNX HAT test: frames the module saw but did not pass on.
   ///
@@ -16158,7 +16177,12 @@ abstract class AppLocalizations {
   ///
   /// In de, this message translates to:
   /// **'Status {status} von {device}: {answered} von {commands} beantwortet'**
-  String checkNoFeedbackRow(String status, String device, int answered, int commands);
+  String checkNoFeedbackRow(
+    String status,
+    String device,
+    int answered,
+    int commands,
+  );
 
   /// Finding: several project senders really heard
   ///
@@ -16314,13 +16338,25 @@ abstract class AppLocalizations {
   ///
   /// In de, this message translates to:
   /// **'{ga} {name} kommt von Linie {from} nicht in Linie {to} an ({count} Telegramme), obwohl dort Geräte darauf hören. Filtertabelle des Kopplers prüfen.'**
-  String topoFilterBlocked(String ga, String name, String from, String to, int count);
+  String topoFilterBlocked(
+    String ga,
+    String name,
+    String from,
+    String to,
+    int count,
+  );
 
   /// Topologie: Messpunkte zeigen unnötig durchgelassene Telegramme
   ///
   /// In de, this message translates to:
   /// **'{ga} {name} kommt von Linie {from} in Linie {to} an ({count} Telegramme), obwohl dort niemand darauf hört.'**
-  String topoFilterLeaked(String ga, String name, String from, String to, int count);
+  String topoFilterLeaked(
+    String ga,
+    String name,
+    String from,
+    String to,
+    int count,
+  );
 
   /// Diagramm: Kennzahl Belegung der Leitung in Prozent
   ///
@@ -16449,7 +16485,8 @@ abstract class AppLocalizations {
   String weekSumTapGaps(String taps, int minutes);
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -16458,7 +16495,8 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['de', 'en'].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['de', 'en'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
