@@ -345,6 +345,7 @@ GroupCatalog anonymizeCatalog(GroupCatalog c, {required bool keepNames, required
         tunnelOf: d.tunnelOf,
         neverProgrammed: d.neverProgrammed,
         pendingDownload: d.pendingDownload,
+        rf: d.rf,
       ),
   },
   projectName: c.projectName == null ? null : placeholderProject,

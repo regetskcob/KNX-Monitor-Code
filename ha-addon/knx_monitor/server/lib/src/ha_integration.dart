@@ -61,12 +61,13 @@ class HaIntegration {
     this.tokenAccess = true,
     DateTime Function() clock = DateTime.now,
     CycleWatch? cycles,
+    Duration minSilence = CycleWatch.defaultMinSilence,
   }) : _supervisorToken = supervisorToken ?? Platform.environment['SUPERVISOR_TOKEN'],
        _supervisor = supervisor ?? Uri.parse('http://supervisor/'),
        _clock = clock,
        _lastSeen = clock(),
        figures = KeyFigures(currentBus, clock: clock),
-       cycles = cycles ?? CycleWatch(currentBus, clock: clock);
+       cycles = cycles ?? CycleWatch(currentBus, clock: clock, minSilence: minSilence);
 
   final Directory data;
   final BusService Function() currentBus;

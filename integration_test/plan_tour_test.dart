@@ -81,9 +81,11 @@ void main() {
     await wait(900);
 
     // Verbinden; ohne Installation mit Adresse (frischer Simulator) das Gateway eintragen.
-    final host = find.byType(TextFormField).first;
-    if ((tester.widget<TextFormField>(host).controller?.text ?? '').isEmpty) {
-      tester.widget<TextFormField>(host).controller!.text = const String.fromEnvironment(
+    // Das Gateway-Feld an seinem Platzhalter: Es ist nicht mehr das erste Feld der Seite, seit
+    // die Verbindungsart (mit Tunneladresse) davor steht.
+    final host = find.byWidgetPredicate((w) => w is TextField && w.decoration?.hintText == '192.168.1.10');
+    if ((tester.widget<TextField>(host).controller?.text ?? '').isEmpty) {
+      tester.widget<TextField>(host).controller!.text = const String.fromEnvironment(
         'GATEWAY',
         defaultValue: '192.168.1.22',
       );

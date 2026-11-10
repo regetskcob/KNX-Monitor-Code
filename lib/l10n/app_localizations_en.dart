@@ -9727,6 +9727,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get weekSumLess => 'Less';
 
   @override
+  String get topoRf => 'Radio';
+
+  @override
+  String topoRfHint(String lines, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Lines $lines are radio lines',
+      one: 'Line $lines is a radio line',
+    );
+    return '$_temp0 (KNX RF). Busclear sees their telegrams through the media coupler, but neither signal strength nor battery state of the radio devices.';
+  }
+
+  @override
+  String get topoRfVote => 'More on radio? Vote';
+
+  @override
+  String get weekSumCollapse => 'Collapse';
+
+  @override
+  String get weekSumExpand => 'Expand';
+
+  @override
+  String get weekSumHideWeek => 'Don\'t show again this week';
+
+  @override
+  String get weekSumHideAlways => 'Don\'t show again';
+
+  @override
+  String get weekSumToggle => 'Weekly overview in the overview';
+
+  @override
   String weekSumClocks(String senders, String groups, String share) {
     return 'Several clocks: $senders send date/time on $groups, together $share of the traffic. One, every 10 to 60 minutes, is enough.';
   }

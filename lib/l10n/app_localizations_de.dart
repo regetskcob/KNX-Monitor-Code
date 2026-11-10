@@ -9760,6 +9760,38 @@ class AppLocalizationsDe extends AppLocalizations {
   String get weekSumLess => 'Weniger';
 
   @override
+  String get topoRf => 'Funk';
+
+  @override
+  String topoRfHint(String lines, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Die Linien $lines sind Funklinien',
+      one: 'Linie $lines ist eine Funklinie',
+    );
+    return '$_temp0 (KNX RF). Busclear sieht ihre Telegramme über den Medienkoppler, aber weder Signalstärke noch Batteriezustand der Funkgeräte.';
+  }
+
+  @override
+  String get topoRfVote => 'Mehr zu Funk? Abstimmen';
+
+  @override
+  String get weekSumCollapse => 'Einklappen';
+
+  @override
+  String get weekSumExpand => 'Aufklappen';
+
+  @override
+  String get weekSumHideWeek => 'Diese Woche nicht mehr anzeigen';
+
+  @override
+  String get weekSumHideAlways => 'Nicht mehr anzeigen';
+
+  @override
+  String get weekSumToggle => 'Wochenüberblick in der Übersicht';
+
+  @override
   String weekSumClocks(String senders, String groups, String share) {
     return 'Mehrere Zeitgeber: $senders senden Datum/Uhrzeit auf $groups, zusammen $share des Verkehrs. Einer, alle 10 bis 60 Minuten, reicht.';
   }

@@ -243,6 +243,11 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
           port: port,
           tokenAccess: HomeAssistant.instance.available,
           onClaim: (claimed) => mqtt?.setDiscovery(mqttDiscovery && !claimed),
+          // "Stopped sending" only after this many hours of silence (default 12).
+          minSilence: CycleWatch.parseMinSilence(
+            env['SILENT_AFTER_HOURS'] ??
+                (HomeAssistant.instance.available ? await _optionValue('silent_after_hours') : null),
+          ),
         )
       : null;
   await ha?.start();
@@ -1020,6 +1025,15 @@ Future<bool> _flag(String key) async {
     return options[key] != false;
   } on Object {
     return true;
+  }
+}
+
+/// Add-on option as it is (a number, say), `null` if missing.
+Future<Object?> _optionValue(String key) async {
+  try {
+    return (jsonDecode(await File('/data/options.json').readAsString()) as Map<String, Object?>)[key];
+  } on Object {
+    return null;
   }
 }
 

@@ -10,6 +10,9 @@ title: "Jedes Telegramm im Blick, zu Hause und auf der Baustelle."
 lead: "Eingeordnet mit deinem ETS-Projekt: Geräte, Räume und Werte statt Hex-Kolonnen. Dazu die Prüfung der Anlage auf stille Sensoren, falsche Datentypen und Busprobleme."
 primary: "Als Home-Assistant-Add-on"
 source: "Open Source · GPLv3"
+# Schnellstart als PDF (tool/site_quickstart.sh), drei Seiten, auch für Einsteiger.
+quickstart: "Schnellstart (PDF)"
+quickstart_file: "schnellstart/busclear-schnellstart.pdf"
 beta:
   none: ""
   ios: "Beta testen: iPhone, iPad, Mac"

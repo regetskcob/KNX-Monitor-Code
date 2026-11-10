@@ -140,6 +140,7 @@ GroupCatalog parseKnxproj(Uint8List bytes, {String? password, String? ets6Passwo
       description: _nonEmpty(di.getAttribute('Description')),
       serial: _serial(di.getAttribute('SerialNumber')),
       neverProgrammed: downloadKnown && _nonEmpty(di.getAttribute('LastDownload')) == null,
+      rf: _onRf(di),
       // The ETS writes the "…Loaded" flags only when a part is loaded.
       pendingDownload: _nonEmpty(di.getAttribute('LastDownload')) == null
           ? const []
@@ -633,6 +634,12 @@ Map<String, String> _manufacturers(Uint8List master) {
   }
   return result;
 }
+
+/// Whether the device sits on a radio line: the medium is set on the line (ETS5) or on the
+/// segment inside the line (ETS6); the nearest one counts.
+/// (`MT-0` twisted pair, `MT-1` powerline, `MT-2` radio, `MT-5` IP.)
+bool _onRf(XmlElement di) =>
+    isRfMedium(di.ancestorElements.map((e) => e.getAttribute('MediumTypeRefId')).whereType<String>().firstOrNull);
 
 /// Individual address from area, line and device number.
 int? _deviceAddress(XmlElement di) {

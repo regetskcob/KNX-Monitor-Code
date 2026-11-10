@@ -75,3 +75,10 @@ configuration:
     description: >-
       Steht in jeder MQTT-Nachricht als inst und hält mehrere Server in
       einer Datenbank auseinander. Leer: die Kennung der aktiven Anlage.
+  silent_after_hours:
+    name: „Sendet nicht mehr“ nach (Stunden)
+    description: >-
+      Die Busclear-Integration meldet eine Adresse, die sonst regelmäßig
+      sendet, erst nach so vielen Stunden ohne Telegramm. Standard 12. Ein
+      kleinerer Wert meldet früher, aber auch Melder, die nur eine Weile
+      nichts zu sagen hatten. Zeiten ohne Aufzeichnung zählen nicht mit.

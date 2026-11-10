@@ -82,6 +82,11 @@ GroupCatalog parseXknx(Uint8List bytes, {String? password, List<int>? key}) {
   final areaOf = {for (final a in areas) a['id']: a['address'] as int?};
   final lineOf = {for (final l in lines) l['id']: (area: areaOf[l['area_id']], line: l['address'] as int?)};
   final segmentLine = {for (final seg in segments) seg['id']: lineOf[seg['line_id']]};
+  // KNX RF: the editor keeps the medium per segment.
+  final rfSegments = {
+    for (final seg in segments)
+      if (isRfMedium(seg['medium_type'])) seg['id'],
+  };
   int? individual(Map<String, Object?> d) {
     final number = d['address'] as int?;
     final line = segmentLine[d['segment_id']];
@@ -130,6 +135,7 @@ GroupCatalog parseXknx(Uint8List bytes, {String? password, List<int>? key}) {
       description: _text(d['description']),
       serial: serialFromBase64(_text(d['serial_number'])),
       neverProgrammed: downloadKnown && _text(d['last_download']) == null,
+      rf: rfSegments.contains(d['segment_id']),
       pendingDownload: _text(d['last_download']) == null
           ? const []
           : [

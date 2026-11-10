@@ -82,6 +82,8 @@
       <div class="hz-feld-actions">
         <a class="hz-button hz-button--primary" href="{{ site.Params.haUrl }}">{{ $d.primary }}{{ partial "horizont/symbol.html" "arrow_forward" }}</a>
         <a class="hz-button hz-button--secondary" href="{{ site.Params.codeUrl }}">{{ partial "horizont/symbol.html" "data_object" }}{{ $d.source }}</a>
+        {{- /* The quick start as PDF: three pages, also for people new to KNX. */}}
+        <a class="hz-button hz-button--secondary" href="{{ $d.quickstart_file | relURL }}">{{ $d.quickstart }}{{ partial "horizont/symbol.html" "arrow_forward" }}</a>
       </div>
       <p class="tz-note t-caption">{{ index $d.soon $beta }} {{ $d.local }} {{ $d.formerly }}</p>
     </div>

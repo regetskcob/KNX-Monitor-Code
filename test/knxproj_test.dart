@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:knx_monitor/export/handover_package.dart';
 import 'package:knx_monitor/knx/group_catalog.dart';
 import 'package:knx_monitor/knx/knxproj_parser.dart';
 import 'package:knx_monitor/knx/telegram.dart';
@@ -162,6 +163,48 @@ void main() {
     // Ohne Namen: Produktname, deutsche Übersetzung bevorzugt.
     expect(c.devices[parseIndividual('1.1.18')]!.name, 'Raumtemperaturregler');
     expect(c.style, GroupStyle.threeLevel);
+  });
+
+  // KNX RF (docs: Notion „KNX RF in Busclear“, öffentliches Issue KNX-Monitor #13): Das Medium steht
+  // in ETS5 an der Linie, in ETS6 am Segment darin.
+  test('Funklinie: Geräte auf KNX RF sind gekennzeichnet, die Linie zählt als Funk', () {
+    final tp = parseKnxproj(_knxproj());
+    expect(tp.devices.values.any((d) => d.rf), isFalse);
+    expect(tp.rfLines, isEmpty);
+
+    final ets5 = parseKnxproj(
+      _knxproj(
+        project: _project.replaceFirst(
+          '<Line Id="P-0ABC-0_L-1" Name="Linie 1" Address="1">',
+          '<Line Id="P-0ABC-0_L-1" Name="Linie 1" Address="1" MediumTypeRefId="MT-2">',
+        ),
+      ),
+    );
+    expect(ets5.devices.values.every((d) => d.rf || d.isTunnel), isTrue);
+    expect(ets5.rfLines, {0x11});
+
+    final ets6 = parseKnxproj(
+      _knxproj(
+        project: _project
+            .replaceFirst(
+              '<Line Id="P-0ABC-0_L-1" Name="Linie 1" Address="1">',
+              '<Line Id="P-0ABC-0_L-1" Name="Linie 1" Address="1" MediumTypeRefId="MT-0">',
+            )
+            .replaceFirst(
+              '<Segment Id="P-0ABC-0_S-1" Number="0">',
+              '<Segment Id="P-0ABC-0_S-1" Number="0" MediumTypeRefId="MT-2">',
+            ),
+      ),
+    );
+    expect(ets6.rfLines, {0x11}, reason: 'das Segment zählt vor der Linie');
+
+    // Reist im Übergabepaket mit: Beim Kunden bleibt die Funklinie eine Funklinie.
+    expect(handoverCatalog(ets5).rfLines, {0x11});
+
+    // Übersteht den Katalog auf der Platte; ältere Kataloge ohne das Feld sind TP.
+    final back = GroupCatalog.fromJson(ets5.toJson());
+    expect(back.rfLines, {0x11});
+    expect(GroupCatalog.fromJson(tp.toJson()).rfLines, isEmpty);
   });
 
   test('Adressdarstellung aus dem Projekt (2-stufig, frei)', () {

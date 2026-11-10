@@ -187,6 +187,7 @@ Images exist for amd64 and arm64 only, so a Raspberry Pi needs the 64-bit OS
 | `MQTT_RETAIN_VALUES=true` | Telegram stream: also the last value per address to `knx_monitor/value/…`, retained, only when it changes. |
 | `MQTT_FILTER` | Telegram stream: only these group addresses, e.g. `1/#,3/2/#,4/1/7`. |
 | `MQTT_INSTALLATION` | Telegram stream: installation ID in `inst`, to tell several servers apart in one database. |
+| `SILENT_AFTER_HOURS` | Busclear integration: report an address as "stopped sending" only after this many hours without a telegram (default `12`, 1 to 168). Time without recording does not count. |
 
 ## Home Assistant Container
 

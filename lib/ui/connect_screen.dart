@@ -882,6 +882,14 @@ class _ConnectScreenState extends State<ConnectScreen> {
     _connect();
   }
 
+  /// Whether the connection type talks to a gateway at an address: not routing (multicast), the
+  /// Home Assistant KNX integration or the KNX HAT.
+  bool get _needsGateway => !const {
+    ConnectionMode.routing,
+    ConnectionMode.homeAssistant,
+    ConnectionMode.hat,
+  }.contains(ConnectionOptions.instance.mode);
+
   String? _validateHost(String? v) {
     final text = v?.trim() ?? '';
     // Routing needs no gateway (multicast).
@@ -1049,91 +1057,107 @@ class _ConnectScreenState extends State<ConnectScreen> {
         showKeyring: expert,
       ),
       const SizedBox(height: Gap.section),
-      // Gateway and port as rows of a card: label on the left, field without
-      // its own border on the right (focus shows the input while typing).
-      AnimatedSize(
-        duration: Motion.of(context),
-        curve: Motion.curve,
-        alignment: Alignment.topCenter,
-        child: _SettingsCard(
-          children: [
-            _FieldRow(
-              label: s.connectGateway,
-              field: TextFormField(
-                controller: _host,
-                enabled: !_busy,
-                // URL keyboard: dot (also on German iPhones) and host names.
-                keyboardType: TextInputType.url,
-                inputFormatters: const [dotForComma],
-                textInputAction: TextInputAction.go,
-                autocorrect: false,
-                textAlign: TextAlign.end,
-                style: data,
-                decoration: _FieldRow.decoration.copyWith(
-                  hintText: '192.168.1.10',
-                  // Gateway search right in the field.
-                  suffixIcon: HorizontFieldIconButton(
-                    tooltip: s.scanGateways,
-                    onPressed: _scanning || _busy ? null : _scan,
-                    icon: _scanning
-                        ? const SizedBox.square(
-                            dimension: HzSpace.s16,
-                            child: CircularProgressIndicator.adaptive(strokeWidth: Lines.selection),
-                          )
-                        : const Icon(AppIcons.search),
+      // Connection type first: it decides whether a gateway is needed at all. In expert mode, and
+      // also without it as soon as the type is one without a gateway (set by the add-on's hint,
+      // say): otherwise nothing on the page would say how the app connects, or let it be changed.
+      ListenableBuilder(
+        listenable: ConnectionOptions.instance,
+        builder: (context, _) => AnimatedSize(
+          duration: Motion.of(context),
+          curve: Motion.curve,
+          alignment: Alignment.topCenter,
+          child: !(expert || !_needsGateway)
+              ? const SizedBox(width: double.infinity)
+              : Padding(
+                  padding: const EdgeInsets.only(bottom: Gap.inner),
+                  child: ConnectionOptionsPanel(
+                    enabled: !_busy,
+                    // Box with HAT: the server offers the connection type.
+                    hat: (_addon?['hat'] as Map?)?['present'] == true,
                   ),
                 ),
-                validator: _validateHost,
-                onFieldSubmitted: (_) => _connect(),
-              ),
-            ),
-            // Port is almost always 3671; only for experts or if it differs.
-            if (expert || _port.text.trim() != '3671')
-              _FieldRow(
-                label: s.connectPort,
-                field: TextFormField(
-                  controller: _port,
-                  enabled: !_busy,
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.end,
-                  style: data,
-                  // Invisible space the height of the search button in the
-                  // gateway field: it keeps that field at the touch-target
-                  // height, even when a smaller system font (iPad) shrinks the
-                  // text field below.
-                  decoration: _FieldRow.decoration.copyWith(
-                    suffixIcon: const SizedBox.shrink(),
-                    suffixIconConstraints: BoxConstraints(minHeight: context.hzTheme.controlHeight),
-                  ),
-                  validator: _validatePort,
-                  onFieldSubmitted: (_) => _connect(),
-                ),
-              ),
-          ],
         ),
       ),
-      // Connection type and keyring only in expert mode, animated.
+      // Gateway and port as rows of a card: label on the left, field without
+      // its own border on the right (focus shows the input while typing). Not
+      // for connection types without a gateway (Home Assistant, routing, KNX HAT):
+      // there the two fields would ask for something that is never used.
+      ListenableBuilder(
+        listenable: ConnectionOptions.instance,
+        builder: (context, _) => _needsGateway
+            ? AnimatedSize(
+                duration: Motion.of(context),
+                curve: Motion.curve,
+                alignment: Alignment.topCenter,
+                child: _SettingsCard(
+                  children: [
+                    _FieldRow(
+                      label: s.connectGateway,
+                      field: TextFormField(
+                        controller: _host,
+                        enabled: !_busy,
+                        // URL keyboard: dot (also on German iPhones) and host names.
+                        keyboardType: TextInputType.url,
+                        inputFormatters: const [dotForComma],
+                        textInputAction: TextInputAction.go,
+                        autocorrect: false,
+                        textAlign: TextAlign.end,
+                        style: data,
+                        decoration: _FieldRow.decoration.copyWith(
+                          hintText: '192.168.1.10',
+                          // Gateway search right in the field.
+                          suffixIcon: HorizontFieldIconButton(
+                            tooltip: s.scanGateways,
+                            onPressed: _scanning || _busy ? null : _scan,
+                            icon: _scanning
+                                ? const SizedBox.square(
+                                    dimension: HzSpace.s16,
+                                    child: CircularProgressIndicator.adaptive(strokeWidth: Lines.selection),
+                                  )
+                                : const Icon(AppIcons.search),
+                          ),
+                        ),
+                        validator: _validateHost,
+                        onFieldSubmitted: (_) => _connect(),
+                      ),
+                    ),
+                    // Port is almost always 3671; only for experts or if it differs.
+                    if (expert || _port.text.trim() != '3671')
+                      _FieldRow(
+                        label: s.connectPort,
+                        field: TextFormField(
+                          controller: _port,
+                          enabled: !_busy,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.end,
+                          style: data,
+                          // Invisible space the height of the search button in the
+                          // gateway field: it keeps that field at the touch-target
+                          // height, even when a smaller system font (iPad) shrinks the
+                          // text field below.
+                          decoration: _FieldRow.decoration.copyWith(
+                            suffixIcon: const SizedBox.shrink(),
+                            suffixIconConstraints: BoxConstraints(minHeight: context.hzTheme.controlHeight),
+                          ),
+                          validator: _validatePort,
+                          onFieldSubmitted: (_) => _connect(),
+                        ),
+                      ),
+                  ],
+                ),
+              )
+            : const SizedBox.shrink(),
+      ),
+      // Further tap points only in expert mode, animated.
       AnimatedSize(
         duration: Motion.of(context),
         curve: Motion.curve,
         alignment: Alignment.topCenter,
         child: !expert
             ? const SizedBox(width: double.infinity)
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: Gap.inner),
-                  ListenableBuilder(
-                    listenable: ConnectionOptions.instance,
-                    builder: (context, _) => ConnectionOptionsPanel(
-                      enabled: !_busy,
-                      // Box with HAT: the server offers the connection type.
-                      hat: (_addon?['hat'] as Map?)?['present'] == true,
-                    ),
-                  ),
-                  const SizedBox(height: Gap.section),
-                  TapPointsPanel(enabled: !_busy),
-                ],
+            : Padding(
+                padding: const EdgeInsets.only(top: Gap.section),
+                child: TapPointsPanel(enabled: !_busy),
               ),
       ),
       // In the add-on with a configured KNX integration: share its connection

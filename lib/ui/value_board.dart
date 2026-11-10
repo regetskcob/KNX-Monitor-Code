@@ -38,6 +38,7 @@ class ValueBoard extends StatefulWidget {
     this.focused,
     this.onSelectGroup,
     this.leading = const [],
+    this.header,
   });
 
   /// Selection mode: the check mark in the section header selects all or no cards.
@@ -45,6 +46,10 @@ class ValueBoard extends StatefulWidget {
 
   /// Slivers before the sections (e.g. saved charts).
   final List<Widget> leading;
+
+  /// A card above everything, scrolling with the content and with the board's gutter (the
+  /// weekly overview). It brings its own space below, so an empty one leaves no gap.
+  final Widget? header;
 
   /// Source for the time axis and average (optional).
   final TelegramLog? log;
@@ -336,6 +341,11 @@ class _ValueBoardState extends State<ValueBoard> {
           ];
           return CustomScrollView(
             slivers: [
+              if (widget.header case final header?)
+                SliverPadding(
+                  padding: EdgeInsets.symmetric(horizontal: gutter),
+                  sliver: SliverToBoxAdapter(child: header),
+                ),
               ...widget.leading,
               if (pinned.isNotEmpty) PinnedBand(rows: false, slivers: packed(pinned, first: true)),
               ...packed(rest, first: pinned.isEmpty),

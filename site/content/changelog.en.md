@@ -6,6 +6,19 @@ slug: "changelog"
 ---
 What the latest versions of Busclear brought, newest first. App, Home Assistant add-on and Busclear Box share one version number. Every version is on [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant the add-on shows the same notes before an update.
 
+## 1.11.2 – 10 Nov 2026
+
+- "Stopped sending" only after a long silence: the repair in the Home Assistant integration now needs at least twelve hours without a telegram, however short the address's usual interval is. A presence detector that is quiet for an hour or a night is no longer reported. The hours can be set: option "Stopped sending after (hours)" in the add-on, `SILENT_AFTER_HOURS` for Docker and the box.
+- Time the recording did not cover no longer counts as silence. After a pause of the recording, a lost connection or a restart, cyclic addresses counted as silent although nothing had been recorded at all.
+- New: the [quick start as PDF](/schnellstart/busclear-quick-start.pdf), three pages, also for everyone who is just getting to know KNX and their installation.
+
+## 1.11.1 – 10 Nov 2026
+
+- Fixed: on a phone the overview could not be scrolled once the card "Last 7 days" was there. It stood above the list and took the whole screen. It now scrolls with the overview.
+- The card "Last 7 days" can be collapsed to its headline, hidden for the current week, or switched off. It comes back with the switch "Weekly overview in the overview" in the menu "More". The choice is kept per device.
+- Connecting: the connection type comes before gateway and port. With "Home Assistant", routing or the KNX HAT the two fields are gone, because they are not used there.
+- KNX RF: radio lines from the project (ETS, XKNX Editor, Home Assistant) are marked as radio in the topology, and radio devices no longer count as "no telegram" in the weekly overview: a battery-powered transmitter only speaks when it has something to say. Signal strength and battery state per radio device are up for a vote: [#13](https://github.com/regetskcob/KNX-Monitor/issues/13). Import the project again to get the marking.
+
 ## 1.11.0 – 10 Nov 2026
 
 - Fewer false "stopped sending" alerts: group addresses that send in bursts (dimming, blinds while moving, switching with status feedback) no longer count as cyclic. This affects the repair in the Home Assistant integration and the app's health check.

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:horizont/horizont.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../model/sound_ack.dart';
 import 'sound_ack_screen.dart';
@@ -341,17 +343,19 @@ class _TopologyScreenState extends State<TopologyScreen> {
               ),
             ],
           ),
-          body: LayoutBuilder(
-            builder: (context, box) {
-              // From 840 lines, distribution board and details in the page; the device
-              // tree on the left only from 1200, since on the iPad with the toolbar the
-              // distribution board is enough. Below that devices as tiles (iPad
-              // portrait) or one line as a list (phone).
-              _inPage = box.maxWidth >= Breakpoints.expanded;
-              if (_inPage) return _split(context, box.maxWidth, tree: box.maxWidth >= Breakpoints.large);
-              if (box.maxWidth >= Breakpoints.medium) return _tablet(context);
-              return _phone(context);
-            },
+          body: _WithRfHint(
+            child: LayoutBuilder(
+              builder: (context, box) {
+                // From 840 lines, distribution board and details in the page; the device
+                // tree on the left only from 1200, since on the iPad with the toolbar the
+                // distribution board is enough. Below that devices as tiles (iPad
+                // portrait) or one line as a list (phone).
+                _inPage = box.maxWidth >= Breakpoints.expanded;
+                if (_inPage) return _split(context, box.maxWidth, tree: box.maxWidth >= Breakpoints.large);
+                if (box.maxWidth >= Breakpoints.medium) return _tablet(context);
+                return _phone(context);
+              },
+            ),
           ),
         ),
       ),
@@ -465,7 +469,11 @@ class _TopologyScreenState extends State<TopologyScreen> {
             title: s.topoLine(formatLine(line.line)),
             count: line.devices.length + _unknownOf(line).length + line.tunnels.length,
             initiallyExpanded: true,
-            badge: line.line == _topo.gatewayLine ? HorizontBadge(HorizontStatus.info, label: s.topoGatewayHere) : null,
+            badge: line.line == _topo.gatewayLine
+                ? HorizontBadge(HorizontStatus.info, label: s.topoGatewayHere)
+                : _rfLine(line.line)
+                ? HorizontBadge(HorizontStatus.neutral, label: s.topoRf)
+                : null,
             children: [
               _DeviceGrid(
                 devices: [
@@ -825,6 +833,7 @@ class _DeviceTreeState extends State<_DeviceTree> {
             ),
           ),
           if (gateway) HorizontBadge(HorizontStatus.info, label: s.topoGatewayHere),
+          if (_rfLine(line.line)) HorizontBadge(HorizontStatus.neutral, label: s.topoRf),
           SoundAckButton(target: AckLine((line.line >> 4) & 0x0F, line.line & 0x0F)),
         ],
       ),
@@ -1225,6 +1234,8 @@ class _LineCard extends StatelessWidget {
           ? HorizontBadge(HorizontStatus.info, label: s.topoGatewayHere)
           : tapPoint
           ? HorizontBadge(HorizontStatus.positive, label: s.topoTapPoint)
+          : _rfLine(line.line)
+          ? HorizontBadge(HorizontStatus.neutral, label: s.topoRf)
           : null,
       child: FigureRow(
         figures: [
@@ -2870,4 +2881,72 @@ class _GroupLinkRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Whether [line] is a KNX RF line according to the project (docs: RF devices are only seen
+/// through the media coupler).
+bool _rfLine(int line) => CatalogStore.instance.catalog.rfLines.contains(line);
+
+/// Public issue where users vote on RF diagnostics (signal strength, battery, lost telegrams).
+final rfIssueUrl = Uri.https('github.com', '/regetskcob/KNX-Monitor/issues/13');
+
+/// Above the topology when the project has a radio line: what Busclear sees of it, and where to
+/// ask for more. Shown until dismissed, per device.
+class _WithRfHint extends StatefulWidget {
+  const _WithRfHint({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_WithRfHint> createState() => _WithRfHintState();
+}
+
+class _WithRfHintState extends State<_WithRfHint> {
+  static const _key = 'topo_rf_hint_dismissed';
+  bool _dismissed = true;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      if (mounted) setState(() => _dismissed = prefs.getBool(_key) ?? false);
+    });
+  }
+
+  Future<void> _dismiss() async {
+    setState(() => _dismissed = true);
+    await (await SharedPreferences.getInstance()).setBool(_key, true);
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: CatalogStore.instance,
+    builder: (context, _) {
+      final lines = CatalogStore.instance.catalog.rfLines.toList()..sort();
+      if (_dismissed || lines.isEmpty) return widget.child;
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Gap.gutter, Gap.inner, Gap.gutter, 0),
+            child: HorizontNotice(
+              HorizontStatus.info,
+              icon: AppIcons.sensors,
+              action: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton(
+                    onPressed: () => launchUrl(rfIssueUrl, mode: LaunchMode.externalApplication),
+                    child: Text(s.topoRfVote),
+                  ),
+                  IconButton(tooltip: s.commonClose, icon: const Icon(AppIcons.close), onPressed: _dismiss),
+                ],
+              ),
+              child: Text(s.topoRfHint(lines.map(formatLine).join(', '), lines.length)),
+            ),
+          ),
+          Expanded(child: widget.child),
+        ],
+      );
+    },
+  );
 }

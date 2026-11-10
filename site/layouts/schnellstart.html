@@ -1,0 +1,146 @@
+{{- /*
+  The quick start as three A4 pages: what you need and three ways to begin,
+  a page for people new to KNX, and the first five steps. tool/site_quickstart.sh
+  prints it with headless Chrome into static/schnellstart/ (one PDF per
+  language), which the home page and social posts link to.
+  Drafts (content/schnellstart*.md): rendered only by `hugo server -D`; the
+  site serves the PDFs, not this page.
+*/ -}}
+{{- $hz := site.Data.horizont -}}
+{{- $css := slice
+  (resources.Get "css/horizont/tokens.css" | resources.ExecuteAsTemplate "css/horizont-tokens.css" $hz)
+  (resources.Get "css/horizont/components.css")
+  (resources.Get "css/teaser.css")
+  | resources.Concat "css/teaser-quickstart.css" }}
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode }}" data-product="knx" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>{{ site.Title }} – {{ .Title }}</title>
+<link rel="stylesheet" href="{{ $css.RelPermalink }}">
+<style>
+  @page { size: A4; margin: 0; }
+  html, body { margin: 0; background: var(--bg); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .qs-page { position: relative; width: 210mm; height: 297mm; box-sizing: border-box; padding: 16mm 17mm 14mm; overflow: hidden; page-break-after: always; display: flex; flex-direction: column; }
+  .qs-page:last-child { page-break-after: auto; }
+  .qs-head { display: flex; align-items: center; gap: 4mm; margin-bottom: 9mm; }
+  .qs-head svg, .qs-head img { width: 13mm; height: 13mm; flex: none; }
+  .qs-head .tz-name { font-size: 15pt; }
+  .qs-head .qs-kennung { margin-left: auto; }
+  .qs h1 { font-size: 31pt; line-height: 1.08; margin: 0 0 4mm; text-wrap: balance; }
+  .qs-lead { font-size: 12pt; line-height: 1.5; color: var(--text-muted); margin: 0 0 8mm; max-width: 150mm; }
+  .qs h2 { font-size: 13pt; margin: 0 0 3.5mm; padding-left: 3mm; border-left: 0.9mm solid var(--accent); line-height: 1.2; }
+  .qs ul.qs-need { list-style: none; margin: 0 0 9mm; padding: 5mm 6mm; background: var(--sunken); border-radius: 3mm; display: grid; gap: 2.6mm; }
+  .qs ul.qs-need li { font-size: 10.5pt; line-height: 1.45; padding-left: 6mm; position: relative; }
+  .qs ul.qs-need li::before { content: ""; position: absolute; left: 0.6mm; top: 1.9mm; width: 2.2mm; height: 2.2mm; border-radius: 50%; background: var(--accent); }
+  .qs code { font-family: var(--font-mono); font-size: 0.86em; overflow-wrap: anywhere; }
+  .qs-ways { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4.5mm; flex: 1; align-items: stretch; }
+  .qs-way { background: var(--surface); border: 0.3mm solid var(--line); border-radius: 3mm; padding: 5mm 4.6mm 4.6mm; display: flex; flex-direction: column; }
+  .qs-tag { font-family: var(--font-mono); font-size: 7.5pt; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-text, var(--accent)); margin-bottom: 1.6mm; }
+  .qs-way h3 { font-size: 12.5pt; line-height: 1.2; margin: 0 0 2mm; }
+  .qs-way > p { font-size: 9.5pt; line-height: 1.45; color: var(--text-muted); margin: 0 0 3.5mm; min-height: 12mm; }
+  .qs-way ol { margin: 0 0 4mm; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 2.4mm; }
+  .qs-way ol li { counter-increment: s; font-size: 9.5pt; line-height: 1.42; padding-left: 6.4mm; position: relative; }
+  .qs-way ol li::before { content: counter(s); position: absolute; left: 0; top: 0.2mm; width: 4.6mm; height: 4.6mm; border-radius: 50%; background: var(--accent); color: #fff; font-size: 7.5pt; font-weight: 600; display: grid; place-items: center; }
+  .qs-go { margin-top: auto; display: flex; align-items: flex-end; gap: 3.5mm; padding-top: 3.5mm; border-top: 0.25mm solid var(--line-hairline, var(--line)); }
+  .qs-go img { width: 21mm; height: 21mm; flex: none; image-rendering: pixelated; }
+  .qs-go span { font-family: var(--font-mono); font-size: 8.5pt; line-height: 1.35; color: var(--text); overflow-wrap: anywhere; }
+  .qs-steps { display: grid; gap: 4.2mm; margin: 0 0 7mm; padding: 0; list-style: none; counter-reset: f; }
+  .qs-steps li { counter-increment: f; display: grid; grid-template-columns: 10mm 1fr; gap: 0 4mm; align-items: start; }
+  .qs-steps li::before { content: counter(f); grid-row: 1 / span 2; width: 9mm; height: 9mm; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12pt; font-weight: 600; display: grid; place-items: center; }
+  .qs-steps h3 { font-size: 12pt; margin: 0.6mm 0 0.8mm; line-height: 1.2; }
+  .qs-steps p { font-size: 10.3pt; line-height: 1.46; color: var(--text-muted); margin: 0; }
+  .qs-two { display: grid; grid-template-columns: 1fr 78mm; gap: 8mm; align-items: start; flex: 1; }
+  .qs-shot { border-radius: 3mm; border: 0.3mm solid var(--line); overflow: hidden; background: var(--surface); }
+  .qs-shot img { display: block; width: 100%; height: auto; }
+  .qs ul.qs-help { list-style: none; margin: 6mm 0 0; padding: 4.6mm 5mm; background: var(--sunken); border-radius: 3mm; display: grid; gap: 2mm; }
+  .qs ul.qs-help li { font-size: 9.6pt; line-height: 1.42; overflow-wrap: anywhere; }
+  .qs-foot { margin-top: auto; padding-top: 4mm; display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 7.5pt; letter-spacing: 0.04em; color: var(--text-faint); border-top: 0.25mm solid var(--line); }
+  .qs-new h1 { font-size: 27pt; margin-bottom: 3.5mm; }
+  .qs-new .qs-lead { margin-bottom: 7mm; }
+  .qs-terms { display: grid; grid-template-columns: 1fr 1fr; gap: 3.6mm; margin: 0 0 8mm; }
+  .qs-term { background: var(--surface); border: 0.3mm solid var(--line); border-radius: 3mm; padding: 4mm 4.6mm; }
+  .qs-term h3 { font-size: 11.5pt; margin: 0 0 1.2mm; }
+  .qs-term p { font-size: 9.8pt; line-height: 1.45; color: var(--text-muted); margin: 0; }
+  .qs-new .qs-steps { margin-bottom: 8mm; }
+  .qs ul.qs-ask { list-style: none; margin: 0; padding: 5mm 6mm; background: var(--sunken); border-radius: 3mm; display: grid; gap: 2.4mm; }
+  .qs ul.qs-ask li { font-size: 10.5pt; line-height: 1.42; padding-left: 6mm; position: relative; }
+  .qs ul.qs-ask li::before { content: "?"; position: absolute; left: 0; top: -0.1mm; font-weight: 700; color: var(--accent); }
+</style>
+</head>
+<body class="hz tz qs">
+{{- define "qs-head" }}
+  <div class="qs-head">
+    {{ partial "horizont/app-icon.html" (dict "product" "knx" "size" 64) }}
+    <span class="tz-name">{{ site.Title }}</span>
+    <span class="qs-kennung">{{ partial "horizont/kennung.html" .Params.kennung }}</span>
+  </div>
+{{- end }}
+<section class="qs-page">
+  {{ template "qs-head" . }}
+  <h1 class="t-display">{{ .Params.headline }}</h1>
+  <p class="qs-lead">{{ .Params.lead }}</p>
+  <h2>{{ .Params.need_title }}</h2>
+  <ul class="qs-need">
+    {{- range .Params.need }}<li>{{ . | markdownify }}</li>{{ end -}}
+  </ul>
+  <h2>{{ .Params.ways_title }}</h2>
+  <div class="qs-ways">
+    {{- range .Params.ways }}
+    <div class="qs-way">
+      <span class="qs-tag">{{ .tag }}</span>
+      <h3>{{ .name }}</h3>
+      <p>{{ .text }}</p>
+      <ol>{{ range .steps }}<li>{{ . | markdownify }}</li>{{ end }}</ol>
+      <div class="qs-go">
+        {{- with images.QR .url (dict "level" "medium" "scale" 6) }}<img src="{{ .RelPermalink }}" alt="">{{ end -}}
+        <span>{{ .link }}</span>
+      </div>
+    </div>
+    {{- end }}
+  </div>
+  <div class="qs-foot"><span>{{ .Params.footer }}</span><span>1 / 3</span></div>
+</section>
+<section class="qs-page qs-new">
+  <div class="qs-head">
+    {{ partial "horizont/app-icon.html" (dict "product" "knx" "size" 64) }}
+    <span class="tz-name">{{ site.Title }}</span>
+    <span class="qs-kennung">{{ partial "horizont/kennung.html" .Params.new_kennung }}</span>
+  </div>
+  <h1 class="t-display">{{ .Params.new_title }}</h1>
+  <p class="qs-lead">{{ .Params.new_lead }}</p>
+  <h2>{{ .Params.terms_title }}</h2>
+  <div class="qs-terms">
+    {{- range .Params.terms }}<div class="qs-term"><h3>{{ .term }}</h3><p>{{ .text }}</p></div>{{ end -}}
+  </div>
+  <h2>{{ .Params.try_title }}</h2>
+  <ol class="qs-steps">
+    {{- range .Params.try }}<li><h3>{{ .title }}</h3><p>{{ .text }}</p></li>{{ end -}}
+  </ol>
+  <h2>{{ .Params.ask_title }}</h2>
+  <ul class="qs-ask">
+    {{- range .Params.ask }}<li>{{ . }}</li>{{ end -}}
+  </ul>
+  <div class="qs-foot"><span>{{ .Params.footer }}</span><span>2 / 3</span></div>
+</section>
+<section class="qs-page">
+  {{ template "qs-head" . }}
+  <h2>{{ .Params.first_title }}</h2>
+  <div class="qs-two">
+    <div>
+      <ol class="qs-steps">
+        {{- range .Params.first }}<li><h3>{{ .title }}</h3><p>{{ .text }}</p></li>{{ end -}}
+      </ol>
+    </div>
+    <div>
+      <div class="qs-shot"><img src="{{ "images/screens/overview-phone.png" | relURL }}" alt="{{ .Params.shot_alt }}"></div>
+    </div>
+  </div>
+  <h2>{{ .Params.help_title }}</h2>
+  <ul class="qs-help">
+    {{- range .Params.help }}<li>{{ . | markdownify }}</li>{{ end -}}
+  </ul>
+  <div class="qs-foot"><span>{{ .Params.footer }}</span><span>3 / 3</span></div>
+</section>
+</body>
+</html>

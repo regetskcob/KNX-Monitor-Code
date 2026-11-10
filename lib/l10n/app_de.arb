@@ -13475,6 +13475,46 @@
   "@weekSumLess": {
     "description": "Wochenübersicht: Befunde zuklappen"
   },
+  "topoRf": "Funk",
+  "@topoRf": {
+    "description": "Topologie: Kennzeichen einer KNX-RF-Linie (kurz, als Plakette)"
+  },
+  "topoRfHint": "{count, plural, =1{Linie {lines} ist eine Funklinie} other{Die Linien {lines} sind Funklinien}} (KNX RF). Busclear sieht ihre Telegramme über den Medienkoppler, aber weder Signalstärke noch Batteriezustand der Funkgeräte.",
+  "@topoRfHint": {
+    "description": "Topologie: Hinweis über der Seite, wenn das Projekt eine Funklinie hat",
+    "placeholders": {
+      "lines": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "topoRfVote": "Mehr zu Funk? Abstimmen",
+  "@topoRfVote": {
+    "description": "Topologie: Knopf im Funk-Hinweis, öffnet das öffentliche Issue zur Funk-Diagnose"
+  },
+  "weekSumCollapse": "Einklappen",
+  "@weekSumCollapse": {
+    "description": "Wochenübersicht: Karte auf Titel und Kernsatz verkleinern (Tooltip)"
+  },
+  "weekSumExpand": "Aufklappen",
+  "@weekSumExpand": {
+    "description": "Wochenübersicht: eingeklappte Karte wieder ganz zeigen (Tooltip)"
+  },
+  "weekSumHideWeek": "Diese Woche nicht mehr anzeigen",
+  "@weekSumHideWeek": {
+    "description": "Wochenübersicht: Menüeintrag, blendet die Karte bis zum nächsten Montag aus"
+  },
+  "weekSumHideAlways": "Nicht mehr anzeigen",
+  "@weekSumHideAlways": {
+    "description": "Wochenübersicht: Menüeintrag, schaltet die Karte ab (wieder an im Menü „Mehr“)"
+  },
+  "weekSumToggle": "Wochenüberblick in der Übersicht",
+  "@weekSumToggle": {
+    "description": "Menü „Mehr“: Schalter, ob die Karte „Letzte 7 Tage“ in der Übersicht erscheint"
+  },
   "weekSumClocks": "Mehrere Zeitgeber: {senders} senden Datum/Uhrzeit auf {groups}, zusammen {share} des Verkehrs. Einer, alle 10 bis 60 Minuten, reicht.",
   "@weekSumClocks": {
     "description": "Befund",

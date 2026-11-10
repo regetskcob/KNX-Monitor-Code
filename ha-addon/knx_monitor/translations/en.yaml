@@ -70,3 +70,10 @@ configuration:
     description: >-
       Sent as inst in every MQTT message to tell several servers apart in
       one database. Empty: the ID of the active installation.
+  silent_after_hours:
+    name: "\"Stopped sending\" after (hours)"
+    description: >-
+      The Busclear integration reports an address that usually sends
+      regularly only after this many hours without a telegram. Default 12. A
+      smaller value reports earlier, but also detectors that simply had
+      nothing to say for a while. Time without recording does not count.

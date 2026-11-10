@@ -178,10 +178,12 @@ void main() {
     }
 
     Future<void> connect() async {
-      final host = find.byType(TextFormField).first;
-      if ((tester.widget<TextFormField>(host).controller?.text ?? '').isEmpty) {
+      // Das Gateway-Feld an seinem Platzhalter: Es ist nicht mehr das erste Feld der Seite, seit
+      // die Verbindungsart (mit Tunneladresse) davor steht.
+      final host = find.byWidgetPredicate((w) => w is TextField && w.decoration?.hintText == '192.168.1.10');
+      if ((tester.widget<TextField>(host).controller?.text ?? '').isEmpty) {
         // enterText erreicht auf dem Gerät die Texteingabe nicht – Controller direkt setzen.
-        tester.widget<TextFormField>(host).controller!.text = const String.fromEnvironment(
+        tester.widget<TextField>(host).controller!.text = const String.fromEnvironment(
           'GATEWAY',
           defaultValue: '192.168.1.22',
         );
@@ -231,6 +233,13 @@ void main() {
       await shot('verbinden_folge_$i');
       await wait(150);
     }
+    // Ohne Verbindung gibt es keinen Rundgang: Am 10.11.2026 meldete der Test „bestanden“,
+    // obwohl das Gateway keinen freien Tunnel hatte und 30 Ansichten nie erreicht wurden.
+    expect(
+      onMonitor(),
+      isTrue,
+      reason: 'Nicht verbunden (Screenshot verbinden_folge_5): Gateway erreichbar, Tunnel frei?',
+    );
     await wait(20000); // Telegramme sammeln
     await shot('uebersicht');
     for (var i = 0; i < 3; i++) {
@@ -394,6 +403,9 @@ void main() {
     await ExpertMode.instance.set(wasExpert);
     // ignore: avoid_print
     print('TOUR-LOG: ${log.isEmpty ? 'alles gefunden' : log.join(' | ')}');
+    // Eine ganze Ansicht, die nicht aufging, ist ein Fehler; ein einzelner Knopf darin
+    // („FEHLT“) bleibt ein Hinweis im Protokoll, weil er vom Projekt abhängen kann.
+    expect(log.where((l) => l.startsWith('NICHT ERREICHT')), isEmpty);
     // ignore: avoid_print
     print('TOUR-ZEIT: ${times.join(' | ')}');
   });

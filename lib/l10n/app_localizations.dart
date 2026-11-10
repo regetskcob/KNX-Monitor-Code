@@ -16388,6 +16388,54 @@ abstract class AppLocalizations {
   /// **'Weniger'**
   String get weekSumLess;
 
+  /// Topologie: Kennzeichen einer KNX-RF-Linie (kurz, als Plakette)
+  ///
+  /// In de, this message translates to:
+  /// **'Funk'**
+  String get topoRf;
+
+  /// Topologie: Hinweis über der Seite, wenn das Projekt eine Funklinie hat
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{Linie {lines} ist eine Funklinie} other{Die Linien {lines} sind Funklinien}} (KNX RF). Busclear sieht ihre Telegramme über den Medienkoppler, aber weder Signalstärke noch Batteriezustand der Funkgeräte.'**
+  String topoRfHint(String lines, int count);
+
+  /// Topologie: Knopf im Funk-Hinweis, öffnet das öffentliche Issue zur Funk-Diagnose
+  ///
+  /// In de, this message translates to:
+  /// **'Mehr zu Funk? Abstimmen'**
+  String get topoRfVote;
+
+  /// Wochenübersicht: Karte auf Titel und Kernsatz verkleinern (Tooltip)
+  ///
+  /// In de, this message translates to:
+  /// **'Einklappen'**
+  String get weekSumCollapse;
+
+  /// Wochenübersicht: eingeklappte Karte wieder ganz zeigen (Tooltip)
+  ///
+  /// In de, this message translates to:
+  /// **'Aufklappen'**
+  String get weekSumExpand;
+
+  /// Wochenübersicht: Menüeintrag, blendet die Karte bis zum nächsten Montag aus
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Woche nicht mehr anzeigen'**
+  String get weekSumHideWeek;
+
+  /// Wochenübersicht: Menüeintrag, schaltet die Karte ab (wieder an im Menü „Mehr“)
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht mehr anzeigen'**
+  String get weekSumHideAlways;
+
+  /// Menü „Mehr“: Schalter, ob die Karte „Letzte 7 Tage“ in der Übersicht erscheint
+  ///
+  /// In de, this message translates to:
+  /// **'Wochenüberblick in der Übersicht'**
+  String get weekSumToggle;
+
   /// Befund
   ///
   /// In de, this message translates to:

@@ -52,6 +52,7 @@ import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../model/communication_map.dart';
 import '../model/live_plain.dart';
+import '../model/week_summary_prefs.dart';
 import '../model/installation.dart';
 
 enum LogTab { overview, objects, live }
@@ -822,9 +823,6 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
                     : HealthStatusLine(tunnel: widget.tunnel, onOpenHealth: widget.onReadStatus),
               ),
             ),
-            // Add-on and box: what the continuous recording says about the last seven days.
-            if (Addon.available && widget.tunnel != null && _tab == LogTab.overview)
-              Padding(padding: EdgeInsets.fromLTRB(gutter, 0, gutter, Gap.inner), child: const WeekSummaryCard()),
             // What is currently filtered, as chips; otherwise it is only visible
             // in the search field.
             AnimatedSize(
@@ -887,6 +885,10 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
                   focused: twoPane ? _focused : null,
                   onTap: (t) => _onTap(t, twoPane: twoPane),
                   onLongPress: _onLongPress,
+                  // Add-on and box: what the continuous recording says about the last seven days.
+                  // Part of the scrolling content, not of the fixed head: it is tall, and above
+                  // the list it took most of the overview away (on a phone all of it).
+                  header: Addon.available && widget.tunnel != null ? const WeekSummaryCard() : null,
                   leading: [
                     ChartCardsSliver(
                       log: _data,
@@ -1472,6 +1474,17 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
     ],
     toggles: [
       ...?widget.menuToggles?.call(),
+      // The card "Last 7 days": only where there is one (add-on, box).
+      if (Addon.available)
+        MenuToggle(
+          icon: AppIcons.health,
+          title: s.weekSumToggle,
+          value: WeekSummaryPrefs.instance.show,
+          onChanged: (on) {
+            WeekSummaryPrefs.instance.setShow(on);
+            setState(() {});
+          },
+        ),
       MenuToggle(
         icon: AppIcons.live,
         title: s.livePlainTitle,

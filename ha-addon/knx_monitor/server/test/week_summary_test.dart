@@ -51,6 +51,8 @@ void main() {
       {'a': 0x110A, 'n': 'Melder EG'},
       {'a': 0x110B, 'n': 'Melder OG'},
       {'a': 0x110C, 'n': 'Taster Keller'},
+      // Radio device (KNX RF): silent all week, and no finding for that.
+      {'a': 0x120D, 'n': 'Funktaster Garten', 'rf': true},
       {'a': 0x1123, 'n': 'X1'},
       {'a': 0x1124, 'n': 'HA', 'tu': 1123},
     ],
@@ -94,6 +96,7 @@ void main() {
     expect(silent['devices'], [
       {'address': '1.1.12', 'name': 'Taster Keller'},
     ]);
+    expect(silent['count'], 1, reason: 'the radio device is not reported as silent');
     expect(s['state'], 'ok');
   });
 

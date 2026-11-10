@@ -149,9 +149,16 @@ class DeviceInfo {
     this.tunnelOf,
     this.neverProgrammed = false,
     this.pendingDownload = const [],
+    this.rf = false,
   });
 
   final int address;
+
+  /// The device sits on a KNX RF line (radio) according to the project. Busclear sees its
+  /// telegrams through the media coupler only: no signal strength, no battery state. A
+  /// battery-powered transmitter speaks only when it has something to say, so its silence is no
+  /// finding. `false` when the source does not tell.
+  final bool rf;
 
   /// The project knows when devices were downloaded, and this one never was: configured but not
   /// put into operation, or not installed at all. `false` when the source does not tell.
@@ -190,6 +197,7 @@ class DeviceInfo {
     if (tunnelOf != null) 'tu': tunnelOf,
     if (neverProgrammed) 'np': true,
     if (pendingDownload.isNotEmpty) 'pd': [for (final p in pendingDownload) p.name],
+    if (rf) 'rf': true,
   };
 
   factory DeviceInfo.fromJson(Map<String, Object?> j) => DeviceInfo(
@@ -203,6 +211,7 @@ class DeviceInfo {
     tunnelOf: j['tu'] as int?,
     neverProgrammed: j['np'] == true,
     pendingDownload: [for (final n in (j['pd'] as List? ?? const [])) ?DownloadPart.values.asNameMap()[n]],
+    rf: j['rf'] == true,
   );
 
   DeviceInfo _asTunnelOf(int parent) => DeviceInfo(
@@ -214,7 +223,16 @@ class DeviceInfo {
     description: description,
     serial: serial,
     tunnelOf: parent,
+    rf: rf,
   );
+}
+
+/// Whether a medium as a project names it is KNX RF: the ETS id `MT-2`, the short `RF` of the
+/// XKNX Editor, or a text like "Radio Frequency (RF)" in the project Home Assistant keeps.
+bool isRfMedium(Object? medium) {
+  if (medium is! String) return false;
+  final m = medium.trim().toLowerCase();
+  return m == 'mt-2' || m == 'rf' || m.contains('radio') || RegExp(r'\brf\b').hasMatch(m);
 }
 
 /// Part of a device download, as the ETS and the XKNX Editor track it per device.
@@ -253,6 +271,13 @@ class GroupCatalog {
 
   final Map<int, GroupInfo> groups;
   final Map<int, DeviceInfo> devices;
+
+  /// Lines (area and line, as in the upper byte of an individual address) that are KNX RF
+  /// according to the project.
+  late final Set<int> rfLines = {
+    for (final d in devices.values)
+      if (d.rf) d.address >> 8,
+  };
   final String? projectName;
 
   /// KNX manufacturer ID → name (from the master data of the .knxproj).

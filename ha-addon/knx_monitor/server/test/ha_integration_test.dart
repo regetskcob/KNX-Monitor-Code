@@ -315,6 +315,70 @@ void main() {
       expect((await call('GET', '/api/ha/silent', token: ha.token)).$2, isEmpty);
     });
 
+    // 10 Nov 2026: a repair after 81 minutes without "EG WC Präsenz" is noise.
+    test('a short silence is not reported: at least twelve hours', () async {
+      const presence = 0x0A06; // 1/2/6, every 5 minutes until six hours ago
+      final byDay = <String, StringBuffer>{};
+      for (
+        var t = now.subtract(const Duration(days: 3));
+        t.isBefore(now.subtract(const Duration(hours: 6)));
+        t = t.add(const Duration(minutes: 5))
+      ) {
+        (byDay[Recorder.dayName(t)] ??= StringBuffer()).writeln(
+          jsonEncode({'t': t.microsecondsSinceEpoch, 's': 4402, 'd': presence, 'y': 2, 'x': '01'}),
+        );
+      }
+      for (final MapEntry(:key, :value) in byDay.entries) {
+        File('${data.path}/history/$key.ndjson').writeAsStringSync('$value', mode: FileMode.append);
+      }
+      await ha.cycles.check();
+      final (_, body) = await call('GET', '/api/ha/silent', token: ha.token);
+      expect([for (final e in (body! as List).cast<Map<String, Object?>>()) e['address']], ['1/2/3']);
+    });
+
+    // While the recording was paused (or the server not running) no address could be heard.
+    // The heartbeats tell: once a minute while recording, none in between.
+    Future<void> heartbeats(List<(Duration, Duration)> agoRanges) async {
+      final byMonth = <String, StringBuffer>{};
+      for (final (from, to) in agoRanges) {
+        for (var t = now.subtract(from); t.isBefore(now.subtract(to)); t = t.add(const Duration(minutes: 1))) {
+          (byMonth['${t.year}-${t.month.toString().padLeft(2, '0')}'] ??= StringBuffer()).writeln(
+            jsonEncode({'t': t.millisecondsSinceEpoch, 'c': true, 'n': 1}),
+          );
+        }
+      }
+      final dir = Directory('${bus.availability.data.path}/status')..createSync(recursive: true);
+      for (final MapEntry(:key, :value) in byMonth.entries) {
+        File('${dir.path}/availability-$key.ndjson').writeAsStringSync('$value');
+      }
+    }
+
+    test('time the recording did not cover does not count', () async {
+      // The temperature stopped a day ago. Of that day the recording was paused from 20 until
+      // 2 hours ago: 6 hours of real silence, not 24.
+      await heartbeats([
+        (const Duration(days: 3), const Duration(hours: 20)),
+        (const Duration(hours: 2), Duration.zero),
+      ]);
+      await ha.cycles.check();
+      expect((await call('GET', '/api/ha/silent', token: ha.token)).$2, isEmpty);
+    });
+
+    test('a bus that is quiet but recorded still lets a stopped address be reported', () async {
+      // Heartbeats all the time: the day of silence is real.
+      await heartbeats([(const Duration(days: 3), Duration.zero)]);
+      await ha.cycles.check();
+      expect(((await call('GET', '/api/ha/silent', token: ha.token)).$2! as List), hasLength(1));
+    });
+
+    test('hours from the settings: 1 to 168, anything else is twelve', () {
+      expect(CycleWatch.parseMinSilence(6), const Duration(hours: 6));
+      expect(CycleWatch.parseMinSilence(' 24 '), const Duration(hours: 24));
+      for (final bad in [null, 0, 169, -3, 'bald', 1.5]) {
+        expect(CycleWatch.parseMinSilence(bad), const Duration(hours: 12), reason: '$bad');
+      }
+    });
+
     test('leaves the list as soon as the address sends again', () async {
       ha.cycles.observe(bus, {'t': now.microsecondsSinceEpoch, 'd': temperature, 'y': 2, 'x': '0C1A'});
       expect((await call('GET', '/api/ha/silent', token: ha.token)).$2, isEmpty);

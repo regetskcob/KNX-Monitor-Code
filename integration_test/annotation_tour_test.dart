@@ -124,9 +124,11 @@ void main() {
     await ExpertMode.instance.set(true);
     await wait(500);
 
-    final host = find.byType(TextFormField).first;
-    if ((tester.widget<TextFormField>(host).controller?.text ?? '').isEmpty) {
-      tester.widget<TextFormField>(host).controller!.text = '192.168.1.22';
+    // Das Gateway-Feld an seinem Platzhalter: Es ist nicht mehr das erste Feld der Seite, seit
+    // die Verbindungsart (mit Tunneladresse) davor steht.
+    final host = find.byWidgetPredicate((w) => w is TextField && w.decoration?.hintText == '192.168.1.10');
+    if ((tester.widget<TextField>(host).controller?.text ?? '').isEmpty) {
+      tester.widget<TextField>(host).controller!.text = '192.168.1.22';
       await wait(300);
     }
     // Belegte Tunnel gibt das Gateway erst nach etwa 2 min frei – so lange erneut versuchen.

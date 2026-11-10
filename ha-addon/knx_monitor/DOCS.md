@@ -638,6 +638,12 @@ dashboard_card: true
   Assistant notification with "Busclear →", the push when you tap it.
 - `dashboard_card`: install and register the dashboard card (default on,
   see Dashboard card). Turn off if you do not use it.
+- `silent_after_hours`: the Busclear integration reports an address that
+  usually sends regularly as "stopped sending" only after this many hours
+  without a telegram (default 12, 1 to 168). Time in which the recording was
+  paused, the bus not connected or the add-on not running does not count.
+  Docker and the Busclear Box use `SILENT_AFTER_HOURS`. A single address can
+  still be ignored in the repair itself.
 
 ## Updates and going back
 

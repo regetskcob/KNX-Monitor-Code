@@ -18,6 +18,14 @@ import 'recorder.dart';
 /// health check uses ([cycleSilences] in package:knx): addresses with a
 /// regular interval that have been silent for more than three times that.
 ///
+/// - Only a long silence is reported: at least [minSilence] (12 hours), however short the
+///   address's interval is. A presence detector that "sends every 27 minutes" during the day
+///   is quiet all night, and a repair for every such pause is noise (10 Nov 2026).
+/// - Time the recording did not cover does not count as silence: while the recording was
+///   paused, the bus not connected or the server not running, no address could be heard, and
+///   every cyclic address looked silent afterwards. What was not covered comes from the
+///   heartbeats ([Availability.outages]), not from missing telegrams: a bus that really is
+///   quiet for hours still lets a stopped address be reported ([_silence]).
 /// - While recording is off or the bus is not connected nothing is reported:
 ///   after an outage every cyclic address would look silent. For the same
 ///   reason an address only counts once the bus has been connected for longer
@@ -38,6 +46,7 @@ class CycleWatch {
     this.currentBus, {
     this.window = const Duration(days: 7),
     this.every = const Duration(hours: 1),
+    this.minSilence = defaultMinSilence,
     DateTime Function() clock = DateTime.now,
   }) : _clock = clock;
 
@@ -49,10 +58,30 @@ class CycleWatch {
 
   /// How often the history is read again.
   final Duration every;
+
+  /// Shortest silence that is reported, whatever the address's interval. Set centrally: add-on
+  /// option `silent_after_hours`, `SILENT_AFTER_HOURS` for Docker and the box ([parseMinSilence]).
+  final Duration minSilence;
+
+  static const defaultMinSilence = Duration(hours: 12);
+
+  /// [hours] from the settings as [minSilence]: 1 to 168, anything else is the default.
+  static Duration parseMinSilence(Object? hours) {
+    final h = switch (hours) {
+      final int n => n,
+      final String t => int.tryParse(t.trim()),
+      _ => null,
+    };
+    return h != null && h >= 1 && h <= 168 ? Duration(hours: h) : defaultMinSilence;
+  }
+
   final DateTime Function() _clock;
 
   /// Most entries [silent] returns.
   static const maxListed = 20;
+
+  /// Silence per found address that the recording covered ([_coveredSilence]).
+  final _silence = <int, Duration>{};
 
   Timer? _timer;
   Future<void>? _checking;
@@ -122,6 +151,11 @@ class CycleWatch {
     _found
       ..clear()
       ..addEntries([for (final s in cycleSilences(times, now)) MapEntry(s.address, s)]);
+    final covered = await _coveredSilence(bus, now);
+    if (!identical(bus, currentBus())) return;
+    _silence
+      ..clear()
+      ..addAll(covered);
     // Sent again since it was ignored (also while the server was not running).
     var changed = false;
     for (final MapEntry(key: ga, value: last) in _ignored.entries.toList()) {
@@ -159,6 +193,7 @@ class CycleWatch {
     _bus = bus;
     _days.clear();
     _found.clear();
+    _silence.clear();
     _ignored.clear();
     try {
       final json = jsonDecode(await _file(bus).readAsString()) as Map<String, Object?>;
@@ -197,8 +232,43 @@ class CycleWatch {
     final since = bus.since;
     return [
       for (final s in _found.values)
-        if (!_ignored.containsKey(s.address) && (since == null || now.difference(since) > s.limit)) s,
+        if (!_ignored.containsKey(s.address) &&
+            (since == null || now.difference(since) > s.limit) &&
+            (_silence[s.address] ?? Duration.zero) >= (s.limit > minSilence ? s.limit : minSilence))
+          s,
     ]..sort((a, b) => a.last.compareTo(b.last));
+  }
+
+  /// Silence of every found address as far as the recording covered it: the time since its last
+  /// telegram, minus the outages in between (recording paused, bus not connected, server not
+  /// running), which the heartbeats tell.
+  Future<Map<int, Duration>> _coveredSilence(BusService bus, DateTime now) async {
+    if (_found.isEmpty) return const {};
+    final earliest = _found.values.map((s) => s.last).reduce((a, b) => a.isBefore(b) ? a : b);
+    List<Map<String, Object?>> outages;
+    try {
+      outages = await bus.availability.outages(earliest, now);
+    } on Object catch (e) {
+      stderr.writeln('Schweige-Prüfung: Verfügbarkeit nicht lesbar: $e');
+      outages = const [];
+    }
+    final end = now.millisecondsSinceEpoch;
+    return {
+      for (final s in _found.values)
+        s.address: Duration(
+          milliseconds: () {
+            final from = s.last.millisecondsSinceEpoch;
+            var silent = end - from;
+            for (final o in outages) {
+              final a = o['from'], b = o['to'];
+              if (a is! int || b is! int) continue;
+              final lo = a > from ? a : from, hi = b < end ? b : end;
+              if (hi > lo) silent -= hi - lo;
+            }
+            return silent < 0 ? 0 : silent;
+          }(),
+        ),
+    };
   }
 
   /// Number of silent addresses (`silent` in `GET /api/ha/state`).

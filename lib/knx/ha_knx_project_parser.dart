@@ -42,6 +42,15 @@ GroupCatalog parseHaKnxProject(Map<String, Object?> project, {Iterable<String> h
 
   walkSpaces(map(project['locations']), const []);
 
+  // --- KNX RF: the topology names the medium per line and lists its devices --------------------
+  final rfDevices = <String>{};
+  for (final area in map(project['topology']).values) {
+    for (final line in map(map(area)['lines']).values) {
+      final l = map(line);
+      if (isRfMedium(l['medium_type'])) rfDevices.addAll((l['devices'] as List? ?? const []).whereType<String>());
+    }
+  }
+
   // --- Devices ----------------------------------------------------------------------------------
   final rawDevices = map(project['devices']);
   final downloadKnown = rawDevices.values.any((d) => text(map(d)['last_download']) != null);
@@ -68,6 +77,7 @@ GroupCatalog parseHaKnxProject(Map<String, Object?> project, {Iterable<String> h
       description: text(d['description']),
       serial: serialFromBase64(text(d['serial_number'])),
       neverProgrammed: downloadKnown && !downloaded,
+      rf: rfDevices.contains(ia),
       pendingDownload: !downloaded
           ? const []
           : [

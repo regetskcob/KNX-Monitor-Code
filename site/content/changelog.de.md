@@ -6,6 +6,19 @@ slug: "changelog"
 ---
 Was die letzten Versionen von Busclear gebracht haben, neueste zuerst. App, Home-Assistant-Add-on und Busclear Box haben eine gemeinsame Versionsnummer. Jede Version liegt auf [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant zeigt das Add-on dieselben Hinweise vor einem Update (auf Englisch).
 
+## 1.11.2 – 10.11.2026
+
+- „Sendet nicht mehr“ erst nach langer Stille: Der Reparaturhinweis der Home-Assistant-Integration kommt jetzt frühestens nach zwölf Stunden ohne Telegramm, egal wie kurz der übliche Abstand der Adresse ist. Ein Präsenzmelder, der eine Stunde oder eine Nacht lang still ist, wird nicht mehr gemeldet. Die Stunden sind einstellbar: Option „Sendet nicht mehr nach (Stunden)“ im Add-on, `SILENT_AFTER_HOURS` für Docker und Box.
+- Zeit, die die Aufzeichnung nicht abdeckt, zählt nicht mehr als Stille. Nach einer Pause der Aufzeichnung, einem Verbindungsabbruch oder einem Neustart galten zyklische Adressen als still, obwohl gar nichts aufgezeichnet wurde.
+- Neu: der [Schnellstart als PDF](/schnellstart/busclear-schnellstart.pdf), drei Seiten, auch für alle, die KNX und ihre Anlage erst kennenlernen.
+
+## 1.11.1 – 10.11.2026
+
+- Behoben: Auf dem Telefon ließ sich die Übersicht nicht mehr scrollen, sobald die Karte „Letzte 7 Tage“ da war. Sie stand über der Liste und nahm den ganzen Bildschirm ein. Jetzt scrollt sie mit.
+- Die Karte „Letzte 7 Tage“ lässt sich auf ihre Kernaussage einklappen, für die laufende Woche ausblenden oder abschalten. Zurück kommt sie über den Schalter „Wochenüberblick in der Übersicht“ im Menü „Mehr“. Die Wahl gilt je Gerät.
+- Verbinden: Die Verbindungsart steht vor Gateway und Port. Bei „Home Assistant“, Routing und KNX-HAT entfallen die beiden Felder, weil sie dort nicht gebraucht werden.
+- KNX RF: Funklinien aus dem Projekt (ETS, XKNX Editor, Home Assistant) sind in der Topologie als Funk gekennzeichnet, und Funkgeräte zählen im Wochenüberblick nicht mehr als „Ohne Telegramm“: Ein batteriebetriebener Sender meldet sich nur bei Bedarf. Signalstärke und Batteriezustand je Funkgerät stehen zur Abstimmung: [#13](https://github.com/regetskcob/KNX-Monitor/issues/13). Für die Kennzeichnung das Projekt einmal neu importieren.
+
 ## 1.11.0 – 10.11.2026
 
 - Weniger Fehlalarme „sendet nicht mehr“: Gruppenadressen, die in Schüben senden (Dimmen, Jalousie während der Fahrt, Schalten mit Rückmeldung), gelten nicht mehr als zyklisch. Das betrifft den Reparaturhinweis der Home-Assistant-Integration und die Gesundheitsprüfung der App.

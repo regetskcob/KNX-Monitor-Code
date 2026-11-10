@@ -10,6 +10,8 @@ title: "Every telegram in view, at home and on the building site."
 lead: "Made sense of with your ETS project: devices, rooms and values instead of columns of hex. Plus a check of your installation for silent sensors, wrong datapoint types and bus problems."
 primary: "As a Home Assistant add-on"
 source: "Open source · GPLv3"
+quickstart: "Quick start (PDF)"
+quickstart_file: "schnellstart/busclear-quick-start.pdf"
 beta:
   none: ""
   ios: "Join the beta: iPhone, iPad, Mac"

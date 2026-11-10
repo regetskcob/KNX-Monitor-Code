@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:knx_monitor/l10n/locale_controller.dart';
 import 'package:knx_monitor/model/week_summary.dart';
+import 'package:knx_monitor/model/week_summary_prefs.dart';
 import 'package:knx_monitor/theme/app_theme.dart';
 import 'package:knx_monitor/ui/week_summary_card.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Answer of `/api/summary` as the server writes it (shortened).
 Map<String, Object?> sample({List<Map<String, Object?>>? findings}) => {
@@ -102,6 +104,66 @@ void main() {
     await tester.tap(find.text('1 weitere'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Absender nicht im Projekt'), findsOneWidget);
+  });
+
+  group('room in the overview', () {
+    final prefs = WeekSummaryPrefs.instance;
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      prefs.debugReset();
+    });
+    tearDown(prefs.debugReset);
+
+    testWidgets('collapsed: title and headline stay, figures and findings go', (tester) async {
+      await tester.pumpWidget(app(WeekSummaryCard(load: () async => sample())));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Einklappen'));
+      await tester.pumpAndSettle();
+      expect(find.text('Letzte 7 Tage'), findsOneWidget);
+      expect(find.text('27.657'), findsNothing);
+      expect(find.text('1 weitere'), findsNothing);
+      expect(prefs.collapsed, isTrue);
+      await tester.tap(find.byTooltip('Aufklappen'));
+      await tester.pumpAndSettle();
+      expect(find.text('27.657'), findsOneWidget);
+    });
+
+    testWidgets('"not this week" hides it until next Monday', (tester) async {
+      prefs.clock = () => DateTime(2026, 11, 10, 15);
+      await tester.pumpWidget(app(WeekSummaryCard(load: () async => sample())));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Mehr'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Diese Woche nicht mehr anzeigen'));
+      await tester.pumpAndSettle();
+      expect(find.text('Letzte 7 Tage'), findsNothing);
+      expect(prefs.show, isTrue);
+      prefs.clock = () => DateTime(2026, 11, 15, 23, 59);
+      expect(prefs.visible, isFalse, reason: 'Sunday is still this week');
+      prefs.clock = () => DateTime(2026, 11, 16, 0, 1);
+      expect(prefs.visible, isTrue, reason: 'Monday brings it back');
+    });
+
+    testWidgets('"do not show again" switches it off; the switch brings it back at once', (tester) async {
+      await tester.pumpWidget(app(WeekSummaryCard(load: () async => sample())));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Mehr'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Nicht mehr anzeigen'));
+      await tester.pumpAndSettle();
+      expect(find.text('Letzte 7 Tage'), findsNothing);
+      expect(prefs.show, isFalse);
+      await prefs.hideThisWeek();
+      await prefs.setShow(true);
+      await tester.pumpAndSettle();
+      expect(find.text('Letzte 7 Tage'), findsOneWidget);
+    });
+
+    test('a week is named by its Monday', () {
+      expect(WeekSummaryPrefs.weekOf(DateTime(2026, 11, 9)), '2026-11-09');
+      expect(WeekSummaryPrefs.weekOf(DateTime(2026, 11, 15, 23)), '2026-11-09');
+      expect(WeekSummaryPrefs.weekOf(DateTime(2027, 1, 1)), '2026-12-28');
+    });
   });
 
   testWidgets('card stays away when the server has no overview', (tester) async {

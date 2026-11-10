@@ -46,6 +46,15 @@ void main() {
   });
 
   group('parseXknx', () {
+    // KNX RF: the editor keeps the medium per segment. Fixture: testhaus.xknx with its one
+    // segment set to RF (sqlite3 … "update segments set medium_type='RF'").
+    test('radio line: devices on an RF segment are marked', () {
+      expect(parseXknx(_fixture('testhaus.xknx')).rfLines, isEmpty);
+      final rf = parseXknx(_fixture('testhaus_rf.xknx'));
+      expect(rf.rfLines, isNotEmpty);
+      expect(rf.devices.values.where((d) => !d.isTunnel).every((d) => d.rf), isTrue);
+    });
+
     test('Gruppenadressen, Bereiche und Datentypen', () {
       final c = parseXknx(_fixture('testhaus.xknx'));
       expect(c.projectName, 'Testhaus');

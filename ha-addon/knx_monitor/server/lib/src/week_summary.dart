@@ -207,7 +207,9 @@ class WeekSummary {
     if (!catalog.isEmpty && total > 0) {
       final silent = [
         for (final dev in catalog.devices.values)
-          if (!dev.tunnel && dev.address & 0xFF != 0 && !senders.containsKey(dev.address)) dev,
+          // Not radio devices: a battery-powered transmitter speaks only when it has something
+          // to say, a week of silence is normal for it.
+          if (!dev.tunnel && !dev.rf && dev.address & 0xFF != 0 && !senders.containsKey(dev.address)) dev,
       ]..sort((a, b) => a.address.compareTo(b.address));
       if (silent.isNotEmpty) {
         findings.add({

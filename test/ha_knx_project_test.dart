@@ -181,6 +181,43 @@ void main() {
     expect(GroupCatalog.fromJson(c.toJson()).externalSenders, {parseGroup('1/0/0')!});
   });
 
+  // KNX RF: xknxproject names the medium per line in the topology.
+  test('radio line: devices of a line with medium RF are marked', () {
+    expect(parseHaKnxProject(_project()).rfLines, isEmpty);
+    final c = parseHaKnxProject({
+      ..._project(),
+      'topology': {
+        '1': {
+          'name': 'Haus',
+          'lines': {
+            '1': {
+              'name': 'Funk',
+              'medium_type': 'Radio Frequency (RF)',
+              'devices': ['1.1.50'],
+            },
+            '0': {
+              'name': 'Hauptlinie',
+              'medium_type': 'Twisted Pair (TP)',
+              'devices': ['1.1.5'],
+            },
+          },
+        },
+      },
+    });
+    expect(c.devices[0x1132]!.rf, isTrue);
+    expect(c.devices[0x1105]!.rf, isFalse);
+    expect(c.rfLines, {0x11});
+  });
+
+  test('medium names of all three sources', () {
+    for (final rf in ['MT-2', 'RF', 'rf', 'Radio Frequency (RF)', 'KNX RF']) {
+      expect(isRfMedium(rf), isTrue, reason: rf);
+    }
+    for (final other in [null, 7, '', 'MT-0', 'TP', 'Twisted Pair (TP)', 'KNXnet/IP (IP)', 'Powerline (PL)', 'surf']) {
+      expect(isRfMedium(other), isFalse, reason: '$other');
+    }
+  });
+
   test('ältere xknxproject-Version ohne Download-Angaben: kein Befund', () {
     final c = parseHaKnxProject(_project(withLoaded: false));
     expect(c.devices.values.where((d) => d.neverProgrammed || d.pendingDownload.isNotEmpty), isEmpty);

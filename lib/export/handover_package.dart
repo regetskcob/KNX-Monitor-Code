@@ -399,6 +399,7 @@ GroupCatalog handoverCatalog(GroupCatalog c) => GroupCatalog(
         tunnelOf: d.tunnelOf,
         neverProgrammed: d.neverProgrammed,
         pendingDownload: d.pendingDownload,
+        rf: d.rf,
       ),
   },
   projectName: c.projectName,

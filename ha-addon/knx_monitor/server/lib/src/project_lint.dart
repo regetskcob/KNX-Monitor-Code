@@ -66,6 +66,7 @@ class LintCatalog {
         tunnel: d['tu'] != null,
         neverProgrammed: d['np'] == true,
         pendingDownload: [...?(d['pd'] as List?)?.whereType<String>()],
+        rf: d['rf'] == true,
       );
     }
     return LintCatalog(
@@ -125,8 +126,12 @@ class LintDevice {
     this.tunnel = false,
     this.neverProgrammed = false,
     this.pendingDownload = const [],
+    this.rf = false,
   });
   final int address;
+
+  /// On a KNX RF line according to the project (`rf` in the app's catalog).
+  final bool rf;
   final String name;
   final String? product;
   final String? location;
