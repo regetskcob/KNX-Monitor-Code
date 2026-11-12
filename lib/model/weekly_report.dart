@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../catalog_store.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
+import 'dali_health.dart';
 import 'health.dart';
 import 'installation.dart';
 
@@ -164,6 +165,11 @@ String plainFinding(HealthFinding f) {
     FindingKind.dptSize || FindingKind.dptValue || FindingKind.mixedSizes => s.plainFindingFormat(name),
     FindingKind.repeats => s.plainFindingRepeats(name),
     FindingKind.unansweredReads => s.plainFindingNoAnswer(name),
+    FindingKind.lampFault ||
+    FindingKind.gearFault ||
+    FindingKind.gatewaySilent ||
+    FindingKind.testOverdue ||
+    FindingKind.testFailed => s.daliPlainFinding(lightingFindingDetail(f), name),
   };
 }
 
@@ -183,6 +189,10 @@ class ListeningLog extends ChangeNotifier {
   final minutes = <String, int>{};
   String? _loadedFor;
   int _unsaved = 0;
+
+  /// Time of the latest counted minute: old days are dropped relative to it, not to the wall
+  /// clock, so the log behaves the same whenever it runs.
+  DateTime? _latest;
 
   static String _day(DateTime t) =>
       '${t.year}-${t.month.toString().padLeft(2, '0')}-${t.day.toString().padLeft(2, '0')}';
@@ -209,13 +219,14 @@ class ListeningLog extends ChangeNotifier {
   void addMinute(DateTime now) {
     final day = _day(now);
     minutes[day] = (minutes[day] ?? 0) + 1;
+    if (_latest == null || now.isAfter(_latest!)) _latest = now;
     if (++_unsaved >= 5) unawaited(flush());
   }
 
   Future<void> flush() async {
     if (_unsaved == 0 || _loadedFor == null) return;
     _unsaved = 0;
-    final cutoff = _day(DateTime.now().subtract(const Duration(days: _keepDays)));
+    final cutoff = _day((_latest ?? DateTime.now()).subtract(const Duration(days: _keepDays)));
     minutes.removeWhere((day, _) => day.compareTo(cutoff) < 0);
     await (await SharedPreferences.getInstance()).setString(_loadedFor!, jsonEncode(minutes));
   }
@@ -237,5 +248,6 @@ class ListeningLog extends ChangeNotifier {
     minutes.clear();
     _loadedFor = null;
     _unsaved = 0;
+    _latest = null;
   }
 }

@@ -69,7 +69,7 @@ server into box mode (`ha-addon/knx_monitor/server/bin/server.dart`):
 | HTTPS on port 443 with the box's own certificate, next to HTTP on port 80 | `lib/src/box_tls.dart` |
 | The kBerry HAT as a bus connection (`mode: hat`, `/dev/ttyAMA0`) | `lib/src/kberry.dart`, [kberry.md](kberry.md) |
 | Gateway discovery through the server (`GET /api/discover`) | `bin/server.dart` |
-| Box management endpoints (`/api/box`, `/api/box/pair`, `/api/box/time`, `/api/box/wifi`, `/api/box/lan`, …) | `lib/src/box_access.dart`, `bin/server.dart` |
+| Box management endpoints (`/api/box`, `/api/box/pair`, `/api/box/claim`, `/api/box/time`, `/api/box/wifi`, `/api/box/lan`, …) | `lib/src/box_access.dart`, `bin/server.dart` |
 
 Everything else — the permanent bus connection, recorder, availability heartbeat,
 alarms, watchers, exporter — is shared with the add-on.
@@ -223,6 +223,7 @@ to start until that file exists.
 | `INTERNET_SHARING` | `no` | `yes`/`no` | `yes`: devices in the box Wi-Fi may be routed to the Ethernet side (LAN and internet) |
 | `LAN_ACCESS` | `no` | `yes`/`no` | `yes`: web app and API also reachable over Ethernet. Can be changed later in the app |
 | `READ_ONLY` | `no` | `yes`/`no` | `yes`: the server sends nothing to the bus, not even read requests; recording continues |
+| `HEALTH_CHECK` | `no` | `yes`/`no` | `yes`: the server's health check for Home Assistant ([health-check.md](health-check.md)): once a day and on request, from the history only, nothing is sent |
 | `SSH_PUBKEY` | empty | `ssh-ed25519`, `ecdsa-sha2-nistp256` or `ssh-rsa` key, optional comment, no options | Enables SSH for `knxadmin` with this key only |
 
 Random values use the alphabet `abcdefghjkmnpqrstuvwxyz23456789` (no `0/O`,
@@ -329,6 +330,13 @@ not as root) and writes the Wi-Fi password
 into the hotspot profile. The server consumes `password-reset` on start
 (`_consumeReset` in `box_access.dart`). Paired devices stay paired.
 
+The reset also clears the lockout after failed attempts. The server keeps the
+counters and running lockouts across restarts (`access-strikes.json` in the data
+folder), so restarting the box alone does not lift a lockout; it ends by itself
+after 15 minutes at the latest. Whoever is locked out and has forgotten the
+password uses the reset file: with the new password the box starts without any
+counted attempts.
+
 If `access.json` and its backup are both unreadable, the server moves them aside
 and starts fresh. When `BOX_PASSWORD` is no longer in `/etc/knx-box/env` (it was
 scrubbed), it generates a random password and prints it once to the journal
@@ -357,11 +365,26 @@ Everything that belongs to an installation lives in `installations/<id>/`:
 | --- | --- |
 | `server.json` (+ `.bak`) | Bus connection and recording settings |
 | `catalog.json`, `dpt_overrides.json`, `name_overrides.json`, `learned.json` | Group address catalog from the ETS project, datapoint types and names corrected in the app, addresses learned without a project (alarm notifications use learned and corrected names; the project takes precedence over learned ones) |
+| `project_states.json` | Older project states of the installation (valid from a date, stored as differences to `catalog.json`), written by the app in the browser so old telegrams keep the names of their time; the server itself always uses the current project |
 | `secure_keys.json` | Keys from the ETS keyring, readable only by the server (and admins) |
 | `history/YYYY-MM-DD.ndjson[.gz]`, `history/unsynced-*.ndjson` | The recording (below) |
 | `status/availability-YYYY-MM.ndjson` | Heartbeat once a minute: `{"t", "c" (connected), "n" (telegrams)}`, kept 3 months |
 | `status/busmon-YYYY-MM-DD.json` | Daily counters in kBerry bus monitor mode (data, ACK, NAK, busy, damaged) |
 | `recordings/`, `charts.json`, `export.json`, … | Data the app stores through `/api/files/` |
+
+Restoring a [box backup](backup-format.md#box-backup) adds `restore-staging/`
+(an uploaded backup while it is checked) and `restore-previous/<time>/` (the state
+before each restore, until deleted in the app) to the root.
+
+### Backup
+
+The SD card is the box's single point of failure. The box backup (app: box
+settings → Box backup, browser: `/pair`) puts all installations with history,
+project, settings, watchers and inspection log into one zip, with the KNX Secure
+keyring and credentials only encrypted with a password of their own. It restores
+onto any box, also a freshly flashed one after its own password is set; box
+password, paired devices and certificate stay those of the new box. Format,
+rules and API: [backup-format.md](backup-format.md#box-backup).
 
 ### Data partition and optional SSD
 
@@ -506,7 +529,8 @@ What is and is not compressed on the box:
 | Settings, catalog, keys, `access.json` | No | Plain JSON |
 | Web app in `/opt/knx-box/web` | No | Served as is |
 | HTTP responses | No | The server sets no `Content-Encoding`; packed days are decompressed on the fly |
-| Exports, backups, diagnostics packages | Not on the box | These ZIP files are built by the app on the client device; the server creates no archives |
+| Exports, app backups, diagnostics packages | Not on the box | These ZIP files are built by the app on the client device |
+| Box backup | Deflate while streaming | Built by the server on download (`box_backup.dart`); packed days go in as they are, nothing is stored on the box |
 | Images (QR PNGs, PDFs on the boot partition) | PNG/PDF intrinsic only | `qrencode` PNG; the sheet PDF uses the PDF library's stream compression |
 | Data at rest | Not encrypted | Neither the SD card nor the data partition |
 
@@ -729,8 +753,11 @@ paired apps send a per-device bearer token. Devices paired with the box password
 are administrators; devices paired through a QR code on `/pair` may read and send
 group values but not manage the box or read the keyring, unless "Verwalten" was
 ticked there (for the Home Assistant integration and ioBroker, which need
-`/api/ha/`). Login attempts are
-rate-limited per IP. `GET /healthz` answers without login and returns no data. The
+`/api/ha/`). The QR code on `/pair` carries a one-time pairing code (10 minutes,
+usable once) that the app exchanges for its device token (`POST /api/box/claim`);
+the token itself is only shown with "Schlüssel direkt anzeigen" (Home Assistant,
+ioBroker, apps up to 1.11.2). Login attempts are
+rate-limited per IP, across restarts. `GET /healthz` answers without login and returns no data. The
 full model, including origin checks and roles, is in [security.md](security.md).
 
 ## Services and logs

@@ -312,7 +312,7 @@ void main() {
     test('Kopplungslink: Fingerabdruck, Port 443 lässt die HTTP-Adresse für ältere Apps', () async {
       await open(sticker: false);
       access.tlsFingerprint = 'abc';
-      final link = access.pairingLink('10.42.0.1', 'k');
+      final link = access.pairingLink('10.42.0.1', key: 'k');
       expect(link.queryParameters['url'], 'http://10.42.0.1/');
       expect(link.queryParameters['fp'], 'abc');
     });
@@ -322,12 +322,12 @@ void main() {
       access
         ..tlsFingerprint = 'abc'
         ..tlsPort = 8443;
-      expect(access.pairingLink('nas.local:8765', 'k').queryParameters['url'], 'https://nas.local:8443/');
+      expect(access.pairingLink('nas.local:8765', code: 'c').queryParameters['url'], 'https://nas.local:8443/');
     });
 
     test('ohne Zertifikat wie bisher', () async {
       await open(sticker: false);
-      final link = access.pairingLink('10.42.0.1', 'k');
+      final link = access.pairingLink('10.42.0.1', key: 'k');
       expect(link.queryParameters.containsKey('fp'), isFalse);
     });
 

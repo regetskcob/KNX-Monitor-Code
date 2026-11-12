@@ -11,6 +11,10 @@ class HomePlanStore {
 
   static const path = 'home_plan.json';
   static const imageDir = 'home_plan_images';
+  static const exchangePath = 'home_plan_exchange.json';
+  static const livePath = 'home_plan_live.json';
+  static const previousPath = 'home_plan_previous.json';
+  static const previousImageDir = 'home_plan_previous_images';
 
   Future<void> load() async {}
 }

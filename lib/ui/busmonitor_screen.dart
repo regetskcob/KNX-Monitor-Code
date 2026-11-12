@@ -12,6 +12,7 @@ import '../knx/shared_tunnel.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
 import '../model/expert_mode.dart';
+import '../model/telegram_log.dart';
 import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
@@ -34,9 +35,15 @@ enum _Menu { hideAcks, load, clear, export }
 /// if the gateway is fully occupied. On the box's KNX HAT the server provides
 /// the bus monitor itself; the view then only listens.
 class BusMonitorScreen extends StatefulWidget {
-  const BusMonitorScreen({super.key, required this.monitor});
+  const BusMonitorScreen({super.key, required this.monitor, this.log, this.onFilter});
 
   final KnxTunnel monitor;
+
+  /// Monitor traffic: senders in the frame details open their device sheet.
+  final TelegramLog? log;
+
+  /// Sets the monitor's filter from a device sheet opened here ("Filter in monitor", its line).
+  final ValueChanged<String>? onFilter;
 
   @override
   State<BusMonitorScreen> createState() => _BusMonitorScreenState();
@@ -427,7 +434,13 @@ class _BusMonitorScreenState extends State<BusMonitorScreen> {
           : null,
       child: f == null
           ? Text(s.busmonTapHint, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.hz.textMuted))
-          : BusmonFrameDetails(frame: f, ack: _ackOf[f], withoutAck: _withoutAck[f] ?? false),
+          : BusmonFrameDetails(
+              frame: f,
+              ack: _ackOf[f],
+              withoutAck: _withoutAck[f] ?? false,
+              log: widget.log,
+              onFilter: widget.onFilter,
+            ),
     );
   }
 
@@ -443,7 +456,13 @@ class _BusMonitorScreenState extends State<BusMonitorScreen> {
       builder: (context) => SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(Gap.gutter, 0, Gap.gutter, Gap.gutter),
-          child: BusmonFrameDetails(frame: f, ack: _ackOf[f], withoutAck: _withoutAck[f] ?? false),
+          child: BusmonFrameDetails(
+            frame: f,
+            ack: _ackOf[f],
+            withoutAck: _withoutAck[f] ?? false,
+            log: widget.log,
+            onFilter: widget.onFilter,
+          ),
         ),
       ),
     );
@@ -739,20 +758,23 @@ class _FrameRow extends StatelessWidget {
       if (f.hasError && f.checksumOk) s.busmonStatusError,
       if (withoutAck) s.busmonUnacked,
     ];
+    // Standard style: the leading selection line indents the content by its width. Soft: the tint
+    // alone marks the choice, without a line.
+    final lead = context.hzTheme.soft ? 0.0 : Lines.selection;
     return Material(
       color: problems.isEmpty ? Colors.transparent : hz.warningTint,
       child: Ink(
-        // The leading line indents the content by its width. Selection and
-        // hairline below the row (divider) come from Horizont.
+        // Selection and hairline below the row (divider) come from Horizont.
         decoration: horizontSelectionDecoration(
           hz,
           selected: selected,
           divider: BorderSide(color: hz.line, width: Lines.hairline),
+          style: context.hzTheme.style,
         ),
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: EdgeInsetsDirectional.fromSTEB(gutter - Lines.selection, HzSpace.s8, gutter, HzSpace.s8),
+            padding: EdgeInsetsDirectional.fromSTEB(gutter - lead, HzSpace.s8, gutter, HzSpace.s8),
             child: table
                 ? _tableCells(context, target: target, name: name, problems: problems)
                 : _phoneCells(context, target: target, name: name, problems: problems),

@@ -472,8 +472,17 @@ class DataExporter {
   /// MQTT broker is configured; shown on the app's data export page.
   Map<String, Object?>? Function()? mqttTelegrams;
 
+  /// Changes the MQTT telegram stream (`PUT /api/export/mqtt`, [MqttBridge.configure]); `null`
+  /// without a broker.
+  Future<Map<String, Object?>> Function(Map<String, Object?> changes)? mqttConfigure;
+
+  /// The server's health check for Home Assistant (issue #12, health_check.dart): on or off and
+  /// the last run, shown on the app's data export page. `null` where there is no `/api/ha/`.
+  Map<String, Object?>? Function()? healthCheck;
+
   Map<String, Object?> status() => {
     'mqttTelegrams': ?mqttTelegrams?.call(),
+    'healthCheck': ?healthCheck?.call(),
     'settings': settings.toJson(secrets: false),
     'prometheusRunning': _metrics != null,
     'prometheusError': prometheusError,
@@ -488,6 +497,7 @@ class DataExporter {
 ///
 /// - `GET /api/export` → status and settings (without tokens)
 /// - `PUT /api/export` → change ([admin] only); `generatedToken` exactly once
+/// - `PUT /api/export/mqtt` → change the MQTT telegram stream or `{"reset": true}` ([admin] only)
 /// - `POST /api/export/test` → sample to InfluxDB ([admin] only)
 /// - `GET /api/export/grafana?kind=prometheus|influxdb` → Grafana template
 Future<bool> serveExport(HttpRequest request, DataExporter exporter, {required bool admin}) async {
@@ -525,6 +535,30 @@ Future<bool> serveExport(HttpRequest request, DataExporter exporter, {required b
     try {
       final generated = await exporter.update(changes);
       await sendJson(response, {...exporter.status(), 'generatedToken': ?generated});
+    } on FormatException catch (e) {
+      response.statusCode = HttpStatus.unprocessableEntity;
+      await sendJson(response, {'error': e.message});
+    }
+    return true;
+  }
+  if (path == '/api/export/mqtt' && (method == 'PUT' || method == 'POST')) {
+    final configure = exporter.mqttConfigure;
+    if (configure == null) {
+      await status(HttpStatus.notFound);
+      return true;
+    }
+    final raw = await readBody(request, 16 * 1024);
+    final Map<String, Object?> changes;
+    try {
+      changes = (jsonDecode(utf8.decode(raw ?? const [])) as Map).cast<String, Object?>();
+    } on Object {
+      // Not JSON or not an object: a bad request, unlike a value the stream refuses (422).
+      await status(HttpStatus.badRequest);
+      return true;
+    }
+    try {
+      await configure(changes);
+      await sendJson(response, exporter.status());
     } on FormatException catch (e) {
       response.statusCode = HttpStatus.unprocessableEntity;
       await sendJson(response, {'error': e.message});

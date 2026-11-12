@@ -1,0 +1,239 @@
+{{- /*
+  /hausbau/: KNX when building or renovating a house, the explaining entry
+  page of the topic as its own Feldseite. It leads from the everyday wish over
+  room book, floor plan, channel count and deadlines to the documents for the
+  electrician and the check after moving in, and links to the clickable
+  prototype /bauherren/. Texts from data/hausbau/<lang>.yaml; what is
+  available, in testing or in the works comes from data/hausbau/stand.yaml
+  alone (partials hausbau-state.html, hausbau-text.html). No script: the
+  drawings are still (hausbau-house.html, hausbau-plan.html).
+*/ -}}
+{{- $a := index site.Data.hausbau site.Language.Lang -}}
+{{- $target := "" }}{{ range .Translations }}{{ $target = . }}{{ end -}}
+{{- $lang := dict -}}
+{{- with $target }}{{ $lang = dict "current" (upper site.Language.Lang) "name" (upper .Language.Lang) "url" .RelPermalink "hreflang" .Language.Lang }}{{ end -}}
+{{- $proto := "bauherren/" | relLangURL -}}
+{{- $issue := printf "%s/issues/7" site.Params.githubUrl -}}
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode }}" data-product="knx">
+{{ partial "head.html" (dict "page" . "title" (printf "%s · %s" .Title site.Title) "description" .Description "image" (printf "images/og-%s.png" site.Language.Lang)) }}
+<body class="hz tz">
+{{ partial "horizont/nav/horizon.html" (dict
+    "product" "knx"
+    "place" (printf "%s / %s" site.Title .Title)
+    "marks" "auto"
+    "lang" $lang
+    "karte" (dict "home" "knx" "here" "knx" "map" "knx" "projects" false "field" "hausbau" "url" ("karte/" | relLangURL))) }}
+<div class="hz-feld tz-feld">
+<main id="main" class="tz-main hb">
+{{ partial "horizont/feld/hero.html" (dict
+    "kennung" (printf "01 — %s" $a.hero.kennung)
+    "title" $a.hero.title
+    "text" $a.hero.lead
+    "primary" (dict "label" $a.hero.primary "url" "#weg")
+    "secondary" (dict "label" $a.hero.secondary "url" $proto)
+    "aside" (partial "hausbau-house.html" (dict "alt" $a.hero.alt "labels" $a.hero.labels))
+    "asideCenter" false) }}
+<p class="hb-note">{{ partial "horizont/symbol.html" "info" }}<span>{{ $a.note | markdownify }}</span></p>
+
+{{- /* 02: three kinds of wishes, only one is urgent. */}}
+<section class="hz-feld-section tz-section tz-section--read" id="frueh">
+  {{ partial "horizont/kennung.html" (printf "02 — %s" $a.early.label) }}
+  <div class="hb-wide"><h2>{{ $a.early.title }}</h2><p>{{ $a.early.text | markdownify }}</p></div>
+  <figure class="hb-fig">
+    <div class="hb-cards hb-cards--3">
+      {{- range $a.early.cards }}
+      <article class="hb-card{{ if .urgent }} hb-card--accent{{ end }}">
+        {{ partial "horizont/kennung.html" (dict "text" .tag "tag" "p") }}
+        <h3>{{ .title }}</h3>
+        <p>{{ .text }}</p>
+        <ul class="hb-chips">{{ range .examples }}<li>{{ . }}</li>{{ end }}</ul>
+      </article>
+      {{- end }}
+    </div>
+    <figcaption>{{ $a.early.caption }}</figcaption>
+  </figure>
+</section>
+
+{{- /* 03: the way in seven steps, each with its state. */}}
+<section class="hz-feld-section tz-section tz-section--read" id="weg">
+  {{ partial "horizont/kennung.html" (printf "03 — %s" $a.path.label) }}
+  <div><h2>{{ $a.path.title }}</h2><p>{{ $a.path.text | markdownify }}</p></div>
+  <div>
+    <h3 class="hb-sub">{{ $a.path.legend_title }}</h3>
+    <dl class="hb-legend">
+      {{- range $a.path.legend }}
+      {{- $look := index (dict "live" (slice "positive" "check_circle") "test" (slice "info" "hourglass_top") "soon" (slice "warning" "construction")) .state }}
+      <dt><span class="hz-badge hz-badge--{{ index $look 0 }} hb-state">{{ partial "horizont/symbol.html" (index $look 1) }}{{ index $a.states .state }}</span></dt><dd>{{ .value }}</dd>
+      {{- end }}
+    </dl>
+  </div>
+  <ol class="hb-fig hb-cards hb-cards--4 hb-steps">
+    {{- range $i, $s := $a.path.steps }}
+    <li class="hb-card">
+      <span class="hb-step-n" aria-hidden="true">{{ add $i 1 }}</span>
+      <h3>{{ $s.title }}</h3>
+      <p>{{ partial "hausbau-state.html" $s.feature }} {{ partial "hausbau-text.html" (dict "item" $s) }}</p>
+      {{- with $s.plus }}<p class="hb-plus"><span class="hz-badge">{{ $a.plus }}</span> {{ . }}</p>{{ end }}
+      {{- with $s.extra }}
+      <p>{{ partial "hausbau-state.html" .feature }} {{ partial "hausbau-text.html" (dict "item" .) }}</p>
+      {{- end }}
+    </li>
+    {{- end }}
+    <li class="hb-card hb-card--try">
+      <h3>{{ $a.path.try.title }}</h3>
+      <p>{{ $a.path.try.text }}</p>
+      <a class="hz-button hz-button--secondary" href="{{ $proto }}">{{ $a.path.try.link }}{{ partial "horizont/symbol.html" "arrow_forward" }}</a>
+    </li>
+  </ol>
+</section>
+
+{{- /* 04: room book and floor plan (demo house). */}}
+<section class="hz-feld-section tz-section tz-section--read" id="plan">
+  {{ partial "horizont/kennung.html" (printf "04 — %s" $a.plan.label) }}
+  <div><h2>{{ $a.plan.title }}</h2><p>{{ $a.plan.text | markdownify }}</p></div>
+  <div>
+    <h3 class="hb-sub">{{ $a.plan.checks_title }}</h3>
+    {{ partial "horizont/facts.html" (dict "items" $a.plan.checks) }}
+  </div>
+  <figure class="hb-fig hb-duo">
+    <div>
+      {{ partial "hausbau-plan.html" (dict "mode" "plan" "alt" $a.plan.plan_alt "rooms" $a.plan.rooms "kinds" $a.plan.kinds) }}
+      <p class="hb-hint">{{ partial "horizont/symbol.html" "warning" }}<span><b>{{ $a.plan.hint_label }}:</b> {{ $a.plan.hint }}</span></p>
+    </div>
+    <div class="hb-scroll">
+      <table class="hz-table hb-table">
+        <caption>{{ $a.plan.book_title }}</caption>
+        <thead><tr>{{ range $a.plan.book_head }}<th scope="col">{{ . }}</th>{{ end }}</tr></thead>
+        <tbody>
+          {{- range $a.plan.book }}
+          <tr><td>{{ index . 0 }}</td><td>{{ index . 1 }}</td><td>{{ index . 2 }}</td></tr>
+          {{- end }}
+        </tbody>
+      </table>
+    </div>
+    <figcaption>{{ $a.demo }}</figcaption>
+  </figure>
+</section>
+
+{{- /* 05: channel count (demo) and what has to be settled by when. */}}
+<section class="hz-feld-section tz-section tz-section--read" id="kanaele">
+  {{ partial "horizont/kennung.html" (printf "05 — %s" $a.channels.label) }}
+  <div><h2>{{ $a.channels.title }}</h2><p>{{ $a.channels.text | markdownify }}</p></div>
+  <figure class="hb-scroll hb-side">
+    <table class="hz-table hb-table">
+      <caption>{{ $a.channels.table_title }}</caption>
+      <thead><tr>{{ range $i, $h := $a.channels.table_head }}<th scope="col"{{ if $i }} class="hz-num"{{ end }}>{{ $h }}</th>{{ end }}</tr></thead>
+      <tbody>
+        {{- range $a.channels.table }}
+        <tr><td>{{ index . 0 }}</td><td class="hz-num t-data">{{ index . 1 }}</td><td class="hz-num t-data">{{ index . 2 }}</td></tr>
+        {{- end }}
+      </tbody>
+    </table>
+    <figcaption>{{ $a.channels.table_note }} {{ $a.demo }}</figcaption>
+  </figure>
+  <div class="hb-fig">
+    <h3 class="hb-sub">{{ $a.channels.deadlines_title }}</h3>
+    <p class="hb-sub-text">{{ $a.channels.deadlines_text }}</p>
+    <ol class="hb-timeline">
+      {{- range $a.channels.deadlines }}
+      <li><b>{{ .title }}</b><span>{{ .text }}</span></li>
+      {{- end }}
+    </ol>
+  </div>
+</section>
+
+{{- /* 06 and 07: documents for the electrician, after moving in. Facts with
+       the state of each part in front. */}}
+{{- $n := 5 }}
+{{- range $key := slice "electrician" "moved" }}
+{{- $s := index $a $key }}
+{{- $n = add $n 1 }}
+{{- $facts := slice }}
+{{- range $s.points }}{{ $facts = $facts | append (dict "term" .term "value" (printf "%s %s" (partial "hausbau-state.html" .feature) (partial "hausbau-text.html" (dict "item" .)))) }}{{ end }}
+<section class="hz-feld-section tz-section tz-section--read" id="{{ cond (eq $key "moved") "einzug" "elektriker" }}">
+  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n $s.label) }}
+  <div><h2>{{ $s.title }}</h2><p>{{ $s.text | markdownify }}</p></div>
+  {{ partial "horizont/facts.html" (dict "items" $facts) }}
+  {{- if eq $key "moved" }}
+  <figure class="hb-fig hb-duo">
+    <div>
+      <p class="hb-figtitle">{{ partial "hausbau-state.html" "busview" }} {{ $s.bus_title }}</p>
+      {{ partial "hausbau-plan.html" (dict "mode" "bus" "alt" $s.bus_alt "rooms" $a.plan.rooms "kinds" $a.plan.kinds) }}
+      <p class="hb-key"><span><i class="hb-dot hb-dot--active"></i>{{ $s.bus_legend.active }}</span><span><i class="hb-dot hb-dot--heard"></i>{{ $s.bus_legend.heard }}</span><span><i class="hb-dot hb-dot--silent"></i>{{ $s.bus_legend.silent }}</span></p>
+      <p class="hb-keynote">{{ $s.bus_note }}</p>
+    </div>
+    <div class="hb-scroll">
+      <table class="hz-table hb-table">
+        <caption>{{ partial "hausbau-state.html" "walk" }} {{ $s.walk_title }} <span class="hb-progress">{{ $s.walk_progress }}</span></caption>
+        <thead><tr>{{ range $s.walk_head }}<th scope="col">{{ . }}</th>{{ end }}</tr></thead>
+        <tbody>
+          {{- range $s.walk }}
+          <tr><td>{{ .room }}</td><td>{{ .device }}</td><td class="hb-result{{ if eq .ok true }} is-ok{{ else if eq .ok false }} is-bad{{ end }}">{{ if eq .ok true }}{{ partial "horizont/symbol.html" "check_circle" }}{{ else if eq .ok false }}{{ partial "horizont/symbol.html" "report" }}{{ else }}{{ partial "horizont/symbol.html" "radio_button_unchecked" }}{{ end }}{{ .result }}{{ with .note }}<small>{{ . }}</small>{{ end }}</td></tr>
+          {{- end }}
+        </tbody>
+      </table>
+    </div>
+    <figcaption>{{ $a.demo }}</figcaption>
+  </figure>
+  {{- end }}
+</section>
+{{- end }}
+
+{{- /* 08: what exists today and what is still to come. */}}
+<section class="hz-feld-section tz-section tz-section--read" id="stand">
+  {{ partial "horizont/kennung.html" (printf "08 — %s" $a.state.label) }}
+  <div><h2>{{ $a.state.title }}</h2><p>{{ $a.state.text | markdownify }}</p></div>
+  <p class="hb-note hb-note--side">{{ partial "horizont/symbol.html" "info" }}<span>{{ $a.note | markdownify }}</span></p>
+  <div class="hb-fig hb-scroll">
+    <table class="hz-table hb-table hb-table--state">
+      <thead><tr>{{ range $a.state.head }}<th scope="col">{{ . }}</th>{{ end }}</tr></thead>
+      <tbody>
+        {{- range $a.state.rows }}
+        <tr><td>{{ .part | markdownify }}</td><td>{{ .where | markdownify }}</td><td>{{ partial "hausbau-state.html" .feature }}</td></tr>
+        {{- end }}
+      </tbody>
+    </table>
+    <p class="hb-tiers">{{ $a.state.tiers | markdownify }}</p>
+  </div>
+</section>
+
+{{- /* 09: have your say, in the public issue. */}}
+<section class="hz-feld-section tz-section tz-section--read" id="mitreden">
+  {{ partial "horizont/kennung.html" (printf "09 — %s" $a.talk.label) }}
+  <div>
+    <h2>{{ $a.talk.title }}</h2><p>{{ $a.talk.text | markdownify }}</p>
+    <div class="hz-feld-actions hb-actions">
+      <a class="hz-button hz-button--primary" href="{{ $issue }}">{{ $a.talk.primary }}{{ partial "horizont/symbol.html" "arrow_forward" }}</a>
+      <a class="hz-button hz-button--secondary" href="{{ $proto }}">{{ $a.talk.secondary }}</a>
+    </div>
+  </div>
+  <div>
+    <h3 class="hb-sub">{{ $a.talk.questions_title }}</h3>
+    <ul class="hb-questions">{{ range $a.talk.questions }}<li>{{ . }}</li>{{ end }}</ul>
+  </div>
+</section>
+
+<section class="hz-feld-section tz-section tz-section--read tz-section--faq" id="faq">
+  {{ partial "horizont/kennung.html" (printf "10 — %s" $a.faq.label) }}
+  <div>
+    <h2>{{ $a.faq.title }}</h2>
+    <div class="tz-faq">
+      {{- range $a.faq.items }}
+      <details>
+        <summary>{{ .q }}{{ partial "horizont/symbol.html" "expand_more" }}</summary>
+        <p>{{ .a | markdownify }}</p>
+      </details>
+      {{- end }}
+    </div>
+  </div>
+</section>
+</main>
+{{- $links := slice (dict "name" site.Title "url" ("" | relLangURL)) (dict "name" (i18n "beta") "url" ("beta/" | relLangURL)) (dict "name" (i18n "feedback") "url" ("feedback/" | relLangURL)) (dict "name" (i18n "changelog") "url" ("changelog/" | relLangURL)) (dict "name" (i18n "imprint") "url" site.Params.legalUrl) (dict "name" (i18n "privacy") "url" site.Params.privacyUrl) (dict "name" (i18n "github") "url" site.Params.githubUrl) (dict "name" (i18n "instagram") "url" site.Params.instagramUrl) }}
+{{- with site.GetPage "/nutzungsbedingungen" }}{{ $links = $links | append (dict "name" (i18n "terms") "url" .RelPermalink) }}{{ end }}
+{{ partial "horizont/feld/foot.html" (dict "links" $links "sender" (i18n "footer_sender")) }}
+<p class="tz-mark t-caption">{{ i18n "footer_note" }}</p>
+</div>
+{{ partial "horizont/nav/script.html" . }}
+</body>
+</html>

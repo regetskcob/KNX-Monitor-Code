@@ -41,6 +41,27 @@ class Signature {
   ]);
 }
 
+/// Photo or screenshot of a defect: the ID in the photo documentation
+/// ([SitePhotoStore]) and the SHA-256 of the image. The hash is part of the
+/// protocol's checksum, so a swapped image stands out; if the image is deleted
+/// later, the protocol itself stays complete.
+@immutable
+class DefectPhoto {
+  const DefectPhoto(this.id, this.hash);
+
+  factory DefectPhoto.of(String id, List<int> jpeg) => DefectPhoto(id, sha256.convert(jpeg).toString());
+
+  final String id;
+  final String hash;
+
+  /// Whether [jpeg] is the image the protocol was signed with.
+  bool matches(List<int> jpeg) => sha256.convert(jpeg).toString() == hash;
+
+  Map<String, Object?> toJson() => {'i': id, 'h': hash};
+
+  factory DefectPhoto.fromJson(Map<String, Object?> j) => DefectPhoto(j['i'] as String? ?? '', j['h'] as String? ?? '');
+}
+
 /// Acceptance protocol: a frozen snapshot of the commissioning with customer and
 /// site details and the signatures of both parties. Immutable once signed;
 /// changes mean a new protocol.
@@ -62,6 +83,10 @@ class Acceptance {
     required this.technicianSignature,
     this.started,
     this.gateway,
+    this.standard = '',
+    this.projectNumber = '',
+    this.warrantyStart,
+    this.defectPhotos = const {},
     this.checkedBy,
     this.checkedByMember,
     this.checkedAt,
@@ -85,6 +110,10 @@ class Acceptance {
     required Signature customerSignature,
     required Signature technicianSignature,
     String? gateway,
+    String standard = '',
+    String projectNumber = '',
+    DateTime? warrantyStart,
+    Map<int, DefectPhoto> defectPhotos = const {},
     DateTime? now,
   }) {
     final store = CatalogStore.instance;
@@ -107,6 +136,16 @@ class Acceptance {
       technicianSignature: technicianSignature,
       started: c.started,
       gateway: gateway,
+      standard: standard.trim(),
+      projectNumber: projectNumber.trim(),
+      warrantyStart: warrantyStart == null
+          ? null
+          : DateTime(warrantyStart.year, warrantyStart.month, warrantyStart.day),
+      // Only for items that are defects in this frozen state.
+      defectPhotos: {
+        for (final i in items)
+          if (i.state == CheckState.issue) i.address: ?defectPhotos[i.address],
+      },
     );
   }
 
@@ -133,6 +172,21 @@ class Acceptance {
   final Map<int, ({String name, String? path})> groups;
   final Signature customerSignature;
   final Signature technicianSignature;
+
+  /// Optional details. Empty ones are not written, so protocols without them
+  /// (and all older ones) keep their bytes and their checksum.
+  ///
+  /// Standard the acceptance refers to, free text (e.g. "DIN VDE 0100-600").
+  final String standard;
+  final String projectNumber;
+
+  /// Start of the warranty period, a calendar day.
+  final DateTime? warrantyStart;
+
+  /// One photo or screenshot per defect (item rated "Problem"), by address.
+  final Map<int, DefectPhoto> defectPhotos;
+
+  bool get hasDetails => standard.isNotEmpty || projectNumber.isNotEmpty || warrantyStart != null;
 
   /// Four-eyes acceptance (Pro team): who pre-checked and who signed off. Empty for
   /// all other protocols; the file is then byte-identical to before and its
@@ -170,6 +224,10 @@ class Acceptance {
     technicianSignature: technicianSignature,
     started: started,
     gateway: gateway,
+    standard: standard,
+    projectNumber: projectNumber,
+    warrantyStart: warrantyStart,
+    defectPhotos: defectPhotos,
     checkedBy: checkedBy ?? this.checkedBy,
     checkedByMember: checkedByMember ?? this.checkedByMember,
     checkedAt: checkedAt ?? this.checkedAt,
@@ -203,6 +261,11 @@ class Acceptance {
     },
     'customerSignature': customerSignature.toJson(),
     'technicianSignature': technicianSignature.toJson(),
+    if (standard.isNotEmpty) 'standard': standard,
+    if (projectNumber.isNotEmpty) 'projectNumber': projectNumber,
+    if (warrantyStart case final d?) 'warrantyStart': _day(d),
+    if (defectPhotos.isNotEmpty)
+      'defectPhotos': {for (final MapEntry(:key, :value) in defectPhotos.entries) '$key': value.toJson()},
     if (checkedBy != null) 'checkedBy': checkedBy,
     if (checkedByMember != null) 'checkedByMember': checkedByMember,
     if (checkedAt != null) 'checkedAt': checkedAt!.millisecondsSinceEpoch,
@@ -230,6 +293,13 @@ class Acceptance {
     },
     customerSignature: Signature.fromJson(j['customerSignature']),
     technicianSignature: Signature.fromJson(j['technicianSignature']),
+    standard: j['standard'] as String? ?? '',
+    projectNumber: j['projectNumber'] as String? ?? '',
+    warrantyStart: DateTime.tryParse(j['warrantyStart'] as String? ?? ''),
+    defectPhotos: {
+      for (final MapEntry(:key, :value) in (j['defectPhotos'] as Map? ?? const {}).entries)
+        int.parse(key as String): DefectPhoto.fromJson((value as Map).cast()),
+    },
     checkedBy: j['checkedBy'] as String?,
     checkedByMember: j['checkedByMember'] as String?,
     checkedAt: j['checkedAt'] == null ? null : DateTime.fromMillisecondsSinceEpoch(j['checkedAt']! as int),
@@ -237,6 +307,10 @@ class Acceptance {
     approvedByMember: j['approvedByMember'] as String?,
     approvedAt: j['approvedAt'] == null ? null : DateTime.fromMillisecondsSinceEpoch(j['approvedAt']! as int),
   );
+
+  /// Calendar day without time zone, e.g. "2026-11-11".
+  static String _day(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   /// Checksum (SHA-256) over the content: printed in the PDF so later changes
   /// stand out. Not a qualified electronic signature.

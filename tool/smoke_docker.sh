@@ -25,7 +25,7 @@ guide="$PWD/tool/public-repo/docker"
 work=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/knx-smoke.XXXXXX")
 # Container names of this run only: removing them never touches a container of
 # the user's (e.g. a real "knx-monitor") or of a second run.
-pfx=$(basename "$work" | tr -c 'a-zA-Z0-9\n' '-' | tr 'A-Z' 'a-z')
+pfx=$(basename "$work" | tr -c 'a-zA-Z0-9\n' '-' | tr '[:upper:]' '[:lower:]')
 c_smoke=$pfx-smoke c_box=$pfx-box c_closed=$pfx-closed c_doc=$pfx-doc
 compose+=(-p "$pfx")
 # Containers write the data folder as root (docker) or as the mapped user (rootless
@@ -99,8 +99,14 @@ test "$(code http://localhost:8766/api/bus)" = 401
 test "$(code "${ws[@]}" http://localhost:8766/ws/bus)" = 401
 test "$(code -u "x:$pw" http://localhost:8766/api/bus)" = 200
 test "$(code -u "x:wrong" http://localhost:8766/api/bus)" = 401
-key=$(curl -sf -u "x:$pw" -d 'name=CI' http://localhost:8766/pair | grep -o 'key=[A-Za-z0-9_-]*' | head -1 | cut -d= -f2)
+# /pair hands out a one-time code, not the device key; the app exchanges it without login, once.
+page=$(curl -sf -u "x:$pw" -d 'name=CI' http://localhost:8766/pair)
+if printf '%s' "$page" | grep -q 'key='; then echo "/pair zeigt den Schlüssel im Link" >&2; exit 1; fi
+paircode=$(printf '%s' "$page" | grep -o 'code=[A-Za-z0-9_-]*' | head -1 | cut -d= -f2)
+test ${#paircode} = 43
+key=$(curl -sf -d "{\"code\":\"$paircode\",\"name\":\"CI\"}" http://localhost:8766/api/box/claim | grep -o '"key":"[A-Za-z0-9_-]*"' | cut -d'"' -f4)
 test ${#key} = 43
+test "$(code -d "{\"code\":\"$paircode\"}" http://localhost:8766/api/box/claim)" = 403
 test "$(code -H "Authorization: Bearer $key" http://localhost:8766/api/bus)" = 200
 test "$(code -H "Authorization: Bearer $key" "${ws[@]}" http://localhost:8766/ws/bus)" = 101
 test "$(code -H "Authorization: Bearer $key" http://localhost:8766/ws)" = 403

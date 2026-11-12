@@ -1,0 +1,11 @@
+{{- /*
+  The state of a part of /hausbau/ as a badge: glyph, word and colour.
+  The state comes from data/hausbau/stand.yaml, the word from the language file.
+
+    partial "hausbau-state.html" "exchange"
+*/ -}}
+{{- $state := index site.Data.hausbau.stand . | default "soon" -}}
+{{- $look := index (dict "live" (slice "positive" "check_circle") "test" (slice "info" "hourglass_top") "soon" (slice "warning" "construction")) $state -}}
+{{- if not $look }}{{ errorf "hausbau: unknown state %q for %q in data/hausbau/stand.yaml" $state . }}{{ end -}}
+<span class="hz-badge hz-badge--{{ index $look 0 }} hb-state">{{ partial "horizont/symbol.html" (index $look 1) }}{{ index (index site.Data.hausbau site.Language.Lang).states $state }}</span>
+{{- /**/ -}}

@@ -16,6 +16,7 @@ import '../platform/notify.dart';
 import '../platform/storage.dart';
 import 'analysis.dart';
 import 'commissioning.dart';
+import 'dali_health.dart';
 import 'history_store.dart';
 import 'statistics.dart';
 import 'telegram_log.dart';
@@ -23,7 +24,7 @@ import 'weekly_report.dart';
 import 'installation.dart';
 
 /// Areas of the health check.
-enum HealthArea { read, cycle, readings, dpt, bus }
+enum HealthArea { read, cycle, readings, dpt, bus, lighting }
 
 enum Severity { ok, info, warning, error }
 
@@ -60,14 +61,30 @@ enum FindingKind {
   repeats(HealthArea.bus, Severity.warning),
 
   /// Read requests from other devices go unanswered.
-  unansweredReads(HealthArea.bus, Severity.info);
+  unansweredReads(HealthArea.bus, Severity.info),
+
+  /// DALI: luminaires behind a gateway report a lamp failure ([HealthFinding.count]).
+  lampFault(HealthArea.lighting, Severity.error),
+
+  /// DALI: control gear or converters behind a gateway report a failure.
+  gearFault(HealthArea.lighting, Severity.error),
+
+  /// DALI: a gateway that used to send has been silent although the bus was heard.
+  gatewaySilent(HealthArea.lighting, Severity.warning),
+
+  /// DALI: emergency luminaires without a test result within the interval.
+  testOverdue(HealthArea.lighting, Severity.warning),
+
+  /// DALI: emergency luminaires whose last test failed.
+  testFailed(HealthArea.lighting, Severity.error);
 
   const FindingKind(this.area, this.severity);
   final HealthArea area;
   final Severity severity;
 
-  /// Whether it concerns a device (otherwise a group address).
-  bool get device => this == repeats;
+  /// Whether it concerns a device (otherwise a group address); the lighting findings name the
+  /// DALI gateway.
+  bool get device => this == repeats || area == HealthArea.lighting;
 }
 
 /// A finding – data only; texts are created in the UI/PDF.
@@ -471,7 +488,8 @@ class HealthCheck extends ChangeNotifier {
     }
 
     final history = HistoryStore.instance;
-    if (history.enabled) {
+    // Demo house: the saved history belongs to the user's own installation.
+    if (history.enabled && !DemoTunnel.active) {
       try {
         final days = await history.days();
         for (final day in days) {
@@ -521,6 +539,7 @@ class HealthCheck extends ChangeNotifier {
         ...valueFindings(telegrams, now),
         ...dptFindings(telegrams),
         ...busFindings(log),
+        ...await currentLightingFindings(telegrams, now),
       ]..sort((a, b) => b.kind.severity.index.compareTo(a.kind.severity.index));
       for (final MapEntry(key: a, value: t) in answers.entries) {
         readable.add(a);
@@ -621,6 +640,8 @@ String _withAddress(HealthFinding f) {
 /// Address or device with name: "8/1/1 Windgeschwindigkeit".
 String findingTitle(HealthFinding f) {
   final store = CatalogStore.instance;
+  // Lighting: what is wrong is the title, the gateway the detail.
+  if (f.kind.area == HealthArea.lighting) return lightingFindingDetail(f);
   return f.kind.device
       ? [formatIndividual(f.address), ?store.device(f.address)?.name].join('  ')
       : [formatGroup(f.address), ?store.info(f.address)?.name].join('  ');
@@ -649,6 +670,11 @@ String findingDetail(HealthFinding f) {
     FindingKind.mixedSizes => s.healthMixedSizes(f.count ?? 2),
     FindingKind.repeats => s.healthRepeats(localizeDecimal(((f.rate ?? 0) * 100).toStringAsFixed(1)), f.count ?? 0),
     FindingKind.unansweredReads => s.healthUnansweredReads(f.count ?? 0),
+    FindingKind.lampFault ||
+    FindingKind.gearFault ||
+    FindingKind.gatewaySilent ||
+    FindingKind.testOverdue ||
+    FindingKind.testFailed => [formatIndividual(f.address), ?store.device(f.address)?.name].join('  '),
   };
 }
 

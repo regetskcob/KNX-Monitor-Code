@@ -15,6 +15,10 @@ Future<StorageExtras> storageExtras() => impl.storageExtras();
 /// Permanently delete the files without a key.
 Future<void> deleteQuarantinedFiles() => impl.deleteQuarantinedFiles();
 
+/// Deletes the copies of [path] a store moved aside as unreadable (`.corrupt-…`), e.g. when an
+/// installation is deleted. Natively only; in the browser the server keeps the files.
+Future<void> deleteCorruptCopies(AppStorage storage, String path) => impl.deleteCorruptCopies(storage, path);
+
 typedef StorageExtras = ({int previousBytes, int corruptBytes, int quarantinedFiles, int quarantinedBytes});
 
 const StorageExtras noStorageExtras = (previousBytes: 0, corruptBytes: 0, quarantinedFiles: 0, quarantinedBytes: 0);

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'more_menu.dart';
+import '../platform/title_bar_inset.dart';
 
 /// Toolbar on the tool pages too: the monitor registers its menu here, tools
 /// open with [pushTool] and draw the bar on the left as well. It collapses and
@@ -118,35 +118,11 @@ class _ShellFrame extends StatelessWidget {
       builder: (context, _, _) {
         final menu = shell.menu;
         if (menu == null || !shows(context)) return child;
-        final hz = context.hz;
         return Row(
           children: [
-            // Own Material background: the bar sits next to the page's Scaffold,
-            // otherwise texts would have no text style (yellow double underline).
-            Material(
-              color: hz.surface,
-              child: Container(
-                width: Widths.sidebar,
-                decoration: BoxDecoration(
-                  color: hz.surface,
-                  border: Border(
-                    right: BorderSide(color: hz.line, width: Lines.hairline),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: SafeArea(
-                        bottom: false,
-                        child: MoreSidebar(menu: menu, active: title),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Expanded(child: child),
+            // HorizontSidebar brings its surface, hairline, safe area and Material itself.
+            MoreSidebar(menu: menu, active: title),
+            Expanded(child: BesideTitleBar(child: child)),
           ],
         );
       },

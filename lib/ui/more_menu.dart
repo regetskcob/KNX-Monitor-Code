@@ -249,7 +249,7 @@ class _MoreListState extends State<_MoreList> {
   }
 
   /// Sidebar: a calm list of headings and rows, always by group; expert mode
-  /// only shows more entries.
+  /// only shows more entries. Expert mode stays fixed at the foot.
   Widget _sidebar(MoreMenu menu) {
     final tool = ModalRoute.of(context) is ToolRoute;
     final visible = [
@@ -257,9 +257,9 @@ class _MoreListState extends State<_MoreList> {
         if (expert || !t.expertOnly) t,
     ]..sort((a, b) => a.order - b.order);
     final hidden = expert ? 0 : menu.tools.where((t) => t.expertOnly).length;
-    Widget toolRow(ToolEntry t) => _SideRow(
+    Widget toolRow(ToolEntry t) => HorizontSidebarItem(
       icon: t.icon,
-      title: t.title,
+      label: t.title,
       tooltip: t.subtitle,
       selected: t.title == widget.active,
       onTap: () => _open(t),
@@ -268,113 +268,88 @@ class _MoreListState extends State<_MoreList> {
         _ => null,
       },
     );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    Widget toggleRow(MenuToggle t) => HorizontSidebarItem(
+      icon: t.icon,
+      label: t.title,
+      onTap: () => setState(() {
+        t.onChanged(!t.value);
+      }),
+      trailing: Switch.adaptive(
+        value: t.value,
+        onChanged: (v) => setState(() {
+          t.onChanged(v);
+        }),
+      ),
+    );
+    return HorizontSidebar(
+      width: Widths.sidebar,
+      footer: switch (menu.pinned) {
+        final p? => toggleRow(p),
+        null => null,
+      },
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(HzSpace.s8, HzSpace.s12, HzSpace.s8, HzSpace.s16),
-            children: [
-              if (menu.home case final home?)
-                _SideRow(
-                  icon: home.icon,
-                  title: home.title,
-                  selected: home.selected && !tool,
-                  onTap: () {
-                    if (tool) Navigator.of(context).pop();
-                    home.onTap();
-                  },
-                ),
-              for (final g in ToolGroup.headed)
-                if (visible.any((t) => t.group == g)) ...[
-                  _SideLabel(g.title),
-                  for (final t in visible)
-                    if (t.group == g) toolRow(t),
-                ],
-              if (menu.data.isNotEmpty || visible.any((t) => t.group == ToolGroup.data)) ...[
-                _SideLabel(s.menuGroupData),
-                for (final t in visible)
-                  if (t.group == ToolGroup.data) toolRow(t),
-                for (final a in menu.data)
-                  _SideRow(icon: a.icon, title: a.title, enabled: a.enabled, onTap: () => _run(a.onTap)),
-              ],
-              if (menu.toggles.isNotEmpty) ...[
-                _SideLabel(s.menuGroupSettings),
-                for (final t in menu.toggles)
-                  _SideRow(
-                    icon: t.icon,
-                    title: t.title,
-                    onTap: () => setState(() {
-                      t.onChanged(!t.value);
-                    }),
-                    trailing: Switch.adaptive(
-                      value: t.value,
-                      onChanged: (v) => setState(() {
-                        t.onChanged(v);
-                      }),
-                    ),
-                  ),
-              ],
-              if (visible.any((t) => t.group == ToolGroup.learn)) ...[
-                const SizedBox(height: HzSpace.s24),
-                for (final t in visible)
-                  if (t.group == ToolGroup.learn) toolRow(t),
-              ],
-              if (menu.footer.isNotEmpty) ...[
-                const SizedBox(height: HzSpace.s24),
-                for (final a in menu.footer)
-                  _SideRow(
-                    icon: a.icon,
-                    title: a.title,
-                    enabled: a.enabled,
-                    danger: a.danger,
-                    onTap: () => _run(a.onTap),
-                  ),
-              ],
-              // Without expert mode: say that there is more, and lead there with a tap.
-              if (hidden > 0 && menu.pinned != null) ...[
-                const SizedBox(height: HzSpace.s24),
-                _SideRow(
-                  icon: AppIcons.expert,
-                  title: s.menuMoreTools(hidden),
-                  muted: true,
-                  onTap: () => setState(() {
-                    menu.pinned!.onChanged(true);
-                  }),
-                ),
-              ],
-              const Padding(
-                padding: EdgeInsets.fromLTRB(HzSpace.s8, HzSpace.s16, HzSpace.s8, HzSpace.s4),
-                child: Align(alignment: AlignmentDirectional.centerStart, child: SenderLine()),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: HzSpace.s8),
-                child: Align(alignment: AlignmentDirectional.centerStart, child: VersionLine()),
-              ),
-            ],
+        if (menu.home case final home?)
+          HorizontSidebarItem(
+            icon: home.icon,
+            label: home.title,
+            selected: home.selected && !tool,
+            onTap: () {
+              if (tool) Navigator.of(context).pop();
+              home.onTap();
+            },
           ),
-        ),
-        // Fixed at the bottom, without its own surface like the other rows.
-        if (menu.pinned case final p?)
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(HzSpace.s8, 0, HzSpace.s8, HzSpace.s8),
-              child: _SideRow(
-                icon: p.icon,
-                title: p.title,
-                onTap: () => setState(() {
-                  p.onChanged(!p.value);
-                }),
-                trailing: Switch.adaptive(
-                  value: p.value,
-                  onChanged: (v) => setState(() {
-                    p.onChanged(v);
-                  }),
-                ),
-              ),
+        for (final g in ToolGroup.headed)
+          if (visible.any((t) => t.group == g)) ...[
+            HorizontSidebarLabel(g.title),
+            for (final t in visible)
+              if (t.group == g) toolRow(t),
+          ],
+        if (menu.data.isNotEmpty || visible.any((t) => t.group == ToolGroup.data)) ...[
+          HorizontSidebarLabel(s.menuGroupData),
+          for (final t in visible)
+            if (t.group == ToolGroup.data) toolRow(t),
+          for (final a in menu.data)
+            HorizontSidebarItem(icon: a.icon, label: a.title, onTap: a.enabled ? () => _run(a.onTap) : null),
+        ],
+        if (menu.toggles.isNotEmpty) ...[
+          HorizontSidebarLabel(s.menuGroupSettings),
+          for (final t in menu.toggles) toggleRow(t),
+        ],
+        if (visible.any((t) => t.group == ToolGroup.learn)) ...[
+          const SizedBox(height: HzSpace.s24),
+          for (final t in visible)
+            if (t.group == ToolGroup.learn) toolRow(t),
+        ],
+        if (menu.footer.isNotEmpty) ...[
+          const SizedBox(height: HzSpace.s24),
+          for (final a in menu.footer)
+            HorizontSidebarItem(
+              icon: a.icon,
+              label: a.title,
+              tone: a.danger ? HorizontSidebarTone.critical : HorizontSidebarTone.normal,
+              onTap: a.enabled ? () => _run(a.onTap) : null,
             ),
+        ],
+        // Without expert mode: say that there is more, and lead there with a tap.
+        if (hidden > 0 && menu.pinned != null) ...[
+          const SizedBox(height: HzSpace.s24),
+          HorizontSidebarItem(
+            icon: AppIcons.expert,
+            label: s.menuMoreTools(hidden),
+            tone: HorizontSidebarTone.muted,
+            onTap: () => setState(() {
+              menu.pinned!.onChanged(true);
+            }),
           ),
+        ],
+        const Padding(
+          padding: EdgeInsets.fromLTRB(HzSpace.s8, HzSpace.s16, HzSpace.s8, HzSpace.s4),
+          child: Align(alignment: AlignmentDirectional.centerStart, child: SenderLine()),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: HzSpace.s8),
+          child: Align(alignment: AlignmentDirectional.centerStart, child: VersionLine()),
+        ),
       ],
     );
   }
@@ -575,95 +550,6 @@ class _PinnedToggle extends StatelessWidget {
   }
 }
 
-/// Heading of a group in the sidebar.
-class _SideLabel extends StatelessWidget {
-  const _SideLabel(this.title);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(HzSpace.s8, HzSpace.s24, HzSpace.s8, HzSpace.s4),
-    child: Semantics(
-      header: true,
-      child: Text(
-        title.toUpperCase(),
-        style: Theme.of(context).textTheme.labelSmall
-            ?.copyWith(color: context.hz.text, fontWeight: FontWeight.w600, letterSpacing: 0.5),
-      ),
-    ),
-  );
-}
-
-/// Row of the sidebar: icon and text, the selection as a tinted surface.
-class _SideRow extends StatelessWidget {
-  const _SideRow({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-    this.tooltip,
-    this.trailing,
-    this.selected = false,
-    this.enabled = true,
-    this.danger = false,
-    this.muted = false,
-  });
-
-  final IconData icon;
-  final String title;
-  final VoidCallback onTap;
-  final String? tooltip;
-  final Widget? trailing;
-  final bool selected;
-  final bool enabled;
-  final bool danger;
-  final bool muted;
-
-  @override
-  Widget build(BuildContext context) {
-    final hz = context.hz;
-    final color = danger ? hz.critical : (selected ? hz.accentText : (muted ? hz.textFaint : hz.textMuted));
-    final row = Semantics(
-      button: true,
-      selected: selected,
-      child: Material(
-        color: selected ? hz.accentTint : Colors.transparent,
-        borderRadius: const BorderRadius.all(Radius.circular(HzSpace.s8)),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: enabled ? onTap : null,
-          child: ConstrainedBox(
-            // Dense with a pointer, a bit taller on touch: wide rows are hit reliably
-            // even below 44 points, and the menu stays readable as a whole.
-            constraints: BoxConstraints(minHeight: context.hzTheme.density == HorizontDensity.touch ? 38 : 32),
-            child: Opacity(
-              opacity: enabled ? 1 : 0.4,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: HzSpace.s8, vertical: HzSpace.s4),
-                child: Row(
-                  spacing: HzSpace.s8,
-                  children: [
-                    Icon(icon, size: 18, color: color),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: Theme.of(context).textTheme.bodyMedium
-                            ?.copyWith(color: color, fontWeight: selected ? FontWeight.w600 : null),
-                      ),
-                    ),
-                    ?trailing,
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    return tooltip == null ? row : Tooltip(message: tooltip!, child: row);
-  }
-}
-
 /// Group: label with a counter, rows with hairlines below. No tile: the lines
 /// provide the structure.
 class _Section extends StatelessWidget {
@@ -718,7 +604,7 @@ class _Tile extends StatelessWidget {
     this.selected = false,
   });
 
-  /// Open tool (sidebar on tool pages): tint with a line.
+  /// Open tool: tinted (with a line in the standard style).
   final bool selected;
 
   /// Compact (popover, sidebar): title one step smaller.
@@ -750,8 +636,13 @@ class _Tile extends StatelessWidget {
       child: ConstrainedBox(
         constraints: BoxConstraints(minHeight: context.hzTheme.rowHeight),
         child: Padding(
-          // The selection line at the start counts towards [inset].
-          padding: const EdgeInsetsDirectional.fromSTEB(inset - Lines.selection, HzSpace.s8, HzSpace.s8, HzSpace.s8),
+          // In the standard style the selection line at the start counts towards [inset].
+          padding: EdgeInsetsDirectional.fromSTEB(
+            inset - (context.hzTheme.soft ? 0 : Lines.selection),
+            HzSpace.s8,
+            HzSpace.s8,
+            HzSpace.s8,
+          ),
           child: Row(
             children: [
               Icon(icon, size: _iconSize, color: danger ? hz.critical : hz.textMuted),

@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:knx_monitor/catalog_store.dart';
+import 'package:knx_monitor/knx/group_catalog.dart';
 import 'package:knx_monitor/knx/telegram.dart';
 
 void main() {
@@ -32,5 +34,23 @@ void main() {
       '7E 0A 15 6F 31 00 21 00 · ≈ 21.10.2026 15:49:00',
     );
     expect(three([0x10, 0x0A, 0x15, 0x6F, 0x31, 0x00, 0x21, 0x00]).valueText, '10 0A 15 6F 31 00 21 00');
+  });
+
+  test('1 Byte ohne Typ: nur der Rohwert, mit Typ dekodiert', () {
+    final t = Telegram(
+      time: DateTime(2026, 11, 11),
+      source: 0x1105,
+      destination: 0x0A03,
+      type: TelegramType.write,
+      data: Uint8List.fromList([0x80]),
+      isSmall: false,
+    );
+    expect(t.valueText, '0x80 · 128');
+    expect(t.valueText, isNot(contains('%')));
+    CatalogStore.instance.catalog = GroupCatalog({
+      0x0A03: GroupInfo(address: 0x0A03, name: 'Dimmwert', dpt: const Dpt(5, 1)),
+    });
+    addTearDown(() => CatalogStore.instance.catalog = GroupCatalog.empty);
+    expect(CatalogStore.instance.value(t), contains('%'));
   });
 }

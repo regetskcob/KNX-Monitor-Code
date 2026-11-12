@@ -58,6 +58,8 @@ lan=$(get LAN_ACCESS)
 [ "$lan" = yes ] || lan=no
 read_only=$(get READ_ONLY)
 [ "$read_only" = yes ] || read_only=no
+health_check=$(get HEALTH_CHECK)
+[ "$health_check" = yes ] || health_check=no
 ssh_key=$(get SSH_PUBKEY)
 
 # --- Server -------------------------------------------------------------------
@@ -69,6 +71,7 @@ BOX_PASSWORD="$box_password"
 LAN_ACCESS="$lan"
 EOF
 [ "$read_only" = no ] || echo 'READ_ONLY="1"' >>"$ENV_DIR/env"
+[ "$health_check" = no ] || echo 'HEALTH_CHECK="true"' >>"$ENV_DIR/env"
 
 # --- Wi-Fi hotspot ------------------------------------------------------------
 # Without a country code Wi-Fi stays blocked on the Pi.
@@ -167,6 +170,7 @@ COUNTRY=$country
 INTERNET_SHARING=$sharing
 LAN_ACCESS=$lan
 READ_ONLY=$read_only
+HEALTH_CHECK=$health_check
 SSH_PUBKEY=$ssh_key
 EOF
 # Setup link for the app: Wi-Fi, box password, fixed address in the box Wi-Fi.

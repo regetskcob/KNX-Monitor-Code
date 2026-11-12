@@ -3,7 +3,8 @@ import 'package:horizont/horizont.dart';
 
 import 'brand.dart';
 
-/// Light/dark theme from Horizont, product Busclear (accent "Bus") in the soft variant.
+/// Light/dark theme from Horizont, product Busclear (accent "Bus") in the soft variant (Horizont's
+/// default for apps since 0.13.0).
 ///
 /// Everything essential (hand-set scheme, typography, components, platform feel) comes from the
 /// package. In the Home Assistant add-on ([homeAssistant]) the app takes over Home Assistant's
@@ -14,12 +15,7 @@ abstract final class AppTheme {
   static ThemeData dark({bool homeAssistant = false}) => _build(Brightness.dark, homeAssistant);
 
   static ThemeData _build(Brightness brightness, bool homeAssistant) {
-    final base = buildHorizontTheme(
-      Brand.product,
-      brightness,
-      host: homeAssistant ? HorizontHost.homeAssistant : null,
-      style: HorizontStyle.soft,
-    );
+    final base = buildHorizontTheme(Brand.product, brightness, host: homeAssistant ? HorizontHost.homeAssistant : null);
     final sheetShape = base.bottomSheetTheme.shape;
     return base.copyWith(
       // Do not glue actions on the right to the edge (e.g. the record button with border); Material

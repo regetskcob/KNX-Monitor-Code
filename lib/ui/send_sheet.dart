@@ -24,7 +24,15 @@ import 'plan_screen.dart';
 enum _Mode { read, write }
 
 /// Opens the sheet for reading/writing, optionally with a preset group address.
-Future<void> showSendSheet(BuildContext context, KnxTunnel tunnel, {int? address}) {
+///
+/// [onWritten] is called once a write really went to the bus (not for a cancelled confirmation,
+/// a read or a scheduled job), with the address written to.
+Future<void> showSendSheet(
+  BuildContext context,
+  KnxTunnel tunnel, {
+  int? address,
+  void Function(int address)? onWritten,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -32,16 +40,17 @@ Future<void> showSendSheet(BuildContext context, KnxTunnel tunnel, {int? address
     useSafeArea: true,
     builder: (_) => SafeArea(
       top: false,
-      child: _SendSheet(tunnel: tunnel, address: address),
+      child: _SendSheet(tunnel: tunnel, address: address, onWritten: onWritten),
     ),
   );
 }
 
 class _SendSheet extends StatefulWidget {
-  const _SendSheet({required this.tunnel, this.address});
+  const _SendSheet({required this.tunnel, this.address, this.onWritten});
 
   final KnxTunnel tunnel;
   final int? address;
+  final void Function(int address)? onWritten;
 
   @override
   State<_SendSheet> createState() => _SendSheetState();
@@ -87,7 +96,11 @@ class _SendSheetState extends State<_SendSheet> {
     final address = _requireAddress();
     await requireWriteConfirmation(context, address, small: small, data: data);
     unawaited(_remember());
-    if (_delay == 0 && _interval == 0) return widget.tunnel.write(address, small: small, data: data);
+    if (_delay == 0 && _interval == 0) {
+      final confirmed = await widget.tunnel.write(address, small: small, data: data);
+      widget.onWritten?.call(address);
+      return confirmed;
+    }
     SendScheduler.instance.add(
       SendJob(
         address: address,

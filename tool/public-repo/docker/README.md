@@ -186,8 +186,10 @@ Images exist for amd64 and arm64 only, so a Raspberry Pi needs the 64-bit OS
 | `MQTT_RAW=true`, `MQTT_RAW_ONLY=true` | Telegram stream: add the raw data (cEMI frame, priority, key), or send only raw data without names and values. |
 | `MQTT_RETAIN_VALUES=true` | Telegram stream: also the last value per address to `knx_monitor/value/…`, retained, only when it changes. |
 | `MQTT_FILTER` | Telegram stream: only these group addresses, e.g. `1/#,3/2/#,4/1/7`. |
+| | The telegram stream can also be set in the app (Tools › Data export), without a restart; the app's settings then take precedence over these variables until reset there. |
 | `MQTT_INSTALLATION` | Telegram stream: installation ID in `inst`, to tell several servers apart in one database. |
 | `SILENT_AFTER_HOURS` | Busclear integration: report an address as "stopped sending" only after this many hours without a telegram (default `12`, 1 to 168). Time without recording does not count. |
+| `HEALTH_CHECK` | `true`: the server checks the recorded traffic of today and yesterday once a day (about 3 o'clock) and on request of the Busclear integration (service `knx_monitor.run_health_check`, sensors "Health" and "Health findings"): wrong payload lengths, implausible or stuck readings, repeats, unanswered reads, addresses that stopped sending. It only reads the history and sends nothing on the bus, also without `READ_ONLY`. Default off. |
 
 ## Home Assistant Container
 
@@ -204,8 +206,9 @@ newer, through HACS) can still talk to this container:
    the link (`knxmonitor://box?url=…&key=…`).
 
 You get the sensors, the recording switch, device conditions, the services and
-the repairs (bus lost, disk full, an address stopped sending). Event entities and
-device triggers need the add-on for now; use MQTT for those. Revoke the device on
+the repairs (bus lost, disk full, an address stopped sending), and from Busclear
+1.12.0 on also the event entities and device triggers: the integration listens to
+the container's event channel `/ws/events` and reconnects by itself. Revoke the device on
 `/pair` and the integration loses access. With `TLS_CERT` the link carries the
 certificate's fingerprint and the integration accepts only that certificate;
 without it, the connection is not encrypted.

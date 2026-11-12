@@ -19,6 +19,7 @@ class LovelaceCard {
     this.supervisor = 'http://supervisor',
     this.websocket = 'ws://supervisor/core/websocket',
     this.connector = WebSocket.connect,
+    this.cardFile = fileName,
   }) : token = token ?? Platform.environment['SUPERVISOR_TOKEN'],
        config = config ?? Directory('/homeassistant');
 
@@ -39,6 +40,16 @@ class LovelaceCard {
   /// Path in Home Assistant, without `?v=`.
   static const url = '/local/knx-monitor/$fileName';
 
+  /// Dashboard card "Busclear Grundriss" (`custom:knx-monitor-floor-card`): the bus on the
+  /// floor plan, values from `/api/floor-view` (`FloorViewService`). Installed the same way.
+  static const floorFileName = 'knx-monitor-floor-card.js';
+
+  /// Name of this card's file in the image and in `/config/www/knx-monitor/`.
+  final String cardFile;
+
+  /// Path of this card in Home Assistant, without `?v=`.
+  String get cardUrl => '/local/knx-monitor/$cardFile';
+
   /// Places the card and registers it. Returns a result for the log; errors
   /// do not throw – the add-on runs just the same without the card.
   ///
@@ -58,13 +69,13 @@ class LovelaceCard {
       final freshWww = !await www.exists();
       final dir = Directory('${www.path}/knx-monitor');
       await dir.create(recursive: true);
-      final file = File('${dir.path}/$fileName');
+      final file = File('${dir.path}/$cardFile');
       if (!await file.exists() || await file.readAsString() != source) {
         await file.writeAsString(source, flush: true);
       }
       // Content hash in the name: browsers load a new version immediately,
       // even if only the Ingress path changed (reinstallation).
-      final resource = '$url?v=${_hash(source)}';
+      final resource = '$cardUrl?v=${_hash(source)}';
       final registered = await _register(resource);
       return (message: registered, freshWww: freshWww);
     } on Object catch (e) {
@@ -120,11 +131,11 @@ class LovelaceCard {
       final list = await call({'type': 'lovelace/resources'});
       if (list['success'] != true) {
         // YAML mode: resources are defined in configuration.yaml.
-        return 'Ressourcen nicht änderbar (YAML-Modus?) – $url von Hand eintragen';
+        return 'Ressourcen nicht änderbar (YAML-Modus?) – $cardUrl von Hand eintragen';
       }
       final existing = [
         for (final r in list['result'] as List? ?? const [])
-          if (r is Map && '${r['url']}'.split('?').first == url) r,
+          if (r is Map && '${r['url']}'.split('?').first == cardUrl) r,
       ];
       if (existing.any((r) => r['url'] == resource)) return 'aktuell';
       final result = existing.isEmpty

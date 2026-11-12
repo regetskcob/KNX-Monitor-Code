@@ -124,8 +124,8 @@ void main() {
         home: TopologyScreen(log: log, onFilter: (q) => filter = q),
       ),
     );
-    // Linienübergreifende Adressen als eigene Spalte ab 1600.
-    expect(find.textContaining(RegExp(r'^Linienübergreifend', caseSensitive: false)), findsOneWidget);
+    // Linienübergreifende Adressen als eigene Spalte ab 1600 (der Titel trägt weiche Trennstellen).
+    expect(find.textContaining(RegExp('^Linien\u00ad?über\u00ad?greifend', caseSensitive: false)), findsOneWidget);
     expect(find.byType(DeviceTraffic), findsNothing);
     final device = CatalogStore.instance.catalog.devices.values.first;
     final row = find.text(device.name).first;

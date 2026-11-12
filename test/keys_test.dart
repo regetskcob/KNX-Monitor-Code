@@ -297,6 +297,8 @@ void main() {
       'ha-addon/knx_monitor/server/lib/src/installations.dart',
       'ha-addon/knx_monitor/server/lib/src/box_access.dart',
       // Kryptomaterial und Kennungen, die nur an einem Ort gelten
+      // Salz und Nonce der Kundenakten-Datei (docs/handover-format.md)
+      'lib/export/customer_file.dart',
       'lib/export/handover_package.dart',
       'lib/knx/secure/package_crypto.dart',
       'lib/knx/secure/team_crypto.dart',
@@ -306,9 +308,14 @@ void main() {
       'lib/model/cloud_sync.dart',
       'lib/model/cloud_sync_engine.dart',
       'lib/model/full_backup.dart',
+      'lib/model/home_plan/plan_exchange.dart',
       'lib/platform/file_cipher.dart',
       'lib/platform/storage_io.dart',
       'ha-addon/knx_monitor/server/lib/src/atomic_file.dart',
+      // Epoche des Ereigniskanals: gilt nur bis zum nächsten Start, kein Geheimnis.
+      'ha-addon/knx_monitor/server/lib/src/event_channel.dart',
+      // Salz und Nonce der Box-Sicherung, Download-Tickets, Kennung des Uploads (docs/backup-format.md)
+      'ha-addon/knx_monitor/server/lib/src/box_backup.dart',
       'ha-addon/knx_monitor/server/lib/src/exporter.dart',
       'ha-addon/knx_monitor/server/lib/src/ha_integration.dart',
       'ha-addon/knx_monitor/server/lib/src/mcp_server.dart',

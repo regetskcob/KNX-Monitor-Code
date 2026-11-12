@@ -12,7 +12,10 @@ import 'package:knx_monitor/platform/storage.dart';
 import 'package:knx_monitor/platform/storage_io.dart';
 import 'package:knx_monitor/theme/app_theme.dart';
 import 'package:knx_monitor/ui/teach_in_screen.dart';
+import 'package:knx_monitor/ui/figure_box.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'window.dart';
 
 /// Tunnel, dessen Telegramme der Test selbst einspeist.
 class _FakeTunnel extends KnxTunnel {
@@ -126,6 +129,34 @@ void main() {
     now = now.add(const Duration(seconds: 16));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('Höre kurz mit'), findsNothing);
+    await close(tester, tunnel);
+  });
+
+  testWidgets('breites Fenster: Mithören links, „Benannt“ rechts daneben; schmal untereinander', (tester) async {
+    final tunnel = _FakeTunnel();
+    final screen = TeachInScreen(tunnel: tunnel, warmUp: Duration.zero);
+    final card = find.byType(SwitchRow);
+    final named = find.byType(SectionHead);
+
+    await pumpWindow(tester, screen, wideWindow);
+    expect(tester.getTopLeft(card).dx, lessThan(wideWindow.width / 2));
+    expect(tester.getTopLeft(named).dx, greaterThan(wideWindow.width / 2));
+    expect(tester.getTopLeft(named).dy, lessThan(tester.getBottomLeft(card).dy));
+
+    // Das gefangene Ereignis steht an derselben Stelle.
+    tunnel.controller
+      ..add(_press(0, '1/0/4'))
+      ..add(_press(5000, '1/0/9', source: '1.1.31'));
+    await tester.pump();
+    expect(tester.getTopLeft(find.text('1/0/4')).dx, lessThan(wideWindow.width / 2));
+    expect(tester.getTopLeft(named).dx, greaterThan(wideWindow.width / 2));
+
+    for (final (size, scale) in [(phoneWindow, 1.0), (phoneWindow, 2.0), (const Size(800, 1000), 1.0)]) {
+      await pumpWindow(tester, screen, size, textScale: scale);
+      await tester.dragUntilVisible(named, find.byType(ListView), const Offset(0, -200));
+      expect(tester.getTopLeft(named).dx, lessThan(size.width / 2), reason: '$size, Schrift $scale');
+    }
+    await pumpWindow(tester, screen, wideWindow, textScale: 2);
     await close(tester, tunnel);
   });
 }

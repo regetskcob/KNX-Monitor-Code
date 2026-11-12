@@ -11,7 +11,10 @@
 /// The token opens only the endpoints below `/api/ha/`, nothing else:
 ///
 /// - `GET /api/ha/state`: key figures as the MQTT device publishes them
-///   ([KeyFigures]), plus version, connection state and read-only.
+///   ([KeyFigures]), plus version, connection state and read-only, and
+///   `events`: the format version of the event channel `/ws/events`
+///   ([EventChannel]); an integration without Supervisor connects to it only
+///   when the field is there (older servers have no channel).
 /// - `POST /api/ha/recording` `{"on": bool}`: continuous recording on or off.
 /// - `POST /api/ha/report`: create the installation report now.
 /// - `GET /api/ha/history?days=<n>` or `?all=1`: history as ETS file
@@ -26,6 +29,12 @@
 /// - `GET /api/ha/silent`: addresses that stopped sending ([CycleWatch]), at
 ///   most 20, oldest silence first; `POST /api/ha/silent/ignore`
 ///   `{"address": "1/2/3"}` stops reporting one until it sends again.
+/// - `GET /api/ha/health`: the last result of the server's health check
+///   ([ServerHealthCheck]); `POST /api/ha/health/run` runs it now and returns the
+///   result. Both answer 409 `{"error": "not_enabled"}` while the feature is off
+///   (add-on option `health_check`, `HEALTH_CHECK=true`). The check never sends on
+///   the bus; `{"read": true}` asks for the read test, which this server does not
+///   have (422, in read-only mode with `"error": "read_only"`).
 ///
 /// Without Supervisor (Busclear Box, Docker; `BOX=1`) there is no discovery and no
 /// token ([tokenAccess] off): the server lets a paired device with admin
@@ -41,6 +50,8 @@ import 'dart:math';
 import 'bus.dart';
 import 'cycle_watch.dart';
 import 'ets_xml.dart';
+import 'event_channel.dart';
+import 'health_check.dart';
 import 'http.dart';
 import 'key_figures.dart';
 
@@ -62,12 +73,24 @@ class HaIntegration {
     DateTime Function() clock = DateTime.now,
     CycleWatch? cycles,
     Duration minSilence = CycleWatch.defaultMinSilence,
+    bool healthCheck = false,
+    int healthQuietHour = 3,
+    Future<Map<String, Object?>> Function(HealthScanInput input)? healthScan,
   }) : _supervisorToken = supervisorToken ?? Platform.environment['SUPERVISOR_TOKEN'],
        _supervisor = supervisor ?? Uri.parse('http://supervisor/'),
        _clock = clock,
        _lastSeen = clock(),
        figures = KeyFigures(currentBus, clock: clock),
-       cycles = cycles ?? CycleWatch(currentBus, clock: clock, minSilence: minSilence);
+       cycles = cycles ?? CycleWatch(currentBus, clock: clock, minSilence: minSilence) {
+    health = ServerHealthCheck(
+      currentBus,
+      enabled: healthCheck,
+      cycles: this.cycles,
+      quietHour: healthQuietHour,
+      clock: clock,
+      scan: healthScan,
+    );
+  }
 
   final Directory data;
   final BusService Function() currentBus;
@@ -83,6 +106,9 @@ class HaIntegration {
 
   /// Addresses that stopped sending (`/api/ha/silent`).
   final CycleWatch cycles;
+
+  /// The server's health check (`/api/ha/health`), off unless switched on.
+  late final ServerHealthCheck health;
 
   /// Whether the integration authenticates with the add-on's own token (Home
   /// Assistant with Supervisor, which hands it over through discovery). Off on
@@ -122,10 +148,13 @@ class HaIntegration {
     }
     figures.count();
     await figures.measure();
+    await health.load();
     _timer = Timer.periodic(tick, (_) async {
       figures.count();
       await figures.measure();
       await checkClaim();
+      // The daily run, and the first one soon after the feature was switched on.
+      await health.tick();
     });
     if (tokenAccess) unawaited(announce());
   }
@@ -293,11 +322,44 @@ class HaIntegration {
         } else {
           await sendJson(response, {'ignored': address});
         }
+      case ('GET', '/api/ha/health'):
+        if (!health.enabled) {
+          await _healthOff(response);
+        } else {
+          await health.load();
+          await sendJson(response, health.last());
+        }
+      case ('POST', '/api/ha/health/run'):
+        final body = await _body(request);
+        if (!health.enabled) {
+          await _healthOff(response);
+        } else if (body == null) {
+          response.statusCode = HttpStatus.badRequest;
+          await response.close();
+        } else if (body['read'] == true) {
+          // Read requests only when asked for, and never in read-only mode. This server has
+          // no read test yet, so it refuses either way and sends nothing.
+          response.statusCode = HttpStatus.unprocessableEntity;
+          await sendJson(response, {'error': bus.readOnly ? 'read_only' : 'read_test_not_supported'});
+        } else {
+          await sendJson(response, await health.run());
+        }
       default:
         response.statusCode = HttpStatus.notFound;
         await response.close();
     }
     return true;
+  }
+
+  /// The feature is off: say so, and how to switch it on.
+  static Future<void> _healthOff(HttpResponse response) {
+    response.statusCode = HttpStatus.conflict;
+    return sendJson(response, {
+      'enabled': false,
+      'error': 'not_enabled',
+      'option': ServerHealthCheck.option,
+      'env': ServerHealthCheck.variable,
+    });
   }
 
   Future<void> _setClaimed(bool on) async {
@@ -319,6 +381,9 @@ class HaIntegration {
       'read_only': bus.readOnly,
       'claimed': _claimed,
       'silent': cycles.count,
+      'events': EventChannel.formatVersion,
+      // On or off, and state, time and counts of the last run (without the findings).
+      'health_check': health.summary(),
     };
   }
 
@@ -354,6 +419,11 @@ class HaIntegration {
       'claimed': _claimed,
       // Only how many, no addresses.
       'silent': cycles.count,
+      // Only whether it is on and how the last run ended, no addresses.
+      'health_check': {
+        'enabled': health.enabled,
+        if (health.enabled) ...{'status': health.summary()['status'], 'time': health.summary()['time']},
+      },
     };
   }
 

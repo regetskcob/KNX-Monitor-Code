@@ -5,9 +5,11 @@ import '../catalog_store.dart';
 import '../knx/busmon.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
+import '../model/telegram_log.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'common.dart';
+import 'device_sheet.dart' show DeviceLink;
 import 'telegram_row.dart';
 
 /// Counter per sender in the bus monitor.
@@ -166,6 +168,7 @@ class SendersCard extends StatelessWidget {
                   hz,
                   selected: address == selected,
                   divider: BorderSide(color: hz.line, width: Lines.hairline),
+                  style: context.hzTheme.style,
                 ),
                 child: InkWell(
                   onTap: onFilter == null ? null : () => onFilter!(address),
@@ -218,11 +221,25 @@ class SendersCard extends StatelessWidget {
 /// A frame broken down: control field, addresses, hop count, length, payload,
 /// checksum, status and acknowledgement.
 class BusmonFrameDetails extends StatelessWidget {
-  const BusmonFrameDetails({super.key, required this.frame, this.ack, this.withoutAck = false});
+  const BusmonFrameDetails({
+    super.key,
+    required this.frame,
+    this.ack,
+    this.withoutAck = false,
+    this.log,
+    this.onFilter,
+  });
 
   final BusmonFrame frame;
   final BusmonFrame? ack;
   final bool withoutAck;
+
+  /// Monitor traffic: the sender then opens its device sheet.
+  final TelegramLog? log;
+
+  /// The device sheet's way back to the monitor with a filter; without it the sheet has no
+  /// filter buttons.
+  final ValueChanged<String>? onFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -315,10 +332,19 @@ class BusmonFrameDetails extends StatelessWidget {
                     const SizedBox(width: HzSpace.s4),
                   ],
                   Expanded(
-                    child: SelectableText(
-                      value,
-                      style: data.copyWith(fontWeight: FontWeight.w600, color: warn ? hz.warning : null),
-                    ),
+                    // The sender opens its device sheet, as in the live list.
+                    child: switch ((log, f.source)) {
+                      (final log?, final source?) when label == s.busmonFieldSource => DeviceLink(
+                        address: source,
+                        log: log,
+                        onFilter: onFilter,
+                        child: Text(value, style: data.copyWith(fontWeight: FontWeight.w600)),
+                      ),
+                      _ => SelectableText(
+                        value,
+                        style: data.copyWith(fontWeight: FontWeight.w600, color: warn ? hz.warning : null),
+                      ),
+                    },
                   ),
                 ],
               ),

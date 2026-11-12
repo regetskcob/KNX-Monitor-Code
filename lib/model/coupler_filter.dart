@@ -79,6 +79,46 @@ class FilterObservation {
   }
 }
 
+/// Tap points as observation points (issue #8): every tap point with a known line ([lineOfTap],
+/// tap number → line) is one that runs all the time, with the telegrams it saw and their hop
+/// count there. Telegrams from a time when one of these tap points was away ([away]) are left out
+/// of all of them, so "seen here, missing there" never rests on a tap point that could not see.
+/// Empty with fewer than two lines.
+List<FilterObservation> tapObservations(
+  List<Telegram> log,
+  Map<int, int> lineOfTap, {
+  required String Function(int tap) name,
+  bool Function(int tap, DateTime time)? away,
+}) {
+  if (log.isEmpty || lineOfTap.values.toSet().length < 2) return const [];
+  final seen = {for (final tap in lineOfTap.keys) tap: <Telegram>[]};
+  for (final t in log) {
+    if (away != null && lineOfTap.keys.any((tap) => away(tap, t.time))) continue;
+    if (seen[t.tap] case final list?) list.add(t);
+    for (final x in t.sightings) {
+      // As that tap point saw it: its own hop count, a moment later.
+      seen[x.tap]?.add(
+        Telegram(
+          time: t.time.add(x.offset),
+          source: t.source,
+          destination: t.destination,
+          type: t.type,
+          data: t.data,
+          isSmall: t.isSmall,
+          priority: t.priority,
+          repeated: t.repeated,
+          hopCount: x.hopCount,
+          tap: x.tap,
+        ),
+      );
+    }
+  }
+  return [
+    for (final MapEntry(key: tap, value: line) in lineOfTap.entries)
+      FilterObservation(name: name(tap), line: line, from: log.first.time, to: log.last.time, telegrams: seen[tap]!),
+  ];
+}
+
 /// Address whose sender and receivers lie on different lines according to the
 /// project. It only arrives if the coupler's filter table knows it.
 class CrossLineGroup {

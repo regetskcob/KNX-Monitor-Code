@@ -31,6 +31,35 @@ class DataExportState {
     final Map<Object?, Object?> m => MqttTelegramState(m.cast<String, Object?>()),
     _ => null,
   };
+
+  /// The server's health check for Home Assistant (issue #12); `null` on servers without it.
+  ServerHealthCheckState? get healthCheck => switch (json['healthCheck']) {
+    final Map<Object?, Object?> m => ServerHealthCheckState(m.cast<String, Object?>()),
+    _ => null,
+  };
+}
+
+/// The health check the server runs by itself (`ServerHealthCheck.summary` in
+/// `server/lib/src/health_check.dart`): on or off, and how the last run ended.
+@immutable
+class ServerHealthCheckState {
+  const ServerHealthCheckState(this.json);
+  final Map<String, Object?> json;
+
+  /// Switched on with the add-on option `health_check` or `HEALTH_CHECK=true`.
+  bool get enabled => json['enabled'] == true;
+
+  /// `ok`, `hints` or `faults`; `null` before the first run.
+  String? get status => json['status'] as String?;
+
+  /// Time of the last run; `null` before the first one.
+  DateTime? get time => DateTime.tryParse(json['time'] as String? ?? '')?.toLocal();
+
+  /// Findings of the last run.
+  int get findings => switch (json['counts']) {
+    final Map<Object?, Object?> counts => counts['total'] as int? ?? 0,
+    _ => 0,
+  };
 }
 
 /// State of "every telegram to MQTT" on the server (`MqttBridge.telegramStatus`).
@@ -71,6 +100,25 @@ class MqttTelegramState {
   /// Running number of the last telegram due to be sent; `null` on servers
   /// before the field existed.
   int? get seq => json['seq'] as int?;
+
+  /// Whether repeats are sent too.
+  bool get repeats => json['repeats'] == true;
+
+  /// Whether the app can change the stream (`PUT /api/export/mqtt`); `false` on older servers,
+  /// where only the add-on options or environment set it.
+  bool get configurable => json['configurable'] == true;
+
+  /// Whether the settings in force were made in the app, not in the options or environment.
+  bool get fromApp => json['source'] == 'app';
+
+  /// Paused by the switch on the MQTT device in Home Assistant.
+  bool get paused => json['paused'] == true;
+
+  /// Whether the server announces its MQTT device to Home Assistant; `null` on older servers.
+  bool? get discovery => json['discovery'] as bool?;
+
+  /// Whether the Busclear integration provides the entities instead of the MQTT device.
+  bool get integration => json['integration'] == true;
 }
 
 /// Talks to the server; replaceable in tests.
@@ -80,6 +128,10 @@ class DataExportClient {
   Future<DataExportState> load() async => DataExportState(await Addon.exportStatus());
   Future<DataExportState> save(Map<String, Object?> changes) async =>
       DataExportState(await Addon.configureExport(changes));
+
+  /// Changes the MQTT telegram stream, or `{"reset": true}` for the server's default.
+  Future<DataExportState> saveMqtt(Map<String, Object?> changes) async =>
+      DataExportState(await Addon.configureMqttStream(changes));
 
   /// `null` = delivered, otherwise the reason from the server.
   Future<String?> test() async {

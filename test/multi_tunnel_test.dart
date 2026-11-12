@@ -132,4 +132,119 @@ void main() {
     expect(TapPoint.fromJson({'mode': 'x', 'host': 'a'}), isNull);
     expect(TapPoint.fromJson({'mode': 'routing', 'host': ''})?.mode, TapMode.routing);
   });
+
+  test('device access goes over the tap point on the device line, group telegrams over the first', () async {
+    final a = _Fake('a', address: 0x11FA), b = _Fake('b', address: 0x12FA);
+    final m = MultiTunnel([a, b], names: ['A', 'B'], retryDelays: const [Duration(hours: 1)]);
+    await m.connect();
+    Uint8List to(int address) => buildLData(destination: address, group: false, tpdu: [0x80]);
+    await m.sendFrame(to(0x1214)); // 1.2.20: over b
+    expect((a.sent.length, b.sent.length), (0, 1));
+    await m.sendFrame(to(0x1105)); // 1.1.5: over a
+    expect((a.sent.length, b.sent.length), (1, 1));
+    await m.sendFrame(to(0x1307)); // 1.3.7: no tap point there, over the first
+    expect((a.sent.length, b.sent.length), (2, 1));
+    await m.write(0x0A03, small: 1); // a group address that happens to look like line 0.10
+    expect((a.sent.length, b.sent.length), (3, 1));
+    // The tap point on the device line is gone: over the first again, never unsent.
+    b.drop();
+    await m.sendFrame(to(0x1214));
+    expect((a.sent.length, b.sent.length), (4, 1));
+    m.dispose();
+  });
+
+  test('a tap point dropping in the middle of the window does not hold the telegram back', () async {
+    final a = _Fake('a'), b = _Fake('b');
+    final m = MultiTunnel([a, b], names: ['A', 'B'], retryDelays: const [Duration(hours: 1)]);
+    final got = <Telegram>[];
+    final sub = m.telegrams.listen(got.add);
+    await m.connect();
+    a.inject(_t(6));
+    await Future<void>.delayed(Duration.zero);
+    expect(got, isEmpty, reason: 'waits for b within the window');
+    b.drop();
+    await Future<void>.delayed(const Duration(milliseconds: 160));
+    expect(got.single.sightings, isEmpty);
+    expect(m.state.value, TunnelState.connected);
+    await sub.cancel();
+    m.dispose();
+  });
+
+  test('double press and repetition stay separate entries, matched in order', () async {
+    final a = _Fake('a'), b = _Fake('b');
+    final m = MultiTunnel([a, b], names: ['A', 'B']);
+    final got = <Telegram>[];
+    final sub = m.telegrams.listen(got.add);
+    await m.connect();
+    // The same telegram twice in quick succession at both tap points.
+    a
+      ..inject(_t(6))
+      ..inject(_t(6));
+    b
+      ..inject(_t(5))
+      ..inject(_t(5));
+    await Future<void>.delayed(Duration.zero);
+    expect(got, hasLength(2));
+    expect(got.every((t) => t.sightings.length == 1), isTrue);
+    // A repetition (repeat flag) is another frame: it does not merge with the original.
+    final repeated = Telegram(
+      time: DateTime.now(),
+      source: 0x1105,
+      destination: 0x0A03,
+      type: TelegramType.write,
+      data: Uint8List.fromList([1]),
+      isSmall: true,
+      repeated: true,
+    );
+    a.inject(_t(6));
+    b.inject(repeated);
+    await Future<void>.delayed(const Duration(milliseconds: 160));
+    expect(got, hasLength(4));
+    expect(got.skip(2).every((t) => t.sightings.isEmpty), isTrue);
+    await sub.cancel();
+    m.dispose();
+  });
+
+  test('a silent tap point is not waited for; gaps follow the tap points', () async {
+    final a = _Fake('a'), b = _Fake('b');
+    final m = MultiTunnel([a, b], names: ['A', 'B'], retryDelays: const [Duration(hours: 1)]);
+    final got = <Telegram>[];
+    final sub = m.telegrams.listen(got.add);
+    await m.connect();
+    expect(tapGaps.since, isNotNull);
+    for (var i = 0; i < TapSilence.threshold + 1; i++) {
+      a.inject(_t(6));
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 160));
+    expect(m.tapPoints.value[1].silent, isTrue);
+    got.clear();
+    a.inject(_t(6));
+    await Future<void>.delayed(Duration.zero);
+    expect(got, hasLength(1), reason: 'leaves at once');
+    b.drop();
+    // (Just after connecting still counts to the gap before it, hence the look ahead.)
+    final soon = DateTime.now().add(const Duration(seconds: 3));
+    expect(tapGaps.state(1, soon), TapSeen.away);
+    expect(tapGaps.state(0, soon), TapSeen.listening);
+    await sub.cancel();
+    m.dispose();
+    expect(tapGaps.since, isNull);
+  });
+
+  test('one tunnel alone: no labels, no gaps, telegrams untouched', () async {
+    final a = _Fake('a', address: 0x1123);
+    final got = <Telegram>[];
+    final sub = a.telegrams.listen(got.add);
+    await a.connect();
+    final t = _t(6);
+    a.inject(t);
+    await Future<void>.delayed(Duration.zero);
+    expect(identical(got.single, t), isTrue);
+    expect(tapLabels.value, isEmpty);
+    expect(a.tapPoints.value, isEmpty);
+    expect(tapGaps.since, isNull);
+    expect(seenAtOneTapOnly(t), isFalse);
+    await sub.cancel();
+    a.dispose();
+  });
 }

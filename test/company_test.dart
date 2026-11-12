@@ -225,8 +225,9 @@ void main() {
 
   testWidgets('Seite Firma: eintragen, speichern, Vorschau', (tester) async {
     SharedPreferences.setMockInitialValues({});
+    late Directory dir;
     await tester.runAsync(() async {
-      final dir = await Directory.systemTemp.createTemp('company_screen');
+      dir = await Directory.systemTemp.createTemp('company_screen');
       AppStorage.instance = IoStorage(dir);
       addTearDown(() => dir.delete(recursive: true));
     });
@@ -251,9 +252,80 @@ void main() {
     await tester.runAsync(() async {
       await tester.tap(find.text('Speichern'));
       await tester.pump();
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      // Wait for the file itself, not a fixed time: under the load of the whole suite the write
+      // took longer, and the folder was deleted underneath it.
+      for (var i = 0; i < 100 && !File('${dir.path}/company.json').existsSync(); i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
     });
+    expect(File('${dir.path}/company.json').existsSync(), isTrue);
     expect(CompanyStore.instance.company.name, 'Elektro Test');
     CompanyStore.instance.debugReset();
+  });
+
+  group('Seite Firma nach Breite', () {
+    Future<void> pump(WidgetTester tester, Size size, {double scale = 1}) async {
+      SharedPreferences.setMockInitialValues({});
+      CompanyStore.instance
+        ..debugReset()
+        ..company = _company
+        ..logo = _png(280, 96);
+      addTearDown(CompanyStore.instance.debugReset);
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          locale: const Locale('de'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scale)),
+            child: child!,
+          ),
+          home: const CompanyScreen(),
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('1400 pt: Angaben links, Vorschau, Logo und weitere Angaben rechts daneben', (tester) async {
+      await pump(tester, const Size(1400, 900));
+      final details = tester.getTopLeft(find.text('Angaben'));
+      final preview = tester.getTopLeft(find.text('Vorschau des Briefkopfs'));
+      expect(details.dx, lessThan(100));
+      expect(preview.dx, greaterThan(700));
+      expect(preview.dy, details.dy);
+      expect(preview.dy, lessThan(200));
+      expect(tester.getTopLeft(find.text('Weitere Angaben')).dx, greaterThan(700));
+      // Everything fits a window of 900 pt height.
+      expect(tester.getBottomLeft(find.text('Techniker auf diesem Gerät')).dy, lessThan(900));
+      // Keyboard order: the left column first.
+      expect(tester.widget<TextField>(find.byType(TextField).at(0)).controller!.text, _company.name);
+      expect(tester.widget<TextField>(find.byType(TextField).at(5)).controller!.text, _company.vatId);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Telefon: eine Spalte, die Vorschau zuerst', (tester) async {
+      await pump(tester, const Size(375, 3000));
+      final preview = tester.getTopLeft(find.text('Vorschau des Briefkopfs'));
+      final details = tester.getTopLeft(find.text('Angaben'));
+      expect(preview.dx, details.dx);
+      expect(preview.dy, lessThan(details.dy));
+      expect(details.dy, lessThan(tester.getTopLeft(find.text('Weitere Angaben')).dy));
+    });
+
+    testWidgets('375 pt breit, Textgröße 2.0: kein Überlauf', (tester) async {
+      await pump(tester, const Size(375, 667), scale: 2);
+      expect(tester.takeException(), isNull);
+      await tester.dragUntilVisible(
+        find.text('Techniker auf diesem Gerät'),
+        find.byType(ListView),
+        const Offset(0, -300),
+      );
+      expect(tester.takeException(), isNull);
+    });
   });
 }

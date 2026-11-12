@@ -19,12 +19,16 @@ import 'export_history.dart';
 import 'commissioning.dart';
 import 'connection_options.dart';
 import 'customer.dart';
+import 'dali.dart';
+import 'dali_log.dart';
 import 'handover.dart';
 import 'health.dart';
 import 'history_store.dart';
+import 'floor_view.dart';
 import 'home_plan/home_plan_store.dart';
 import 'keys.dart';
 import 'pinned_sections.dart';
+import 'project_states.dart';
 import 'site_photos.dart';
 import 'tap_points.dart';
 
@@ -169,6 +173,7 @@ class InstallationStore extends ChangeNotifier {
   /// Files of an installation (relative to its folder).
   static const files = [
     'catalog.json',
+    projectStatesPath,
     'dpt_overrides.json',
     'name_overrides.json',
     'learned.json',
@@ -178,12 +183,26 @@ class InstallationStore extends ChangeNotifier {
     'visits.json',
     'handover_origin.json',
     'site_photos.json',
+    DaliStore.path,
+    DaliStore.statePath,
     HomePlanStore.path,
+    HomePlanStore.exchangePath,
+    HomePlanStore.livePath,
+    HomePlanStore.previousPath,
+    FloorViewStore.path,
     KeyringStore.sequencePath,
   ];
 
   /// Folders with the installation's documents; deleted along with it (customer data).
-  static const _paperDirs = ['protocols', 'service_reports', 'site_photos', HomePlanStore.imageDir];
+  static const _paperDirs = [
+    'protocols',
+    'service_reports',
+    'site_photos',
+    DaliTestLog.dir,
+    HomePlanStore.imageDir,
+    HomePlanStore.previousImageDir,
+    FloorViewStore.imageDir,
+  ];
   static const _historyDir = 'history';
 
   /// Settings that belong to an installation (global before the migration).
@@ -262,6 +281,18 @@ class InstallationStore extends ChangeNotifier {
       } else {
         await _migrate(prefs);
       }
+    }
+    // An index that names an installation twice (seen on 12 Nov 2026 in a debug container) broke
+    // every list keyed by the id: the first entry stays.
+    final seen = <String>{};
+    final unique = [
+      for (final i in _list)
+        if (seen.add(i.id)) i,
+    ];
+    if (unique.length != _list.length) {
+      debugPrint('Installationen: ${_list.length - unique.length} doppelte Einträge entfernt');
+      _list = unique;
+      await _save();
     }
     _activeId = prefs.getString(_activeKey);
     if (!_list.any((i) => i.id == _activeId)) _activeId = _list.first.id;
@@ -537,6 +568,7 @@ class InstallationStore extends ChangeNotifier {
   /// [key]: the installation exists elsewhere already (box, handover package) and keeps its key.
   Future<Installation> create(String name, {GatewayRef? gateway, String? id, String? key}) async {
     if (id != null && !Installation.isValidId(id)) throw ArgumentError.value(id, 'id', 'invalid installation id');
+    if (id != null && _list.any((i) => i.id == id)) throw ArgumentError.value(id, 'id', 'installation id exists');
     // Two installations here never share a key.
     if (isKey(key) && byKey(key) != null) throw ArgumentError.value(key, 'key', 'installation key exists');
     final i = Installation(
@@ -568,6 +600,10 @@ class InstallationStore extends ChangeNotifier {
   /// Takes over name and gateway (handover package into an existing installation).
   Future<void> adopt(String id, {required String name, GatewayRef? gateway}) =>
       _update(id, (i) => i.copyWith(name: name.trim().isEmpty ? i.name : name.trim(), gateway: gateway));
+
+  /// Puts the index entry of an installation back as it was (a handover package that failed
+  /// half way).
+  Future<void> restore(Installation previous) => _update(previous.id, (_) => previous);
 
   /// Whether the paired box manages this installation (box mode).
   bool onBox(String id) => Addon.box != null && boxList.containsKey(id);
@@ -628,6 +664,8 @@ class InstallationStore extends ChangeNotifier {
     final storage = ScopedStorage(AppStorage.instance, 'installations/$id/');
     for (final f in files) {
       await storage.delete(f);
+      // Copies a store moved aside as unreadable are the installation's data too.
+      await deleteCorruptCopies(storage, f);
     }
     if (Betrieb.enabled) {
       // GaPlanStore, SiteNotes and SiteSurveyStore of the company edition.
@@ -909,6 +947,7 @@ class InstallationStore extends ChangeNotifier {
     KeyringStore.instance.reload(),
     HealthCheck.instance.reload(),
     Commissioning.instance.reload(),
+    DaliStore.instance.reload().then((_) => DaliTestLog.instance.reload()),
     ConnectionOptions.instance.load(),
     PinnedSections.instance.reload(),
     CollapsedSections.instance.reload(),
@@ -919,6 +958,7 @@ class InstallationStore extends ChangeNotifier {
     HandoverStore.instance.load(),
     SitePhotoStore.instance.load(),
     HomePlanStore.instance.load(),
+    FloorViewStore.instance.load(),
   ]);
 
   @visibleForTesting

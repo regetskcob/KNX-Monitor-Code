@@ -245,6 +245,102 @@ class TelegramMeta {
   }
 }
 
+/// What the telegram stream sends, as set in the add-on options or environment (the default)
+/// or in the app (`PUT /api/export/mqtt`, kept in `mqtt_stream.json`). The app's settings win
+/// until they are reset.
+class TelegramStreamSettings {
+  const TelegramStreamSettings({
+    this.enabled = false,
+    this.repeats = false,
+    this.secure = false,
+    this.raw = false,
+    this.rawOnly = false,
+    this.retainValues = false,
+    this.filter = '',
+  });
+
+  /// Reads stored settings: a missing or wrongly typed switch counts as off. Throws a
+  /// [FormatException] for a filter that cannot be read (a hand-edited file): the stream would
+  /// otherwise show as on and send nothing, so the caller falls back to its defaults.
+  factory TelegramStreamSettings.fromJson(Map<String, Object?> j) {
+    final filter = GroupFilter.parse(j['filter'] is String ? j['filter']! as String : null);
+    if (filter.invalid.isNotEmpty) throw FormatException('Filter nicht lesbar: ${filter.invalid.take(5).join(', ')}');
+    return TelegramStreamSettings(
+      enabled: j['enabled'] == true,
+      repeats: j['repeats'] == true,
+      secure: j['secure'] == true,
+      raw: j['raw'] == true || j['rawOnly'] == true,
+      rawOnly: j['rawOnly'] == true,
+      retainValues: j['retainValues'] == true,
+      filter: filter.text,
+    );
+  }
+
+  final bool enabled;
+  final bool repeats;
+  final bool secure;
+  final bool raw;
+  final bool rawOnly;
+  final bool retainValues;
+
+  /// Patterns as in [GroupFilter.parse]; empty = all.
+  final String filter;
+
+  static const _flags = ['enabled', 'repeats', 'secure', 'raw', 'rawOnly', 'retainValues'];
+
+  /// These settings with [changes] from the app; a [FormatException] names what does not fit
+  /// (wrong type, a filter pattern that cannot be read).
+  TelegramStreamSettings merge(Map<String, Object?> changes) {
+    for (final key in _flags) {
+      if (changes.containsKey(key) && changes[key] is! bool) throw FormatException('$key: true oder false');
+    }
+    var filter = this.filter;
+    if (changes.containsKey('filter')) {
+      final text = changes['filter'];
+      if (text is! String || text.length > 2000) throw const FormatException('filter: Text, z. B. 1/#,3/2/#');
+      final parsed = GroupFilter.parse(text);
+      if (parsed.invalid.isNotEmpty) {
+        throw FormatException('Filter nicht lesbar: ${parsed.invalid.take(5).join(', ')} (Beispiel: 1/#,3/2/#,4/1/7)');
+      }
+      filter = parsed.text;
+    }
+    bool flag(String key, bool current) => changes[key] as bool? ?? current;
+    final rawOnly = flag('rawOnly', this.rawOnly);
+    return TelegramStreamSettings(
+      enabled: flag('enabled', enabled),
+      repeats: flag('repeats', repeats),
+      secure: flag('secure', secure),
+      // "Raw only" implies raw; switching raw off also ends "raw only".
+      raw: changes['raw'] == false ? false : flag('raw', raw) || rawOnly,
+      rawOnly: changes['raw'] == false ? false : rawOnly,
+      retainValues: flag('retainValues', retainValues),
+      filter: filter,
+    );
+  }
+
+  Map<String, Object?> toJson() => {
+    'enabled': enabled,
+    'repeats': repeats,
+    'secure': secure,
+    'raw': raw,
+    'rawOnly': rawOnly,
+    'retainValues': retainValues,
+    'filter': filter,
+  };
+
+  /// The stream for these settings; `null` while it is off.
+  TelegramStream? stream() => enabled
+      ? TelegramStream(
+          repeats: repeats,
+          secure: secure,
+          raw: raw,
+          rawOnly: rawOnly,
+          filter: GroupFilter.parse(filter),
+          retainValues: retainValues,
+        )
+      : null;
+}
+
 /// Group addresses that go to MQTT, e.g. `1/#,3/2/#,4/1/7` (three-level,
 /// like the topics): `#` as the last level takes everything below it. Empty
 /// sends everything.

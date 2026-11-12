@@ -34,7 +34,9 @@ class BoxGateway {
 /// 4. set the box's clock from this device,
 /// 5. search for gateways on the box's cable; if there is exactly one, use it.
 ///
-/// With an ordinary pairing link (with access), steps 1 and 3 are skipped.
+/// With a pairing link from the box's page, step 1 is skipped and step 3 exchanges the link's
+/// one-time code for the device access. With a link that already carries the access (boxes up
+/// to 1.11.2, a saved box), steps 1 and 3 are skipped.
 class BoxSetup extends ChangeNotifier {
   BoxSetup(
     this.link, {
@@ -134,12 +136,23 @@ class BoxSetup extends ChangeNotifier {
   }
 
   Future<void> _pair() async {
-    if (!link.needsPairing) {
+    // Plain HTTP to a host outside the local network: no access, password or code goes there.
+    // Said here, before the box is stored, and not only when the first request fails.
+    if (link.carriesSecret) {
+      if (Addon.refusal(link) case final reason?) _fail(BoxSetupStep.pair, reason);
+    }
+    if (!link.needsPairing && !link.needsClaim) {
       await BoxConnection.instance.use(link);
       return _set(BoxSetupStep.pair, BoxStepState.skipped);
     }
     _set(BoxSetupStep.pair, BoxStepState.running);
     try {
+      if (link.needsClaim) {
+        // One-time code from the box's pairing page: the rights were chosen there.
+        final key = await Addon.claimBox(link, deviceName, app: await AppInstance.id());
+        await BoxConnection.instance.use(link.paired(key));
+        return _set(BoxSetupStep.pair, BoxStepState.done);
+      }
       final key = await Addon.pairBox(link, link.password, deviceName, app: await AppInstance.id());
       await BoxConnection.instance.use(link.paired(key));
       await _ownPassword();

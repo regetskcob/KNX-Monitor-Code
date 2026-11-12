@@ -48,6 +48,7 @@ import 'common.dart';
 import 'home_plan/home_plan_screen.dart';
 import '../knx/multi_tunnel.dart';
 import '../model/installation.dart';
+import 'box_claims.dart';
 import 'installation_list.dart';
 import '../model/cloud_sync.dart';
 import '../model/plan.dart';
@@ -387,6 +388,19 @@ class _ConnectScreenState extends State<ConnectScreen> {
       ) ==
       true;
 
+  /// The link would send device access, box password or pairing code unencrypted over the
+  /// internet ([Addon.refusal]): nothing to confirm, only to explain.
+  Future<void> _refuseBoxLink(String reason) => showAdaptiveDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog.adaptive(
+      title: Text(s.boxPlainRefusedTitle),
+      content: Text(reason),
+      actions: [
+        horizontDialogAction(context, label: s.commonClose, primary: true, onPressed: () => Navigator.pop(context)),
+      ],
+    ),
+  );
+
   /// Separate question before the keyring goes to this box for the first time.
   Future<bool?> _askKeyring(BoxLink box) async {
     if (!mounted) return null;
@@ -478,6 +492,10 @@ class _ConnectScreenState extends State<ConnectScreen> {
   /// the link came from outside the app ([_onIncoming]).
   Future<void> _setupBox(BoxLink link, {bool external = false}) async {
     FocusManager.instance.primaryFocus?.unfocus();
+    // Nothing secret goes over plain HTTP to a host on the internet: say so instead of asking.
+    if (link.carriesSecret) {
+      if (Addon.refusal(link) case final reason?) return _refuseBoxLink(reason);
+    }
     if (!link.isLocal && !await _confirmForeignBox(link)) return;
     // Scanned or pasted without a certificate fingerprint: the same confirmation
     // with the warning (a link from outside has shown it already).
@@ -584,6 +602,8 @@ class _ConnectScreenState extends State<ConnectScreen> {
     // currently recording (live view, project and history match).
     final installations = InstallationStore.instance;
     await installations.syncBox();
+    // The box names installations here this app never connected with it: the user decides.
+    if (mounted) await BoxClaims.offer(context);
     if (installations.boxActive case final id? when id != installations.active.id) await installations.switchTo(id);
     await Future.wait([HistoryStore.instance.load(), AlarmNotifySetting.instance.load()]);
     await _shareWithBox();
@@ -788,13 +808,13 @@ class _ConnectScreenState extends State<ConnectScreen> {
 
   /// Demo without an installation: sample house project in memory only; the
   /// user's own stays untouched and is back afterwards.
-  Future<void> _demo() async {
+  Future<void> _demo({bool tapPoints = false}) async {
     FocusManager.instance.primaryFocus?.unfocus();
     final store = CatalogStore.instance;
     store.beginDemo(demoCatalog());
     HealthCheck.instance.startDemo();
     Commissioning.instance.startDemo();
-    final tunnel = DemoTunnel();
+    final tunnel = DemoTunnel(withTapPoints: tapPoints);
     // Also on error or when the screen was closed: disconnect and restore the
     // user's own state.
     try {
@@ -920,11 +940,12 @@ class _ConnectScreenState extends State<ConnectScreen> {
     final width = MediaQuery.sizeOf(context).width;
     final gutter = Gap.gutterFor(width);
     // From tablet width two columns: connection on the left; history, box,
-    // offline and settings on the right. Without expert mode the right column
-    // is almost empty, so then one column even when wide. In portrait (iPad
-    // upright) there is enough height: one column, stacked.
+    // offline and settings on the right. Also without expert mode (the right
+    // column then has the introduction, lessons and settings): otherwise the
+    // expert switch would jump to another column when toggled. In portrait
+    // (iPad upright) there is enough height: one column, stacked.
     final size = MediaQuery.sizeOf(context);
-    final wide = width >= Breakpoints.expanded && size.width > size.height && ExpertMode.instance.value;
+    final wide = width >= Breakpoints.expanded && size.width > size.height;
     final content = wide ? Widths.dashboard : Widths.form;
     // Large windows on desktop and in the browser: the content as a sheet with
     // a hairline on a lighter surface. iPhone and iPad stay borderless.
@@ -942,7 +963,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
             spacing: Gap.section,
             children: [
               const CircularProgressIndicator.adaptive(),
-              Text(Addon.box != null ? s.boxAttaching : s.addonAttaching, style: theme.textTheme.bodyMedium),
+              Text(Addon.onBox ? s.boxAttaching : s.addonAttaching, style: theme.textTheme.bodyMedium),
             ],
           ),
         ),
@@ -952,9 +973,16 @@ class _ConnectScreenState extends State<ConnectScreen> {
     return Scaffold(
       backgroundColor: framed ? context.hz.surface : null,
       body: SafeArea(
-        child: Center(
+        // Two columns are placed from the top: truly centred, the whole page would move whenever
+        // its height changes (expert mode on or off), and the expert switch with it. The distance
+        // from the top is that of a page of the usual height, so it still sits in the middle of
+        // a large window.
+        child: Align(
+          alignment: wide ? Alignment.topCenter : Alignment.center,
           child: SingleChildScrollView(
-            padding: EdgeInsets.all(gutter),
+            padding: EdgeInsets.all(gutter).copyWith(
+              top: gutter + (wide ? ((size.height - _wideHeight) / 2 - gutter).clamp(0.0, double.infinity) : 0),
+            ),
             child: ConstrainedBox(
               // Wide: use the space, up to Horizont's page width.
               constraints: BoxConstraints(maxWidth: content + (framed ? 2 * _sheetPadding : 0)),
@@ -1018,6 +1046,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
 
   /// Inner padding of the sheet in large windows.
   static const _sheetPadding = HzSpace.s48;
+
+  /// Usual height of the two-column page (sheet included), for its place in a large window.
+  static const _wideHeight = 720.0;
 
   /// The sheet around the content: paper with a hairline, only if [framed].
   Widget _sheet({required bool framed, required Widget child}) {
@@ -1157,7 +1188,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
             ? const SizedBox(width: double.infinity)
             : Padding(
                 padding: const EdgeInsets.only(top: Gap.section),
-                child: TapPointsPanel(enabled: !_busy),
+                child: TapPointsPanel(enabled: !_busy, onDemo: () => _demo(tapPoints: true)),
               ),
       ),
       // In the add-on with a configured KNX integration: share its connection
@@ -1791,7 +1822,7 @@ class _AddonCard extends StatelessWidget {
             since == null ? '–' : formatTime(DateTime.fromMillisecondsSinceEpoch(since), seconds: false),
             status['today'] as int? ?? 0,
           )
-        : (status['error'] as String?) ?? (Addon.box != null ? s.boxConnecting : s.addonConnecting);
+        : (status['error'] as String?) ?? (Addon.onBox ? s.boxConnecting : s.addonConnecting);
     // State shown as symbol, word (the row) and color.
     final state = lost
         ? HorizontStatus.critical
@@ -1823,7 +1854,7 @@ class _AddonCard extends StatelessWidget {
               Icon(AppIcons.sensors, color: hz.textMuted, size: HzIconSize.row),
               const SizedBox(width: Gap.inner),
               Expanded(
-                child: Text(Addon.box != null ? s.boxRecordingTitle : s.addonTitle, style: theme.textTheme.titleSmall),
+                child: Text(Addon.onBox ? s.boxRecordingTitle : s.addonTitle, style: theme.textTheme.titleSmall),
               ),
             ],
           ),

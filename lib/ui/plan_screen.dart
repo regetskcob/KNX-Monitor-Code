@@ -14,6 +14,7 @@ import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'common.dart';
+import 'figure_box.dart' show RowColumns;
 import 'telegram_row.dart' show formatDate;
 import '../model/account.dart';
 import '../platform/account_plan.dart';
@@ -307,132 +308,177 @@ class _PlanScreenState extends State<PlanScreen> {
             // A gifted Pro does not hide the purchase buttons: it should be
             // possible to buy before it ends.
             final owned = plan.gifted ? plan.bought : tier;
-            return Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: Widths.reading),
-                child: ListView(
-                  padding: Gap.page,
-                  children: [
-                    if (widget.reason case final reason?)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: Gap.inner),
-                        child: Text(reason, style: theme.textTheme.titleMedium),
-                      ),
-                    // Current tier in the green box.
-                    SectionCard(
-                      soft: true,
-                      child: Text(
-                        s.planCurrent(tierName(tier)),
-                        style: theme.textTheme.titleMedium?.copyWith(color: hz.accentText, fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                    const SizedBox(height: Gap.item),
-                    if (Plan.instance.lapsed case final lapsed?)
-                      Text(
-                        s.planLapsed(tierName(lapsed)),
-                        style: theme.textTheme.bodyMedium?.copyWith(color: hz.critical),
-                      ),
-                    if (Plan.instance.rewardActive)
-                      Text(
-                        s.planBetaReward(formatDate(Plan.instance.rewardUntil!)),
-                        style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted),
-                      ),
-                    if (plan.openUntil case final until?)
-                      Padding(
-                        padding: const EdgeInsets.only(top: Gap.inner),
-                        child: HorizontNotice(HorizontStatus.warning, child: Text(s.planOpenNotice(formatDate(until)))),
-                      ),
-                    if (plan.awaitingApproval)
-                      Padding(
-                        padding: const EdgeInsets.only(top: Gap.inner),
-                        child: HorizontNotice(HorizontStatus.warning, child: Text(s.planPendingApproval)),
-                      ),
-                    // Above the tiers, otherwise it would sit below two long cards
-                    // without buttons. `free`: nothing is missing there.
-                    if (!loading && offers.isEmpty && !plan.free)
-                      Padding(
-                        padding: const EdgeInsets.only(top: Gap.inner),
-                        child: HorizontNotice(
-                          HorizontStatus.warning,
-                          child: Text(snapshot.hasError ? s.planNoOffers : s.planNotYetAvailable),
-                        ),
-                      ),
-                    const SizedBox(height: Gap.section),
-                    // From the menu (without an occasion) Pro first, Plus below. If Plus
-                    // resolves an occasion ("Home Assistant gehört zu Plus"), Plus is on top.
-                    // If the occasion requires Pro, only Pro.
-                    for (final t in switch ((widget.need, widget.reason)) {
-                      (Tier.plus, null) => [Tier.pro, Tier.plus],
-                      (Tier.plus, _) => [Tier.plus, Tier.pro],
-                      _ => [Tier.pro],
-                    }) ...[
-                      _TierCard(
-                        tier: t,
-                        // Without Plus next to it, Pro lists everything, not just the extra.
-                        complete: widget.need == Tier.pro,
-                        active: owned.covers(t),
-                        offers: [
-                          for (final o in offers)
-                            if (o.tier == t) o,
-                        ],
-                        loading: loading,
-                        busy: _busy,
-                        onBuy: _buy,
-                      ),
-                      const SizedBox(height: Gap.section),
-                    ],
-                    if (Plan.instance.purchasable) ...[
-                      // A license syncs itself; restoring would only mean "enter it again" here.
-                      if (plan.source is LicensePlanSource)
-                        Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: TextButton(onPressed: _busy ? null : _enterLicense, child: Text(s.planLicenseEnter)),
-                        )
-                      else
-                        Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: TextButton(onPressed: _busy ? null : _restore, child: Text(s.planRestore)),
-                        ),
-                      // Windows manages on the purchase page; without offers there is none.
-                      if (owned != Tier.free && (offers.isNotEmpty || plan.source is! AccountPlanSource))
-                        Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: TextButton(onPressed: _manage, child: Text(s.planManage)),
-                        ),
-                      // Account: one purchase on all devices (iPad, Windows, Mac).
-                      if (Account.instance.configured)
-                        ListenableBuilder(
-                          listenable: Account.instance,
-                          builder: (context, _) => Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: TextButton.icon(
-                              onPressed: () => showAccountScreen(context),
-                              icon: const Icon(AppIcons.account, size: 18),
-                              label: Text(
-                                Account.instance.signedIn
-                                    ? s.accountSignedInAs(Account.instance.email ?? '')
-                                    : s.accountUseEverywhere,
-                              ),
-                            ),
-                          ),
-                        ),
-                      const SizedBox(height: Gap.item),
-                      Text(s.planLegal, style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted)),
-                      Wrap(
-                        spacing: Gap.item,
-                        children: [
-                          // Apple requires terms of use and privacy policy on the purchase page.
-                          if (defaultTargetPlatform == TargetPlatform.iOS ||
-                              defaultTargetPlatform == TargetPlatform.macOS)
-                            TextButton(onPressed: () => launchUrl(_terms), child: Text(s.planTerms)),
-                          TextButton(onPressed: () => launchUrl(_privacy), child: Text(s.planPrivacy)),
-                        ],
-                      ),
-                    ],
-                  ],
+            // From the menu (without an occasion) Pro first, Plus below. If Plus
+            // resolves an occasion ("Home Assistant gehört zu Plus"), Plus is on top.
+            // If the occasion requires Pro, only Pro.
+            final tiers = switch ((widget.need, widget.reason)) {
+              (Tier.plus, null) => [Tier.pro, Tier.plus],
+              (Tier.plus, _) => [Tier.plus, Tier.pro],
+              _ => [Tier.pro],
+            };
+            final head = [
+              if (widget.reason case final reason?)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Gap.inner),
+                  child: Text(reason, style: theme.textTheme.titleMedium),
+                ),
+              // Current tier in the green box.
+              SectionCard(
+                soft: true,
+                child: Text(
+                  s.planCurrent(tierName(tier)),
+                  style: theme.textTheme.titleMedium?.copyWith(color: hz.accentText, fontWeight: FontWeight.w700),
                 ),
               ),
+              const SizedBox(height: Gap.item),
+              if (Plan.instance.lapsed case final lapsed?)
+                Text(s.planLapsed(tierName(lapsed)), style: theme.textTheme.bodyMedium?.copyWith(color: hz.critical)),
+              if (Plan.instance.rewardActive)
+                Text(
+                  s.planBetaReward(formatDate(Plan.instance.rewardUntil!)),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted),
+                ),
+              if (plan.openUntil case final until?)
+                Padding(
+                  padding: const EdgeInsets.only(top: Gap.inner),
+                  child: HorizontNotice(HorizontStatus.warning, child: Text(s.planOpenNotice(formatDate(until)))),
+                ),
+              if (plan.awaitingApproval)
+                Padding(
+                  padding: const EdgeInsets.only(top: Gap.inner),
+                  child: HorizontNotice(HorizontStatus.warning, child: Text(s.planPendingApproval)),
+                ),
+              // Above the tiers, otherwise it would sit below two long cards
+              // without buttons. `free`: nothing is missing there.
+              if (!loading && offers.isEmpty && !plan.free)
+                Padding(
+                  padding: const EdgeInsets.only(top: Gap.inner),
+                  child: HorizontNotice(
+                    HorizontStatus.warning,
+                    child: Text(snapshot.hasError ? s.planNoOffers : s.planNotYetAvailable),
+                  ),
+                ),
+            ];
+            Widget card(Tier t, {int columns = 1, bool fill = false}) => _TierCard(
+              tier: t,
+              // Without Plus next to it, Pro lists everything, not just the extra.
+              complete: widget.need == Tier.pro,
+              active: owned.covers(t),
+              offers: [
+                for (final o in offers)
+                  if (o.tier == t) o,
+              ],
+              loading: loading,
+              busy: _busy,
+              onBuy: _buy,
+              columns: columns,
+              fill: fill,
+            );
+            final foot = [
+              if (Plan.instance.purchasable) ...[
+                // A license syncs itself; restoring would only mean "enter it again" here.
+                if (plan.source is LicensePlanSource)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton(onPressed: _busy ? null : _enterLicense, child: Text(s.planLicenseEnter)),
+                  )
+                else
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton(onPressed: _busy ? null : _restore, child: Text(s.planRestore)),
+                  ),
+                // Windows manages on the purchase page; without offers there is none.
+                if (owned != Tier.free && (offers.isNotEmpty || plan.source is! AccountPlanSource))
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton(onPressed: _manage, child: Text(s.planManage)),
+                  ),
+                // Account: one purchase on all devices (iPad, Windows, Mac).
+                if (Account.instance.configured)
+                  ListenableBuilder(
+                    listenable: Account.instance,
+                    builder: (context, _) => Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: TextButton.icon(
+                        onPressed: () => showAccountScreen(context),
+                        icon: const Icon(AppIcons.account, size: 18),
+                        label: Text(
+                          Account.instance.signedIn
+                              ? s.accountSignedInAs(Account.instance.email ?? '')
+                              : s.accountUseEverywhere,
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: Gap.item),
+                Text(s.planLegal, style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted)),
+                Wrap(
+                  spacing: Gap.item,
+                  children: [
+                    // Apple requires terms of use and privacy policy on the purchase page.
+                    if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS)
+                      TextButton(onPressed: () => launchUrl(_terms), child: Text(s.planTerms)),
+                    TextButton(onPressed: () => launchUrl(_privacy), child: Text(s.planPrivacy)),
+                  ],
+                ),
+              ],
+            ];
+            return LayoutBuilder(
+              builder: (context, box) {
+                if (box.maxWidth < Breakpoints.expanded) {
+                  return Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: Widths.reading),
+                      child: ListView(
+                        padding: Gap.page,
+                        children: [
+                          ...head,
+                          const SizedBox(height: Gap.section),
+                          for (final t in tiers) ...[card(t), const SizedBox(height: Gap.section)],
+                          ...foot,
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                // Wide: the tiers side by side, equally high, their points in columns, up to
+                // [Widths.wide]; the texts above and below stay a reading column at the start.
+                final inner = box.maxWidth.clamp(0, Widths.wide) - 2 * Gap.gutter;
+                final cardInner = (inner - (tiers.length - 1) * Gap.section) / tiers.length - 2 * Gap.card;
+                final columns = RowColumns.columnsFor(
+                  context,
+                  cardInner,
+                  _TierCard.pointWidth,
+                  gap: _TierCard.pointGap,
+                );
+                Widget reading(List<Widget> children) => Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: Widths.reading),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+                  ),
+                );
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: Widths.wide),
+                    child: ListView(
+                      padding: Gap.page,
+                      children: [
+                        reading(head),
+                        const SizedBox(height: Gap.section),
+                        CardGrid(
+                          columns: tiers.length,
+                          children: [for (final t in tiers) card(t, columns: columns, fill: true)],
+                        ),
+                        const SizedBox(height: Gap.section),
+                        reading(foot),
+                      ],
+                    ),
+                  ),
+                );
+              },
             );
           },
         ),
@@ -451,7 +497,13 @@ class _TierCard extends StatelessWidget {
     required this.loading,
     required this.busy,
     required this.onBuy,
+    this.columns = 1,
+    this.fill = false,
   });
+
+  /// Minimum width of a column of points and the gap between two.
+  static const pointWidth = 240.0;
+  static const pointGap = HzSpace.s24;
 
   final Tier tier;
 
@@ -463,18 +515,24 @@ class _TierCard extends StatelessWidget {
   final bool busy;
   final ValueChanged<PlanOffer> onBuy;
 
+  /// Columns the points are spread over, down the first and then the next (wide windows).
+  final int columns;
+
+  /// The card stands in a row of equally high cards: the purchase buttons sit at its bottom.
+  final bool fill;
+
   /// What this tier offers: Pro tools first, then (with [complete] or for Plus)
   /// the Plus features.
   List<String> get _points => [
     if (tier == Tier.pro) ...[
       for (final f in Feature.values)
-        if (f.tier == Tier.pro && f.listed && (f != Feature.haConfig || Addon.embedded)) featureName(f),
+        if (f.tier == Tier.pro && f.listed && (f != Feature.haConfig || Addon.inHomeAssistant)) featureName(f),
       s.planUnlimitedInstallations,
       if (!complete) s.planAllOfPlus,
     ],
     if (tier == Tier.plus || complete) ...[
       for (final f in Feature.values)
-        if (f.tier == Tier.plus && f.listed && (f != Feature.haConfig || Addon.embedded)) featureName(f),
+        if (f.tier == Tier.plus && f.listed && (f != Feature.haConfig || Addon.inHomeAssistant)) featureName(f),
       s.planUnlimitedRecordings,
       if (tier == Tier.plus) s.planInstallations(3),
     ],
@@ -493,27 +551,48 @@ class _TierCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final hz = context.hz;
+    final points = [
+      for (final p in _points)
+        Padding(
+          padding: const EdgeInsets.only(bottom: HzSpace.s4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(AppIcons.success, size: 18, color: hz.textMuted),
+              const SizedBox(width: HzSpace.s8),
+              Expanded(child: Text(p, style: theme.textTheme.bodyMedium)),
+            ],
+          ),
+        ),
+    ];
+    final perColumn = (points.length / columns).ceil();
     return SectionCard(
       title: tierName(tier),
       trailing: active ? Kennung(s.planActive, color: hz.accentText) : null,
+      fill: fill,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(tier == Tier.plus ? s.planPlusPitch : s.planProPitch, style: theme.textTheme.bodyMedium),
           const SizedBox(height: Gap.inner),
-          for (final p in _points)
-            Padding(
-              padding: const EdgeInsets.only(bottom: HzSpace.s4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(AppIcons.success, size: 18, color: hz.textMuted),
-                  const SizedBox(width: HzSpace.s8),
-                  Expanded(child: Text(p, style: theme.textTheme.bodyMedium)),
-                ],
-              ),
+          if (columns == 1)
+            ...points
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: pointGap,
+              children: [
+                for (var i = 0; i < columns; i++)
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: points.skip(i * perColumn).take(perColumn).toList(),
+                    ),
+                  ),
+              ],
             ),
           if (!active && (loading || offers.isNotEmpty)) ...[
+            if (fill) const Spacer(),
             const SizedBox(height: Gap.inner),
             if (loading)
               const Center(child: CircularProgressIndicator.adaptive())

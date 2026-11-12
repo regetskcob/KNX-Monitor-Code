@@ -15,6 +15,7 @@ import '../theme/tokens.dart';
 import 'common.dart';
 import 'commissioning_screen.dart';
 import 'communication_map_screen.dart';
+import 'dali_screen.dart';
 import 'details_sheet.dart';
 import 'device_sheet.dart';
 import 'figure_box.dart';
@@ -45,6 +46,7 @@ String areaLabel(HealthArea a) => switch (a) {
   HealthArea.readings => s.healthAreaValues,
   HealthArea.dpt => s.healthAreaDpt,
   HealthArea.bus => s.healthAreaBus,
+  HealthArea.lighting => s.daliHealthArea,
 };
 
 /// The "Gesundheit" (health) tool: recurring check compared with the last run.
@@ -101,6 +103,8 @@ class _HealthScreenState extends State<HealthScreen> {
   /// (which lead on to map, chart and reading). Without a telegram, the map.
   Future<void> _open(HealthFinding f) async {
     final log = widget.log;
+    // Lighting: the DALI view of the gateway.
+    if (f.kind.area == HealthArea.lighting) return openDali(context, gateway: f.address);
     if (f.kind.device) {
       return showDeviceSheet(context, address: f.address, log: log);
     }
@@ -137,7 +141,14 @@ class _HealthScreenState extends State<HealthScreen> {
       _area ??
       (run == null
           ? HealthArea.read
-          : HealthArea.values.firstWhere((a) => run.countIn(a) > 0, orElse: () => HealthArea.read));
+          // The area with the most serious findings first (lighting faults are errors too).
+          : HealthArea.values
+                    .where((a) => run.countIn(a) > 0)
+                    .fold<HealthArea?>(
+                      null,
+                      (best, a) => best == null || run.worst(a).index > run.worst(best).index ? a : best,
+                    ) ??
+                HealthArea.read);
 
   @override
   Widget build(BuildContext context) {
@@ -297,7 +308,8 @@ class _HealthScreenState extends State<HealthScreen> {
           for (final a in HealthArea.values)
             // Bus only with findings: otherwise the segments don't fit on a
             // phone.
-            if (a != HealthArea.bus || run.countIn(a) > 0 || a == area)
+            // Lighting likewise: only installations with DALI have it.
+            if ((a != HealthArea.bus && a != HealthArea.lighting) || run.countIn(a) > 0 || a == area)
               ButtonSegment(
                 value: a,
                 label: Text('${_areaShort(a)} · ${formatInt(run.countIn(a))}'),

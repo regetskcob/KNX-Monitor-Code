@@ -88,7 +88,7 @@ class _ConnectionOptionsPanelState extends State<ConnectionOptionsPanel> {
             (ConnectionMode.tcp, s.connectModeTcp),
             (ConnectionMode.routing, s.connectModeRouting),
             (ConnectionMode.secure, s.connectModeSecure),
-            if (Addon.embedded) (ConnectionMode.homeAssistant, s.connectModeHa),
+            if (Addon.inHomeAssistant) (ConnectionMode.homeAssistant, s.connectModeHa),
             // Also the selected type when the HAT is currently missing.
             if (widget.hat || mode == ConnectionMode.hat) (ConnectionMode.hat, s.connectModeHat),
           ],

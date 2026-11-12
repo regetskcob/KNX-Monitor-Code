@@ -80,7 +80,7 @@ class _ReplaySheetState extends State<_ReplaySheet> {
     for (final t in writes) {
       latest[t.destination] = t;
       counts[t.destination] = (counts[t.destination] ?? 0) + 1;
-      if (numericValue(store.dptOf(t.destination), t) case final v?) (history[t.destination] ??= []).add(v);
+      if (numericValue(store.dptFor(t), t) case final v?) (history[t.destination] ??= []).add(v);
     }
     final all = latest.keys.toSet();
     final chosen = await pickAddresses(
@@ -367,10 +367,7 @@ class _EditRow extends StatelessWidget {
                 child: Text('+$seconds s', style: data.copyWith(color: hz.textMuted)),
               ),
               Expanded(
-                child: AddressTitle(
-                  '${formatGroup(t.destination)}  ${store.info(t.destination)?.name ?? ''}',
-                  maxLines: 1,
-                ),
+                child: AddressTitle('${formatGroup(t.destination)}  ${store.infoOf(t)?.name ?? ''}', maxLines: 1),
               ),
               const SizedBox(width: Gap.item),
               if (edited) ...[
@@ -468,7 +465,7 @@ class _ValueDialogState extends State<_ValueDialog> {
             decoration: InputDecoration(
               helperMaxLines: 2,
               helperText: [
-                ?CatalogStore.instance.info(t.destination)?.name,
+                ?CatalogStore.instance.infoOf(t)?.name,
                 if (d != null) 'DPT $d',
                 if (hint.isNotEmpty) hint,
               ].join(metaSeparator),

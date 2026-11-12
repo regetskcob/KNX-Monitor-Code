@@ -104,6 +104,12 @@ class SitePhotoStore extends ChangeNotifier {
     return _loading = _load();
   }
 
+  /// Reads the list again: files changed underneath (a customer file was taken over).
+  Future<void> reload() {
+    _loadedFor = null;
+    return load();
+  }
+
   Future<void> _load() async {
     _photos = [];
     _demo.clear();

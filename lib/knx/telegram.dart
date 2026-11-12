@@ -8,6 +8,21 @@ import '../l10n/locale_controller.dart';
 // app's texts and the group address style of the loaded project.
 export 'package:knx/knx.dart';
 
+/// Telegrams that arrived KNX Data Secure and were decrypted with the keyring, by their frame.
+/// `Telegram` itself (package:knx) has no such field; the frame object stays the same through
+/// merging at tap points ([Telegram.atTap]), so it carries the mark to the emergency lighting log.
+final _dataSecure = Expando<bool>('dataSecure');
+
+/// Marks [t] as arrived KNX Data Secure (authenticated and decrypted); called by the tunnel only.
+void markDataSecure(Telegram t) {
+  // The empty frame is shared by every telegram without one.
+  if (t.raw.isNotEmpty) _dataSecure[t.raw] = true;
+}
+
+/// Whether [t] arrived KNX Data Secure and passed the keyring's check (MAC, sequence number).
+/// `false` for anything sent in plain, read from a file or rebuilt without the original frame.
+bool arrivedSecure(Telegram t) => t.raw.isNotEmpty && _dataSecure[t.raw] == true;
+
 /// Current style; follows the loaded project (see CatalogStore).
 var groupStyle = GroupStyle.threeLevel;
 
@@ -34,7 +49,9 @@ extension TelegramTexts on Telegram {
       };
     }
     return switch (data.length) {
-      1 => '${hex(data)} · ${data[0]} · ${(data[0] * 100 / 255).round()} %',
+      // Without a type one byte is anything from percent to scene: only the raw value, in hex
+      // and decimal. Learned and project types decode it (CatalogStore.value).
+      1 => '0x${hex(data)} · ${data[0]}',
       2 => '${hex(data)} · ≈ ${localizeDecimal(decodeDpt9(data).toStringAsFixed(2))}',
       3 => switch (_guess3(data, time.year)) {
         final guess? => '${hex(data)} · ≈ $guess',

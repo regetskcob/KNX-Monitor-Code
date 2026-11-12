@@ -11,6 +11,11 @@ class MainFlutterWindow: NSWindow {
     // Kleiner als ein Telefon-Layout wird es nicht sinnvoll.
     self.contentMinSize = NSSize(width: 380, height: 560)
     self.setFrameAutosaveName("KNXMonitorMainWindow")
+    // Kein eigener Titelbalken: Die Oberfläche reicht bis an den oberen Rand, die Ampelknöpfe
+    // liegen darüber. Die App hält dort Platz frei (Kanal „knx/window“).
+    self.titlebarAppearsTransparent = true
+    self.titleVisibility = .hidden
+    self.styleMask.insert(.fullSizeContentView)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
@@ -46,7 +51,24 @@ class MainFlutterWindow: NSWindow {
       }
     }
 
+    // Höhe des Bereichs mit den Ampelknöpfen; im Vollbild 0. Die App fragt beim Start und
+    // bekommt jede Änderung gemeldet.
+    let window = FlutterMethodChannel(
+      name: "knx/window", binaryMessenger: flutterViewController.engine.binaryMessenger)
+    window.setMethodCallHandler { [weak self] call, result in
+      if call.method == "titleBarInset" { result(self?.titleBarInset ?? 0) } else { result(FlutterMethodNotImplemented) }
+    }
+    for name in [NSWindow.didEnterFullScreenNotification, NSWindow.didExitFullScreenNotification] {
+      NotificationCenter.default.addObserver(forName: name, object: self, queue: .main) { [weak self] _ in
+        window.invokeMethod("titleBarInset", arguments: self?.titleBarInset ?? 0)
+      }
+    }
+
     super.awakeFromNib()
+  }
+
+  private var titleBarInset: Double {
+    styleMask.contains(.fullScreen) ? 0 : Double(frame.height - contentLayoutRect.height)
   }
 }
 

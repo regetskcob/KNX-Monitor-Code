@@ -100,6 +100,7 @@ roadmap:
     - { term: "Soon", value: "**Android and Windows** on Google Play and as a download", when: [ios] }
     - { term: "Soon", value: "**iPhone, iPad, Mac and Windows** in the App Store and as a download for Windows", when: [android] }
     - { term: "Soon", value: "**Windows** as a download", when: [both] }
+    - { term: "Building", page: "hausbau", value: "**[Building a house with KNX](/en/hausbau/)**: what to decide early, before the walls are closed, and how \"Plan a home\" helps with it" }
     - { term: "Preview", value: "**Home builder package**: from everyday wishes through room book and floor plan to documents for your electrician. [Learn more](/en/bauherren/)" }
     - { term: "Preview", value: "**[KNX box](/en/box/)**: a Raspberry Pi as an on-site telegram recorder, recording for days on the building site, without Home Assistant and without internet. Until the other apps arrive, set it up with the Linux app" }
     - { term: "Apps", value: "Free to use, more tools with Plus and Pro. Everything is free in the beta.", commerce: false }

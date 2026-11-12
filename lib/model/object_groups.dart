@@ -273,7 +273,9 @@ class ObjectIndex {
     r'rückmeld|rücmled|rueckmeld|status|aktuell|\bist\b|ist-|isttemp|istwert|zustand|feedback|\bstate\b|'
     r'actual|current|\brms?\b|\bfb\b|\bstat\b|messwert|verfahrstatus|geöffnet|gekippt|\bkipp|'
     r'geschlossen|offen|präsenz|helligkeit|temperatur(?!.*soll)|'
-    r'\bopened\b|\btilted\b|\bclosed\b|occupan|presence|motion|humidity|\bmeasured\b',
+    r'\bopened\b|\btilted\b|\bclosed\b|occupan|presence|motion|humidity|\bmeasured\b|'
+    // Measured and reported, never commanded: humidity in German, results of a test.
+    r'feuchte|feuchtigkeit|ergebnis|\bresults?\b',
     caseSensitive: false,
   );
 

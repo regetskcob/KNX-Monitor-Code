@@ -82,3 +82,12 @@ configuration:
       sendet, erst nach so vielen Stunden ohne Telegramm. Standard 12. Ein
       kleinerer Wert meldet früher, aber auch Melder, die nur eine Weile
       nichts zu sagen hatten. Zeiten ohne Aufzeichnung zählen nicht mit.
+  health_check:
+    name: Gesundheitsprüfung für Home Assistant
+    description: >-
+      Das Add-on prüft den aufgezeichneten Verkehr einmal täglich und auf
+      Wunsch (Dienst „Gesundheitsprüfung starten“ der Busclear-Integration):
+      falsche Datentypen, unplausible oder hängende Messwerte,
+      Wiederholungen, unbeantwortete Leseanfragen, Adressen, die nicht mehr
+      senden. Es liest nur den Verlauf und sendet nichts auf den Bus.
+      Standardmäßig aus.

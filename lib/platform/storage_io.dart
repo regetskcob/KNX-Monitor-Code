@@ -37,6 +37,16 @@ Future<void> deleteQuarantinedFiles() async {
   if (storage is IoStorage) await storage.deleteQuarantined();
 }
 
+Future<void> deleteCorruptCopies(AppStorage storage, String path) async {
+  var base = storage;
+  var full = path;
+  while (base is ScopedStorage) {
+    full = '${base.prefix}$full';
+    base = base.base;
+  }
+  if (base is IoStorage) await base.deleteCorruptCopies(full);
+}
+
 /// Where the key of the files comes from.
 abstract interface class FileKeySource {
   /// Existing key, or `null` if the keychain is currently unavailable. [onCreated] runs before a
@@ -335,6 +345,17 @@ class IoStorage implements AppStorage {
 
   static bool _isSideFile(String name) =>
       name.endsWith('.tmp') || name.endsWith(prevSuffix) || name.contains(corruptInfix);
+
+  /// Deletes the copies of [path] moved aside as unreadable.
+  Future<void> deleteCorruptCopies(String path) async {
+    final f = File(await _resolve(path));
+    final dir = f.parent;
+    if (!await dir.exists()) return;
+    final prefix = '${f.uri.pathSegments.last}$corruptInfix';
+    await for (final e in dir.list()) {
+      if (e is File && e.uri.pathSegments.last.startsWith(prefix)) await e.delete();
+    }
+  }
 
   @override
   Future<void> delete(String path) async {

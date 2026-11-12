@@ -8,15 +8,19 @@ import 'package:test/test.dart';
 /// cloud vault in a folder of the user's choice, and files the server keeps for itself.
 const _notThroughFileApi = {
   'audit.json', // team export (zip)
+  'customers.json', // customer files for a second device (zip)
   'devices.json', // team export (zip)
   'diagnostics.json', // diagnostics bundle (zip)
+  'exchange.json', // house plan package (zip)
   'handover.json', // handover package (zip)
+  'homeplan.json', // house plan package (zip)
   'installations.json', // the server's own, refused by the file API (_private)
   'keyrings.json', // full backup (zip)
   'log.txt', // diagnostics bundle (zip)
   'manifest.json', // backup / team export (zip)
   'members.json', // below team/
   'payload.json', // handover package (zip)
+  'plan.json', // house plan package (zip)
   'prefs.json', // full backup (zip)
   'project.json', // diagnostics bundle (zip)
   'readme.txt', // team export (zip)
@@ -24,6 +28,16 @@ const _notThroughFileApi = {
   'secure.json', // diagnostics bundle (zip)
   'shared_preferences.json', // local only, never synced
   'vault.json', // cloud sync, in a folder the user picks
+};
+
+/// Folder names in the app's code that are not a first segment of the file API: inside zip
+/// archives, other server endpoints, or nested below a listed folder.
+const _foldersElsewhere = {
+  'entries', // team export (zip), below team/
+  'files', // full backup (zip)
+  'images', // house plan package (zip)
+  'installations', // api/installations/, its own endpoint
+  'o', // GA allocator spaces, not a path
 };
 
 void main() {
@@ -49,7 +63,26 @@ void main() {
     );
   });
 
+  // Folders are a path segment, not a literal with an extension: `'hunts/$id/…'` or
+  // `static const _dir = 'site_photos'`. hunts/ was missing until the list was enforced (11.11.).
+  test('every folder the app stores in is in knownAppFiles or knowingly elsewhere', () {
+    final folders = <String>{};
+    final interpolated = RegExp(r"'([a-z_]+)/(?:\$|')");
+    final constant = RegExp(r"(?:[dD]ir|[pP]ath|Folder)[A-Za-z]* = '([a-z_]+)'");
+    for (final f in Directory('../../../lib').listSync(recursive: true).whereType<File>()) {
+      if (!f.path.endsWith('.dart') || f.path.contains('/l10n/')) continue;
+      final text = f.readAsStringSync();
+      for (final m in [...interpolated.allMatches(text), ...constant.allMatches(text)]) {
+        folders.add(m.group(1)!);
+      }
+    }
+    expect(folders, contains('hunts'));
+    final missing = folders.difference(knownAppFiles).difference(_foldersElsewhere).toList()..sort();
+    expect(missing, isEmpty, reason: 'add to knownAppFiles (lib/src/files.dart) or to _foldersElsewhere');
+  });
+
   test('the exceptions are not on the list as well', () {
     expect(_notThroughFileApi.intersection(knownAppFiles), isEmpty);
+    expect(_foldersElsewhere.intersection(knownAppFiles), isEmpty);
   });
 }

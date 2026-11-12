@@ -67,4 +67,15 @@ void main() {
     expect(of('2/0/2'), isNull); // einzelne Adresse ist kein Objekt
     expect(of('1/0/0'), isNull);
   });
+
+  test('Messwerte und Testergebnisse sind Rückmeldungen, keine Befehle', () {
+    // "OG BZ Luftfeuchte" counted as a command without status in Reaktionszeiten; the English
+    // "humidity" was already a status.
+    expect(ObjectIndex.isFeedbackName('Luftfeuchte'), isTrue);
+    expect(ObjectIndex.isFeedbackName('Luftfeuchtigkeit'), isTrue);
+    expect(ObjectIndex.isFeedbackName('Testergebnis'), isTrue);
+    expect(ObjectIndex.isFeedbackName('test result'), isTrue);
+    expect(ObjectIndex.isFeedbackName('Schalten'), isFalse);
+    expect(ObjectIndex.isFeedbackName('Soll-Feuchte'), isFalse);
+  });
 }

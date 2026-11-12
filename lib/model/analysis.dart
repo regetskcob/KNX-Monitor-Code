@@ -64,11 +64,11 @@ enum TelegramIssue {
 /// Expected payload length per DPT main group; 0 = value in the APCI (≤ 6 bits).
 int? expectedSize(Dpt dpt) => switch (dpt.main) {
   1 || 2 || 3 => 0,
-  4 || 5 || 6 || 17 || 18 || 20 || 21 || 23 || 26 => 1,
-  7 || 8 || 9 || 22 => 2,
+  4 || 5 || 6 || 17 || 18 || 20 || 21 || 23 || 26 || 238 => 1,
+  7 || 8 || 9 || 22 || 237 || 244 => 2,
   10 || 11 || 232 => 3,
   12 || 13 || 14 || 15 => 4,
-  251 => 6,
+  245 || 251 => 6,
   19 || 29 => 8,
   16 => 14,
   _ => null,

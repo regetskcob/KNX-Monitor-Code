@@ -17,9 +17,35 @@ const addonAvailable = false;
 
 const _timeout = Duration(seconds: 5);
 
-BoxLink get _box => Addon.box ?? (throw AddonException(s.boxNone));
+/// The paired box, checked: a box whose device access would cross the internet in plain HTTP gets
+/// no request at all ([addonRefusal]). Every request with the device access starts here, so the
+/// refusal comes before a connection is opened.
+BoxLink get _box {
+  final box = Addon.box ?? (throw AddonException(s.boxNone));
+  if (box.key.isNotEmpty) _requireProtected(box);
+  return box;
+}
 
-Map<String, String> _headers(BoxLink box) => {if (box.key.isNotEmpty) 'Authorization': 'Bearer ${box.key}'};
+/// [AddonException.problem] of a request the app refused to send, see [addonRefusal].
+const plainRefusedProblem = 'plainRefused';
+
+/// Why the app sends nothing secret to [link]: device access, box password and pairing code never
+/// go over unencrypted HTTP to a host that is not in the local network ([BoxLink.plainOverInternet];
+/// with a certificate fingerprint the link is HTTPS). `null` if it may: HTTPS, or plain HTTP
+/// to a local address (a box without a certificate in the home network, the box's own Wi-Fi).
+String? addonRefusal(BoxLink link) => link.plainOverInternet ? s.boxPlainRefused(link.address) : null;
+
+void _requireProtected(BoxLink link) {
+  if (addonRefusal(link) case final reason?) throw AddonException(reason, problem: plainRefusedProblem);
+}
+
+/// The device access as a header. Checked here once more: no `Authorization` header is built for
+/// a link [addonRefusal] refuses, wherever the call comes from.
+Map<String, String> _headers(BoxLink box) {
+  if (box.key.isEmpty) return const {};
+  _requireProtected(box);
+  return {'Authorization': 'Bearer ${box.key}'};
+}
 
 /// Client that accepts only the certificate with fingerprint [fp].
 ///
@@ -176,6 +202,9 @@ Future<Object?> _request(
     throw AddonException(s.boxUnreachable(box.address));
   }
   if (_isRefusal(r.statusCode)) throw _refused(r);
+  if (r.statusCode == HttpStatus.tooManyRequests && Addon.errorOf(r.bodyBytes) == null) {
+    throw AddonException(s.boxTooManyAttempts, status: r.statusCode);
+  }
   if (r.statusCode >= 300) {
     throw Addon.errorOf(r.bodyBytes) ??
         // Plain text from the server (box settings: e.g. „Passwort vom Aufkleber“, password from
@@ -211,10 +240,11 @@ Future<Object?> addonPatch(String path, Map<String, Object?> body) => _request(
 Future<Object?> addonDelete(String path) =>
     _request((box, url) => _http(box).delete(url, headers: _headers(box)), path);
 
-Future<Object?> addonPost(String path, Map<String, Object?> body) => _request(
+Future<Object?> addonPost(String path, Map<String, Object?> body, {Duration? timeout}) => _request(
   (box, url) =>
       _http(box).post(url, headers: {..._headers(box), 'Content-Type': 'application/json'}, body: jsonEncode(body)),
   path,
+  timeout: timeout ?? _timeout,
 );
 
 /// File from the box's data folder (`api/files/…`), `null` if it does not exist.
@@ -253,6 +283,132 @@ Future<Uint8List?> addonDownload(String path, String fileName, {Duration timeout
   return r.bodyBytes;
 }
 
+/// Error of a streamed request, like [_request] does for buffered ones.
+AddonException _failure(int status, List<int> body) {
+  final r = http.Response.bytes(body, status);
+  if (_isRefusal(status)) return _refused(r);
+  final error = Addon.errorOf(body);
+  if (error != null) return error;
+  if (status == HttpStatus.tooManyRequests) return AddonException(s.boxTooManyAttempts, status: status);
+  return AddonException(
+    body.isNotEmpty && body.length < 300 ? utf8.decode(body, allowMalformed: true) : 'Box: HTTP $status',
+    status: status,
+  );
+}
+
+/// Download from the box straight into the file [target], without holding it in memory (a box
+/// backup holds the whole history). A download the box broke off shows as an error: the zip's
+/// end record is checked, since the box cannot report an error once it started sending.
+Future<void> addonDownloadToFile(
+  String path,
+  String target,
+  void Function(int bytes)? onProgress,
+  bool Function()? cancelled,
+) async {
+  final box = _box;
+  final request = http.Request('GET', box.url.resolve(path))..headers.addAll(_headers(box));
+  final http.StreamedResponse r;
+  try {
+    // The box reads and packs the first files before it answers.
+    r = await _http(box).send(request).timeout(const Duration(minutes: 2));
+  } on Object {
+    throw AddonException(s.boxUnreachable(box.address));
+  }
+  if (r.statusCode >= 300) throw _failure(r.statusCode, await r.stream.toBytes());
+  final file = File(target);
+  final out = file.openWrite();
+  var bytes = 0;
+  var stopped = false;
+  var complete = false;
+  try {
+    try {
+      await for (final chunk in r.stream.timeout(const Duration(minutes: 2))) {
+        if (cancelled?.call() ?? false) {
+          stopped = true;
+          break;
+        }
+        out.add(chunk);
+        bytes += chunk.length;
+        onProgress?.call(bytes);
+      }
+      await out.flush();
+    } on Object {
+      throw AddonException(s.boxUnreachable(box.address));
+    } finally {
+      await out.close();
+    }
+    if (stopped) throw AddonException(s.boxBackupCancelled, problem: 'cancelled');
+    if (!await zipComplete(file)) throw AddonException(s.boxBackupIncomplete);
+    complete = true;
+  } finally {
+    // A broken or cancelled download holds part of the history in plain text: remove it.
+    if (!complete && await file.exists()) await file.delete();
+  }
+}
+
+/// Whether [file] ends with a zip's end-of-central-directory record.
+Future<bool> zipComplete(File file) async {
+  final raf = await file.open();
+  try {
+    final length = await raf.length();
+    if (length < 22) return false;
+    final tail = length < 22 + 0xFFFF ? length : 22 + 0xFFFF;
+    await raf.setPosition(length - tail);
+    final b = await raf.read(tail);
+    for (var i = b.length - 22; i >= 0; i--) {
+      if (b[i] == 0x50 && b[i + 1] == 0x4b && b[i + 2] == 0x05 && b[i + 3] == 0x06) {
+        return i + 22 + (b[i + 20] | (b[i + 21] << 8)) == b.length;
+      }
+    }
+    return false;
+  } finally {
+    await raf.close();
+  }
+}
+
+/// A request whose body is a stream: [IOClient] reads it only as fast as it sends, so a large
+/// upload never sits in memory (unlike [http.StreamedRequest], whose sink buffers).
+class _StreamRequest extends http.BaseRequest {
+  _StreamRequest(super.method, super.url, this._data);
+  final Stream<List<int>> _data;
+
+  @override
+  http.ByteStream finalize() {
+    super.finalize();
+    return http.ByteStream(_data);
+  }
+}
+
+/// Uploads [data] ([length] bytes, if known) with PUT, streamed, and returns the JSON answer.
+Future<Map<String, Object?>> addonUpload(
+  String path,
+  Stream<List<int>> data,
+  int? length,
+  void Function(int bytes)? onProgress,
+) async {
+  final box = _box;
+  var sent = 0;
+  final request = _StreamRequest(
+    'PUT',
+    box.url.resolve(path),
+    data.map((chunk) {
+      sent += chunk.length;
+      onProgress?.call(sent);
+      return chunk;
+    }),
+  )..headers.addAll({..._headers(box), 'Content-Type': 'application/zip'});
+  if (length != null) request.contentLength = length;
+  final http.Response r;
+  try {
+    // The box unpacks and checks the whole backup before it answers.
+    r = await http.Response.fromStream(await _http(box).send(request)).timeout(const Duration(minutes: 30));
+  } on Object {
+    throw AddonException(s.boxUnreachable(box.address));
+  }
+  if (r.statusCode >= 300) throw _failure(r.statusCode, r.bodyBytes);
+  return (jsonDecode(utf8.decode(r.bodyBytes)) as Map).cast<String, Object?>();
+}
+
 /// Stores a file in the box's data folder (replacing it).
 Future<void> addonPutFile(String path, List<int> bytes) async {
   final box = _box;
@@ -271,6 +427,8 @@ Future<void> addonPutFile(String path, List<int> bytes) async {
 /// Pairs using the box password from the sticker's QR code and returns the device access (with
 /// admin rights). Runs before [Addon.box].
 Future<String> addonPairBox(BoxLink link, String password, String deviceName, {String? app}) async {
+  // The box password is worth more than a device access: same rule.
+  _requireProtected(link);
   final http.Response r;
   try {
     r = await _http(link)
@@ -295,5 +453,37 @@ Future<String> addonPairBox(BoxLink link, String password, String deviceName, {S
   if (r.statusCode >= 300) throw AddonException('Box: HTTP ${r.statusCode}');
   final key = (jsonDecode(utf8.decode(r.bodyBytes)) as Map)['key'];
   if (key is! String || key.isEmpty) throw AddonException(s.boxUnauthorized);
+  return key;
+}
+
+/// Exchanges the one-time pairing code of [link] for the device access (`POST /api/box/claim`).
+/// Runs before [Addon.box], over the same connection as everything else: HTTPS with the pinned
+/// certificate when the link has a fingerprint. The code is sent in the body, never in a URL or
+/// a header, and like every secret not over plain HTTP outside the local network.
+Future<String> addonClaimBox(BoxLink link, String deviceName, {String? app}) async {
+  _requireProtected(link);
+  final http.Response r;
+  try {
+    r = await _http(link)
+        .post(
+          link.url.resolve('api/box/claim'),
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode({'code': link.code, 'name': deviceName, 'app': ?app}),
+        )
+        .timeout(const Duration(seconds: 30));
+  } on Object catch (e) {
+    debugPrint('Box koppeln: $e');
+    throw AddonException(s.boxUnreachable(link.address));
+  }
+  if (r.statusCode == HttpStatus.tooManyRequests) throw AddonException(s.boxTooManyAttempts, status: r.statusCode);
+  // 403: wrong, used or expired. 401 and 404: a box that does not hand out codes.
+  if (r.statusCode >= 300) throw AddonException(s.boxCodeInvalid, status: r.statusCode);
+  final Object? key;
+  try {
+    key = (jsonDecode(utf8.decode(r.bodyBytes)) as Map)['key'];
+  } on Object {
+    throw AddonException(s.boxCodeInvalid);
+  }
+  if (key is! String || key.isEmpty) throw AddonException(s.boxCodeInvalid);
   return key;
 }

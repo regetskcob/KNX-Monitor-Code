@@ -1,0 +1,59 @@
+{
+  "id": "mdt-dalicontrol-03",
+  "name": "MDT DaliControl IP Gateway (SCN-DALI64.03)",
+  "status": "documented",
+  "statusNote": "from documentation, not yet verified against real telegrams",
+  "source": {
+    "de": "MDT Technisches Handbuch DaliControl IP Gateway DALI64 SCN-DALI64.03 (ab Firmware 3.0.0), Kommunikationsobjekte S. 89–101",
+    "en": "MDT Technical Manual DaliControl IP Gateway DALI64 SCN-DALI64.03 (firmware 3.0.0 or higher), communication objects p. 89-101"
+  },
+  "note": {
+    "de": "Nur über Objekttexte: Das Handbuch nennt Objektnummern für Gruppe 1 und EVG 1, aber keine Nummernregel, daher wird nichts aus Nummern abgeleitet. „ECG n, Error status“ meldet Lampen-, EVG- und Konverterfehler zusammen und erscheint als EVG-Fehler. Das Handbuch zählt EVG nach der in der ETS geplanten Nummer, die nicht die DALI-Kurzadresse plus eins sein muss. Betriebsstunden werden nicht zugeordnet (das Gateway sendet Sekunden). Objekt 29 (DPT 238.600) und die Konverterobjekte (DPT 244.600, 245.600) werden über ihre Datenpunkttypen dekodiert.",
+    "en": "By object text only: the manual gives object numbers for group 1 and ECG 1 but no numbering rule, so nothing is derived from numbers. 'ECG n, Error status' reports lamp, ECG and converter errors together and is shown as a driver failure. Operating hours are not mapped (the gateway sends seconds). The manual counts ECGs by the number planned in ETS, which need not be the DALI short address plus one. Object 29 (DPT 238.600) and the converter objects (DPT 244.600, 245.600) are decoded by their datapoint types."
+  },
+  "match": {
+    "manufacturer": [
+      "mdt"
+    ],
+    "product": [
+      "scn-dali64.03",
+      "dalicontrol"
+    ]
+  },
+  "gearBase": 1,
+  "groupBase": 1,
+  "rules": [
+    {
+      "role": "faultCount",
+      "text": "^General errors\\b.*\\bTotal\\b"
+    },
+    {
+      "role": "gearFault",
+      "text": "^E[CV]G ?(\\d{1,2}),? .*Error status"
+    },
+    {
+      "role": "groupFault",
+      "text": "^G(\\d{1,2}),? .*Error status"
+    },
+    {
+      "role": "groupSwitch",
+      "text": "^G(\\d{1,2}),? .*Switching"
+    },
+    {
+      "role": "groupDim",
+      "text": "^G(\\d{1,2}),? .*Dimming"
+    },
+    {
+      "role": "groupValue",
+      "text": "^G(\\d{1,2}),? .*Value setting"
+    },
+    {
+      "role": "groupStatus",
+      "text": "^G(\\d{1,2}),? .*Status.*On/off"
+    },
+    {
+      "role": "groupValueStatus",
+      "text": "^G(\\d{1,2}),? .*Status.*Value"
+    }
+  ]
+}

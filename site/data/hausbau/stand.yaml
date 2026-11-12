@@ -1,0 +1,19 @@
+# Stand der Teile, die /hausbau/ zeigt. Die einzige Stelle, an der beim Release
+# umgestellt wird; gilt für beide Sprachen (data/hausbau/de.yaml und en.yaml
+# halten je Zustand den passenden Text bereit).
+#
+#   live  verfügbar (grünes Kennzeichen, Text „live“)
+#   test  im Test, noch nicht öffentlich
+#   soon  in Arbeit, kommt mit einem der nächsten Releases
+#
+# „Haus planen“: Wünsche, Raumbuch, Grundriss, Kanalbedarf, Prüfungen, Fristen,
+# PDF/CSV/DXF. Seit 1.9.2 im Add-on, auf der Box und unter Linux.
+plan: live
+# Dasselbe in den Store-Apps (iPhone, iPad, Mac, Android).
+apps: test
+# Austausch mit dem Elektriker als Datei mit freigegebenen Ständen und Rückfragen.
+exchange: soon
+# Geräte im Plan mit Gruppenadressen verbinden, Soll-Ist-Rundgang durchs Raumbuch.
+walk: soon
+# Busansicht auf dem Grundriss in App und Add-on, Karte für Dashboards. Seit 1.12.0.
+busview: live

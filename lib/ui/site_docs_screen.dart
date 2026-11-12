@@ -21,6 +21,7 @@ import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'common.dart';
 import 'device_sheet.dart';
+import 'figure_box.dart' show RowColumns;
 
 /// Camera and scanning only on phone and tablet: the desktop apps have no
 /// camera permission; in the add-on images are chosen as files.
@@ -183,84 +184,142 @@ class _SiteDocsScreenState extends State<SiteDocsScreen> {
     final hasDevices = CatalogStore.instance.catalog.devices.isNotEmpty;
     return Scaffold(
       appBar: AppBar(title: Text(s.siteDocsTitle)),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Widths.reading),
-          child: ListenableBuilder(
-            listenable: _photos,
-            builder: (context, _) => ListView(
-              padding: Gap.page,
-              children: [
-                SectionCard(
-                  title: s.siteDocsPhotos,
-                  count: _photos.photos.length,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(s.siteDocsPhotosHint, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
-                      const SizedBox(height: Gap.item),
-                      Wrap(
-                        spacing: HzSpace.s8,
-                        runSpacing: HzSpace.s8,
-                        children: [
-                          if (_hasCamera)
-                            FilledButton.icon(
-                              onPressed: _busy ? null : _takePhoto,
-                              icon: const Icon(AppIcons.image, size: 18),
-                              label: Text(s.siteDocsTakePhoto),
-                            ),
-                          OutlinedButton(onPressed: _busy ? null : _pickPhoto, child: Text(s.siteDocsPickPhoto)),
-                        ],
-                      ),
-                      for (final p in _photos.photos) _PhotoRow(photo: p, onEdit: _editCaption, onDelete: _delete),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: Gap.section),
-                SectionCard(
-                  title: s.siteDocsLabels,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        hasDevices ? s.siteDocsLabelsHint : s.siteDocsLabelsNoProject,
-                        style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted),
-                      ),
-                      const SizedBox(height: Gap.item),
-                      Wrap(
-                        spacing: HzSpace.s8,
-                        runSpacing: HzSpace.s8,
-                        children: [
-                          Builder(
-                            builder: (button) => FilledButton.icon(
-                              onPressed: hasDevices ? () => _labels(button) : null,
-                              icon: const Icon(AppIcons.qrCode, size: 18),
-                              label: Text(s.siteDocsLabelsCreate),
-                            ),
-                          ),
-                          if (_hasCamera)
-                            OutlinedButton.icon(
-                              onPressed: _scan,
-                              icon: const Icon(AppIcons.qrScan, size: 18),
-                              label: Text(s.siteDocsScan),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+      // Below expanded both cards one below the other in reading width; from there on the photos
+      // as a grid of tiles on the left and the labels beside them, up to [Widths.wide].
+      body: LayoutBuilder(
+        builder: (context, box) {
+          final wide = box.maxWidth >= Breakpoints.expanded;
+          final inner = box.maxWidth.clamp(0, Widths.wide) - 2 * Gap.gutter;
+          // The photo card takes two thirds of the row.
+          final tiles = RowColumns.columnsFor(
+            context,
+            (inner - Gap.section) * 2 / 3 - 2 * Gap.card,
+            _tileWidth,
+            max: 4,
+            gap: Gap.section,
+          );
+          Widget hint(String text) => Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: Widths.reading),
+              child: Text(text, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
             ),
-          ),
-        ),
+          );
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: wide ? Widths.wide : Widths.reading),
+              child: ListenableBuilder(
+                listenable: _photos,
+                builder: (context, _) {
+                  final photos = SectionCard(
+                    title: s.siteDocsPhotos,
+                    count: _photos.photos.length,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        hint(s.siteDocsPhotosHint),
+                        const SizedBox(height: Gap.item),
+                        Wrap(
+                          spacing: HzSpace.s8,
+                          runSpacing: HzSpace.s8,
+                          children: [
+                            if (_hasCamera)
+                              FilledButton.icon(
+                                onPressed: _busy ? null : _takePhoto,
+                                icon: const Icon(AppIcons.image, size: 18),
+                                label: Text(s.siteDocsTakePhoto),
+                              ),
+                            OutlinedButton(onPressed: _busy ? null : _pickPhoto, child: Text(s.siteDocsPickPhoto)),
+                          ],
+                        ),
+                        if (!wide)
+                          for (final p in _photos.photos) _PhotoRow(photo: p, onEdit: _editCaption, onDelete: _delete)
+                        else if (_photos.photos.isNotEmpty) ...[
+                          const SizedBox(height: Gap.section),
+                          CardGrid(
+                            columns: tiles,
+                            children: [
+                              for (final p in _photos.photos)
+                                _PhotoRow(
+                                  key: ValueKey(p.id),
+                                  photo: p,
+                                  onEdit: _editCaption,
+                                  onDelete: _delete,
+                                  tile: true,
+                                ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                  final labels = SectionCard(
+                    title: s.siteDocsLabels,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        hint(hasDevices ? s.siteDocsLabelsHint : s.siteDocsLabelsNoProject),
+                        const SizedBox(height: Gap.item),
+                        Wrap(
+                          spacing: HzSpace.s8,
+                          runSpacing: HzSpace.s8,
+                          children: [
+                            Builder(
+                              builder: (button) => FilledButton.icon(
+                                onPressed: hasDevices ? () => _labels(button) : null,
+                                icon: const Icon(AppIcons.qrCode, size: 18),
+                                label: Text(s.siteDocsLabelsCreate),
+                              ),
+                            ),
+                            if (_hasCamera)
+                              OutlinedButton.icon(
+                                onPressed: _scan,
+                                icon: const Icon(AppIcons.qrScan, size: 18),
+                                label: Text(s.siteDocsScan),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                  return ListView(
+                    padding: Gap.page,
+                    children: [
+                      if (wide)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: Gap.section,
+                          children: [
+                            Expanded(flex: 2, child: photos),
+                            Expanded(child: labels),
+                          ],
+                        )
+                      else ...[
+                        photos,
+                        const SizedBox(height: Gap.section),
+                        labels,
+                      ],
+                    ],
+                  );
+                },
+              ),
+            ),
+          );
+        },
       ),
     );
   }
+
+  /// Minimum width of a photo tile in the grid.
+  static const _tileWidth = 240.0;
 }
 
 class _PhotoRow extends StatefulWidget {
-  const _PhotoRow({required this.photo, required this.onEdit, required this.onDelete});
+  const _PhotoRow({super.key, required this.photo, required this.onEdit, required this.onDelete, this.tile = false});
+
+  /// A tile of the grid on wide windows: the picture large on top, caption and actions below.
+  final bool tile;
 
   final SitePhoto photo;
   final ValueChanged<SitePhoto> onEdit;
@@ -277,33 +336,59 @@ class _PhotoRowState extends State<_PhotoRow> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final p = widget.photo;
+    final picture = FutureBuilder(
+      future: _bytes,
+      builder: (context, snapshot) => switch (snapshot.data) {
+        final bytes? => ClipRRect(
+          borderRadius: Radii.row,
+          child: Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+            // The tile gives the size; the thumbnail of the row keeps the picture's own.
+            width: widget.tile ? double.infinity : null,
+            height: widget.tile ? double.infinity : null,
+            semanticLabel: p.caption,
+            errorBuilder: (_, _, _) => const Icon(AppIcons.image),
+          ),
+        ),
+        null => const Icon(AppIcons.image),
+      },
+    );
+    final caption = Text(p.caption.isEmpty ? s.siteDocsNoCaption : p.caption, style: theme.textTheme.bodyMedium);
+    final actions = [
+      IconButton(tooltip: s.siteDocsCaption, onPressed: () => widget.onEdit(p), icon: const Icon(AppIcons.edit)),
+      IconButton(tooltip: s.siteDocsDelete, onPressed: () => widget.onDelete(p), icon: const Icon(AppIcons.delete)),
+    ];
+    if (widget.tile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AspectRatio(aspectRatio: 4 / 3, child: picture),
+          const SizedBox(height: HzSpace.s4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: Gap.inner),
+                  child: caption,
+                ),
+              ),
+              ...actions,
+            ],
+          ),
+        ],
+      );
+    }
     return Padding(
       padding: const EdgeInsets.only(top: Gap.item),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox.square(
-            dimension: 88,
-            child: FutureBuilder(
-              future: _bytes,
-              builder: (context, snapshot) => switch (snapshot.data) {
-                final bytes? => ClipRRect(
-                  borderRadius: Radii.row,
-                  child: Image.memory(
-                    bytes,
-                    fit: BoxFit.cover,
-                    semanticLabel: p.caption,
-                    errorBuilder: (_, _, _) => const Icon(AppIcons.image),
-                  ),
-                ),
-                null => const Icon(AppIcons.image),
-              },
-            ),
-          ),
+          SizedBox.square(dimension: 88, child: picture),
           const SizedBox(width: HzSpace.s12),
-          Expanded(child: Text(p.caption.isEmpty ? s.siteDocsNoCaption : p.caption, style: theme.textTheme.bodyMedium)),
-          IconButton(tooltip: s.siteDocsCaption, onPressed: () => widget.onEdit(p), icon: const Icon(AppIcons.edit)),
-          IconButton(tooltip: s.siteDocsDelete, onPressed: () => widget.onDelete(p), icon: const Icon(AppIcons.delete)),
+          Expanded(child: caption),
+          ...actions,
         ],
       ),
     );

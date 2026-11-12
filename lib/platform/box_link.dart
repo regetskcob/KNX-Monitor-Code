@@ -1,7 +1,10 @@
 /// Pairing with a Busclear Box (Raspberry Pi with continuous recording, see docs/knx-box.md).
 ///
 /// The box shows a QR code with the pairing link
-/// `knxmonitor://box?url=http://knx-box.local/&key=…&name=KNX-Box-1A2B`.
+/// `knxmonitor://box?url=http://knx-box.local/&code=…&name=KNX-Box-1A2B`. The `code` is a one-time
+/// pairing code: valid for a few minutes, usable once. The app exchanges it for its device access
+/// ([needsClaim], `POST /api/box/claim`), so the lasting secret is never part of a link. Links from
+/// boxes up to 1.11.2 carry the device access itself (`key=…`) and keep working.
 ///
 /// The box's sticker instead carries the setup link
 /// `knxmonitor://box?url=http://10.42.0.1/&name=…&ssid=…&wifi=…&pw=…`: the box's Wi-Fi and the box
@@ -17,6 +20,7 @@ final class BoxLink {
     this.ssid = '',
     this.wifi = '',
     this.password = '',
+    this.code = '',
     this.fp = '',
   }) : url = _base(
          fp.isEmpty || url.scheme != 'http'
@@ -45,6 +49,9 @@ final class BoxLink {
   /// Box password from the setup link; only for pairing, never stored.
   final String password;
 
+  /// One-time pairing code from the box's pairing page; exchanged once for [key], never stored.
+  final String code;
+
   /// Fingerprint of the box's certificate (SHA-256, base64url). With it the app speaks HTTPS and
   /// trusts only this certificate; the address in the link stays HTTP for older apps.
   final String fp;
@@ -56,13 +63,37 @@ final class BoxLink {
   /// Setup link: no device access yet, but the password for pairing.
   bool get needsPairing => key.isEmpty && password.isNotEmpty;
 
+  /// Pairing link with a one-time code: no device access yet, the code is exchanged for it. A link
+  /// that already carries the access needs nothing; the box password wins over a code.
+  bool get needsClaim => key.isEmpty && password.isEmpty && code.isNotEmpty;
+
+  /// Whether the link holds something secret that pairing would send to the box.
+  bool get carriesSecret => key.isNotEmpty || password.isNotEmpty || code.isNotEmpty;
+
+  /// Plain HTTP to an address outside the local network: whatever the app sends there crosses the
+  /// internet readable for everyone on the way. Nothing secret goes over such a link: the app
+  /// refuses before it sends (`addon_io.dart`).
+  bool get plainOverInternet => !encrypted && !isLocal && !isHomeName(url.host);
+
+  /// Whether [rawHost] is a name only the home network can resolve: a single label (`nas`,
+  /// `busclear`) or one under a domain reserved for private use (`.home.arpa`, RFC 8375;
+  /// `.internal`). The network the device is in answers such a name itself, as it does for a
+  /// private address, so plain HTTP to it stays allowed. Not `.fritz.box` and the like: `.box` is a public top-level domain, and outside the
+  /// home network such a name can belong to anyone.
+  static bool isHomeName(String rawHost) {
+    final host = rawHost.toLowerCase();
+    if (host.isEmpty || host.contains(':')) return false;
+    if (RegExp(r'^[0-9.]+$').hasMatch(host)) return false;
+    return !host.contains('.') || host.endsWith('.home.arpa') || host.endsWith('.internal');
+  }
+
   /// With the box password entered by hand (bare address on the desktop): pairs like the setup
-  /// link. A link with device access or password is kept.
-  BoxLink withPassword(String password) => key.isNotEmpty || this.password.isNotEmpty || password.isEmpty
+  /// link. A link with device access, password or pairing code is kept.
+  BoxLink withPassword(String password) => carriesSecret || password.isEmpty
       ? this
       : BoxLink(url: url, name: name, ssid: ssid, wifi: wifi, password: password, fp: fp);
 
-  /// Copy with device access and without password, for storing after pairing.
+  /// Copy with device access and without password or pairing code, for storing after pairing.
   BoxLink paired(String deviceKey) => BoxLink(url: url, key: deviceKey, name: name, ssid: ssid, wifi: wifi, fp: fp);
 
   static const scheme = 'knxmonitor';
@@ -99,6 +130,8 @@ final class BoxLink {
     if (target.host.isEmpty || target.userInfo.isNotEmpty) return null;
     final key = query['key'] ?? '';
     if (key.isNotEmpty && !_keyPattern.hasMatch(key)) return null;
+    final code = query['code'] ?? '';
+    if (code.isNotEmpty && !_keyPattern.hasMatch(code)) return null;
     final fp = query['fp'] ?? '';
     if (fp.isNotEmpty && !RegExp(r'^[A-Za-z0-9_-]{43}$').hasMatch(fp)) return null;
     final name = (query['name'] ?? '').trim();
@@ -116,6 +149,7 @@ final class BoxLink {
       ssid: ssid,
       wifi: wifi,
       password: password,
+      code: code,
       fp: fp,
     );
   }
@@ -125,7 +159,8 @@ final class BoxLink {
     return Uri(scheme: url.scheme, host: url.host, port: url.hasPort ? url.port : null, path: path);
   }
 
-  /// The link for storing or for the QR code (counterpart to [parse]), without the box password.
+  /// The link for storing or for the QR code (counterpart to [parse]), without the box password
+  /// and without a pairing code (both are only good for pairing).
   Uri toUri() => Uri(
     scheme: scheme,
     host: 'box',
@@ -186,10 +221,11 @@ final class BoxLink {
       other.ssid == ssid &&
       other.wifi == wifi &&
       other.password == password &&
+      other.code == code &&
       other.fp == fp;
 
   @override
-  int get hashCode => Object.hash(url, key, name, ssid, wifi, password, fp);
+  int get hashCode => Object.hash(url, key, name, ssid, wifi, password, code, fp);
 
   @override
   String toString() => 'BoxLink($address)';

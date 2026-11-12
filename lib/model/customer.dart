@@ -123,6 +123,10 @@ enum VisitKind {
   /// Installation report of the box created as PDF.
   report,
 
+  /// Status reply to the customer after a fault report ([Visit.ref]: creation
+  /// time of the stored report).
+  faultReply,
+
   /// Custom entry.
   manual;
 
@@ -241,7 +245,11 @@ class CustomerStore extends ChangeNotifier {
   final _records = <String, CustomerRecord>{};
   final _visits = <String, List<Visit>>{};
 
-  AppStorage _storage(String id) =>
+  AppStorage _storage(String id) => storageOf(id);
+
+  /// Folder of installation [id], also when it is not the active one. The add-on has one
+  /// installation, in the data folder.
+  static AppStorage storageOf(String id) =>
       kIsWeb ? AppStorage.instance : ScopedStorage(AppStorage.instance, 'installations/$id/');
 
   CustomerRecord record(String id) => _records[id] ?? CustomerRecord.empty;
@@ -308,6 +316,20 @@ class CustomerStore extends ChangeNotifier {
     final list = [..._visits[id] ?? const <Visit>[]]..removeWhere((v) => v.id == visit.id);
     _visits[id] = [...list, visit]..sort((a, b) => b.time.compareTo(a.time));
     await _saveVisits(id);
+  }
+
+  /// Adds the visits whose id is not known yet (a customer file from another own device);
+  /// existing entries stay as they are. Returns how many were added.
+  Future<int> mergeVisits(String id, Iterable<Visit> visits) async {
+    final known = {for (final v in _visits[id] ?? const <Visit>[]) v.id};
+    final added = [
+      for (final v in visits)
+        if (known.add(v.id)) v,
+    ];
+    if (added.isEmpty) return 0;
+    _visits[id] = [...?_visits[id], ...added]..sort((a, b) => b.time.compareTo(a.time));
+    await _saveVisits(id);
+    return added.length;
   }
 
   Future<void> deleteVisit(String id, String visitId) async {

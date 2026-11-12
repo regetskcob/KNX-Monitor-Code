@@ -101,6 +101,7 @@ roadmap:
     - { term: "Bald", value: "**Android und Windows** bei Google Play und als Download", when: [ios] }
     - { term: "Bald", value: "**iPhone, iPad, Mac und Windows** im App Store und als Download für Windows", when: [android] }
     - { term: "Bald", value: "**Windows** als Download", when: [both] }
+    - { term: "Hausbau", page: "hausbau", value: "**[KNX im Hausbau](/hausbau/)**: was du früh entscheiden solltest, bevor die Wände zu sind, und wie „Haus planen“ dabei hilft" }
     - { term: "Ausblick", value: "**Bauherren-Paket**: vom Alltagswunsch über Raumbuch und Grundriss bis zu den Unterlagen für den Elektriker. [Mehr dazu](/bauherren/)" }
     - { term: "Vorschau", value: "**[Busclear Box](/box/)**: ein Raspberry Pi als Telegramm-Schreiber vor Ort, zeichnet auf der Baustelle tagelang auf, ohne Home Assistant und ohne Internet. Bis die übrigen Apps erscheinen, richtest du sie mit der Linux-App ein" }
     - { term: "Apps", value: "Kostenlos nutzbar, mehr Werkzeuge mit Plus und Pro. In der Beta ist alles frei.", commerce: false }

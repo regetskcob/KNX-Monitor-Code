@@ -391,7 +391,8 @@ class Installations {
 class InstallationService {
   InstallationService(this.installations, this._createBus, {this.clock, this.onClockSet});
 
-  final Installations installations;
+  /// Replaced as a whole only by [replaceAll] (restoring a box backup).
+  Installations installations;
   final BusService Function(Directory root, Map<String, Object?> installation) _createBus;
   final BoxClock? clock;
 
@@ -448,6 +449,28 @@ class InstallationService {
     await installations.setActive(id);
     stdout.writeln('Installation gewechselt: ${installations.active.name} ($id)');
     await start();
+  }
+
+  /// Replaces all installations at once (restoring a box backup, box_backup.dart): stops the bus
+  /// of the active one and closes its views, runs [swap] (which moves the folders), reopens the
+  /// directory and starts the bus of the then active installation. In the same queue as
+  /// [activate], so no switch runs in between. If [swap] fails, the previous directory is opened
+  /// again and its bus started, then the error is passed on.
+  Future<T> replaceAll<T>(Future<T> Function() swap) {
+    final next = _switching.then((_) async {
+      final old = bus;
+      await old.shutdown();
+      await old.closeClients();
+      if (clock?.synced == false) _unsynced.add(old.recorder);
+      try {
+        return await swap();
+      } finally {
+        installations = await Installations.open(installations.data);
+        await start();
+      }
+    });
+    _switching = next.then<void>((_) {}, onError: (Object _) {});
+    return next;
   }
 
   /// Renames; for the active one also in the bus status.

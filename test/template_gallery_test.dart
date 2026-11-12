@@ -13,10 +13,12 @@ import 'package:knx_monitor/model/template_gallery.dart';
 import 'package:knx_monitor/model/template_rules.dart';
 import 'package:knx_monitor/platform/storage.dart';
 import 'package:knx_monitor/theme/app_theme.dart';
+import 'package:knx_monitor/ui/common.dart';
 import 'package:knx_monitor/ui/template_gallery_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'memory_storage.dart';
+import 'window.dart';
 
 /// Liest die echten Dateien, optional mit Ersatz für einzelne Pfade.
 class _FileBundle extends CachingAssetBundle {
@@ -137,5 +139,59 @@ void main() {
     expect(find.text('Übernommen'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 5));
+  });
+
+  group('Fensterbreite', () {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      AppStorage.instance = MemoryStorage();
+      CustomTemplates.instance.reset();
+      await CatalogStore.instance.reload();
+    });
+
+    Future<void> show(WidgetTester tester, Size size, {double textScale = 1}) async {
+      await pumpWindow(tester, TemplateGalleryScreen(bundle: _FileBundle()), size, textScale: textScale);
+      // Die Liste steht, sobald die Vorlagen gelesen sind (bei großer Schrift liegt das Suchfeld
+      // unterhalb des Fensters und ist noch nicht gebaut).
+      for (var i = 0; i < 20 && find.byType(ListView).evaluate().isEmpty; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+        await tester.pump();
+      }
+      expect(find.byType(ListView), findsOneWidget, reason: '$size, Schrift $textScale');
+    }
+
+    final adopt = find.text('Übernehmen');
+
+    testWidgets('breites Fenster: Vorlagen als Raster bis in die rechte Hälfte, Knöpfe einer Reihe auf einer Höhe', (
+      tester,
+    ) async {
+      await show(tester, wideWindow);
+      final columns = columnsOf(tester, find.byType(SectionCard)).toList()..sort();
+      expect(columns.length, greaterThanOrEqualTo(3));
+      expect(columns.last, greaterThan(wideWindow.width / 2));
+      // Beschreibungen sind verschieden lang; der Knopf bleibt trotzdem unten in der Karte.
+      final row = [for (var i = 0; i < columns.length; i++) tester.getTopLeft(adopt.at(i)).dy];
+      expect(row.toSet(), hasLength(1));
+      // Die Suche steht über der letzten Kartenspalte, nicht über die ganze Breite gezogen.
+      expect(tester.getSize(find.byType(TextField)).width, lessThan(wideWindow.width / 2));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 5));
+    });
+
+    testWidgets('Telefon: eine Spalte, auch bei doppelter Schrift ohne Überlauf', (tester) async {
+      await show(tester, phoneWindow);
+      expect(columnsOf(tester, find.byType(SectionCard)), hasLength(1));
+      await show(tester, phoneWindow, textScale: 2);
+      // Der Einleitungstext füllt bei doppelter Schrift das Fenster; die Karten folgen darunter.
+      await tester.drag(find.byType(ListView), const Offset(0, -1500));
+      await tester.pump();
+      expect(columnsOf(tester, find.byType(SectionCard)), hasLength(1));
+      await show(tester, const Size(800, 1000), textScale: 2);
+      // Tablet hochkant: zwei Spalten.
+      await show(tester, const Size(800, 1000));
+      expect(columnsOf(tester, find.byType(SectionCard)), hasLength(2));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 5));
+    });
   });
 }

@@ -8,7 +8,45 @@ import '../l10n/locale_controller.dart';
 import '../platform/storage.dart';
 import 'alarms.dart';
 import 'annotation.dart';
+import 'tap_points.dart';
 import 'telegram_log.dart';
+
+/// Where an imported recording came from (issue #5).
+class ImportOrigin {
+  const ImportOrigin({required this.file, required this.format, required this.at, this.skipped = 0});
+
+  /// Name of the imported file.
+  final String file;
+
+  /// `RecordingFormat.name` of the file (`etsXml`, `csv`, …); kept as text so a format a newer
+  /// version adds does not make the recording unreadable here.
+  final String format;
+
+  /// When it was imported.
+  final DateTime at;
+
+  /// Telegrams of the file that could not be read.
+  final int skipped;
+
+  Map<String, Object?> toJson() => {
+    'file': file,
+    'format': format,
+    'at': at.microsecondsSinceEpoch,
+    if (skipped > 0) 'skipped': skipped,
+  };
+
+  static ImportOrigin? fromJson(Object? j) {
+    if (j is! Map) return null;
+    final (file, format, at) = (j['file'], j['format'], j['at']);
+    if (file is! String || format is! String || at is! int) return null;
+    return ImportOrigin(
+      file: file,
+      format: format,
+      at: DateTime.fromMicrosecondsSinceEpoch(at),
+      skipped: j['skipped'] is int ? j['skipped'] as int : 0,
+    );
+  }
+}
 
 /// A saved recording of bus traffic for documentation.
 class Recording {
@@ -24,6 +62,8 @@ class Recording {
     this.installation,
     List<Annotation>? annotations,
     this.diagnostics,
+    this.taps,
+    this.imported,
   }) : annotations = annotations ?? [];
 
   final String id;
@@ -47,6 +87,14 @@ class Recording {
   /// log for the findings (`problem`, `expected`, `occurred`, `technical`, `log`, `shots`).
   final Map<String, Object?>? diagnostics;
 
+  /// Tap points with labels, names and gaps (issue #8); `null` with a single tap point and in
+  /// recordings from before. Stored as `taps`, which older versions ignore.
+  final TapRecord? taps;
+
+  /// Set for a recording imported from a file: it was not recorded by this app at this
+  /// installation. Stored as `imported`, which older versions ignore.
+  final ImportOrigin? imported;
+
   Duration get duration => ended.difference(started);
 
   /// New recording (own ID) with the same key data, e.g. an edited version; the
@@ -63,6 +111,8 @@ class Recording {
     telegrams: List.of(telegrams ?? this.telegrams),
     annotations: [for (final a in annotations) a.copyWith()],
     diagnostics: diagnostics,
+    taps: taps,
+    imported: imported,
   );
 
   Map<String, Object?> toJson() => {
@@ -78,6 +128,8 @@ class Recording {
     'telegrams': [for (final t in telegrams) t.toJson()],
     if (annotations.isNotEmpty) 'annotations': [for (final a in annotations) a.toJson()],
     'diagnostics': ?diagnostics,
+    'taps': ?taps?.toJson(),
+    'imported': ?imported?.toJson(),
   };
 
   factory Recording.fromJson(Map<String, Object?> j) => Recording(
@@ -93,6 +145,8 @@ class Recording {
     annotations: [for (final a in (j['annotations'] as List?) ?? const []) Annotation.fromJson((a as Map).cast())]
       ..sort((a, b) => a.time.compareTo(b.time)),
     diagnostics: (j['diagnostics'] as Map?)?.cast<String, Object?>(),
+    taps: TapRecord.fromJson(j['taps']),
+    imported: ImportOrigin.fromJson(j['imported']),
   );
 }
 
@@ -110,6 +164,7 @@ class RecordingSummary {
     this.installation,
     this.annotations = 0,
     this.diagnostics = false,
+    this.imported,
   });
 
   final String id;
@@ -128,6 +183,9 @@ class RecordingSummary {
   /// Whether it comes from a diagnostic package.
   final bool diagnostics;
 
+  /// Source of an imported recording.
+  final ImportOrigin? imported;
+
   Duration get duration => ended.difference(started);
 }
 
@@ -144,7 +202,8 @@ class Recorder {
   /// Comments set during the recording ("Jetzt ist es passiert", it just happened).
   final annotations = <Annotation>[];
 
-  Recording stop({required String name, String? note}) => Recording(
+  /// [taps]: the monitor's tap points at the end ([TapRecord.capture]), with several of them.
+  Recording stop({required String name, String? note, TapRecord? taps}) => Recording(
     id: started.microsecondsSinceEpoch.toRadixString(36),
     name: name,
     note: note,
@@ -155,6 +214,7 @@ class Recorder {
     installation: installation,
     telegrams: List.of(telegrams),
     annotations: List.of(annotations),
+    taps: taps,
   );
 }
 
@@ -278,6 +338,7 @@ class RecordingStore extends ChangeNotifier {
     installation: r.installation,
     annotations: r.annotations.length,
     diagnostics: r.diagnostics != null,
+    imported: r.imported,
   );
 }
 

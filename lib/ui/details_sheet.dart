@@ -1,7 +1,10 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import '../knx/dali.dart' show isDaliDpt;
+import '../knx/dali_text.dart';
 import '../model/cause_chain.dart';
+import 'dali_details.dart';
 import '../knx/dpt_codec.dart';
 import '../model/sound_ack.dart';
 import 'sound_ack_screen.dart';
@@ -263,8 +266,8 @@ class _TelegramDetailsState extends State<TelegramDetails> {
     final t = widget.telegram;
     final tunnel = widget.tunnel;
     final inSheet = widget.inSheet;
-    final info = store.info(t.destination);
-    final dpt = store.dptOf(t.destination);
+    final info = store.infoOf(t);
+    final dpt = store.dptFor(t);
     final typeLabel = Palette.label(t.type);
     final ownSource = t.outgoing || t.source == tunnel?.tunnelAddress;
     final interpretations = t.interpretations;
@@ -276,7 +279,7 @@ class _TelegramDetailsState extends State<TelegramDetails> {
     final values = widget.history.where((h) => h.type != TelegramType.read).toList();
     final sender = ownSource
         ? '${s.rowThisTunnel} ${t.sourceText}'
-        : '${store.device(t.source)?.name ?? ''} ${t.sourceText}'.trim();
+        : '${store.deviceOf(t)?.name ?? ''} ${t.sourceText}'.trim();
 
     // Mean of the shown measurements; meaningless for on/off.
     final shown = chart.points.length > TelegramLog.historyLength
@@ -375,6 +378,8 @@ class _TelegramDetailsState extends State<TelegramDetails> {
           const SizedBox(height: HzSpace.s2),
           Text(info!.path!, style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted)),
         ],
+        // A telegram from before the current project state: named as it was then, said quietly.
+        if (store.pastStateOf(t) != null) PastStateNote(telegram: t),
         const SizedBox(height: HzSpace.s12),
         // Current value in the green box as on the overview; the history runs
         // inside it to the edge.
@@ -501,6 +506,9 @@ class _TelegramDetailsState extends State<TelegramDetails> {
           ),
         ],
 
+        // DALI diagnostics: every flag as a row, and the luminaire it is about.
+        DaliTelegramSection(telegram: t),
+
         // Three primary actions with labels; map, read and copy in the menu at
         // the top.
         const SizedBox(height: Gap.inner),
@@ -598,8 +606,10 @@ class _TelegramDetailsState extends State<TelegramDetails> {
         // Cause chain: trigger and reactions around it. Without telegrams
         // before and after it says nothing; the sender is listed under
         // "Telegramm" anyway. When locked, the hint about the tier remains.
+        // A DALI report is a state, not a command: nothing is expected to react to it.
         if (widget.around case final around?
             when around.length > 1 &&
+                !_isDali(store.dptFor(t)) &&
                 (!Plan.instance.allows(Feature.causeChain) || CauseChain.of(t, around, store.catalog).hasContext))
           _Section(
             title: s.chainTitle,
@@ -666,22 +676,39 @@ class _TelegramDetailsState extends State<TelegramDetails> {
           ),
         ),
         // Tap points (issue #8): where the telegram was seen, with offset and hop count.
-        if (tapLabels.value case final labels when labels.length > 1)
+        if (TapScope.labels case final labels when labels.length > 1)
           _Section(
             title: s.detailsPath,
             child: Column(
               children: [
-                for (final (tap, label) in labels.indexed)
+                // In the order of the path: the origin, then the sightings as they followed, then
+                // the tap points that did not see it.
+                for (final tap in [
+                  if (t.tap < labels.length) t.tap,
+                  for (final x in [...t.sightings]..sort((a, b) => a.offset.compareTo(b.offset)))
+                    if (x.tap < labels.length && x.tap != t.tap) x.tap,
+                  for (var i = 0; i < labels.length; i++)
+                    if (i != t.tap && !t.sightings.any((x) => x.tap == i)) i,
+                ])
                   HorizontFact(
-                    term: label,
+                    term: TapScope.described(tap),
                     value: tap == t.tap
                         ? s.detailsPathFirst(t.hopCount)
                         : switch (t.sightings.where((x) => x.tap == tap).firstOrNull) {
-                            final x? => s.detailsPathSeen(
-                              (x.offset.inMicroseconds / 1000).toStringAsFixed(1),
-                              x.hopCount,
-                            ),
-                            null => s.detailsPathMissing,
+                            final x? => [
+                              s.detailsPathSeen(
+                                localizeDecimal((x.offset.inMicroseconds / 1000).toStringAsFixed(1)),
+                                x.hopCount,
+                              ),
+                              // One hop less per coupler on the way from the origin.
+                              if (t.hopCount > x.hopCount) s.tapPathCouplers(t.hopCount - x.hopCount),
+                            ].join(' · '),
+                            // Missing only means filtered if that tap point could see it then.
+                            null => switch (TapScope.gaps.state(tap, t.time)) {
+                              TapSeen.away => s.tapPathAway,
+                              TapSeen.paused => s.tapPathPaused,
+                              TapSeen.listening || TapSeen.unknown => s.detailsPathMissing,
+                            },
                           },
                     measured: true,
                   ),
@@ -775,6 +802,8 @@ class _TelegramDetailsState extends State<TelegramDetails> {
   }
 }
 
+bool _isDali(Dpt? dpt) => dpt != null && isDaliDpt(dpt.main, dpt.sub);
+
 /// Section in the inspector: a hairline at the top, eyebrow label with count
 /// and optional action, the content below. No card: the line provides
 /// structure.
@@ -841,7 +870,7 @@ class _HistoryList extends StatelessWidget {
                       children: [
                         Text(formatTime(t.time, millis: false), style: context.figures(theme.textTheme.bodyMedium)),
                         Text(
-                          t.outgoing ? s.detailsSentLower : (store.device(t.source)?.name ?? t.sourceText),
+                          t.outgoing ? s.detailsSentLower : (store.deviceOf(t)?.name ?? t.sourceText),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: small?.copyWith(color: hz.textFaint),
@@ -976,6 +1005,8 @@ Future<void> pickDpt(BuildContext context, int address) async {
     (false, project == null ? s.dptNone : s.dptFromProject('$project'), own == null),
     for (final f in writeFormats)
       if (f.dpt case final dpt?) (dpt, f.label, own == dpt),
+    // DALI diagnostics of a gateway: shown in plain text, never sent.
+    for (final dpt in daliDisplayDpts) (dpt, daliDptLabel(dpt), own == dpt),
   ];
   final title = Text(s.dptChooseTitle(formatGroup(address)));
   Widget label(String text, bool selected) => Semantics(
@@ -1025,4 +1056,50 @@ Future<void> pickDpt(BuildContext context, int address) async {
         );
   if (result == null) return;
   await store.setDpt(address, result is Dpt ? result : null);
+}
+
+/// Quiet line under the name of an old telegram that an older project state names (issue #5):
+/// until when that state was valid, and what the address is called today if that differs.
+class PastStateNote extends StatelessWidget {
+  const PastStateNote({super.key, required this.telegram});
+
+  final Telegram telegram;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = CatalogStore.instance;
+    final t = telegram;
+    if (store.pastStateOf(t) == null) return const SizedBox.shrink();
+    final hz = context.hz;
+    final states = store.projectStates;
+    final until = states[store.projectStateAt(t.time) + 1].from!;
+    final then = store.infoOf(t);
+    final today = store.info(t.destination);
+    final text = [
+      s.projectStateNote(formatDate(until)),
+      if (today == null && then != null)
+        s.projectStateNoteGone
+      else if (today != null && today.name != then?.name)
+        s.projectStateNoteToday(today.name),
+    ].join(' ');
+    return Padding(
+      padding: const EdgeInsets.only(top: HzSpace.s4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: HzSpace.s2),
+            child: Icon(AppIcons.history, size: HzIconSize.badge, color: hz.textFaint),
+          ),
+          const SizedBox(width: HzSpace.s4),
+          Expanded(
+            child: Text(
+              text,
+              style: context.figures(Theme.of(context).textTheme.bodySmall).copyWith(color: hz.textMuted),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

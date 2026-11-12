@@ -861,3 +861,18 @@ class _DayStats {
   final senders = <int, int>{};
   var count = 0;
 }
+
+/// Number of telegrams recorded on [day] below [dataPath] before [beforeMicros]
+/// (0 if the day does not exist). Top level so that [Isolate.run] only captures
+/// the texts and the number; the server counts the running day with it after a
+/// restart.
+Future<int> countDayBefore(String dataPath, String day, int beforeMicros) async {
+  final lines = await Recorder(Directory(dataPath)).dayLines(day);
+  if (lines == null) return 0;
+  var count = 0;
+  await for (final line in lines) {
+    final t = int.tryParse(Recorder.field(line, 't') ?? '');
+    if (t != null && t < beforeMicros) count++;
+  }
+  return count;
+}

@@ -2,15 +2,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
 import 'package:archive/archive.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:knx_monitor/catalog_store.dart';
 import 'package:knx_monitor/export/diagnostics_bundle.dart';
 import 'package:knx_monitor/knx/group_catalog.dart';
 import 'package:knx_monitor/knx/telegram.dart';
-import 'package:knx_monitor/l10n/app_localizations.dart';
+import 'package:knx_monitor/l10n/locale_controller.dart';
 import 'package:knx_monitor/model/annotation.dart';
 import 'package:knx_monitor/model/findings.dart';
 import 'package:knx_monitor/model/recording.dart';
@@ -18,8 +18,12 @@ import 'package:knx_monitor/platform/storage.dart';
 import 'package:knx_monitor/platform/storage_io.dart';
 import 'package:knx_monitor/theme/app_theme.dart';
 import 'package:knx_monitor/ui/annotations.dart';
+import 'package:knx_monitor/ui/annotations_screen.dart';
 import 'package:knx_monitor/ui/recording_timeline.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'memory_storage.dart';
+import 'window.dart';
 
 void main() {
   final t0 = DateTime(2026, 10, 22, 21, 40);
@@ -317,5 +321,72 @@ void main() {
       ChartRef(groups: const [1], from: DateTime(2026), to: DateTime(2026)).toJson().containsKey('values'),
       isFalse,
     );
+  });
+
+  group('Kommentare nach Fensterbreite', () {
+    setUp(() async {
+      AppStorage.instance = MemoryStorage();
+      CatalogStore.instance.catalog = GroupCatalog({light: const GroupInfo(address: 0, name: 'Licht Küche')});
+      for (final (i, note) in ['Licht bleibt aus', 'Rückmeldung kommt spät', 'Kurve flackert'].indexed) {
+        await AnnotationStore.instance.add(
+          Annotation(
+            id: 'n$i',
+            time: t0.add(Duration(days: i)),
+            note: note,
+            telegram: i == 2 ? null : TelegramRef(time: t0, source: button, destination: light, type: 'write'),
+            chart: i == 2
+                ? ChartRef(
+                    groups: [status],
+                    from: t0,
+                    to: t0,
+                    values: const [ChartValue(group: 0, name: 'Status Küche', now: 'Ein', before: 'Aus')],
+                  )
+                : null,
+          ),
+        );
+      }
+    });
+    tearDown(() => CatalogStore.instance.catalog = GroupCatalog.empty);
+
+    testWidgets('breites Fenster: Liste links, der gewählte Kommentar rechts', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpWindow(tester, const AnnotationsScreen(), wideWindow);
+      // Der neueste ist gewählt: sein Text steht in der Liste und rechts in der rechten Hälfte.
+      expect(find.text('Kurve flackert'), findsNWidgets(2));
+      expect(tester.getTopLeft(find.text('Kurve flackert').last).dx, greaterThan(wideWindow.width / 4));
+      expect(tester.getTopLeft(find.text(s.annotationEditTitle)).dx, greaterThan(wideWindow.width / 2));
+      expect(find.text('Status Küche'), findsOneWidget, reason: 'Werte des Diagramms');
+      void expectSelected(String id, bool selected) => expect(
+        tester.getSemantics(find.byKey(ValueKey('annotation-$id'))),
+        isSemantics(isSelected: selected, isButton: true),
+        reason: id,
+      );
+      expectSelected('n2', true);
+      expectSelected('n0', false);
+      // Tippen wählt, statt den Editor zu öffnen; die Auswahl wird angesagt.
+      await tester.tap(find.byKey(const ValueKey('annotation-n0')));
+      await tester.pump();
+      expect(find.text('Licht bleibt aus'), findsNWidgets(2));
+      expect(find.text('Status Küche'), findsNothing);
+      expect(find.text(s.annotationNoteLabel), findsNothing);
+      expectSelected('n0', true);
+      expectSelected('n2', false);
+      // Bearbeiten und Löschen bleiben im Editor hinter dem Knopf.
+      await tester.tap(find.text(s.annotationEditTitle));
+      await tester.pumpAndSettle();
+      expect(find.text(s.annotationNoteLabel), findsOneWidget);
+      semantics.dispose();
+    });
+
+    testWidgets('Telefon: Liste, Tippen öffnet den Editor; doppelte Schrift ohne Überlauf', (tester) async {
+      await pumpWindow(tester, const AnnotationsScreen(), phoneWindow, textScale: 2);
+      await pumpWindow(tester, const AnnotationsScreen(), const Size(900, 700), textScale: 2);
+      await pumpWindow(tester, const AnnotationsScreen(), phoneWindow);
+      expect(find.text('Kurve flackert'), findsOneWidget);
+      expect(find.text(s.annotationEditTitle), findsNothing);
+      await tester.tap(find.text('Kurve flackert'));
+      await tester.pumpAndSettle();
+      expect(find.text(s.annotationNoteLabel), findsOneWidget);
+    });
   });
 }

@@ -16,6 +16,7 @@ import 'package:knx_monitor/ui/load_values_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'memory_storage.dart';
+import 'window.dart';
 
 final _ga = parseGroup('6/0/1')!;
 final _t0 = DateTime(2026, 10, 30, 8);
@@ -217,5 +218,62 @@ void main() {
     expect(find.textContaining('üblich 2,00 A, zuletzt 4,00 A (+100 %)'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
+  });
+
+  group('Fensterbreite', () {
+    const names = ['Pumpe', 'Trockner', 'Waschmaschine', 'Kühlschrank', 'Büro', 'Küche'];
+    late TelegramLog log;
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      AppStorage.instance = MemoryStorage();
+      await CatalogStore.instance.reload();
+      await CatalogStore.instance.learn([
+        for (final (i, n) in names.indexed) GroupInfo(address: _ga + i, name: 'Strom $n', dpt: const Dpt(14, 19)),
+      ]);
+      LoadValuesScreen.clock = () => _t0.add(const Duration(minutes: 15 * 33 + 1));
+      log = TelegramLog();
+      for (final (i, _) in names.indexed) {
+        for (var k = 0; k < 33; k++) {
+          // Der erste Kanal weicht zuletzt ab: eine Karte mit Hinweis.
+          log.add(_float(i == 0 && k >= 30 ? 9 : 4.0 - i * 0.5, minutes: k * 15, ga: _ga + i));
+        }
+      }
+    });
+    tearDown(() async {
+      log.dispose();
+      LoadValuesScreen.clock = DateTime.now;
+      await CatalogStore.instance.clearLearned();
+    });
+
+    Future<void> close(WidgetTester tester) async {
+      // Der Zeitgeber der Ansicht endet mit ihr.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    }
+
+    final channels = find.textContaining('Strom ');
+
+    testWidgets('breites Fenster: Kanäle als Kartenraster bis in die rechte Hälfte, größter zuerst', (tester) async {
+      await pumpWindow(tester, LoadValuesScreen(log: log), wideWindow);
+      final columns = columnsOf(tester, channels).toList()..sort();
+      expect(columns.length, greaterThanOrEqualTo(3));
+      expect(columns.last, greaterThan(wideWindow.width / 2));
+      // Zeilenweise: der zweitgrößte steht rechts neben dem größten, nicht darunter.
+      final first = tester.getTopLeft(find.text('Strom Pumpe'));
+      final second = tester.getTopLeft(find.text('Strom Trockner'));
+      expect(second.dy, first.dy);
+      expect(second.dx, greaterThan(first.dx));
+      expect(find.textContaining('Weicht ab'), findsOneWidget);
+      await close(tester);
+    });
+
+    testWidgets('Telefon: eine Liste, auch bei doppelter Schrift ohne Überlauf', (tester) async {
+      for (final scale in [1.0, 2.0]) {
+        await pumpWindow(tester, LoadValuesScreen(log: log), phoneWindow, textScale: scale);
+        expect(columnsOf(tester, channels), hasLength(1), reason: 'Schrift $scale');
+      }
+      await pumpWindow(tester, LoadValuesScreen(log: log), const Size(800, 1000), textScale: 2);
+      await close(tester);
+    });
   });
 }

@@ -229,6 +229,48 @@ class RowCard extends StatelessWidget {
   );
 }
 
+/// Rows of a flat list in newspaper columns (down the first, then the next) as soon as each
+/// column is at least [minWidth] wide, so a ranking keeps its order on a tablet in landscape or a
+/// Mac window; below that one [RowCard] as on the phone. [minWidth] grows with the text size.
+class RowColumns extends StatelessWidget {
+  const RowColumns({super.key, required this.children, required this.minWidth, this.maxColumns = 3});
+
+  final List<Widget> children;
+  final double minWidth;
+  final int maxColumns;
+
+  /// Between two columns: wider than the page margin so the hairlines of neighbours stay apart.
+  static const gap = HzSpace.s32;
+
+  /// How many columns of [minWidth] fit into [width] at the current text size.
+  static int columnsFor(BuildContext context, double width, double minWidth, {int max = 3, double gap = gap}) {
+    final min = minWidth * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0);
+    return ((width + gap) / (min + gap)).floor().clamp(1, max);
+  }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final columns = columnsFor(
+        context,
+        box.maxWidth,
+        minWidth,
+        max: maxColumns,
+      ).clamp(1, children.length.clamp(1, maxColumns));
+      if (columns == 1) return RowCard(flat: true, children: children);
+      final perColumn = (children.length / columns).ceil();
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: gap,
+        children: [
+          for (var i = 0; i < columns; i++)
+            Expanded(child: RowCard(flat: true, children: children.skip(i * perColumn).take(perColumn).toList())),
+        ],
+      );
+    },
+  );
+}
+
 /// Row: title, meta below, value and chevron on the right (if tappable).
 class CardRow extends StatelessWidget {
   const CardRow({
@@ -355,10 +397,13 @@ class SectionHead extends StatelessWidget {
       spacing: HzSpace.s8,
       children: [
         Expanded(
-          child: Row(
+          // A long detail moves below the title (large text, narrow phone) instead of running out.
+          child: Wrap(
             spacing: HzSpace.s8,
+            runSpacing: HzSpace.s2,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Flexible(child: SectionTitle(title, count: count)),
+              SectionTitle(title, count: count),
               if (detail != null)
                 Text(detail!, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.hz.textFaint)),
             ],

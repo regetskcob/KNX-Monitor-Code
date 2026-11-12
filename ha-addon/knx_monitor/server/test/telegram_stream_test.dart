@@ -319,7 +319,10 @@ void main() {
     final bus = BusService(data, describe: (_, _) async => null, mqttTelegrams: () => {'enabled': false});
     try {
       expect(bus.exporter.status()['mqttTelegrams'], {'enabled': false});
-      expect(MqttBridge(() => bus, version: 'test', broker: () async => null).telegramStatus(), {'enabled': false});
+      final off = MqttBridge(() => bus, version: 'test', broker: () async => null).telegramStatus();
+      // Off: the settings for the app, no counters; not changeable without a settings file.
+      expect(off, allOf(containsPair('enabled', false), containsPair('configurable', false)));
+      expect(off.containsKey('sent'), isFalse);
     } finally {
       await bus.shutdown();
       await data.delete(recursive: true);

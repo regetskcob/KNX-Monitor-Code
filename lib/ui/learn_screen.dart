@@ -112,85 +112,166 @@ class LearnScreen extends StatelessWidget {
     ),
   );
 
+  /// What a lesson says: text, what to try, its terms. [depth] is the number of pages to close
+  /// before the monitor shows the place: the lesson's own page and the lessons, or the lessons only.
+  List<Widget> _lesson(BuildContext context, Lesson lesson, {required int depth, TextStyle? style}) {
+    final theme = Theme.of(context);
+    return [
+      Text(lesson.text, style: style ?? theme.textTheme.bodyLarge),
+      const SizedBox(height: Gap.section),
+      if (onTry case final go?)
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            onPressed: () {
+              final navigator = Navigator.of(context);
+              for (var i = 0; i < depth; i++) {
+                navigator.pop();
+              }
+              go(lesson.target);
+            },
+            icon: const Icon(AppIcons.next, size: 18),
+            label: Text(s.lessonsTry(lesson.tryIt), textAlign: TextAlign.start),
+          ),
+        )
+      else
+        Text(s.lessonsTry(lesson.tryIt), style: theme.textTheme.bodyMedium?.copyWith(color: context.hz.textMuted)),
+      const SizedBox(height: Gap.section),
+      TermChips(terms: lesson.terms, more: false),
+    ];
+  }
+
+  /// Phone and narrow windows: lists that open a page per lesson.
+  List<Widget> _lists(BuildContext context) => [
+    SectionHead(s.lessonsLessons, count: lessons.length),
+    RowCard(
+      children: [
+        for (final lesson in lessons)
+          CardRow(
+            title: lesson.title,
+            meta: s.lessonsKind,
+            onTap: () => _open(context, lesson.title, _lesson(context, lesson, depth: 2)),
+          ),
+      ],
+    ),
+    SectionHead(s.lessonsPractice),
+    RowCard(
+      children: [
+        CardRow(title: s.quizTitle, meta: s.quizMeta, onTap: () => _open(context, s.quizTitle, const [_Quiz()])),
+        CardRow(
+          title: s.glossaryTitle,
+          meta: s.lessonsTermCount(Term.values.length),
+          onTap: () => _open(context, s.glossaryTitle, [TermChips(terms: Term.values, more: false)]),
+        ),
+      ],
+    ),
+  ];
+
+  /// A lesson as a card that says everything itself: nothing to open.
+  Widget _lessonCard(BuildContext context, Lesson lesson) => SectionCard(
+    title: lesson.title,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: _lesson(context, lesson, depth: 1, style: Theme.of(context).textTheme.bodyMedium),
+    ),
+  );
+
+  List<Widget> _practiceCards() => [
+    const _Quiz(),
+    SectionCard(
+      title: s.glossaryTitle,
+      count: Term.values.length,
+      child: TermChips(terms: Term.values, more: false),
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final hz = context.hz;
+    final figures = FigureBox(
+      figures: [
+        (label: s.lessonsLessons, value: formatInt(lessons.length), status: null),
+        (label: s.glossaryTitle, value: formatInt(Term.values.length), status: null),
+      ],
+    );
     return Scaffold(
       appBar: AppBar(
         title: Text(s.lessonsTitle),
         actions: [InfoAction(title: s.lessonsTitle, text: s.lessonsIntro)],
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Widths.reading),
-          child: ListView(
-            padding: Gap.page,
-            children: [
-              FigureBox(
-                figures: [
-                  (label: s.lessonsLessons, value: formatInt(lessons.length), status: null),
-                  (label: s.glossaryTitle, value: formatInt(Term.values.length), status: null),
-                ],
+      // By width: lists in a reading column; from two card columns on, the lessons as cards with
+      // quiz and terms below; from three on, quiz and terms as their own column on the right.
+      body: LayoutBuilder(
+        builder: (context, box) {
+          final columns = RowColumns.columnsFor(
+            context,
+            box.maxWidth.clamp(0, Widths.wide) - 2 * Gap.gutter,
+            _cardWidth,
+            gap: Gap.section,
+          );
+          if (columns == 1) {
+            return Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: Widths.reading),
+                child: ListView(padding: Gap.page, children: [figures, ..._lists(context)]),
               ),
-              SectionHead(s.lessonsLessons, count: lessons.length),
-              RowCard(
+            );
+          }
+          final lessonCards = CardColumns(
+            minWidth: 0,
+            maxColumns: 2,
+            children: [for (final lesson in lessons) _lessonCard(context, lesson)],
+          );
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: Widths.wide),
+              child: ListView(
+                padding: Gap.page,
                 children: [
-                  for (final lesson in lessons)
-                    CardRow(
-                      title: lesson.title,
-                      meta: s.lessonsKind,
-                      onTap: () => _open(context, lesson.title, [
-                        Text(lesson.text, style: theme.textTheme.bodyLarge),
-                        const SizedBox(height: Gap.section),
-                        if (onTry case final go?)
-                          Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: TextButton.icon(
-                              onPressed: () {
-                                // Lesson and lessons list are closed, the monitor shows the place.
-                                Navigator.of(context)
-                                  ..pop()
-                                  ..pop();
-                                go(lesson.target);
-                              },
-                              icon: const Icon(AppIcons.next, size: 18),
-                              label: Text(s.lessonsTry(lesson.tryIt), textAlign: TextAlign.start),
-                            ),
-                          )
-                        else
-                          Text(
-                            s.lessonsTry(lesson.tryIt),
-                            style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted),
+                  figures,
+                  if (columns == 2) ...[
+                    SectionHead(s.lessonsLessons, count: lessons.length),
+                    lessonCards,
+                    SectionHead(s.lessonsPractice),
+                    CardColumns(minWidth: 0, maxColumns: 2, children: _practiceCards()),
+                  ] else
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: Gap.section,
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SectionHead(s.lessonsLessons, count: lessons.length),
+                              lessonCards,
+                            ],
                           ),
-                        const SizedBox(height: Gap.section),
-                        TermChips(terms: lesson.terms, more: false),
-                      ]),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SectionHead(s.lessonsPractice),
+                              ..._practiceCards().expand((c) => [c, const SizedBox(height: Gap.section)]),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                 ],
               ),
-              SectionHead(s.lessonsPractice),
-              RowCard(
-                children: [
-                  CardRow(
-                    title: s.quizTitle,
-                    meta: s.quizMeta,
-                    onTap: () => _open(context, s.quizTitle, const [_Quiz()]),
-                  ),
-                  CardRow(
-                    title: s.glossaryTitle,
-                    meta: s.lessonsTermCount(Term.values.length),
-                    onTap: () => _open(context, s.glossaryTitle, [TermChips(terms: Term.values, more: false)]),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
+
+  /// Narrowest card a lesson still reads well in.
+  static const _cardWidth = 320.0;
 }
 
 /// Mini quiz: questions from your own project, or from the demo house without one.

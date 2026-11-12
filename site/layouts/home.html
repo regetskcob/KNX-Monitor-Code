@@ -113,11 +113,12 @@
          at what price (the roadmap). Markup of horizont/feld/section.html,
          plus the iPad. The prices are public as a preview, nothing can be
          bought yet; facts marked commerce: true only with
-         site.Params.commerce, commerce: false only without. */}}
+         site.Params.commerce, commerce: false only without; facts with
+         page: "<path>" only once that page exists (a draft does not). */}}
   {{- range $i, $sec := slice $d.addon $d.apps $d.roadmap }}
   {{- $id := index (slice "add-on" "apps" "roadmap") $i }}
   {{- $facts := slice }}
-  {{- range $sec.facts }}{{ if and (or (not (isset . "commerce")) (eq .commerce (site.Params.commerce | default false))) (or (not (isset . "when")) (in .when $beta)) }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}{{ end }}
+  {{- range $sec.facts }}{{ if and (or (not (isset . "commerce")) (eq .commerce (site.Params.commerce | default false))) (or (not (isset . "when")) (in .when $beta)) (or (not (isset . "page")) (site.GetPage .page)) }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}{{ end }}
   <section class="hz-feld-section tz-section{{ if eq $id "roadmap" }} tz-section--plan{{ end }}" id="{{ $id }}">
     {{ partial "horizont/kennung.html" $sec.kennung }}
     <div>

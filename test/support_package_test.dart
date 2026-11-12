@@ -6,6 +6,7 @@ import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:knx_monitor/platform/addon.dart';
 import 'package:knx_monitor/catalog_store.dart';
 import 'package:knx_monitor/export/diagnostics_bundle.dart';
 import 'package:knx_monitor/knx/group_catalog.dart';
@@ -231,6 +232,22 @@ void main() {
       expect(tech['app'], containsPair('version', '1.5.1'));
       expect(tech['connection'], containsPair('kind', 'IP Secure'));
       expect(tech['secure'], containsPair('groupKeyCount', 1));
+    });
+
+    // Copilot-Review zu #259: Eine Box oder Docker im Browser hat kein Addon.box, ist aber eine.
+    test('Technik: viaBox auch für die Web-App, die von einer Box kommt', () async {
+      SharedPreferences.setMockInitialValues({});
+      PackageInfo.setMockInitialValues(
+        appName: 'Busclear',
+        packageName: 'knx_monitor',
+        version: '1.5.1',
+        buildNumber: '6',
+        buildSignature: '',
+      );
+      expect((await collectTechnical())['viaBox'], isFalse);
+      Addon.servedByBox = true;
+      addTearDown(() => Addon.servedByBox = false);
+      expect((await collectTechnical())['viaBox'], isTrue);
     });
 
     test('Scrubber lässt KNX-Adressen und Uhrzeiten stehen', () {

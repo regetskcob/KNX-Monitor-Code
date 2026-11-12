@@ -280,6 +280,40 @@ class Commissioning extends ChangeNotifier {
     return item;
   }
 
+  /// Takes the result of a check made elsewhere (switching a DALI group and watching its
+  /// feedback): creates the item if it is missing. A rating by hand (OK, problem) stays; a [note]
+  /// replaces the previous one only when given.
+  void record(
+    int address, {
+    required CheckState state,
+    String? value,
+    int? source,
+    DateTime? time,
+    bool foreign = false,
+    String? note,
+  }) {
+    started ??= DateTime.now();
+    if (!items.containsKey(address)) {
+      // Keep the address order of the list.
+      final old = Map.of(items);
+      items
+        ..clear()
+        ..addAll({
+          for (final a in {...old.keys, address}.toList()..sort()) a: old[a] ?? CheckItem(a),
+        });
+    }
+    final item = items[address]!;
+    if (item.state != CheckState.ok && item.state != CheckState.issue) item.state = state;
+    item
+      ..value = value
+      ..source = source
+      ..time = time
+      ..foreign = foreign;
+    if (note != null) item.note = note;
+    notifyListeners();
+    _scheduleSave();
+  }
+
   /// One push button after another: do not write after every telegram.
   Timer? _saveTimer;
   void _scheduleSave() {

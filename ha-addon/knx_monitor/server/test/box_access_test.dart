@@ -79,11 +79,27 @@ void main() {
     return (response.statusCode, await utf8.decodeStream(response), response.headers);
   }
 
-  Future<String> pairDevice([String name = 'iPad']) async {
-    final (status, html, _) = await send('/pair', method: 'POST', auth: basic('richtig123'), body: 'name=$name');
+  /// Link aus der Seite `/pair` (QR-Code und Knopf tragen denselben).
+  Uri linkOf(String html) =>
+      Uri.parse(RegExp(r'href="(knxmonitor://[^"]+)"').firstMatch(html)!.group(1)!.replaceAll('&amp;', '&'));
+
+  /// Tauscht einen Kopplungscode wie die App: ohne Anmeldung, als JSON.
+  Future<(int, String, HttpHeaders)> claim(String code, {String name = 'App', String? app, String? origin}) async {
+    final request = await client.openUrl('POST', url(BoxAccess.claimPath));
+    if (origin != null) request.headers.set('origin', origin);
+    request.headers.contentType = ContentType.json;
+    request.write(jsonEncode({'code': code, 'name': name, 'app': ?app}));
+    final response = await request.close();
+    return (response.statusCode, await utf8.decodeStream(response), response.headers);
+  }
+
+  /// Koppelt wie die App ab 1.12: Einmal-Code von der Seite, dann tauschen.
+  Future<String> pairDevice([String name = 'iPad', String rights = '']) async {
+    final (status, html, _) = await send('/pair', method: 'POST', auth: basic('richtig123'), body: 'name=$name$rights');
     expect(status, 200);
-    final link = RegExp(r'href="(knxmonitor://[^"]+)"').firstMatch(html)!.group(1)!;
-    return Uri.parse(link.replaceAll('&amp;', '&')).queryParameters['key']!;
+    final (claimed, body, _) = await claim(linkOf(html).queryParameters['code']!);
+    expect(claimed, 200, reason: body);
+    return (jsonDecode(body) as Map)['key'] as String;
   }
 
   test('erstes Passwort nur im Speicher, nie im Klartext auf der Platte', () async {
@@ -153,24 +169,224 @@ void main() {
     expect(jsonDecode(info), {'box': true, 'name': 'KNX-Box-1A2B', 'role': 'admin', 'lanAccess': false});
   });
 
-  test('Koppeln: QR-Code mit Link, Zugang wirkt, Sperren wirkt', () async {
+  test('Koppeln: QR-Code mit Einmal-Code, die App tauscht ihn, Zugang wirkt, Sperren wirkt', () async {
     final (_, html, _) = await send('/pair', method: 'POST', auth: basic('richtig123'), body: 'name=iPad+Bauleitung');
     expect(html, contains('<svg'));
     expect(html, contains('iPad Bauleitung'));
-    final link = Uri.parse(RegExp(r'href="(knxmonitor://[^"]+)"').firstMatch(html)!.group(1)!.replaceAll('&amp;', '&'));
+    final link = linkOf(html);
     expect(link.queryParameters['url'], 'http://127.0.0.1:${server.port}/');
     expect(link.queryParameters['name'], 'KNX-Box-1A2B');
-    final key = link.queryParameters['key']!;
+    // Kein dauerhafter Schlüssel im Link, und noch kein Gerät.
+    expect(link.queryParameters.containsKey('key'), isFalse);
+    expect(html, isNot(contains('key=')));
+    expect(access.devices, isEmpty);
+    final code = link.queryParameters['code']!;
+    expect(code, matches(RegExp(r'^[A-Za-z0-9_-]{43}$')));
+    expect(html, contains('wartet auf die App'));
+    // Der Code selbst öffnet nichts.
+    expect((await send('/api/bus', auth: 'Bearer $code')).$1, 401);
+
+    const app = '00112233445566778899aabbccddeeff';
+    final (status, body, headers) = await claim(code, name: 'Name aus der App', app: app);
+    expect(status, 200);
+    expect(headers.value(HttpHeaders.cacheControlHeader), 'no-store');
+    final answer = (jsonDecode(body) as Map).cast<String, Object?>();
+    expect(answer.keys, unorderedEquals(['key', 'id', 'name']));
+    expect(answer['name'], 'KNX-Box-1A2B');
+    final key = answer['key']! as String;
     expect(key, matches(RegExp(r'^[A-Za-z0-9_-]{43}$')));
-    // Nur der Hash liegt auf der Platte.
-    expect(await File('${data.path}/access.json').readAsString(), isNot(contains(key)));
+    expect(key, isNot(code));
+    // Erst jetzt gibt es das Gerät: Name von der Seite, Rechte von der Seite, App-Instanz aus der Anfrage.
+    final device = access.devices.single;
+    expect(device.id, answer['id']);
+    expect(device.name, 'iPad Bauleitung');
+    expect(device.role, BoxRole.device);
+    expect(device.app, app);
+    // Nur der Hash liegt auf der Platte, vom Code gar nichts.
+    final stored = await File('${data.path}/access.json').readAsString();
+    expect(stored, isNot(contains(key)));
+    expect(stored, isNot(contains(code)));
 
     expect((await send('/api/bus', auth: 'Bearer $key')).$2, 'ok device');
     expect(access.devices.single.lastUsed, now);
+    final (_, page, _) = await send('/pair', auth: basic('richtig123'));
+    expect(page, contains('eingelöst'));
+    expect(page, isNot(contains('wartet auf die App')));
 
     await send('/pair/revoke', method: 'POST', auth: basic('richtig123'), body: 'id=${access.devices.single.id}');
     expect(access.devices, isEmpty);
     expect((await send('/api/bus', auth: 'Bearer $key')).$1, 401);
+  });
+
+  group('Kopplungscode', () {
+    Future<String> newCode([String form = 'name=Tablet']) async {
+      final (status, html, _) = await send('/pair', method: 'POST', auth: basic('richtig123'), body: form);
+      expect(status, 200);
+      return linkOf(html).queryParameters['code']!;
+    }
+
+    test('gilt nur einmal', () async {
+      final code = await newCode();
+      expect((await claim(code)).$1, 200);
+      final (status, body, _) = await claim(code);
+      expect(status, 403);
+      expect(body, isNot(contains('key')));
+      expect(access.devices, hasLength(1));
+    });
+
+    test('zwei Anfragen zugleich: nur eine gewinnt', () async {
+      final code = await newCode();
+      final results = await Future.wait([claim(code), claim(code), claim(code)]);
+      expect(results.where((r) => r.$1 == 200), hasLength(1));
+      expect(results.where((r) => r.$1 == 403), hasLength(2));
+      expect(access.devices, hasLength(1));
+    });
+
+    test('läuft nach 10 Minuten ab', () async {
+      final code = await newCode();
+      now = now.add(BoxAccess.pairingCodeLifetime - const Duration(seconds: 1));
+      final late = await newCode('name=Zweites');
+      now = now.add(const Duration(seconds: 1));
+      expect((await claim(code)).$1, 403);
+      expect(access.devices, isEmpty);
+      expect((await send('/pair', auth: basic('richtig123'))).$2, isNot(contains('<b>Tablet</b>')));
+      expect((await claim(late)).$1, 200);
+      expect(access.devices.single.name, 'Zweites');
+    });
+
+    test('nur im Speicher: ein Neustart beendet offene Codes', () async {
+      final code = await newCode();
+      await access.flush();
+      for (final file in data.listSync().whereType<File>()) {
+        expect(file.readAsStringSync(), isNot(contains(code)), reason: file.path);
+      }
+      final again = await BoxAccess.open(data, initialPassword: 'richtig123', iterations: 1000, clock: () => now);
+      expect(again.pairingCodes, isEmpty);
+      expect(await again.claimPairing(code), isNull);
+      expect(again.devices, isEmpty);
+    });
+
+    test('falsche, benutzte und abgelaufene Codes zählen als Fehlversuche und sperren', () async {
+      final used = await newCode();
+      expect((await claim(used)).$1, 200);
+      final expired = await newCode('name=Alt');
+      now = now.add(BoxAccess.pairingCodeLifetime);
+      final good = await newCode('name=Gut');
+      expect((await claim(used)).$1, 403);
+      expect((await claim(expired)).$1, 403);
+      expect((await claim('geraten')).$1, 403);
+      expect((await claim('x' * 43)).$1, 403);
+      // Fünfter Fehlversuch: ab jetzt wartet der Absender, auch mit dem richtigen Code.
+      expect((await claim('x' * 200)).$1, 403);
+      final (status, _, headers) = await claim(good);
+      expect(status, 429);
+      expect(headers.value(HttpHeaders.retryAfterHeader), '31');
+      expect(access.devices, hasLength(1));
+      // Dieselbe Sperre wie beim Passwort.
+      expect((await send('/api/bus', auth: basic('richtig123'))).$1, 429);
+      now = now.add(const Duration(seconds: 31));
+      expect((await claim(good)).$1, 200);
+      expect(access.devices, hasLength(2));
+    });
+
+    test('ein eingelöster Code löscht keine Fehlversuche', () async {
+      for (var i = 0; i < 4; i++) {
+        expect((await claim('falsch$i')).$1, 403);
+      }
+      expect((await claim(access.createPairingCode('Tablet'))).$1, 200);
+      expect((await claim('falsch4')).$1, 403);
+      expect((await claim('falsch5')).$1, 429);
+    });
+
+    test('Rechte kommen von der Seite, nicht aus der Anfrage', () async {
+      final viewer = await newCode('name=Flur&viewOnly=1');
+      final request = await client.openUrl('POST', url(BoxAccess.claimPath));
+      request.write(jsonEncode({'code': viewer, 'name': 'x', 'admin': true, 'viewOnly': false}));
+      final response = await request.close();
+      final key = (jsonDecode(await utf8.decodeStream(response)) as Map)['key'];
+      expect((await send('/api/bus', auth: 'Bearer $key')).$2, 'ok viewer');
+      final admin = await newCode('name=Home+Assistant&admin=1');
+      final managed = (jsonDecode((await claim(admin)).$2) as Map)['key'];
+      expect((await send('/api/bus', auth: 'Bearer $managed')).$2, 'ok admin');
+      // Ohne Namen auf der Seite gilt der, den die App nennt.
+      final unnamed = await newCode('name=');
+      expect((await claim(unnamed, name: 'Pixel von Anna')).$1, 200);
+      expect(access.devices.last.name, 'Pixel von Anna');
+    });
+
+    test('nur POST mit JSON, keine fremde Herkunft, nichts ohne Code', () async {
+      final code = await newCode();
+      expect((await send(BoxAccess.claimPath)).$1, 405);
+      expect((await send('${BoxAccess.claimPath}?code=$code')).$1, 405);
+      expect((await send(BoxAccess.claimPath, method: 'POST', body: 'code=$code')).$1, 400);
+      expect((await send(BoxAccess.claimPath, method: 'POST', body: '{}')).$1, 400);
+      expect((await send(BoxAccess.claimPath, method: 'POST', body: '{"code":7}')).$1, 400);
+      expect((await send(BoxAccess.claimPath, method: 'POST', body: '{"code":"${'x' * 5000}"}')).$1, 413);
+      expect((await claim(code, origin: 'http://evil.example')).$1, 403);
+      // Nichts davon war ein Fehlversuch, und der Code gilt noch.
+      expect(access.devices, isEmpty);
+      expect((await claim(code)).$1, 200);
+    });
+
+    test('über das Kabel erst nach Freigabe, wie alles andere', () async {
+      final wlan = await BoxAccess.open(
+        await Directory('${data.path}/wlan').create(),
+        initialPassword: 'richtig123',
+        iterations: 1000,
+        fromWlan: (_) => false,
+      );
+      final code = wlan.createPairingCode('Tablet');
+      final other = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => other.close(force: true));
+      other.listen(wlan.guard);
+      final request = await client.openUrl('POST', Uri.parse('http://127.0.0.1:${other.port}${BoxAccess.claimPath}'));
+      request.write(jsonEncode({'code': code}));
+      expect((await request.close()).statusCode, 403);
+      expect(wlan.devices, isEmpty);
+      expect(await wlan.claimPairing(code), isNotNull);
+    });
+
+    test('verwerfen, Passwortwechsel und „alle sperren“ beenden offene Codes', () async {
+      final first = await newCode();
+      final id = access.pairingCodes.single.id;
+      final (_, html, _) = await send('/pair/cancel', method: 'POST', auth: basic('richtig123'), body: 'id=$id');
+      expect(html, contains('Kopplungscode verworfen.'));
+      expect((await claim(first)).$1, 403);
+      final second = access.createPairingCode('Zwei');
+      await access.revokeAll();
+      expect(await access.claimPairing(second), isNull);
+      final third = access.createPairingCode('Drei');
+      await access.changePassword('nochneues123');
+      expect(await access.claimPairing(third), isNull);
+      expect(access.devices, isEmpty);
+    });
+
+    test('höchstens 8 offene Codes, der älteste fällt weg', () async {
+      final codes = [for (var i = 0; i < 9; i++) access.createPairingCode('Gerät $i')];
+      expect(access.pairingCodes, hasLength(8));
+      expect(await access.claimPairing(codes.first), isNull);
+      expect(await access.claimPairing(codes.last), isNotNull);
+    });
+
+    test('Schlüssel direkt anzeigen: nur auf Wunsch, wie bisher für Home Assistant und ältere Apps', () async {
+      final (_, form, _) = await send('/pair', auth: basic('richtig123'));
+      expect(form, contains('name="direct"'));
+      expect(form, contains('Apps bis 1.11.2'));
+      final (_, html, _) = await send(
+        '/pair',
+        method: 'POST',
+        auth: basic('richtig123'),
+        body: 'name=Home+Assistant&admin=1&direct=1',
+      );
+      final link = linkOf(html);
+      expect(link.queryParameters.containsKey('code'), isFalse);
+      final key = link.queryParameters['key']!;
+      expect(html, contains('<code>$key</code>'));
+      expect(html, contains('gilt, bis das Gerät gesperrt wird'));
+      expect(access.devices.single.admin, isTrue);
+      expect(access.pairingCodes, isEmpty);
+      expect((await send('/api/bus', auth: 'Bearer $key')).$2, 'ok admin');
+    });
   });
 
   test('Kopplung merkt sich die App-Instanz; ihr Schlüssel allein öffnet nichts', () async {
@@ -217,8 +433,8 @@ void main() {
       body: 'name=Flur&viewOnly=1',
     );
     expect(status, 200);
-    final key = Uri.parse(RegExp(r'href="(knxmonitor://[^"]+)"').firstMatch(html)!.group(1)!.replaceAll('&amp;', '&'))
-        .queryParameters['key']!;
+    final (_, claimed, _) = await claim(linkOf(html).queryParameters['code']!);
+    final key = (jsonDecode(claimed) as Map)['key'] as String;
     expect((await send('/api/bus', auth: 'Bearer $key')).$2, 'ok viewer');
     expect((await send('/ws', auth: 'Bearer $key')).$1, 403);
     expect(access.devices.single.viewOnly, isTrue);
@@ -694,5 +910,29 @@ void main() {
       final access = await BoxAccess.open(dir, initialPassword: 'aufkleber1', iterations: 1000);
       expect(access.checkPassword('aufkleber1'), isTrue);
     });
+  });
+
+  test('Admin-Token kann das Box-Passwort nicht unbegrenzt raten (Bestätigung)', () async {
+    final key = await access.pair('Tablet', admin: true);
+    Future<int> change(String current) async {
+      final request = await client.postUrl(url('/api/box/password'));
+      request.headers
+        ..set(HttpHeaders.authorizationHeader, 'Bearer $key')
+        ..contentType = ContentType.json;
+      request.write(jsonEncode({'password': 'neues-passwort', 'current': current}));
+      final response = await request.close();
+      await response.drain<void>();
+      return response.statusCode;
+    }
+
+    for (var i = 0; i < 5; i++) {
+      expect(await change('geraten$i'), 403, reason: 'Versuch ${i + 1}');
+    }
+    // Locked: also the right password waits now, and the token itself still works for reading.
+    expect(await change('geraten6'), 429);
+    expect(await change('richtig123'), 429);
+    expect((await send('/api/bus', auth: 'Bearer $key')).$2, 'ok admin');
+    now = now.add(const Duration(minutes: 1));
+    expect(await change('richtig123'), 200);
   });
 }

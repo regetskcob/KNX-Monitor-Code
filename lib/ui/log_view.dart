@@ -13,17 +13,20 @@ import '../knx/knx_tunnel.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
 import '../platform/addon.dart';
+import '../platform/title_bar_inset.dart';
 import '../theme/tokens.dart';
 import '../model/analysis.dart';
 import '../model/expert_mode.dart';
 import '../model/plan.dart';
 import '../model/filter.dart';
+import '../model/tap_points.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../model/telegram_log.dart';
 import '../model/saved_charts.dart';
 import 'bus_activity.dart';
+import 'edge_fade.dart';
 import 'chart_cards.dart';
 import 'charts_overview.dart';
 import 'catalog_actions.dart';
@@ -90,6 +93,7 @@ class LogView extends StatefulWidget {
     this.initialTab = LogTab.overview,
     this.openAddress,
     this.openTab,
+    this.filter,
   });
 
   final TelegramLog data;
@@ -128,6 +132,9 @@ class LogView extends StatefulWidget {
 
   /// Switches the view from outside (a lesson's "try it"); ignored where the tab is not shown.
   final Stream<LogTab>? openTab;
+
+  /// Sets the search from outside (tools of the host view, e.g. the diagnostics' line scan).
+  final Stream<String>? filter;
 
   /// Control of the live view in the header (pause); on phones [floatingStart]
   /// floats instead.
@@ -212,10 +219,14 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
     _tabSub = widget.openTab?.listen((t) {
       if (mounted && _tabs.contains(t)) setState(() => _tab = t);
     });
+    _filterSub = widget.filter?.listen((q) {
+      if (mounted) _applyFilter(q);
+    });
   }
 
   StreamSubscription<int>? _openSub;
   StreamSubscription<LogTab>? _tabSub;
+  StreamSubscription<String>? _filterSub;
 
   /// Whether the project hint above the overview was dismissed in this session.
   static bool _projectHintDismissed = false;
@@ -224,7 +235,9 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
   void dispose() {
     _openSub?.cancel();
     _tabSub?.cancel();
+    _filterSub?.cancel();
     _throttled.dispose();
+    _scrolledUnder.dispose();
     _store.removeListener(_rebuild);
     ExpertMode.instance.removeListener(_rebuild);
     ToolShell.instance.open.removeListener(_onSidebar);
@@ -254,6 +267,20 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
   /// Active quick filters (chips), combined with the search by AND.
   final _quick = <QuickFilter>{};
 
+  /// Several tap points (issue #8): only telegrams seen at these (by chip label, any of them),
+  /// and only those seen at a single tap point. Both combine with the rest by AND.
+  final _tapOnly = <String>{};
+  bool _tapSingle = false;
+
+  bool get _tapFiltered => TapScope.labels.length > 1 && (_tapOnly.isNotEmpty || _tapSingle);
+
+  bool _matchesTaps(Telegram t) {
+    final labels = TapScope.labels;
+    if (labels.length < 2) return true;
+    if (_tapSingle && !seenAtOneTapOnly(t)) return false;
+    return _tapOnly.isEmpty || t.taps.any((tap) => tap < labels.length && _tapOnly.contains(labels[tap]));
+  }
+
   /// Whether the filter is temporarily switched off (the input stays).
   bool _filterOff = false;
 
@@ -265,7 +292,7 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
   bool _matches(Telegram t) {
     if (_filterOff) return true;
     final f = _filter;
-    return f.matches(t, _data) && _quick.every((q) => matchesQuick(q, t, _data));
+    return f.matches(t, _data) && _quick.every((q) => matchesQuick(q, t, _data)) && _matchesTaps(t);
   }
 
   /// Addresses matched by all quick filters (for the overview and objects).
@@ -512,7 +539,7 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
         ),
         PopupMenuItem(
           value: () {
-            final name = _store.info(t.destination)?.name;
+            final name = _store.infoOf(t)?.name;
             final text = [t.destinationText, ?name, _store.value(t)].join(' ');
             Clipboard.setData(ClipboardData(text: text));
             messenger.showSnackBar(SnackBar(content: Text(s.detailsCopied)));
@@ -604,7 +631,8 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
               // Narrow next to the sidebar (iPad mini portrait): search above the
               // content as on the phone, otherwise it pushes out the title.
               _searchBelow =
-                  _phone(context) || contentWidth < (_tabsBelow ? _searchInHeaderTouch : _searchInHeaderFrom);
+                  _phone(context) ||
+                  contentWidth / _textScale < (_tabsBelow ? _searchInHeaderTouch : _searchInHeaderFrom);
               return Scaffold(
                 // Controls on the left (pause, playback) and write on the right in
                 // one slot: this keeps both reliably on one line.
@@ -626,77 +654,73 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
                         duration: Motion.of(context),
                         curve: Motion.curve,
                         width: sidebar ? Widths.sidebar : 0,
-                        decoration: BoxDecoration(
-                          color: context.hz.surface,
-                          border: Border(
-                            right: BorderSide(color: context.hz.line, width: Lines.hairline),
-                          ),
-                        ),
+                        // Surface and hairline come with HorizontSidebar.
                         child: ClipRect(
                           child: OverflowBox(
                             alignment: Alignment.centerRight,
                             minWidth: Widths.sidebar,
                             maxWidth: Widths.sidebar,
-                            child: !_phone(context)
-                                ? SafeArea(bottom: false, child: MoreSidebar(menu: _moreMenu))
-                                : const SizedBox.shrink(),
+                            child: !_phone(context) ? MoreSidebar(menu: _moreMenu) : const SizedBox.shrink(),
                           ),
                         ),
                       ),
                       Expanded(
-                        child: Column(
-                          children: [
-                            // The header belongs to the content; the sidebar runs all the way up.
-                            _head(
-                              selection != null
-                                  ? _selectionBar(selection, visible)
-                                  : _appBar(
-                                      compact: constraints.maxWidth < Breakpoints.expanded,
-                                      paneOpen: showPane,
-                                      // In split view the search field ends above the filter button,
-                                      // flush with the overview and live column; the buttons sit above live.
-                                      searchEnd: liveSide
-                                          ? liveWidth + (showPane ? _paneWidth : 0) + Gap.gutterFor(room - liveWidth)
-                                          : null,
-                                    ),
-                            ),
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  // Hints, search and box belong to the overview; details and live open beside it.
-                                  Expanded(
-                                    child: Column(
-                                      children: [
-                                        _contentHead(),
-                                        Expanded(child: _content(visible, twoPane: canSplit)),
-                                      ],
-                                    ),
-                                  ),
-                                  // The detail column fades in as soon as an address is focused,
-                                  // between the overview and live.
-                                  AnimatedContainer(
-                                    duration: Motion.slowOf(context),
-                                    curve: Motion.curve,
-                                    width: showPane ? _paneWidth : 0,
-                                    child: ClipRect(
-                                      child: OverflowBox(
-                                        alignment: Alignment.centerLeft,
-                                        minWidth: _paneWidth,
-                                        maxWidth: _paneWidth,
-                                        child: canSplit ? _columnCard(_detailPane()) : const SizedBox.shrink(),
+                        child: BesideTitleBar(
+                          active: sidebar,
+                          child: Column(
+                            children: [
+                              // The header belongs to the content; the sidebar runs all the way up.
+                              _head(
+                                selection != null
+                                    ? _selectionBar(selection, visible)
+                                    : _appBar(
+                                        compact: constraints.maxWidth < Breakpoints.expanded,
+                                        paneOpen: showPane,
+                                        // In split view the search field ends above the filter button,
+                                        // flush with the overview and live column; the buttons sit above live.
+                                        searchEnd: liveSide
+                                            ? liveWidth + (showPane ? _paneWidth : 0) + Gap.gutterFor(room - liveWidth)
+                                            : null,
+                                      ),
+                              ),
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    // Hints, search and box belong to the overview; details and live open beside it.
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          _contentHead(),
+                                          Expanded(child: _content(visible, twoPane: canSplit)),
+                                        ],
                                       ),
                                     ),
-                                  ),
-                                  // Live stays at the far right; the details slide in before it.
-                                  if (liveSide)
-                                    SizedBox(
-                                      width: liveWidth,
-                                      child: _columnCard(_liveSide(twoPane: canSplit)),
+                                    // The detail column fades in as soon as an address is focused,
+                                    // between the overview and live.
+                                    AnimatedContainer(
+                                      duration: Motion.slowOf(context),
+                                      curve: Motion.curve,
+                                      width: showPane ? _paneWidth : 0,
+                                      child: ClipRect(
+                                        child: OverflowBox(
+                                          alignment: Alignment.centerLeft,
+                                          minWidth: _paneWidth,
+                                          maxWidth: _paneWidth,
+                                          child: canSplit ? _columnCard(_detailPane()) : const SizedBox.shrink(),
+                                        ),
+                                      ),
                                     ),
-                                ],
+                                    // Live stays at the far right; the details slide in before it.
+                                    if (liveSide)
+                                      SizedBox(
+                                        width: liveWidth,
+                                        child: _columnCard(_liveSide(twoPane: canSplit)),
+                                      ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -711,8 +735,10 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
   }
 
   /// Header inside the content instead of on the Scaffold: needs the height including the status bar.
-  Widget _head(PreferredSizeWidget bar) =>
-      SizedBox(height: bar.preferredSize.height + MediaQuery.paddingOf(context).top, child: bar);
+  Widget _head(PreferredSizeWidget bar) => Builder(
+    // Its own context: beside the sidebar the top padding is smaller ([BesideTitleBar]).
+    builder: (context) => SizedBox(height: bar.preferredSize.height + MediaQuery.paddingOf(context).top, child: bar),
+  );
 
   /// Column next to the overview (details, live) as a card on the background.
   Widget _columnCard(Widget child) => Padding(
@@ -845,63 +871,43 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
     // "Objekte" (objects) needs the names from the ETS project.
     final hasProject = !_store.catalog.isEmpty;
     if (!hasProject && _tab == LogTab.objects) _tab = LogTab.overview;
+    // Another view starts at its top: no soft edge until it scrolls.
+    if (_fadeTab != _tab) {
+      _fadeTab = _tab;
+      // Not during build: the edge listens to it.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrolledUnder.value = false);
+    }
     return Column(
       children: [
         Expanded(
-          // Switch views without a cross-fade; the scaffold stays in place.
-          child: AnimatedSwitcher(
-            duration: Duration.zero,
-            child: KeyedSubtree(
-              key: ValueKey((_tab, visible.isEmpty)),
-              child: switch (_tab) {
-                LogTab.live || LogTab.overview when visible.isEmpty => _empty(),
-                LogTab.live => LiveList(
-                  items: visible,
-                  live: !_data.paused && _data.recentRate < TelegramLog.animationRateLimit,
-                  isFresh: _data.isFresh,
-                  issuesOf: (t) => issuesOf(t, _data),
-                  selection: _selection,
-                  focused: twoPane ? _focused : null,
-                  onTap: (t) => _onTap(t, twoPane: twoPane),
-                  onLongPress: _onLongPress,
-                  onContextMenu: (t, at) => _telegramMenu(t, at, twoPane: twoPane),
-                  isContext: _contextRows.isEmpty ? null : _contextRows.contains,
-                  markOf: _markOf,
-                ),
-                LogTab.objects => ObjectBoard(
-                  data: _data,
-                  matches: _boardMatches,
-                  onFilter: (q) => _search.text = q,
-                  onOpenAddress: _openAddress,
-                  onRead: widget.tunnel == null ? null : _readAll,
-                  empty: _filtered ? _empty() : null,
-                ),
-                LogTab.overview => ValueBoard(
-                  items: visible,
-                  counts: _data.counts,
-                  history: _data.history,
-                  log: _data,
-                  selection: _selection,
-                  focused: twoPane ? _focused : null,
-                  onTap: (t) => _onTap(t, twoPane: twoPane),
-                  onLongPress: _onLongPress,
-                  // Add-on and box: what the continuous recording says about the last seven days.
-                  // Part of the scrolling content, not of the fixed head: it is tall, and above
-                  // the list it took most of the overview away (on a phone all of it).
-                  header: Addon.available && widget.tunnel != null ? const WeekSummaryCard() : null,
-                  leading: [
-                    ChartCardsSliver(
-                      log: _data,
-                      onAdd: () => createChart(context, _data),
-                      onOpen: (name) async {
-                        if (await unlock(context, Feature.charts)) {
-                          _push((_) => ChartsScreen(log: _data, chart: name, onOpenAddress: _openAddress));
-                        }
-                      },
+          // The boards slide under the activity box above: a soft edge instead of cards cut
+          // off mid-line (TopEdgeFade). The live list has its own column head.
+          // Only once something has scrolled under the box: at the top the first heading
+          // stays sharp.
+          child: NotificationListener<ScrollMetricsNotification>(
+            onNotification: (n) => _noteScrolledUnder(n.depth, n.metrics),
+            child: NotificationListener<ScrollUpdateNotification>(
+              onNotification: (n) => _noteScrolledUnder(n.depth, n.metrics),
+              child: Stack(
+                children: [
+                  Positioned.fill(child: _views(visible, twoPane: twoPane)),
+                  if (_tab != LogTab.live && visible.isNotEmpty)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: ValueListenableBuilder<bool>(
+                        valueListenable: _scrolledUnder,
+                        builder: (context, under, child) => AnimatedOpacity(
+                          opacity: under ? 1 : 0,
+                          duration: Motion.of(context),
+                          child: under ? child : const SizedBox(height: TopEdgeFade.defaultHeight),
+                        ),
+                        child: const TopEdgeFade(),
+                      ),
                     ),
-                  ],
-                ),
-              },
+                ],
+              ),
             ),
           ),
         ),
@@ -909,7 +915,76 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
     );
   }
 
-  bool get _filtered => _search.text.trim().isNotEmpty || _quick.isNotEmpty;
+  /// Whether the board has scrolled under the activity box (for [TopEdgeFade]).
+  final _scrolledUnder = ValueNotifier(false);
+  LogTab? _fadeTab;
+
+  bool _noteScrolledUnder(int depth, ScrollMetrics metrics) {
+    if (depth == 0 && metrics.axis == Axis.vertical) {
+      _scrolledUnder.value = metrics.pixels > metrics.minScrollExtent + 0.5;
+    }
+    return false;
+  }
+
+  Widget _views(List<Telegram> visible, {required bool twoPane}) {
+    return AnimatedSwitcher(
+      duration: Duration.zero,
+      child: KeyedSubtree(
+        key: ValueKey((_tab, visible.isEmpty)),
+        child: switch (_tab) {
+          LogTab.live || LogTab.overview when visible.isEmpty => _empty(),
+          LogTab.live => LiveList(
+            items: visible,
+            live: !_data.paused && _data.recentRate < TelegramLog.animationRateLimit,
+            isFresh: _data.isFresh,
+            issuesOf: (t) => issuesOf(t, _data),
+            selection: _selection,
+            focused: twoPane ? _focused : null,
+            onTap: (t) => _onTap(t, twoPane: twoPane),
+            onLongPress: _onLongPress,
+            onContextMenu: (t, at) => _telegramMenu(t, at, twoPane: twoPane),
+            isContext: _contextRows.isEmpty ? null : _contextRows.contains,
+            markOf: _markOf,
+          ),
+          LogTab.objects => ObjectBoard(
+            data: _data,
+            matches: _boardMatches,
+            onFilter: (q) => _search.text = q,
+            onOpenAddress: _openAddress,
+            onRead: widget.tunnel == null ? null : _readAll,
+            empty: _filtered ? _empty() : null,
+          ),
+          LogTab.overview => ValueBoard(
+            items: visible,
+            counts: _data.counts,
+            history: _data.history,
+            log: _data,
+            selection: _selection,
+            focused: twoPane ? _focused : null,
+            onTap: (t) => _onTap(t, twoPane: twoPane),
+            onLongPress: _onLongPress,
+            // Add-on and box: what the continuous recording says about the last seven days.
+            // Part of the scrolling content, not of the fixed head: it is tall, and above
+            // the list it took most of the overview away (on a phone all of it).
+            header: Addon.available && widget.tunnel != null ? const WeekSummaryCard() : null,
+            leading: [
+              ChartCardsSliver(
+                log: _data,
+                onAdd: () => createChart(context, _data),
+                onOpen: (name) async {
+                  if (await unlock(context, Feature.charts)) {
+                    _push((_) => ChartsScreen(log: _data, chart: name, onOpenAddress: _openAddress));
+                  }
+                },
+              ),
+            ],
+          ),
+        },
+      ),
+    );
+  }
+
+  bool get _filtered => _search.text.trim().isNotEmpty || _quick.isNotEmpty || _tapFiltered;
 
   /// Empty state with a fitting next action: clear the filter or read the status.
   Widget _empty() {
@@ -922,6 +997,8 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
           onPressed: () => setState(() {
             _search.clear();
             _quick.clear();
+            _tapOnly.clear();
+            _tapSingle = false;
           }),
         ),
       );
@@ -1089,7 +1166,11 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
 
   /// Views as tabs at the bottom: on touch devices and in every narrow window
   /// (Mac dragged to 400 pt), where the switcher no longer fits at the top.
-  bool get _tabsBelow => MediaQuery.sizeOf(context).width < Breakpoints.expanded;
+  /// Header controls grow with the text: a large text scale moves views and search out of the title
+  /// bar as a narrower window would (at 1280 pt and text × 2 they ran 154 pt past the edge).
+  bool get _tabsBelow => MediaQuery.sizeOf(context).width / _textScale < Breakpoints.expanded;
+
+  double get _textScale => MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 4.0);
 
   /// Height of the filter, switcher and "Schreiben" (write) in the header.
   static const _headControl = 44.0;
@@ -1162,9 +1243,14 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
       (QuickFilter.unknown, s.quickUnknown, AppIcons.noProject, null),
     ].where((f) => shown(f.$1)).toList();
     final query = _search.text.trim();
-    if (filters.isEmpty && !withContext && query.isEmpty) return const SizedBox.shrink();
+    // Tap points of the open monitor, only with several (issue #8).
+    final taps = _tab == LogTab.live && TapScope.labels.length > 1
+        ? TapScope.labels.toSet().toList()
+        : const <String>[];
+    if (filters.isEmpty && !withContext && query.isEmpty && taps.isEmpty) return const SizedBox.shrink();
     final active =
         _quick.length +
+        (taps.isEmpty ? 0 : _tapOnly.length + (_tapSingle ? 1 : 0)) +
         (withContext && _contextWindow > Duration.zero ? 1 : 0) +
         (query.isNotEmpty && !_filterOff ? 1 : 0);
     return PopupMenuButton<Object>(
@@ -1176,6 +1262,10 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
             _quick.contains(f) ? _quick.remove(f) : _quick.add(f);
           case int seconds:
             _contextWindow = Duration(seconds: seconds);
+          case (final String label,):
+            _tapOnly.contains(label) ? _tapOnly.remove(label) : _tapOnly.add(label);
+          case true:
+            _tapSingle = !_tapSingle;
           case String _:
             _filterOff = !_filterOff;
         }
@@ -1210,11 +1300,25 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
                   Icon(icon, size: 18, color: f == QuickFilter.alarm ? hz.critical : hz.textMuted),
                   const SizedBox(width: HzSpace.s8),
                   Expanded(child: Text(label)),
-                  if (counts[f]! > 0) Text('${counts[f]}', style: context.hzTheme.data.copyWith(color: hz.textMuted)),
+                  if (counts[f]! > 0) Text('${counts[f]}', style: context.hzTheme.count),
                 ],
               ),
             ),
           ),
+        if (taps.isNotEmpty) ...[
+          if (filters.isNotEmpty || query.isNotEmpty) const PopupMenuDivider(),
+          for (final label in taps)
+            CheckedPopupMenuItem<Object>(
+              value: (label,),
+              checked: _tapOnly.contains(label),
+              child: Text(s.tapNamed(label)),
+            ),
+          CheckedPopupMenuItem<Object>(
+            value: true,
+            checked: _tapSingle,
+            child: Tooltip(message: s.tapQuickSingleHint, child: Text(s.tapQuickSingle)),
+          ),
+        ],
         if (withContext) ...[
           const PopupMenuDivider(),
           for (final v in _contextChoices)
@@ -1278,6 +1382,26 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
             deleteButtonTooltipMessage: s.filterClear,
             onDeleted: () => setState(() => _quick.remove(f)),
           ),
+        if (TapScope.labels.length > 1) ...[
+          for (final label in _tapOnly.toList())
+            InputChip(
+              label: Text(s.tapNamed(label)),
+              selected: true,
+              showCheckmark: false,
+              onSelected: (_) => setState(() => _tapOnly.remove(label)),
+              deleteButtonTooltipMessage: s.filterClear,
+              onDeleted: () => setState(() => _tapOnly.remove(label)),
+            ),
+          if (_tapSingle)
+            InputChip(
+              label: Text(s.tapQuickSingle),
+              selected: true,
+              showCheckmark: false,
+              onSelected: (_) => setState(() => _tapSingle = false),
+              deleteButtonTooltipMessage: s.filterClear,
+              onDeleted: () => setState(() => _tapSingle = false),
+            ),
+        ],
       ],
     );
   }
@@ -1338,8 +1462,14 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
   /// Sets filters and jumps from tools back into the monitor.
   void _filterAndReturn(String query) {
     final route = ModalRoute.of(context);
-    _search.text = query;
+    _applyFilter(query);
     Navigator.of(context).popUntil((r) => r == route || r.isFirst);
+  }
+
+  /// Sets the search; a whole line ([lineQuery]) is shown in the live list, telegram by telegram.
+  void _applyFilter(String query) {
+    _search.text = query;
+    if (isLineQuery(query) && _tab != LogTab.live) setState(() => _tab = LogTab.live);
   }
 
   /// Comparison, statistics, map, plus the tools of the host view.

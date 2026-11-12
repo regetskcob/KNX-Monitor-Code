@@ -21,6 +21,7 @@ void main() {
     CatalogStore.instance.catalog = GroupCatalog.empty;
     final gateway = (await tester.runAsync(FakeGateway.start))!;
     final tunnel = KnxTunnel('127.0.0.1', port: gateway.port);
+    final written = <int>[];
     await tester.runAsync(tunnel.connect);
     addTearDown(() async {
       await tester.runAsync(tunnel.disconnect);
@@ -31,10 +32,21 @@ void main() {
       MaterialApp(
         theme: AppTheme.light(),
         home: Builder(
-          builder: (context) => TextButton(onPressed: () => showSendSheet(context, tunnel), child: const Text('open')),
+          builder: (context) => TextButton(
+            onPressed: () => showSendSheet(context, tunnel, onWritten: written.add),
+            child: const Text('open'),
+          ),
         ),
       ),
     );
+    // Öffnen und wieder schließen ist kein Senden: Wer darauf wartet (Rundgang im Hausplan),
+    // erfährt nichts.
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    Navigator.of(tester.element(find.byType(TextField).first)).pop();
+    await tester.pumpAndSettle();
+    expect(written, isEmpty);
+
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
@@ -54,6 +66,7 @@ void main() {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
     }
 
+    expect(written, [0x0A03], reason: 'onWritten erst nach dem Senden, mit der Adresse');
     final writes = [
       for (final c in gateway.requests)
         if (c[3] & 0x80 != 0 && ((c[9] & 0x03) << 8 | c[10]) & 0x3C0 == 0x080) c,

@@ -23,6 +23,18 @@ void main() {
     expect(a.findFile('b')!.content, hasLength(20));
   });
 
+  test('Zahl der Einträge aus dem Endeintrag, ohne das Verzeichnis zu lesen', () {
+    expect(zipEntryCount(zipOf({'a': 1, 'b': 2, 'c': 3})), 3);
+    expect(zipEntryCount(Uint8List.fromList([0x50, 0x4B, 3, 4, 0, 0])), isNull);
+    expect(zipEntryCount(Uint8List(0)), isNull);
+    // Stated count above the limit: refused before the directory is parsed.
+    final many = zipOf({'a': 1});
+    final end = many.length - 22;
+    many[end + 10] = 0xFF;
+    many[end + 11] = 0xFF;
+    expect(() => decodeZipLimited(many, limits: const ZipLimits(maxEntries: 400)), throwsA(isA<ZipLimitException>()));
+  });
+
   test('Grenzen je Datei, gesamt und Zahl der Einträge', () {
     final bomb = zipOf({'a': 2000, 'b': 2000});
     expect(bomb.length, lessThan(1000), reason: 'packt sich auf ein Vielfaches aus');

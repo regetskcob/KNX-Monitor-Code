@@ -7,12 +7,15 @@ import '../knx/diagnostics.dart';
 import '../knx/knx_tunnel.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
+import '../model/filter.dart';
+import '../model/telegram_log.dart';
 import '../model/xknx_editor_settings.dart';
 import '../platform/xknx_editor_client.dart';
 import '../theme/app_icons.dart';
 import '../theme/tokens.dart';
 import '../theme/palette.dart';
 import 'common.dart';
+import 'device_sheet.dart' show DeviceLink;
 import 'inventory_view.dart';
 import 'statistics_screen.dart' show FigureBox;
 import 'xknx_editor_sheet.dart' show xknxEditorErrorText;
@@ -20,9 +23,15 @@ import 'xknx_editor_sheet.dart' show xknxEditorErrorText;
 /// Diagnostic tools: read the status of all addresses, find devices in
 /// programming mode, check an individual address. Read-only.
 class DiagnosticsScreen extends StatelessWidget {
-  const DiagnosticsScreen({super.key, required this.tunnel, this.onHealth, this.onSecurity});
+  const DiagnosticsScreen({super.key, required this.tunnel, this.log, this.onFilter, this.onHealth, this.onSecurity});
 
   final KnxTunnel tunnel;
+
+  /// Monitor traffic: found devices then open their device sheet.
+  final TelegramLog? log;
+
+  /// Sets the search in the monitor and returns there (line scan: the scanned line).
+  final ValueChanged<String>? onFilter;
 
   /// Opens the security check (its own page, also reachable without
   /// diagnostics).
@@ -54,9 +63,9 @@ class DiagnosticsScreen extends StatelessWidget {
             padding: Gap.page,
             children: [
               for (final (i, tool) in <Widget>[
-                _ProgrammingModeCard(tunnel: tunnel),
-                _AddressCheckCard(tunnel: tunnel),
-                _LineScanCard(tunnel: tunnel),
+                _ProgrammingModeCard(tunnel: tunnel, log: log, onFilter: onFilter),
+                _AddressCheckCard(tunnel: tunnel, log: log, onFilter: onFilter),
+                _LineScanCard(tunnel: tunnel, log: log, onFilter: onFilter),
                 InventoryCard(tunnel: tunnel),
               ].indexed) ...[if (i > 0) const SizedBox(height: Gap.inner), SectionCard(child: tool)],
             ],
@@ -118,9 +127,11 @@ const _spinner = SizedBox.square(
 );
 
 class _ProgrammingModeCard extends StatefulWidget {
-  const _ProgrammingModeCard({required this.tunnel});
+  const _ProgrammingModeCard({required this.tunnel, this.log, this.onFilter});
 
   final KnxTunnel tunnel;
+  final TelegramLog? log;
+  final ValueChanged<String>? onFilter;
 
   @override
   State<_ProgrammingModeCard> createState() => _ProgrammingModeCardState();
@@ -170,6 +181,9 @@ class _ProgrammingModeCardState extends State<_ProgrammingModeCard> {
                   status: found.length > 1 ? HorizontStatus.warning : HorizontStatus.positive,
                   title: formatIndividual(pa),
                   subtitle: _deviceName(pa),
+                  device: pa,
+                  log: widget.log,
+                  onFilter: widget.onFilter,
                 ),
             ]),
         ],
@@ -181,9 +195,11 @@ class _ProgrammingModeCardState extends State<_ProgrammingModeCard> {
 // --- Check address ---------------------------------------------------------
 
 class _AddressCheckCard extends StatefulWidget {
-  const _AddressCheckCard({required this.tunnel});
+  const _AddressCheckCard({required this.tunnel, this.log, this.onFilter});
 
   final KnxTunnel tunnel;
+  final TelegramLog? log;
+  final ValueChanged<String>? onFilter;
 
   @override
   State<_AddressCheckCard> createState() => _AddressCheckCardState();
@@ -318,6 +334,9 @@ class _AddressCheckCardState extends State<_AddressCheckCard> {
                 if (r.state == AddressState.present) _deviceName(r.address),
                 if (r.maskText != null) s.diagMaskVersion(r.maskText!),
               ].join(' · '),
+              device: r.state == AddressState.present ? r.address : null,
+              log: widget.log,
+              onFilter: widget.onFilter,
             ),
           ]),
           if (r.state == AddressState.present) ...[
@@ -442,9 +461,11 @@ class _DeviceDetailsTable extends StatelessWidget {
 // --- Linienscan ----------------------------------------------------------------
 
 class _LineScanCard extends StatefulWidget {
-  const _LineScanCard({required this.tunnel});
+  const _LineScanCard({required this.tunnel, this.log, this.onFilter});
 
   final KnxTunnel tunnel;
+  final TelegramLog? log;
+  final ValueChanged<String>? onFilter;
 
   @override
   State<_LineScanCard> createState() => _LineScanCardState();
@@ -608,6 +629,16 @@ class _LineScanCardState extends State<_LineScanCard> {
                   ],
                 ],
               ),
+              // The scanned line in the live list, as from the topology.
+              if (widget.onFilter case final filter?)
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton.icon(
+                    onPressed: () => filter(lineQuery((run.area << 4) | run.line)),
+                    icon: const Icon(AppIcons.filter),
+                    label: Text(s.devLineShow('${run.area}.${run.line}')),
+                  ),
+                ),
               const SizedBox(height: Gap.inner),
               if (run.present.isNotEmpty)
                 _Results([
@@ -619,6 +650,9 @@ class _LineScanCardState extends State<_LineScanCard> {
                         tunnels[r.address] ?? _deviceName(r.address),
                         if (r.maskText != null) s.diagMaskVersion(r.maskText!),
                       ].join(' · '),
+                      device: r.address,
+                      log: widget.log,
+                      onFilter: widget.onFilter,
                     ),
                 ]),
               if (missing.isNotEmpty) ...[
@@ -627,7 +661,14 @@ class _LineScanCardState extends State<_LineScanCard> {
                 const SizedBox(height: Gap.item),
                 _Results([
                   for (final pa in missing)
-                    _ResultRow(status: HorizontStatus.warning, title: formatIndividual(pa), subtitle: _deviceName(pa)),
+                    _ResultRow(
+                      status: HorizontStatus.warning,
+                      title: formatIndividual(pa),
+                      subtitle: _deviceName(pa),
+                      device: pa,
+                      log: widget.log,
+                      onFilter: widget.onFilter,
+                    ),
                 ]),
               ],
             ],
@@ -640,17 +681,29 @@ class _LineScanCardState extends State<_LineScanCard> {
 
 /// Result row: status symbol, "address  text", the name below.
 class _ResultRow extends StatelessWidget {
-  const _ResultRow({required this.status, required this.title, required this.subtitle});
+  const _ResultRow({
+    required this.status,
+    required this.title,
+    required this.subtitle,
+    this.device,
+    this.log,
+    this.onFilter,
+  });
 
   final HorizontStatus status;
   final String title;
   final String subtitle;
 
+  /// Device of the row: with [log] it opens its device sheet, as in the live list.
+  final int? device;
+  final TelegramLog? log;
+  final ValueChanged<String>? onFilter;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final hz = context.hz;
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: HzSpace.s12),
       child: Row(
         children: [
@@ -669,5 +722,9 @@ class _ResultRow extends StatelessWidget {
         ],
       ),
     );
+    return switch ((device, log)) {
+      (final device?, final log?) => DeviceLink(address: device, log: log, onFilter: onFilter, child: row),
+      _ => row,
+    };
   }
 }

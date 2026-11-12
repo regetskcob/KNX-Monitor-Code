@@ -10,6 +10,9 @@ import '../model/plan.dart';
 import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
+import 'common.dart';
+import 'figure_box.dart';
+import 'form_columns.dart';
 import 'plan_screen.dart';
 
 /// Settings page "Firma" (company, Pro): details and logo for the letterhead on
@@ -82,8 +85,14 @@ class _CompanyScreenState extends State<CompanyScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final hz = context.hz;
-    Widget field(String label, TextEditingController c, {int maxLines = 1, TextInputType? keyboard}) => Padding(
-      padding: const EdgeInsets.only(bottom: Gap.inner),
+    Widget field(
+      String label,
+      TextEditingController c, {
+      int maxLines = 1,
+      TextInputType? keyboard,
+      bool last = false,
+    }) => Padding(
+      padding: EdgeInsets.only(bottom: last ? 0 : Gap.inner),
       child: HorizontField(
         label: label,
         child: TextField(
@@ -101,58 +110,82 @@ class _CompanyScreenState extends State<CompanyScreen> {
         title: Text(s.companyTitle),
         actions: [TextButton(onPressed: _save, child: Text(s.commonSave))],
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Widths.reading),
-          child: ListenableBuilder(
-            listenable: _store,
-            builder: (context, _) => ListView(
-              padding: Gap.page,
-              children: [
-                Text(s.companyExplain, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
-                if (!Plan.instance.allows(Feature.letterhead)) ...[
+      // Phone and narrow windows: one column in reading width, the preview first. From the
+      // expanded width on, name, address and contact stand on the left; the preview stands beside
+      // them and changes while typing, with the logo and the remaining details below it.
+      body: ListenableBuilder(
+        listenable: _store,
+        builder: (context, _) {
+          final preview = [
+            SectionHead(s.companyPreview),
+            _Preview(company: _current, logo: _store.logo),
+            SectionHead(s.companyLogo),
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: Gap.inner,
+                    runSpacing: Gap.item,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _busy ? null : _pickLogo,
+                        icon: const Icon(AppIcons.image, size: 18),
+                        label: Text(_store.logo == null ? s.companyLogoPick : s.companyLogoReplace),
+                      ),
+                      if (_store.logo != null)
+                        TextButton(onPressed: _busy ? null : () => _store.setLogo(null), child: Text(s.commonDelete)),
+                    ],
+                  ),
                   const SizedBox(height: Gap.item),
-                  const Align(alignment: AlignmentDirectional.centerStart, child: TierBadge(Tier.pro)),
+                  Text(s.companyLogoHint, style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted)),
                 ],
-                const SizedBox(height: Gap.section),
-                Kennung(s.companyPreview),
-                const SizedBox(height: Gap.item),
-                _Preview(company: _current, logo: _store.logo),
-                const SizedBox(height: Gap.section),
-                Kennung(s.companyLogo),
-                const SizedBox(height: Gap.item),
-                Wrap(
-                  spacing: Gap.inner,
-                  runSpacing: Gap.item,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: _busy ? null : _pickLogo,
-                      icon: const Icon(AppIcons.image, size: 18),
-                      label: Text(_store.logo == null ? s.companyLogoPick : s.companyLogoReplace),
-                    ),
-                    if (_store.logo != null)
-                      TextButton(onPressed: _busy ? null : () => _store.setLogo(null), child: Text(s.commonDelete)),
-                  ],
-                ),
-                const SizedBox(height: Gap.item),
-                Text(s.companyLogoHint, style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted)),
-                const SizedBox(height: Gap.section),
-                Kennung(s.companyDetails),
-                const SizedBox(height: Gap.item),
-                field(s.companyName, _name),
-                field(s.companyAddress, _address, maxLines: 4, keyboard: TextInputType.multiline),
-                field(s.companyPhone, _phone, keyboard: TextInputType.phone),
-                field(s.companyEmail, _email, keyboard: TextInputType.emailAddress),
-                field(s.companyWebsite, _website, keyboard: TextInputType.url),
-                field(s.companyVatId, _vat),
-                field(s.companyRegistration, _registration, maxLines: 2),
-                field(s.companyTechnician, _technician),
-                SizedBox(height: Gap.page.bottom),
-              ],
+              ),
             ),
-          ),
-        ),
+          ];
+          final details = [
+            SectionHead(s.companyDetails),
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  field(s.companyName, _name),
+                  field(s.companyAddress, _address, maxLines: 4, keyboard: TextInputType.multiline),
+                  field(s.companyPhone, _phone, keyboard: TextInputType.phone),
+                  field(s.companyEmail, _email, keyboard: TextInputType.emailAddress),
+                  field(s.companyWebsite, _website, keyboard: TextInputType.url, last: true),
+                ],
+              ),
+            ),
+          ];
+          final more = [
+            SectionHead(s.companyMore),
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  field(s.companyVatId, _vat),
+                  field(s.companyRegistration, _registration, maxLines: 2),
+                  field(s.companyTechnician, _technician, last: true),
+                ],
+              ),
+            ),
+          ];
+          return FormColumns(
+            intro: [
+              Text(s.companyExplain, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
+              if (!Plan.instance.allows(Feature.letterhead)) ...[
+                const SizedBox(height: Gap.item),
+                const Align(alignment: AlignmentDirectional.centerStart, child: TierBadge(Tier.pro)),
+              ],
+            ],
+            columns: [
+              details,
+              [...preview, ...more],
+            ],
+            narrow: [...preview, ...details, ...more],
+          );
+        },
       ),
     );
   }

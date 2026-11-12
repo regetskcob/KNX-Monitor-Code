@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import '../model/installation.dart';
 import '../model/tap_points.dart';
 import 'busmon.dart';
+import 'secure/keyring_store.dart';
+import 'secure/secure_tap_cache.dart';
 import 'knx_tunnel.dart';
 import 'telegram.dart';
 
@@ -47,9 +49,13 @@ class MultiTunnel extends KnxTunnel {
           if (i >= windows.length || windows[i] == null) i,
       },
     );
+    // Data Secure counts windows set by hand only, never the measured ones.
+    secureTapCache.windows = Map.of(_merger.windows);
     for (var i = 0; i < children.length; i++) {
       final c = children[i];
+      c.tapIndex = i;
       _subs.add(c.telegrams.listen((t) => _onTelegram(i, t)));
+      _subs.add(c.frames.listen((f) => _onFrame(i, f)));
       c.state.addListener(_update);
       c.error.addListener(_update);
     }
@@ -66,13 +72,18 @@ class MultiTunnel extends KnxTunnel {
   final List<Duration> retryDelays;
 
   final _merger = TapMerger();
+  final _backlog = TapBacklog();
   final _silence = TapSilence();
   late final TapWindowMeter _meter;
 
   /// Windows widened by measurement ([TapWindowMeter]), by tap point.
   final _autoWindows = <int, Duration>{};
   final _live = <int>{};
-  final _subs = <StreamSubscription<Telegram>>[];
+  final _subs = <StreamSubscription<Object>>[];
+
+  /// Data frames of every tap point (device diagnostics): the answer of a device comes back over
+  /// the tap point that asked it, see [senderFor].
+  final _allFrames = StreamController<CemiFrame>.broadcast();
   final _retry = <int, Timer>{};
   final _attempts = <int, int>{};
   Timer? _flush;
@@ -93,9 +104,6 @@ class MultiTunnel extends KnxTunnel {
   }
 
   @override
-  Stream<CemiFrame> get frames => (_sender ?? children.first).frames;
-
-  @override
   Stream<BusmonFrame> get busmon => children.first.busmon;
 
   void _mirror() {
@@ -106,10 +114,32 @@ class MultiTunnel extends KnxTunnel {
 
   String _labelOf(int i) => tapLabel(children[i].tunnelAddress, names.length > i ? names[i] : '${i + 1}');
 
+  /// A frame a coupler forwarded arrives at several tap points; device diagnostics must see it
+  /// once. The copy from another tap point within the merge window is dropped; the same frame
+  /// twice at one tap point is a real double and passes.
+  final _frameSeen = <String, (int, DateTime)>{};
+
+  void _onFrame(int tap, CemiFrame f) {
+    if (_disposed || _allFrames.isClosed) return;
+    final key = '${f.code}|${f.source}|${f.destination}|${f.groupAddressed ? 1 : 0}|${hexOf(f.tpdu)}';
+    final now = DateTime.now();
+    final before = _frameSeen[key];
+    if (before != null && before.$1 != tap && now.difference(before.$2) <= (_merger.windows[tap] ?? _merger.window)) {
+      return;
+    }
+    _frameSeen.remove(key);
+    _frameSeen[key] = (tap, now);
+    if (_frameSeen.length > 200) _frameSeen.remove(_frameSeen.keys.first);
+    _allFrames.add(f);
+  }
+
   void _onTelegram(int tap, Telegram t) {
     if (_disposed) return;
     if (children.length > 1 && _silence.heard(tap)) _update();
-    _emit(_merger.add(tap, t));
+    final ready = _merger.add(tap, t);
+    _emit(ready);
+    // Never hold back without limit (clock set back, flood).
+    if (_backlog.note(fed: 1, left: TapBacklog.leaving(ready), pending: _merger.pending)) _emit(_merger.flushAll());
     _scheduleFlush();
   }
 
@@ -117,10 +147,22 @@ class MultiTunnel extends KnxTunnel {
     if (_disposed) return;
     var widened = false;
     for (final t in ready) {
+      // A Data Secure copy that did not end up in the entry of its first copy is a replay.
+      if (!secureTapCache.released(t.raw, merged: t.sightings.isNotEmpty)) {
+        KeyringStore.instance.rejected.value++;
+        continue;
+      }
+      final lags = t.sightings.isEmpty ? null : [for (final s in t.sightings) _meter.lagOf(s.tap)];
       if (_meter.released(t) case (final tap, final window)?) {
         _merger.windows[tap] = window;
-        _autoWindows[tap] = window;
+        window > TapWindowMeter.floor ? _autoWindows[tap] = window : _autoWindows.remove(tap);
         widened = true;
+      }
+      // A measured lag that changed shows in the list of tap points.
+      if (lags != null && !widened) {
+        for (final (i, s) in t.sightings.indexed) {
+          if (_meter.lagOf(s.tap) != lags[i]) widened = true;
+        }
       }
       inject(t);
     }
@@ -134,7 +176,9 @@ class MultiTunnel extends KnxTunnel {
     var wait = due.difference(DateTime.now());
     if (wait.isNegative) wait = Duration.zero;
     _flush = Timer(wait, () {
-      _emit(_merger.flush(DateTime.now()));
+      final ready = _merger.flush(DateTime.now());
+      _backlog.note(left: TapBacklog.leaving(ready), pending: _merger.pending);
+      _emit(ready);
       _scheduleFlush();
     });
   }
@@ -157,12 +201,15 @@ class MultiTunnel extends KnxTunnel {
           paused: _paused.contains(i),
           silent: _silence.silent(i),
           autoWindow: _autoWindows[i],
+          lag: _meter.lagOf(i),
         ),
     ];
     tapPoints.value = list;
     tapLabels.value = [for (final p in list) p.label];
     final live = list.where((p) => p.connected).length;
-    _merger.taps = live < 1 ? 1 : live;
+    // A tap point that hears nothing is not waited for: entries leave once the others saw them.
+    final listening = list.where((p) => p.listening).length;
+    _merger.taps = listening < 1 ? 1 : listening;
     final before = state.value;
     if (live > 0) {
       state.value = TunnelState.connected;
@@ -261,9 +308,32 @@ class MultiTunnel extends KnxTunnel {
     _update();
   }
 
+  /// The connected tap point on the line of the individual address [cemi] goes to, `null` for a
+  /// group telegram or without a tap point there. Its line is that of its tunnel address.
+  KnxTunnel? _onLineOf(Uint8List cemi) {
+    if (cemi.length < 2) return null;
+    final i = 2 + cemi[1];
+    if (cemi.length < i + 6 || cemi[i + 1] & 0x80 != 0) return null;
+    final line = cemi[i + 4];
+    for (final c in children) {
+      final own = c.tunnelAddress;
+      if (c.state.value == TunnelState.connected && own != null && own != 0 && own >> 8 == line) return c;
+    }
+    return null;
+  }
+
+  /// The tap point that sends [cemi]: device access (individual address) goes over the tap point
+  /// on the device's line, which saves coupler hops; everything else, and a device without a tap
+  /// point on its line, over the first connected one.
+  @visibleForTesting
+  KnxTunnel? senderFor(Uint8List cemi) => _onLineOf(cemi) ?? _sender;
+
+  @override
+  Stream<CemiFrame> get frames => _allFrames.stream;
+
   @override
   Future<bool?> sendFrame(Uint8List cemi, {Duration timeout = const Duration(seconds: 3)}) {
-    final sender = _sender;
+    final sender = senderFor(cemi);
     if (sender == null) throw const KnxException('not connected');
     return sender.sendFrame(cemi, timeout: timeout);
   }
@@ -284,7 +354,7 @@ class MultiTunnel extends KnxTunnel {
       c.error.removeListener(_update);
       c.dispose();
     }
-    if (tapLabels.value.isNotEmpty) tapLabels.value = const [];
+    _allFrames.close();
     super.dispose();
   }
 }

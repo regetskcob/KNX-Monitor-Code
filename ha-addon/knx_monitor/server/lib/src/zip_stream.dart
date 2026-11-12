@@ -10,6 +10,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart' as crypto;
+
+/// An entry [ZipStream] wrote: name, uncompressed size, CRC-32 and, if asked for, the SHA-256 of
+/// the content.
+typedef ZipWritten = ({String name, int size, int crc, Uint8List? sha256});
+
 class ZipStream {
   ZipStream(this._emit);
 
@@ -17,6 +23,9 @@ class ZipStream {
   final _central = BytesBuilder();
   var _offset = 0;
   var _entries = 0;
+
+  /// The entries written so far, in order.
+  final written = <ZipWritten>[];
 
   Future<void> _write(List<int> bytes) async {
     _offset += bytes.length;
@@ -27,8 +36,34 @@ class ZipStream {
   Future<void> add(
     String name,
     DateTime modified,
-    Future<void> Function(Future<void> Function(String text) write) write,
+    Future<void> Function(Future<void> Function(String text) write) write, {
+    bool digest = false,
+  }) => _entry(name, modified, 6, digest, (put) => write((text) => put(utf8.encode(text))));
+
+  /// Adds the file [name] with the bytes of [data]. [level] 0 stores already compressed data
+  /// (packed history days) in deflate blocks without compressing it again: cheap on the Pi, and
+  /// every zip reader understands it.
+  /// With [digest] the SHA-256 of the content is noted in [written].
+  Future<void> addStream(
+    String name,
+    DateTime modified,
+    Stream<List<int>> data, {
+    int level = 6,
+    bool digest = false,
+  }) => _entry(name, modified, level, digest, (put) async {
+    await for (final chunk in data) {
+      await put(chunk);
+    }
+  });
+
+  Future<void> _entry(
+    String name,
+    DateTime modified,
+    int level,
+    bool digest,
+    Future<void> Function(Future<void> Function(List<int> bytes) put) produce,
   ) async {
+    final sha = digest ? Sha256Stream() : null;
     final nameBytes = utf8.encode(name);
     final (time, date) = _dosTime(modified);
     final start = _offset;
@@ -53,7 +88,7 @@ class ZipStream {
     var size = 0;
     var compressed = 0;
     final pending = <List<int>>[];
-    final deflater = ZLibEncoder(raw: true, level: 6).startChunkedConversion(_Collect(pending));
+    final deflater = ZLibEncoder(raw: true, level: level).startChunkedConversion(_Collect(pending));
     Future<void> drain() async {
       for (final chunk in pending) {
         compressed += chunk.length;
@@ -62,9 +97,9 @@ class ZipStream {
       pending.clear();
     }
 
-    await write((text) async {
-      final bytes = utf8.encode(text);
+    await produce((bytes) async {
       crc = crc32(bytes, crc);
+      sha?.add(bytes);
       size += bytes.length;
       deflater.add(bytes);
       await drain();
@@ -109,6 +144,7 @@ class ZipStream {
           .done(),
     );
     _entries++;
+    written.add((name: name, size: size, crc: crc, sha256: sha?.close()));
   }
 
   static const _max32 = 0xFFFFFFFF;
@@ -158,19 +194,53 @@ class _Le {
   Uint8List done() => _b.takeBytes();
 }
 
-final _crcTable = List<int>.generate(256, (n) {
-  var c = n;
-  for (var k = 0; k < 8; k++) {
-    c = c & 1 != 0 ? 0xEDB88320 ^ (c >> 1) : c >> 1;
-  }
-  return c;
-});
+final _crcTable = Uint32List.fromList(
+  List<int>.generate(256, (n) {
+    var c = n;
+    for (var k = 0; k < 8; k++) {
+      c = c & 1 != 0 ? 0xEDB88320 ^ (c >> 1) : c >> 1;
+    }
+    return c;
+  }),
+);
 
-/// CRC-32 of [bytes], continuing from [crc].
+/// CRC-32 of [bytes], continuing from [crc]. Runs over whole box backups on the Pi, hence the
+/// typed table and the indexed loop.
 int crc32(List<int> bytes, [int crc = 0]) {
+  final table = _crcTable;
   var c = crc ^ 0xFFFFFFFF;
-  for (final b in bytes) {
-    c = _crcTable[(c ^ b) & 0xFF] ^ (c >> 8);
+  for (var i = 0, n = bytes.length; i < n; i++) {
+    c = table[(c ^ bytes[i]) & 0xFF] ^ (c >> 8);
   }
   return c ^ 0xFFFFFFFF;
+}
+
+/// SHA-256 over content that arrives in pieces (package:crypto: compiled, several times faster
+/// than pointycastle's, which matters for a history of hundreds of megabytes on a Raspberry Pi).
+class Sha256Stream {
+  Sha256Stream() {
+    _input = crypto.sha256.startChunkedConversion(_DigestSink((d) => _digest = d));
+  }
+
+  late final ByteConversionSink _input;
+  crypto.Digest? _digest;
+
+  void add(List<int> bytes) => _input.add(bytes);
+
+  /// The digest; nothing may be added afterwards.
+  Uint8List close() {
+    _input.close();
+    return Uint8List.fromList(_digest!.bytes);
+  }
+}
+
+class _DigestSink implements Sink<crypto.Digest> {
+  _DigestSink(this._onDigest);
+  final void Function(crypto.Digest digest) _onDigest;
+
+  @override
+  void add(crypto.Digest data) => _onDigest(data);
+
+  @override
+  void close() {}
 }

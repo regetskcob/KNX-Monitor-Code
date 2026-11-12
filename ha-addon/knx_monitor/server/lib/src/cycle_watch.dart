@@ -271,6 +271,13 @@ class CycleWatch {
     };
   }
 
+  /// The silent addresses that are reported now, all of them (the `overdue` findings of the
+  /// server's health check, health_check.dart).
+  List<CycleSilence> reported() => _reported();
+
+  /// Whether a [check] has read the history of the active installation yet.
+  bool get checked => _bus != null && identical(_bus, currentBus());
+
   /// Number of silent addresses (`silent` in `GET /api/ha/state`).
   int get count => _reported().length;
 

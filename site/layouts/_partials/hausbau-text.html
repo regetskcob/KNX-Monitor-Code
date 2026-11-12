@@ -1,0 +1,7 @@
+{{- /*
+  The words of an entry of /hausbau/ for its current state: the key named
+  like the state (soon | test | live) if the entry has one, else "text" or
+  "value". (dict "item" . ) → string
+*/ -}}
+{{- $state := "" }}{{ with .item.feature }}{{ $state = index site.Data.hausbau.stand . | default "soon" }}{{ end -}}
+{{- return (index .item $state | default .item.text | default .item.value) -}}

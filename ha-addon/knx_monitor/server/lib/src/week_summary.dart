@@ -312,6 +312,9 @@ class WeekSummaryCache {
   final Duration maxAge;
   final _entries = <String, ({DateTime at, Future<Map<String, Object?>> value})>{};
 
+  /// Forgets every overview (all installations were replaced, box_backup.dart).
+  void clear() => _entries.clear();
+
   Future<Map<String, Object?>> get(String key, Future<Map<String, Object?>> Function() compute, {DateTime? now}) {
     final t = now ?? DateTime.now();
     final hit = _entries[key];

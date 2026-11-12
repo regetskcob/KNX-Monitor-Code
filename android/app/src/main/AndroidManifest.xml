@@ -62,7 +62,7 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="knxmonitor" android:host="login-callback"/>
             </intent-filter>
-            <!-- Handover package and fault report from mail, messenger, file manager.
+            <!-- Handover package, fault report and customer files from mail, messenger, file manager.
                  Many senders only say octet-stream for an unknown extension and do not
                  reveal the name in the content:// path; the app refuses anything that is
                  not one of its packages with a message (size limit in incoming_file.dart). -->
@@ -72,15 +72,17 @@
                 <data android:scheme="content"/>
                 <data android:mimeType="application/vnd.knx-monitor.handover"/>
                 <data android:mimeType="application/vnd.knx-monitor.report"/>
+                <data android:mimeType="application/vnd.knx-monitor.customers"/>
                 <data android:mimeType="application/octet-stream"/>
             </intent-filter>
             <!-- By extension, with and without MIME type. pathPattern has no greedy ".*":
-                 dots earlier in the name need a line of their own. -->
+                 dots earlier in the name need a line of their own. Only content://: since
+                 Android 7 other apps may not hand over file:// paths anyway, and the app
+                 should not open paths it is merely told about. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:scheme="content"/>
-                <data android:scheme="file"/>
                 <data android:host="*"/>
                 <data android:mimeType="*/*"/>
                 <data android:pathPattern=".*\\.knxhandover"/>
@@ -89,12 +91,14 @@
                 <data android:pathPattern=".*\\.knxreport"/>
                 <data android:pathPattern=".*\\..*\\.knxreport"/>
                 <data android:pathPattern=".*\\..*\\..*\\.knxreport"/>
+                <data android:pathPattern=".*\\.knxcustomers"/>
+                <data android:pathPattern=".*\\..*\\.knxcustomers"/>
+                <data android:pathPattern=".*\\..*\\..*\\.knxcustomers"/>
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:scheme="content"/>
-                <data android:scheme="file"/>
                 <data android:host="*"/>
                 <data android:pathPattern=".*\\.knxhandover"/>
                 <data android:pathPattern=".*\\..*\\.knxhandover"/>
@@ -102,6 +106,9 @@
                 <data android:pathPattern=".*\\.knxreport"/>
                 <data android:pathPattern=".*\\..*\\.knxreport"/>
                 <data android:pathPattern=".*\\..*\\..*\\.knxreport"/>
+                <data android:pathPattern=".*\\.knxcustomers"/>
+                <data android:pathPattern=".*\\..*\\.knxcustomers"/>
+                <data android:pathPattern=".*\\..*\\..*\\.knxcustomers"/>
             </intent-filter>
         </activity>
         <service

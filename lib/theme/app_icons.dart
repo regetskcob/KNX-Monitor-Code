@@ -97,6 +97,10 @@ abstract final class AppIcons {
   static const delete = HorizontSymbols.delete;
   static const import = HorizontSymbols.uploadFile;
   static const disconnect = HorizontSymbols.linkOff;
+
+  /// A tap point went away (gap line in the live list) and came back.
+  static const tapAway = HorizontSymbols.cloudOff;
+  static const tapBack = HorizontSymbols.link;
   static const box = HorizontSymbols.router;
   static const history = HorizontSymbols.history;
   static const language = HorizontSymbols.translate;

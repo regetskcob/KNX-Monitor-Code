@@ -47,6 +47,17 @@ void main() {
     expect(File('pubspec.yaml').readAsStringSync(), contains('path: third_party/local_auth_windows'));
   });
 
+  test('Android: Dateien nur über content://, nie über einen file://-Pfad', () {
+    final manifest = File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    expect(manifest, isNot(contains('android:scheme="file"')));
+    expect(manifest, contains('android:scheme="content"'));
+    // The activity itself refuses anything else too: an explicit intent does not pass the filters.
+    final activity = File('android/app/src/main/kotlin/de/regetskcob/knxmonitor/MainActivity.kt').readAsStringSync();
+    expect(activity, contains('uri.scheme != "content") return false'));
+    expect(activity, isNot(contains('"file"')));
+    expect(activity, isNot(contains('import java.io.File')));
+  });
+
   test('Android: Zurück-Geste mit Vorschau', () {
     expect(
       File('android/app/src/main/AndroidManifest.xml').readAsStringSync(),

@@ -1,5 +1,5 @@
 name: Busclear
-version: "1.11.2"
+version: "1.12.0"
 slug: knx_monitor
 description: KNX bus monitor, continuous recording, health check and commissioning in the sidebar
 url: https://busclear.de
@@ -42,6 +42,7 @@ options:
   mqtt_filter: ""
   mqtt_installation: ""
   silent_after_hours: 12
+  health_check: false
 schema:
   read_only: bool
   alarm_notifications: bool
@@ -56,6 +57,7 @@ schema:
   mqtt_filter: str?
   mqtt_installation: str?
   silent_after_hours: int(1,168)
+  health_check: bool?
 ingress: true
 ingress_port: 8765
 # The user enables the watchdog in the add-on (default off). Then the

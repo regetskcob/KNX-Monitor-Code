@@ -70,3 +70,58 @@ At most 1 % of frames are still over budget.
 200/s  Live       animation off | 120 fps | build avg  4.1 p90  4.3 p99  6.8 | Raster p90  1.3 p99  1.4 ms | over budget 0.0 %
 Done.
 ```
+
+## History scan of the bus view
+
+The bus view on the floor plan ([floor-view.md](floor-view.md)) reads up to
+seven days of history on the server the first time a plan's addresses are
+asked for (`FloorViewService._seed` in `server/lib/src/floor_view.dart`), to
+know when each address was last on the bus. Measured on 11 November 2026 with a
+reproducible load test in the add-on server:
+
+```
+cd ha-addon/knx_monitor/server
+dart compile exe tool/floor_view_bench.dart -o /tmp/fvb && /tmp/fvb      # AOT, as on the box
+dart run tool/floor_view_bench.dart --per-day 400000 --addresses 600    # options
+```
+
+It writes a synthetic history in the box's layout: six finished days packed as
+`.ndjson.gz`, today as plain `.ndjson`, lines as the recorder writes them with
+the raw frame, 2,000 group addresses (30 % of the traffic on 40 busy ones), 10 %
+reads. Then, in a fresh process so generating does not count, it measures the
+scan until the answer no longer says `loading`, the resident memory above the
+start, the lateness of a 5 ms timer (how long bus, WebSocket and HTTP would
+wait) and whether 50 telegrams per second fed meanwhile into the recorder and
+the view are taken in on time. `test/floor_view_load_test.dart` runs a smaller
+version (7 × 20,000) in every server test run, with the thresholds at a factor
+of 2 so a slow CI machine still passes; memory only counts in the tool, which
+measures in a process of its own.
+
+| History | Mac (M2 Pro, AOT) | Raspberry Pi 4 |
+|---|---|---|
+| 7 × 100,000 telegrams, 18.9 MB packed, 200 addresses | scan 0.51 s, memory +11.6 MB, event loop at most 2.3 ms late, 0 telegrams late | measured: scan 3.0 s, memory +12.4 MB, event loop at most 8.6 ms late, 0 telegrams late |
+| 7 × 400,000 telegrams, 74.7 MB packed, 600 addresses | scan 2.2 s, memory +32 MB, event loop at most 1.9 ms late, 0 telegrams late | estimate: about 13 s |
+
+With `dart run` (JIT): 0.53 s, at most 12.6 ms late (compilation).
+
+**On the Pi:** measured on 11 Nov 2026 on a Busclear Box (Raspberry Pi 4, 8 GB,
+history in `/tmp`, that is in memory), three runs, the slowest shown. The Pi
+is about 6 times slower than the Mac here, less than the factor of 10 the
+thresholds assume. The tool is cross-compiled on the Mac and copied over, the
+box has no Dart SDK:
+`dart compile exe --target-os linux --target-arch arm64 tool/floor_view_bench.dart -o fvb`.
+The larger history is estimated with the measured factor.
+
+**Thresholds** (`overLimits` in the tool, which exits with 1 above them): on
+the Pi the scan ends within 30 s (the card shows live times meanwhile and says
+`loading`), the event loop never waits longer than 250 ms (a tunnel must
+acknowledge within 1 s or the gateway drops the connection), at most 64 MB on
+top (the add-on shares the Pi with Home Assistant), and no telegram is taken in
+late. All are met with a wide margin, also at four times the traffic, so the
+scan stays as it is: it reads only the addresses on the plan, field by field
+without decoding the line, and pauses every 2,000 lines. Not done, because not
+needed: a separate isolate, stopping early once every address is found (a day
+corrected by the clock may hold later times), a per-day cache across restarts.
+Memory grows with the number of lines read, as garbage the collector has not
+freed yet: about +12 MB at 0.7 to 0.8 million lines, +32 MB at 2.8 million.
+

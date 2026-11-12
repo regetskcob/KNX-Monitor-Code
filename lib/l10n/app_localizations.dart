@@ -62,8 +62,7 @@ import 'app_localizations_en.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -71,8 +70,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -84,19 +82,15 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
-      <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[
-    Locale('de'),
-    Locale('en'),
-  ];
+  static const List<Locale> supportedLocales = <Locale>[Locale('de'), Locale('en')];
 
   /// Subtitle under the app name on the splash screen.
   ///
@@ -2474,6 +2468,168 @@ abstract class AppLocalizations {
   /// **'Import fehlgeschlagen: {error}'**
   String recordingsImportFailed(String error);
 
+  /// Recordings: title of the import preview
+  ///
+  /// In de, this message translates to:
+  /// **'Aufnahme importieren'**
+  String get recImportTitle;
+
+  /// Import preview: label of the source format
+  ///
+  /// In de, this message translates to:
+  /// **'Quelle'**
+  String get recImportSource;
+
+  /// Import preview: label of the period
+  ///
+  /// In de, this message translates to:
+  /// **'Zeitraum'**
+  String get recImportPeriod;
+
+  /// Import preview: label of the number of telegrams
+  ///
+  /// In de, this message translates to:
+  /// **'Telegramme'**
+  String get recImportTelegrams;
+
+  /// Import preview: label of the telegrams left out
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht lesbar'**
+  String get recImportSkipped;
+
+  /// Import preview: every telegram was read
+  ///
+  /// In de, this message translates to:
+  /// **'keine'**
+  String get recImportSkippedNone;
+
+  /// Import preview: telegrams without RawData
+  ///
+  /// In de, this message translates to:
+  /// **'{count} ohne Rohdaten'**
+  String recImportSkipNoData(int count);
+
+  /// Import preview: telegrams without timestamp
+  ///
+  /// In de, this message translates to:
+  /// **'{count} ohne lesbare Zeit'**
+  String recImportSkipTime(int count);
+
+  /// Import preview: acknowledgements, device telegrams, damaged frames
+  ///
+  /// In de, this message translates to:
+  /// **'{count} keine Gruppentelegramme'**
+  String recImportSkipFrame(int count);
+
+  /// Import preview: lines not in the format of the file
+  ///
+  /// In de, this message translates to:
+  /// **'{count} unlesbare Zeilen'**
+  String recImportSkipLine(int count);
+
+  /// Import: source format
+  ///
+  /// In de, this message translates to:
+  /// **'Busclear-Aufnahme'**
+  String get recImportFormatRecording;
+
+  /// Import: source format
+  ///
+  /// In de, this message translates to:
+  /// **'Busclear-Langzeitverlauf'**
+  String get recImportFormatHistory;
+
+  /// Import: source format
+  ///
+  /// In de, this message translates to:
+  /// **'Busclear-CSV'**
+  String get recImportFormatCsv;
+
+  /// Import: source format
+  ///
+  /// In de, this message translates to:
+  /// **'ETS-Telegrammdatei (XML)'**
+  String get recImportFormatEtsXml;
+
+  /// Import: source format
+  ///
+  /// In de, this message translates to:
+  /// **'ETS-Telegrammdateien (ZIP)'**
+  String get recImportFormatEtsZip;
+
+  /// Import preview: name of the recording
+  ///
+  /// In de, this message translates to:
+  /// **'Name'**
+  String get recImportName;
+
+  /// Import preview: the recording is older than the current project state
+  ///
+  /// In de, this message translates to:
+  /// **'Namen und Datentypen nach dem Projektstand, der bis {date} galt.'**
+  String recImportState(String date);
+
+  /// Import preview: what importing does
+  ///
+  /// In de, this message translates to:
+  /// **'Wird als eigene Aufnahme dieser Installation gespeichert und als importiert gekennzeichnet. Der Langzeitverlauf bleibt, wie er ist.'**
+  String get recImportHint;
+
+  /// Import preview: confirm button
+  ///
+  /// In de, this message translates to:
+  /// **'Importieren'**
+  String get recImportConfirm;
+
+  /// Recordings: mark of an imported recording
+  ///
+  /// In de, this message translates to:
+  /// **'Importiert'**
+  String get recImportedMark;
+
+  /// Recording: source of an imported recording
+  ///
+  /// In de, this message translates to:
+  /// **'Importiert aus {file}'**
+  String recImportedFrom(String file);
+
+  /// Import: too many telegrams
+  ///
+  /// In de, this message translates to:
+  /// **'Die Datei enthält mehr als {count} Telegramme. Exportiere einen kürzeren Zeitraum.'**
+  String recImportErrorTooMany(int count);
+
+  /// Import: unknown file format
+  ///
+  /// In de, this message translates to:
+  /// **'Dieses Format kennt Busclear nicht. Lesbar sind Busclear-Aufnahmen, die Telegramm-CSV und ETS-Telegrammdateien (Gruppenmonitor oder Busmonitor als XML).'**
+  String get recImportErrorUnknown;
+
+  /// Import: XML with DOCTYPE refused
+  ///
+  /// In de, this message translates to:
+  /// **'Die XML-Datei bringt eine Dokumenttyp-Deklaration mit und wird deshalb nicht gelesen. ETS-Telegrammdateien haben keine.'**
+  String get recImportErrorDoctype;
+
+  /// Import: recognized format, damaged content
+  ///
+  /// In de, this message translates to:
+  /// **'Die Datei ist beschädigt und lässt sich nicht lesen.'**
+  String get recImportErrorDamaged;
+
+  /// Import: no telegram found
+  ///
+  /// In de, this message translates to:
+  /// **'In der Datei ist kein Gruppentelegramm.'**
+  String get recImportErrorEmpty;
+
+  /// Import: zip over the limits
+  ///
+  /// In de, this message translates to:
+  /// **'Das Archiv entpackt sich zu mehr, als ein Import annimmt.'**
+  String get recImportErrorArchive;
+
   /// Diagnose: Titel Linienscan
   ///
   /// In de, this message translates to:
@@ -3413,7 +3569,7 @@ abstract class AppLocalizations {
   /// Topology tool
   ///
   /// In de, this message translates to:
-  /// **'Linienübergreifend'**
+  /// **'Linien­über­greifend'**
   String get topoCross;
 
   /// Topology tool
@@ -3554,11 +3710,209 @@ abstract class AppLocalizations {
   /// **'Linie {line} · Hop {hops}'**
   String devLineHops(String line, String hops);
 
+  /// Screen reader hint on a sender that opens its device sheet
+  ///
+  /// In de, this message translates to:
+  /// **'Öffnet das Geräteblatt'**
+  String get devOpenHint;
+
+  /// Tooltip/button: filter the live list by all senders of a line
+  ///
+  /// In de, this message translates to:
+  /// **'Linie {line} im Monitor zeigen'**
+  String devLineShow(String line);
+
   /// Title of the project sheet
   ///
   /// In de, this message translates to:
   /// **'ETS-Projekt'**
   String get projectTitle;
+
+  /// Title: list of the project states of an installation
+  ///
+  /// In de, this message translates to:
+  /// **'Projektstände'**
+  String get projectStatesTitle;
+
+  /// Project sheet: row that opens the project states
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Projektstand} other{{count} Projektstände}}'**
+  String projectStatesRow(int count);
+
+  /// Project states: explanation above the list
+  ///
+  /// In de, this message translates to:
+  /// **'Jedes importierte Projekt gilt ab einem Datum. Telegramme aus der Zeit davor behalten Namen und Datentyp des Stands, der damals galt.'**
+  String get projectStatesIntro;
+
+  /// Project states: mark of the current state
+  ///
+  /// In de, this message translates to:
+  /// **'Aktuell'**
+  String get projectStateCurrent;
+
+  /// Project states: the oldest state has no start date
+  ///
+  /// In de, this message translates to:
+  /// **'Von Anfang an'**
+  String get projectStateFromStart;
+
+  /// Project states: start date of a state
+  ///
+  /// In de, this message translates to:
+  /// **'Seit {date}'**
+  String projectStateSince(String date);
+
+  /// Project states: state without project or file name
+  ///
+  /// In de, this message translates to:
+  /// **'Projekt ohne Namen'**
+  String get projectStateUnnamed;
+
+  /// Project states: the oldest state has nothing to compare with
+  ///
+  /// In de, this message translates to:
+  /// **'Erster Stand'**
+  String get projectStateFirst;
+
+  /// Project states: nothing changed against the state before
+  ///
+  /// In de, this message translates to:
+  /// **'Gruppenadressen unverändert'**
+  String get projectStateNoChanges;
+
+  /// Project states: number of added group addresses
+  ///
+  /// In de, this message translates to:
+  /// **'{count} neu'**
+  String projectStateAdded(int count);
+
+  /// Project states: number of removed group addresses
+  ///
+  /// In de, this message translates to:
+  /// **'{count} entfernt'**
+  String projectStateRemoved(int count);
+
+  /// Project states: number of renamed group addresses
+  ///
+  /// In de, this message translates to:
+  /// **'{count} umbenannt'**
+  String projectStateRenamed(int count);
+
+  /// Project states: number of group addresses whose data type changed
+  ///
+  /// In de, this message translates to:
+  /// **'{count} mit neuem Datentyp'**
+  String projectStateRetyped(int count);
+
+  /// Project states: section of added group addresses
+  ///
+  /// In de, this message translates to:
+  /// **'Neu'**
+  String get projectStateAddedTitle;
+
+  /// Project states: section of removed group addresses
+  ///
+  /// In de, this message translates to:
+  /// **'Entfernt'**
+  String get projectStateRemovedTitle;
+
+  /// Project states: section of renamed group addresses
+  ///
+  /// In de, this message translates to:
+  /// **'Umbenannt'**
+  String get projectStateRenamedTitle;
+
+  /// Project states: section of group addresses with a changed data type
+  ///
+  /// In de, this message translates to:
+  /// **'Datentyp geändert'**
+  String get projectStateRetypedTitle;
+
+  /// Project states: a group address without data type
+  ///
+  /// In de, this message translates to:
+  /// **'ohne Typ'**
+  String get projectStateNoType;
+
+  /// Project states: title of the list of changes
+  ///
+  /// In de, this message translates to:
+  /// **'Änderungen zum Stand davor'**
+  String get projectStateChanges;
+
+  /// Project states: empty detail side on wide screens
+  ///
+  /// In de, this message translates to:
+  /// **'Wähle einen Stand, um zu sehen, was er geändert hat.'**
+  String get projectStateSelect;
+
+  /// Project states: button to correct the start date
+  ///
+  /// In de, this message translates to:
+  /// **'Datum ändern'**
+  String get projectStateSetDate;
+
+  /// Project states: title of the date picker (e.g. the day the installation was reprogrammed)
+  ///
+  /// In de, this message translates to:
+  /// **'Ab wann gilt dieser Stand?'**
+  String get projectStateDateHelp;
+
+  /// Project states: the date cannot be changed
+  ///
+  /// In de, this message translates to:
+  /// **'Zwischen dem Stand davor und dem danach liegt kein freier Tag.'**
+  String get projectStateDateNoRoom;
+
+  /// Project states: button and dialog title
+  ///
+  /// In de, this message translates to:
+  /// **'Stand entfernen'**
+  String get projectStateRemove;
+
+  /// Project states: confirm removing the current state
+  ///
+  /// In de, this message translates to:
+  /// **'Das Projekt davor wird wieder das aktuelle. Das importierte Projekt ist dann weg.'**
+  String get projectStateRemoveCurrent;
+
+  /// Project states: confirm removing a state in the middle
+  ///
+  /// In de, this message translates to:
+  /// **'Der Stand davor gilt dann bis zum nächsten Stand. Alte Telegramme aus dieser Zeit tragen dann dessen Namen.'**
+  String get projectStateRemovePast;
+
+  /// Project states: confirm removing the oldest state
+  ///
+  /// In de, this message translates to:
+  /// **'Der nächste Stand gilt dann von Anfang an.'**
+  String get projectStateRemoveOldest;
+
+  /// Details of an old telegram: it is named with an older project state
+  ///
+  /// In de, this message translates to:
+  /// **'Name und Datentyp nach dem Projektstand, der bis {date} galt.'**
+  String projectStateNote(String date);
+
+  /// Details of an old telegram: the name of the address in the current project
+  ///
+  /// In de, this message translates to:
+  /// **'Heute: {name}'**
+  String projectStateNoteToday(String name);
+
+  /// Details of an old telegram: the address is not in the current project
+  ///
+  /// In de, this message translates to:
+  /// **'Im heutigen Projekt gibt es diese Adresse nicht mehr.'**
+  String get projectStateNoteGone;
+
+  /// Recording from before the current project state: quiet line above the content
+  ///
+  /// In de, this message translates to:
+  /// **'Vor dem {date} aufgenommen: Namen und Datentypen nach dem Projektstand von damals.'**
+  String projectStateRecordingNote(String date);
 
   /// Confirm deleting history
   ///
@@ -3978,13 +4332,7 @@ abstract class AppLocalizations {
   ///
   /// In de, this message translates to:
   /// **'{sender} sendet {actual}, DPT {dpt} erwartet {expected} ({count}×)'**
-  String healthDptSize(
-    String sender,
-    String actual,
-    String dpt,
-    String expected,
-    int count,
-  );
+  String healthDptSize(String sender, String actual, String dpt, String expected, int count);
 
   /// Befund: ungültiger Wert
   ///
@@ -4021,6 +4369,1464 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Hat noch nie geantwortet – Lese-Flag am sendenden Objekt prüfen: {sender}'**
   String healthAlwaysSilentAt(String sender);
+
+  /// DALI: Titel der Ansicht Beleuchtung (DALI-Gateways)
+  ///
+  /// In de, this message translates to:
+  /// **'DALI-Beleuchtung'**
+  String get daliTitle;
+
+  /// DALI: Untertitel des Werkzeugs im Menü
+  ///
+  /// In de, this message translates to:
+  /// **'DALI-Gateways: Leuchten, Fehler, Notlicht'**
+  String get daliTool;
+
+  /// DALI: Erklärung der Ansicht hinter dem Info-Symbol
+  ///
+  /// In de, this message translates to:
+  /// **'Zeigt, was deine KNX-DALI-Gateways auf den Bus melden: Lampen- und EVG-Fehler je Leuchte und den Zustand der Notleuchten. Busclear sieht nur, was das Gateway auf KNX sendet. Kurzadressen und Gruppen vergibst du weiter im Werkzeug des Gateways.'**
+  String get daliExplain;
+
+  /// DALI: Bezeichnung eines Gateways ohne Namen
+  ///
+  /// In de, this message translates to:
+  /// **'DALI-Gateway'**
+  String get daliGateway;
+
+  /// DALI: Gateway mit physikalischer Adresse
+  ///
+  /// In de, this message translates to:
+  /// **'Gateway {address}'**
+  String daliGatewayAt(String address);
+
+  /// DALI: Leuchte ohne Namen, mit Kurzadresse (EVG = Vorschaltgerät)
+  ///
+  /// In de, this message translates to:
+  /// **'EVG {address}'**
+  String daliGearN(int address);
+
+  /// DALI: Gruppe ohne Namen
+  ///
+  /// In de, this message translates to:
+  /// **'Gruppe {group}'**
+  String daliGroupN(int group);
+
+  /// DALI: Notleuchte ohne Namen, mit Kurzadresse
+  ///
+  /// In de, this message translates to:
+  /// **'Notlicht {address}'**
+  String daliEmergencyN(int address);
+
+  /// DALI: Notleuchte ohne bekannte Kurzadresse, mit Gruppenadresse ihres Objekts
+  ///
+  /// In de, this message translates to:
+  /// **'Notleuchte an {group}'**
+  String daliEmergencyAt(String group);
+
+  /// DALI: Kennzeichen Notleuchte
+  ///
+  /// In de, this message translates to:
+  /// **'Notleuchte'**
+  String get daliEmergencyLuminaire;
+
+  /// DALI: Überschrift Notleuchten
+  ///
+  /// In de, this message translates to:
+  /// **'Notleuchten'**
+  String get daliEmergencyLuminaires;
+
+  /// DALI: Buchstabe, der eine Notleuchte kennzeichnet
+  ///
+  /// In de, this message translates to:
+  /// **'N'**
+  String get daliEmergencyLetter;
+
+  /// DALI: Anzahl Notleuchten einer Gruppe
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Notleuchte} other{{count} Notleuchten}}'**
+  String daliEmergencyCount(int count);
+
+  /// DALI: Zustand ohne Fehler
+  ///
+  /// In de, this message translates to:
+  /// **'in Ordnung'**
+  String get daliOk;
+
+  /// DALI: Merker Lampenfehler
+  ///
+  /// In de, this message translates to:
+  /// **'Lampenfehler'**
+  String get daliLampFault;
+
+  /// DALI: Merker Fehler des Vorschaltgeräts
+  ///
+  /// In de, this message translates to:
+  /// **'EVG-Fehler'**
+  String get daliGearFault;
+
+  /// DALI: Merker Konverterfehler (Notlicht)
+  ///
+  /// In de, this message translates to:
+  /// **'Konverterfehler'**
+  String get daliConverterFault;
+
+  /// DALI: Zustand einer Leuchte, die noch nichts gemeldet hat
+  ///
+  /// In de, this message translates to:
+  /// **'noch keine Meldung'**
+  String get daliNoReport;
+
+  /// DALI: Wert unbekannt
+  ///
+  /// In de, this message translates to:
+  /// **'unbekannt'**
+  String get daliUnknown;
+
+  /// DALI: Telegramm ist eine Abfrage an das Gateway (Lese-Merker gesetzt)
+  ///
+  /// In de, this message translates to:
+  /// **'Abfrage'**
+  String get daliQuery;
+
+  /// DALI: Merker gesetzt
+  ///
+  /// In de, this message translates to:
+  /// **'gesetzt'**
+  String get daliFlagSet;
+
+  /// DALI: Merker nicht gesetzt
+  ///
+  /// In de, this message translates to:
+  /// **'nicht gesetzt'**
+  String get daliFlagClear;
+
+  /// DALI: Beschriftung des Rohwerts in Hex
+  ///
+  /// In de, this message translates to:
+  /// **'Rohwert'**
+  String get daliRaw;
+
+  /// DALI: Datenpunkttyp in der Abschnittsüberschrift
+  ///
+  /// In de, this message translates to:
+  /// **'DPT {dpt}'**
+  String daliDptShort(String dpt);
+
+  /// DALI: Name der Typen 237.600 und 238.600 in der Typauswahl
+  ///
+  /// In de, this message translates to:
+  /// **'DALI-Diagnose'**
+  String get daliDptDiagnostic;
+
+  /// DALI: Name des Typs 244.600 in der Typauswahl
+  ///
+  /// In de, this message translates to:
+  /// **'DALI-Notlicht Status'**
+  String get daliDptConverterStatus;
+
+  /// DALI: Name des Typs 245.600 in der Typauswahl
+  ///
+  /// In de, this message translates to:
+  /// **'DALI-Notlicht Testergebnis'**
+  String get daliDptTestResult;
+
+  /// DALI-Details: Zeile, ob die Adresse ein Gerät oder eine Gruppe ist
+  ///
+  /// In de, this message translates to:
+  /// **'Adresse meint'**
+  String get daliRowAddressKind;
+
+  /// DALI-Details: Adresse ist ein Gerät
+  ///
+  /// In de, this message translates to:
+  /// **'Gerät'**
+  String get daliRowKindDevice;
+
+  /// DALI-Details: Adresse ist eine Gruppe
+  ///
+  /// In de, this message translates to:
+  /// **'Gruppe'**
+  String get daliRowKindGroup;
+
+  /// DALI-Details: Zeile DALI-Adresse
+  ///
+  /// In de, this message translates to:
+  /// **'DALI-Adresse'**
+  String get daliRowAddress;
+
+  /// DALI-Details: Zeile Lese-Merker
+  ///
+  /// In de, this message translates to:
+  /// **'Abfrage an das Gateway'**
+  String get daliRowQuery;
+
+  /// DALI-Details: Zeile Betriebsart des Konverters
+  ///
+  /// In de, this message translates to:
+  /// **'Betriebsart'**
+  String get daliRowMode;
+
+  /// DALI-Details: Zeile Konverterfehler
+  ///
+  /// In de, this message translates to:
+  /// **'Konverterfehler'**
+  String get daliRowFailure;
+
+  /// DALI-Details: Zeile, ob ein Test ansteht
+  ///
+  /// In de, this message translates to:
+  /// **'{test} steht an'**
+  String daliRowPending(String test);
+
+  /// DALI-Details: Zeile festverdrahteter Schalteingang
+  ///
+  /// In de, this message translates to:
+  /// **'Schalteingang aktiv'**
+  String get daliRowHardwiredSwitch;
+
+  /// DALI-Details: Zeile festverdrahteter Sperreingang
+  ///
+  /// In de, this message translates to:
+  /// **'Sperreingang aktiv'**
+  String get daliRowHardwiredInhibit;
+
+  /// DALI-Details: Zeile Ergebnis des letzten Tests
+  ///
+  /// In de, this message translates to:
+  /// **'Letzter {test}'**
+  String daliRowLast(String test);
+
+  /// DALI-Details: Zeile Startart des letzten Tests
+  ///
+  /// In de, this message translates to:
+  /// **'{test} gestartet'**
+  String daliRowStarted(String test);
+
+  /// DALI-Details: Zeile Entladedauer
+  ///
+  /// In de, this message translates to:
+  /// **'Entladedauer im letzten Dauertest'**
+  String get daliRowDischarge;
+
+  /// DALI-Details: Zeile Akkuladung
+  ///
+  /// In de, this message translates to:
+  /// **'Akkuladung nach Teil-Dauertest'**
+  String get daliRowCharge;
+
+  /// DALI: Betriebsart des Konverters unbekannt
+  ///
+  /// In de, this message translates to:
+  /// **'Betriebsart unbekannt'**
+  String get daliModeUnknown;
+
+  /// DALI: Betriebsart Normalbetrieb
+  ///
+  /// In de, this message translates to:
+  /// **'Normalbetrieb'**
+  String get daliModeNormal;
+
+  /// DALI: Betriebsart Sperrbetrieb (Inhibit)
+  ///
+  /// In de, this message translates to:
+  /// **'gesperrt'**
+  String get daliModeInhibit;
+
+  /// DALI: Betriebsart Sperre über festverdrahteten Eingang
+  ///
+  /// In de, this message translates to:
+  /// **'über Eingang gesperrt'**
+  String get daliModeHardwiredInhibit;
+
+  /// DALI: Betriebsart Ruhebetrieb (Rest Mode)
+  ///
+  /// In de, this message translates to:
+  /// **'Ruhebetrieb'**
+  String get daliModeRest;
+
+  /// DALI: Betriebsart Notbetrieb
+  ///
+  /// In de, this message translates to:
+  /// **'Notbetrieb'**
+  String get daliModeEmergency;
+
+  /// DALI: Betriebsart verlängerter Notbetrieb
+  ///
+  /// In de, this message translates to:
+  /// **'verlängerter Notbetrieb'**
+  String get daliModeExtendedEmergency;
+
+  /// DALI: Betriebsart Funktionstest läuft
+  ///
+  /// In de, this message translates to:
+  /// **'Funktionstest läuft'**
+  String get daliModeFunctionTest;
+
+  /// DALI: Betriebsart Dauertest läuft
+  ///
+  /// In de, this message translates to:
+  /// **'Dauertest läuft'**
+  String get daliModeDurationTest;
+
+  /// DALI: Betriebsart Teil-Dauertest läuft
+  ///
+  /// In de, this message translates to:
+  /// **'Teil-Dauertest läuft'**
+  String get daliModePartialTest;
+
+  /// DALI: Testart Funktionstest
+  ///
+  /// In de, this message translates to:
+  /// **'Funktionstest'**
+  String get daliTestFunction;
+
+  /// DALI: Testart Dauertest
+  ///
+  /// In de, this message translates to:
+  /// **'Dauertest'**
+  String get daliTestDuration;
+
+  /// DALI: Testart Teil-Dauertest
+  ///
+  /// In de, this message translates to:
+  /// **'Teil-Dauertest'**
+  String get daliTestPartial;
+
+  /// DALI: Testergebnis bestanden
+  ///
+  /// In de, this message translates to:
+  /// **'bestanden'**
+  String get daliOutcomePassed;
+
+  /// DALI: Testergebnis bestanden, aber nach der zulässigen Verzögerung
+  ///
+  /// In de, this message translates to:
+  /// **'bestanden (verspätet)'**
+  String get daliOutcomePassedLate;
+
+  /// DALI: Testergebnis durchgefallen
+  ///
+  /// In de, this message translates to:
+  /// **'durchgefallen'**
+  String get daliOutcomeFailed;
+
+  /// DALI: Testergebnis durchgefallen und verspätet
+  ///
+  /// In de, this message translates to:
+  /// **'durchgefallen (verspätet)'**
+  String get daliOutcomeFailedLate;
+
+  /// DALI: Test von Hand abgebrochen
+  ///
+  /// In de, this message translates to:
+  /// **'abgebrochen'**
+  String get daliOutcomeStopped;
+
+  /// DALI: Testergebnis-Telegramm ohne bekanntes Ergebnis
+  ///
+  /// In de, this message translates to:
+  /// **'kein Testergebnis'**
+  String get daliNoTestResult;
+
+  /// DALI: Test automatisch gestartet
+  ///
+  /// In de, this message translates to:
+  /// **'automatisch'**
+  String get daliStartAutomatic;
+
+  /// DALI: Test vom Gateway gestartet
+  ///
+  /// In de, this message translates to:
+  /// **'vom Gateway'**
+  String get daliStartGateway;
+
+  /// DALI: Grund, Test nach der zulässigen Verzögerung
+  ///
+  /// In de, this message translates to:
+  /// **'verspätet'**
+  String get daliReasonLate;
+
+  /// DALI: Grund Akku
+  ///
+  /// In de, this message translates to:
+  /// **'Akku'**
+  String get daliReasonBattery;
+
+  /// DALI: Grund Lampe
+  ///
+  /// In de, this message translates to:
+  /// **'Lampe'**
+  String get daliReasonLamp;
+
+  /// DALI: Grund Dauer zu kurz
+  ///
+  /// In de, this message translates to:
+  /// **'Dauer zu kurz'**
+  String get daliReasonDuration;
+
+  /// DALI: Dauer in Minuten
+  ///
+  /// In de, this message translates to:
+  /// **'{minutes} min'**
+  String daliMinutes(int minutes);
+
+  /// DALI: größter meldbarer Wert der Entladedauer
+  ///
+  /// In de, this message translates to:
+  /// **'510 min oder länger'**
+  String get daliMinutesMax;
+
+  /// DALI: Wert passt nicht, falsche Länge
+  ///
+  /// In de, this message translates to:
+  /// **'DPT {dpt} erwartet {expected} Byte, empfangen {actual}.'**
+  String daliMismatchLength(String dpt, int expected, int actual);
+
+  /// DALI: Wert passt nicht, reservierte Werte
+  ///
+  /// In de, this message translates to:
+  /// **'Der Wert enthält für DPT {dpt} reservierte Bits oder Werte.'**
+  String daliMismatchReserved(String dpt);
+
+  /// DALI: Hinweis zu einem Wert, der nicht zum Typ passt
+  ///
+  /// In de, this message translates to:
+  /// **'Busclear zeigt darum den Rohwert. Gehört das Objekt zu einem herstellereigenen Format, hilft ein Auszug im Issue auf GitHub.'**
+  String get daliMismatchHint;
+
+  /// DALI-Details: Knopf öffnet die Beleuchtungs-Ansicht bei der Leuchte
+  ///
+  /// In de, this message translates to:
+  /// **'Zur Leuchte'**
+  String get daliOpenLuminaire;
+
+  /// DALI-Details: Knopf öffnet die Beleuchtungs-Ansicht
+  ///
+  /// In de, this message translates to:
+  /// **'Zur Beleuchtung'**
+  String get daliOpenView;
+
+  /// DALI: seit wie vielen Tagen ein Fehler ansteht
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{seit 1 Tag} other{seit {count} Tagen}}'**
+  String daliSinceDays(int count);
+
+  /// DALI: seit wie vielen Stunden
+  ///
+  /// In de, this message translates to:
+  /// **'seit {count} Std.'**
+  String daliSinceHours(int count);
+
+  /// DALI: seit wie vielen Minuten
+  ///
+  /// In de, this message translates to:
+  /// **'seit {count} Min.'**
+  String daliSinceMinutes(int count);
+
+  /// DALI: Fehler seit weniger als einer Minute
+  ///
+  /// In de, this message translates to:
+  /// **'gerade eben'**
+  String get daliSinceNow;
+
+  /// DALI: Testergebnis von heute
+  ///
+  /// In de, this message translates to:
+  /// **'heute'**
+  String get daliAgoToday;
+
+  /// DALI: Testergebnis vor Tagen
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{vor 1 Tag} other{vor {count} Tagen}}'**
+  String daliAgoDays(int count);
+
+  /// DALI: Testergebnis vor Monaten
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{vor 1 Monat} other{vor {count} Monaten}}'**
+  String daliAgoMonths(int count);
+
+  /// DALI-Mitteilung: Titel bei einem Fehler, z. B. Lampenfehler: Flur EG Leuchte 2
+  ///
+  /// In de, this message translates to:
+  /// **'{fault}: {name}'**
+  String daliNotifyFault(String fault, String name);
+
+  /// DALI-Mitteilung: Titel, wenn der Fehler zurückgenommen wurde
+  ///
+  /// In de, this message translates to:
+  /// **'Wieder in Ordnung: {name}'**
+  String daliNotifyOk(String name);
+
+  /// Gesundheit Beleuchtung: Lampenfehler hinter einem Gateway
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Leuchte meldet Lampenfehler} other{{count} Leuchten melden Lampenfehler}}'**
+  String daliHealthLampFault(int count);
+
+  /// Gesundheit Beleuchtung: EVG- oder Konverterfehler hinter einem Gateway
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 EVG meldet einen Fehler} other{{count} EVG melden Fehler}}'**
+  String daliHealthGearFault(int count);
+
+  /// Gesundheit Beleuchtung: Gateway sendet nicht mehr
+  ///
+  /// In de, this message translates to:
+  /// **'Gateway hat sich seit {when} nicht gemeldet'**
+  String daliHealthSilent(String when);
+
+  /// Gesundheit Beleuchtung: Notleuchten ohne Testergebnis im Prüfabstand
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Notleuchte überfällig} other{{count} Notleuchten überfällig}}'**
+  String daliHealthTestOverdue(int count);
+
+  /// Gesundheit Beleuchtung: Notleuchten mit durchgefallenem Test
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Notleuchte mit durchgefallenem Test} other{{count} Notleuchten mit durchgefallenem Test}}'**
+  String daliHealthTestFailed(int count);
+
+  /// Gesundheit: Bereich Beleuchtung (DALI)
+  ///
+  /// In de, this message translates to:
+  /// **'Beleuchtung'**
+  String get daliHealthArea;
+
+  /// Wochenbericht: Beleuchtungs-Befund mit Gateway
+  ///
+  /// In de, this message translates to:
+  /// **'{finding} ({gateway})'**
+  String daliPlainFinding(String finding, String gateway);
+
+  /// DALI: leerer Zustand der Ansicht
+  ///
+  /// In de, this message translates to:
+  /// **'Kein DALI-Gateway erkannt.'**
+  String get daliEmptyTitle;
+
+  /// DALI: leerer Zustand, was zu tun ist
+  ///
+  /// In de, this message translates to:
+  /// **'Importiere dein ETS-Projekt oder lass die App mithören, während das Gateway Status sendet. Ohne Projekt wählst du in den Details der Diagnose-Adresse den Typ „DALI-Diagnose“.'**
+  String get daliEmptyDetail;
+
+  /// DALI: Knopf ETS-Projekt importieren
+  ///
+  /// In de, this message translates to:
+  /// **'ETS-Projekt'**
+  String get daliEmptyProject;
+
+  /// DALI: Knopf Anlernen durch Mithören
+  ///
+  /// In de, this message translates to:
+  /// **'Mithören'**
+  String get daliEmptyListen;
+
+  /// DALI: Anzahl Leuchten eines Gateways
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Leuchte} other{{count} Leuchten}}'**
+  String daliLuminaires(int count);
+
+  /// DALI: Zeile, die die fehlerfreien Leuchten aufklappt
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Leuchte ohne Fehler} other{{count} Leuchten ohne Fehler}}'**
+  String daliOtherLuminaires(int count);
+
+  /// DALI: letzte Meldung des Gateways
+  ///
+  /// In de, this message translates to:
+  /// **'zuletzt {when}'**
+  String daliLastAt(String when);
+
+  /// DALI: letzte Meldung einer Leuchte
+  ///
+  /// In de, this message translates to:
+  /// **'Letzte Meldung {when}'**
+  String daliLastReport(String when);
+
+  /// DALI: Kennzeichen Anzahl fehlerhafter Leuchten
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Fehler} other{{count} Fehler}}'**
+  String daliFaultCount(int count);
+
+  /// DALI: Hinweis auf ein ungeprüftes Herstellerprofil
+  ///
+  /// In de, this message translates to:
+  /// **'Profil {name}: aus der Herstellerdokumentation, noch nicht an echten Telegrammen geprüft'**
+  String daliProfileDocumented(String name);
+
+  /// DALI: Hinweis auf ein geprüftes Herstellerprofil
+  ///
+  /// In de, this message translates to:
+  /// **'Profil {name}'**
+  String daliProfileVerified(String name);
+
+  /// DALI: Gateway erkannt, aber noch nichts empfangen
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Meldung empfangen.'**
+  String get daliNoReportYet;
+
+  /// DALI: Knopf liest die Diagnose-Adressen
+  ///
+  /// In de, this message translates to:
+  /// **'Diagnose jetzt lesen'**
+  String get daliReadNow;
+
+  /// DALI: Hinweis zum Lesen der Diagnose
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{Liest 1 Diagnose-Adresse.} other{Liest {count} Diagnose-Adressen, 5 pro Sekunde.}} Das sendet Leseanforderungen auf den Bus.'**
+  String daliReadHint(int count);
+
+  /// DALI: Lesen ist im Nur-lesen-Modus gesperrt
+  ///
+  /// In de, this message translates to:
+  /// **'Im Nur-lesen-Modus des Servers nicht möglich.'**
+  String get daliReadOnlyHint;
+
+  /// DALI: Fortschritt beim Lesen
+  ///
+  /// In de, this message translates to:
+  /// **'Liest {sent} von {total}'**
+  String daliReading(int sent, int total);
+
+  /// DALI: Ergebnis des Lesens
+  ///
+  /// In de, this message translates to:
+  /// **'{answered} von {total} Adressen haben geantwortet'**
+  String daliReadDone(int answered, int total);
+
+  /// DALI: Überschrift Gruppen
+  ///
+  /// In de, this message translates to:
+  /// **'Gruppen'**
+  String get daliGroups;
+
+  /// DALI: keine Gruppen bekannt
+  ///
+  /// In de, this message translates to:
+  /// **'Das Projekt nennt keine DALI-Gruppen dieses Gateways.'**
+  String get daliNoGroups;
+
+  /// DALI: Leuchten einer Gruppe ohne Fehler
+  ///
+  /// In de, this message translates to:
+  /// **'{ok} von {total} in Ordnung'**
+  String daliGroupOk(int ok, int total);
+
+  /// DALI: Gruppe ohne eingetragene Leuchten
+  ///
+  /// In de, this message translates to:
+  /// **'keine Leuchten zugeordnet'**
+  String get daliGroupNoMembers;
+
+  /// DALI: Gruppe umbenennen
+  ///
+  /// In de, this message translates to:
+  /// **'Namen ändern'**
+  String get daliRenameGroup;
+
+  /// DALI: Hinweis unter den Gruppen
+  ///
+  /// In de, this message translates to:
+  /// **'Namen, Räume und Gruppen der Leuchten meldet das Gateway nicht auf KNX. Fehlende trägst du hier ein.'**
+  String get daliNamesHint;
+
+  /// DALI: Überschrift des Rasters
+  ///
+  /// In de, this message translates to:
+  /// **'Kurzadressen 0 bis 63'**
+  String get daliGridTitle;
+
+  /// DALI: belegte Kurzadressen
+  ///
+  /// In de, this message translates to:
+  /// **'{count} belegt'**
+  String daliGridUsed(int count);
+
+  /// DALI: Kurzadresse einer Zelle im Raster
+  ///
+  /// In de, this message translates to:
+  /// **'Adresse {address}'**
+  String daliCellAddress(int address);
+
+  /// DALI: freie Kurzadresse (Screenreader)
+  ///
+  /// In de, this message translates to:
+  /// **'Adresse {address}, frei'**
+  String daliCellFree(int address);
+
+  /// DALI: Kurzadresse, abgekürzt
+  ///
+  /// In de, this message translates to:
+  /// **'Adr. {address}'**
+  String daliAddressShort(int address);
+
+  /// DALI: Konverter, deren Objekte keine Kurzadresse nennen
+  ///
+  /// In de, this message translates to:
+  /// **'Notleuchten ohne Kurzadresse'**
+  String get daliUnaddressed;
+
+  /// DALI: Hinweis im leeren Detailbereich
+  ///
+  /// In de, this message translates to:
+  /// **'Tippe eine Adresse an, um Namen, Raum, Gruppen und Verlauf der Leuchte zu sehen.'**
+  String get daliSelectHint;
+
+  /// DALI: Raum einer Leuchte
+  ///
+  /// In de, this message translates to:
+  /// **'Raum {room}'**
+  String daliRoomIs(String room);
+
+  /// DALI: Verlauf der Meldungen einer Leuchte
+  ///
+  /// In de, this message translates to:
+  /// **'Verlauf'**
+  String get daliHistory;
+
+  /// DALI: Betriebsstunden einer Leuchte
+  ///
+  /// In de, this message translates to:
+  /// **'Betriebsstunden'**
+  String get daliBurnHours;
+
+  /// DALI: Stunden
+  ///
+  /// In de, this message translates to:
+  /// **'{count} h'**
+  String daliHours(int count);
+
+  /// DALI: Leuchte bearbeiten (Name, Raum, Gruppen)
+  ///
+  /// In de, this message translates to:
+  /// **'Namen ändern'**
+  String get daliEdit;
+
+  /// DALI: Wächter nur für diese Leuchte anlegen
+  ///
+  /// In de, this message translates to:
+  /// **'Nur diese Leuchte melden'**
+  String get daliWatchThis;
+
+  /// DALI: Feld Name
+  ///
+  /// In de, this message translates to:
+  /// **'Name'**
+  String get daliFieldName;
+
+  /// DALI: Feld Raum
+  ///
+  /// In de, this message translates to:
+  /// **'Raum'**
+  String get daliFieldRoom;
+
+  /// DALI: Feld Gruppen einer Leuchte
+  ///
+  /// In de, this message translates to:
+  /// **'DALI-Gruppen'**
+  String get daliFieldGroups;
+
+  /// DALI: Hinweis zum Feld Gruppen
+  ///
+  /// In de, this message translates to:
+  /// **'Wie im Werkzeug des Gateways vergeben.'**
+  String get daliFieldGroupsHint;
+
+  /// DALI: Einstellungen der Ansicht
+  ///
+  /// In de, this message translates to:
+  /// **'Einstellungen'**
+  String get daliSettings;
+
+  /// DALI: Schalter zyklisches Lesen
+  ///
+  /// In de, this message translates to:
+  /// **'Diagnose regelmäßig lesen'**
+  String get daliPoll;
+
+  /// DALI: Erklärung zum zyklischen Lesen
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =0{Für Gateways, die Fehler nur auf Anfrage melden. Das Projekt nennt keine lesbare Diagnose-Adresse.} =1{Für Gateways, die Fehler nur auf Anfrage melden. Sendet 1 Leseanforderung je Runde, solange die App verbunden ist.} other{Für Gateways, die Fehler nur auf Anfrage melden. Sendet {count} Leseanforderungen je Runde, solange die App verbunden ist.}}'**
+  String daliPollHint(int count);
+
+  /// DALI: Abstand des zyklischen Lesens
+  ///
+  /// In de, this message translates to:
+  /// **'Abstand'**
+  String get daliPollEvery;
+
+  /// DALI: Überschrift Prüfabstände des Prüfbuchs
+  ///
+  /// In de, this message translates to:
+  /// **'Prüfabstände'**
+  String get daliIntervals;
+
+  /// DALI: Prüfabstand Funktionstest
+  ///
+  /// In de, this message translates to:
+  /// **'Funktionstest alle'**
+  String get daliIntervalFunction;
+
+  /// DALI: Prüfabstand Dauertest
+  ///
+  /// In de, this message translates to:
+  /// **'Dauertest alle'**
+  String get daliIntervalDuration;
+
+  /// DALI: Abstand in Tagen
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Tag} other{{count} Tage}}'**
+  String daliDays(int count);
+
+  /// DALI: Abstand oder Zeitraum in Monaten
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Monat} other{{count} Monate}}'**
+  String daliMonths(int count);
+
+  /// DALI: Abstand in Jahren
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Jahr} other{{count} Jahre}}'**
+  String daliYears(int count);
+
+  /// DALI: einmal am Tag lesen
+  ///
+  /// In de, this message translates to:
+  /// **'täglich'**
+  String get daliDaily;
+
+  /// DALI: Abstand des Lesens in Stunden
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{stündlich} other{alle {count} Std.}}'**
+  String daliHoursChoice(int count);
+
+  /// DALI: Abstand des Lesens in Minuten
+  ///
+  /// In de, this message translates to:
+  /// **'alle {count} Min.'**
+  String daliMinutesChoice(int count);
+
+  /// DALI: Wächter-Vorlage
+  ///
+  /// In de, this message translates to:
+  /// **'DALI-Fehler melden'**
+  String get daliWatchTemplate;
+
+  /// DALI-Wächter: alle Leuchten des Gateways
+  ///
+  /// In de, this message translates to:
+  /// **'Alle'**
+  String get daliWatchAll;
+
+  /// DALI-Wächter: nur eine Gruppe
+  ///
+  /// In de, this message translates to:
+  /// **'Gruppe'**
+  String get daliWatchGroup;
+
+  /// DALI-Wächter: nur eine Leuchte
+  ///
+  /// In de, this message translates to:
+  /// **'Leuchte'**
+  String get daliWatchGear;
+
+  /// DALI-Wächter: Erklärung im Dialog
+  ///
+  /// In de, this message translates to:
+  /// **'Der Wächter meldet jede Fehlermeldung des Gateways, mit Ton, wenn du willst. Den Wechsel in den Fehler und zurück meldet Busclear zusätzlich als Alarm-Mitteilung.'**
+  String get daliWatchHint;
+
+  /// DALI-Wächter: keine Regel möglich
+  ///
+  /// In de, this message translates to:
+  /// **'Dafür gibt es keine passende Diagnose-Adresse: DPT 238.600 kennt keine Gruppen, und ohne Diagnose-Adresse meldet das Gateway nichts je Leuchte.'**
+  String get daliWatchNone;
+
+  /// No description provided for @daliWatchUntrusted.
+  ///
+  /// In de, this message translates to:
+  /// **'Wächter gibt es erst für ein übernommenes Gateway. Ein beim Mithören gefundenes zählt noch nicht, weil sich jedes Gerät am Bus als Gateway ausgeben kann.'**
+  String get daliWatchUntrusted;
+
+  /// DALI-Wächter: Knopf
+  ///
+  /// In de, this message translates to:
+  /// **'Wächter anlegen'**
+  String get daliWatchCreate;
+
+  /// DALI-Wächter: Beschreibung der Regel
+  ///
+  /// In de, this message translates to:
+  /// **'DALI-Fehler · {scope}'**
+  String daliWatchRuleTitle(String scope);
+
+  /// DALI: Titel des Prüfbuchs
+  ///
+  /// In de, this message translates to:
+  /// **'Notlicht-Prüfbuch'**
+  String get daliLogTitle;
+
+  /// DALI-Prüfbuch: Erklärung
+  ///
+  /// In de, this message translates to:
+  /// **'Sammelt, was selbsttestende Notleuchten über ihr Gateway melden: Funktions- und Dauertests je Leuchte. Auf Add-on und Box schreibt der Server mit, auch nachts; sonst die App, solange sie verbunden ist.'**
+  String get daliLogExplain;
+
+  /// DALI-Prüfbuch: Grenze des Prüfbuchs
+  ///
+  /// In de, this message translates to:
+  /// **'Das Prüfbuch dokumentiert, was die Leuchten melden. Ob es eine vorgeschriebene Prüfung ersetzt, entscheiden Betreiber oder Prüfer.'**
+  String get daliLogLimit;
+
+  /// DALI-Prüfbuch: leer
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Testergebnisse.'**
+  String get daliLogEmpty;
+
+  /// DALI-Prüfbuch: leer, Erklärung
+  ///
+  /// In de, this message translates to:
+  /// **'Ergebnisse erscheinen, sobald ein Gateway das Testergebnis einer Notleuchte sendet (DPT 245.600).'**
+  String get daliLogEmptyDetail;
+
+  /// DALI-Prüfbuch: Filter ohne Treffer
+  ///
+  /// In de, this message translates to:
+  /// **'Keine Leuchte in dieser Auswahl.'**
+  String get daliLogNothingHere;
+
+  /// DALI-Prüfbuch: Leuchte ohne Ergebnis
+  ///
+  /// In de, this message translates to:
+  /// **'noch kein Ergebnis'**
+  String get daliLogNoResult;
+
+  /// DALI-Prüfbuch: Überschrift aller Einträge
+  ///
+  /// In de, this message translates to:
+  /// **'Einträge'**
+  String get daliLogEntries;
+
+  /// DALI-Prüfbuch: Hinweis am ersten Eintrag einer Leuchte
+  ///
+  /// In de, this message translates to:
+  /// **'erstes gesehenes Ergebnis, der Test kann älter sein'**
+  String get daliLogFirstSeen;
+
+  /// DALI-Prüfbuch: Lücke in der Aufzeichnung
+  ///
+  /// In de, this message translates to:
+  /// **'Zwischen {from} und {to} gibt es keine Aufzeichnung, Ergebnisse aus dieser Zeit fehlen.'**
+  String daliLogGap(String from, String to);
+
+  /// DALI-Prüfbuch: weitere Lücken
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{und 1 weitere Lücke} other{und {count} weitere Lücken}}'**
+  String daliLogMoreGaps(int count);
+
+  /// DALI-Prüfbuch: Hinweis ohne Tagesverlauf
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne Tagesverlauf zeichnet die App nur auf, solange sie verbunden ist. Tests, die in der Zwischenzeit liefen, können fehlen.'**
+  String get daliLogNoHistory;
+
+  /// DALI-Prüfbuch: Aktion Nachbau
+  ///
+  /// In de, this message translates to:
+  /// **'Aus dem Tagesverlauf nachbauen'**
+  String get daliLogRebuild;
+
+  /// DALI-Prüfbuch: Ergebnis des Nachbaus
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =0{Keine neuen Einträge im Tagesverlauf gefunden} =1{1 Eintrag aus dem Tagesverlauf ergänzt} other{{count} Einträge aus dem Tagesverlauf ergänzt}}'**
+  String daliLogRebuilt(int count);
+
+  /// DALI-Prüfbuch: Filter alle
+  ///
+  /// In de, this message translates to:
+  /// **'Alle'**
+  String get daliFilterAll;
+
+  /// DALI-Prüfbuch: Filter offen (überfällig, durchgefallen, ohne Ergebnis)
+  ///
+  /// In de, this message translates to:
+  /// **'Offen'**
+  String get daliFilterOpen;
+
+  /// DALI-Prüfbuch: Filter durchgefallen
+  ///
+  /// In de, this message translates to:
+  /// **'Durchgefallen'**
+  String get daliFilterFailed;
+
+  /// DALI-Prüfbuch: Kennzeichen durchgefallen
+  ///
+  /// In de, this message translates to:
+  /// **'durchgefallen'**
+  String get daliTestFailedChip;
+
+  /// DALI-Prüfbuch: Kennzeichen überfällig
+  ///
+  /// In de, this message translates to:
+  /// **'überfällig'**
+  String get daliOverdueChip;
+
+  /// DALI-Prüfbuch: Knopf PDF exportieren
+  ///
+  /// In de, this message translates to:
+  /// **'PDF'**
+  String get daliExportPdf;
+
+  /// DALI-Prüfbuch: Knopf CSV exportieren
+  ///
+  /// In de, this message translates to:
+  /// **'CSV'**
+  String get daliExportCsv;
+
+  /// DALI-Prüfbuch: Zeitraum ohne Grenze
+  ///
+  /// In de, this message translates to:
+  /// **'Alles'**
+  String get daliPeriodAll;
+
+  /// DALI-Prüfbuch: Zeitraum ohne Anfang
+  ///
+  /// In de, this message translates to:
+  /// **'bis {date}'**
+  String daliPeriodUntil(String date);
+
+  /// DALI-Prüfbuch PDF: Feld Prüfer
+  ///
+  /// In de, this message translates to:
+  /// **'Prüfer'**
+  String get daliInspector;
+
+  /// DALI-Prüfbuch PDF: Feld Unterschrift
+  ///
+  /// In de, this message translates to:
+  /// **'Datum, Unterschrift'**
+  String get daliSignature;
+
+  /// DALI-Prüfbuch: Spalte Zeit
+  ///
+  /// In de, this message translates to:
+  /// **'Zeit'**
+  String get daliColTime;
+
+  /// DALI-Prüfbuch: Spalte Leuchte
+  ///
+  /// In de, this message translates to:
+  /// **'Leuchte'**
+  String get daliColLuminaire;
+
+  /// DALI-Prüfbuch: Spalte Gruppenadresse
+  ///
+  /// In de, this message translates to:
+  /// **'Gruppenadresse'**
+  String get daliColGroupAddress;
+
+  /// DALI-Prüfbuch: Spalte Testart
+  ///
+  /// In de, this message translates to:
+  /// **'Test'**
+  String get daliColTest;
+
+  /// DALI-Prüfbuch: Spalte Startart
+  ///
+  /// In de, this message translates to:
+  /// **'Start'**
+  String get daliColStart;
+
+  /// DALI-Prüfbuch: Spalte Ergebnis
+  ///
+  /// In de, this message translates to:
+  /// **'Ergebnis'**
+  String get daliColResult;
+
+  /// DALI-Prüfbuch: Spalte Gründe
+  ///
+  /// In de, this message translates to:
+  /// **'Gründe'**
+  String get daliColReasons;
+
+  /// DALI-Prüfbuch: Spalte gemessene Dauer
+  ///
+  /// In de, this message translates to:
+  /// **'Dauer (min)'**
+  String get daliColMinutes;
+
+  /// DALI-Prüfbuch: Spalte Akkuladung
+  ///
+  /// In de, this message translates to:
+  /// **'Akkuladung'**
+  String get daliColCharge;
+
+  /// DALI-Inbetriebnahme: Titel
+  ///
+  /// In de, this message translates to:
+  /// **'DALI-Gruppen prüfen'**
+  String get daliCommTitle;
+
+  /// DALI-Inbetriebnahme: Erklärung
+  ///
+  /// In de, this message translates to:
+  /// **'Schalte eine Gruppe nach der anderen und sieh nach, welche Leuchten reagieren. Kommt die Rückmeldung von der Status-Adresse einer anderen Gruppe, passt die Gruppenzuordnung im Gateway nicht zum Projekt. Die Ergebnisse stehen in der Inbetriebnahme-Checkliste und ihrem Protokoll.'**
+  String get daliCommExplain;
+
+  /// DALI-Inbetriebnahme: leer
+  ///
+  /// In de, this message translates to:
+  /// **'Keine DALI-Gruppe zum Schalten.'**
+  String get daliCommEmpty;
+
+  /// DALI-Inbetriebnahme: leer, Erklärung
+  ///
+  /// In de, this message translates to:
+  /// **'Das Projekt nennt für keine Gruppe ein Schaltobjekt des Gateways.'**
+  String get daliCommEmptyDetail;
+
+  /// DALI-Inbetriebnahme: Nur-lesen-Modus
+  ///
+  /// In de, this message translates to:
+  /// **'Der Server läuft im Nur-lesen-Modus: Schalten ist hier nicht möglich.'**
+  String get daliCommReadOnly;
+
+  /// DALI-Inbetriebnahme: Knopf Gruppe schalten
+  ///
+  /// In de, this message translates to:
+  /// **'Schalten'**
+  String get daliCommSwitch;
+
+  /// DALI-Inbetriebnahme: Gruppe noch nicht geschaltet, mit Schaltadresse
+  ///
+  /// In de, this message translates to:
+  /// **'noch nicht geschaltet · {address}'**
+  String daliCommNotSwitched(String address);
+
+  /// DALI-Inbetriebnahme: Gruppe geschaltet, mit Wert
+  ///
+  /// In de, this message translates to:
+  /// **'geschaltet · {value}'**
+  String daliCommSwitched(String value);
+
+  /// DALI-Inbetriebnahme: wartet auf Rückmeldung
+  ///
+  /// In de, this message translates to:
+  /// **'wartet auf Rückmeldung …'**
+  String get daliCommWaiting;
+
+  /// DALI-Inbetriebnahme: Rückmeldung mit Wert
+  ///
+  /// In de, this message translates to:
+  /// **'Rückmeldung {value}'**
+  String daliCommFeedback(String value);
+
+  /// DALI-Inbetriebnahme: keine Rückmeldung vom Gateway
+  ///
+  /// In de, this message translates to:
+  /// **'keine Rückmeldung'**
+  String get daliCommNoFeedback;
+
+  /// DALI-Inbetriebnahme: Gruppe ohne Statusobjekt
+  ///
+  /// In de, this message translates to:
+  /// **'kein Statusobjekt im Projekt'**
+  String get daliCommNoStatusObject;
+
+  /// DALI-Inbetriebnahme: falsche Gruppenzuordnung
+  ///
+  /// In de, this message translates to:
+  /// **'Rückmeldung kam von Gruppe {from}, geschaltet wurde Gruppe {switched}.'**
+  String daliCommForeign(int from, int switched);
+
+  /// DALI-Inbetriebnahme: Bewertung in Ordnung
+  ///
+  /// In de, this message translates to:
+  /// **'OK'**
+  String get daliCommOk;
+
+  /// DALI-Inbetriebnahme: Bewertung falsche Leuchte
+  ///
+  /// In de, this message translates to:
+  /// **'Falsche Leuchte'**
+  String get daliCommWrong;
+
+  /// DALI-Inbetriebnahme: Bewertung keine Reaktion
+  ///
+  /// In de, this message translates to:
+  /// **'Keine Reaktion'**
+  String get daliCommNoReaction;
+
+  /// DALI-Inbetriebnahme: Gruppe bewertet
+  ///
+  /// In de, this message translates to:
+  /// **'als in Ordnung bewertet'**
+  String get daliCommRatedOk;
+
+  /// DALI-Inbetriebnahme: Gruppe als Problem bewertet
+  ///
+  /// In de, this message translates to:
+  /// **'als Problem bewertet'**
+  String get daliCommRatedIssue;
+
+  /// Inbetriebnahme: Menüeintrag zur DALI-Gruppenprüfung
+  ///
+  /// In de, this message translates to:
+  /// **'DALI-Gruppen'**
+  String get daliCommOpen;
+
+  /// Servicebericht: offener DALI-Fehler einer Leuchte
+  ///
+  /// In de, this message translates to:
+  /// **'{fault}: {name}'**
+  String daliServiceFault(String fault, String name);
+
+  /// Servicebericht: Einzelheiten zu einem DALI-Fehler
+  ///
+  /// In de, this message translates to:
+  /// **'{address} · Gateway {gateway} · seit {since}'**
+  String daliServiceFaultDetail(String address, String gateway, String since);
+
+  /// Servicebericht: durchgefallener Notlichttest
+  ///
+  /// In de, this message translates to:
+  /// **'Notlichttest durchgefallen: {name}'**
+  String daliServiceTestFailed(String name);
+
+  /// Servicebericht: Einzelheiten zu einem durchgefallenen Test
+  ///
+  /// In de, this message translates to:
+  /// **'{test} am {date}'**
+  String daliServiceTestDetail(String test, String date);
+
+  /// Servicebericht: überfälliger Notlichttest
+  ///
+  /// In de, this message translates to:
+  /// **'Notlichttest überfällig: {name}'**
+  String daliServiceOverdue(String name);
+
+  /// Demo-Haus: Name des DALI-Gateways
+  ///
+  /// In de, this message translates to:
+  /// **'DALI-Gateway'**
+  String get daliDemoGateway;
+
+  /// DALI: Zustand einer Notleuchte, deren letzter Test durchgefallen ist
+  ///
+  /// In de, this message translates to:
+  /// **'Test durchgefallen'**
+  String get daliStateTestFailed;
+
+  /// DALI: Zustandskasten einer Notleuchte mit durchgefallenem Test
+  ///
+  /// In de, this message translates to:
+  /// **'{test} durchgefallen · {ago}'**
+  String daliTestFailedAgo(String test, String ago);
+
+  /// DALI: Gruppe mit durchgefallenen Notlichttests
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Test durchgefallen} other{{count} Tests durchgefallen}}'**
+  String daliTestsFailed(int count);
+
+  /// DALI: erstes gesehenes Testergebnis, der Test kann älter sein
+  ///
+  /// In de, this message translates to:
+  /// **'Alter unbekannt'**
+  String get daliAgeUnknown;
+
+  /// DALI-Prüfbuch: Kennzeichen eines erstmals gesehenen Ergebnisses
+  ///
+  /// In de, this message translates to:
+  /// **'erstmals gesehen, Testzeitpunkt unbekannt'**
+  String get daliFirstSeen;
+
+  /// DALI: Legende freie Kurzadresse
+  ///
+  /// In de, this message translates to:
+  /// **'frei'**
+  String get daliFree;
+
+  /// DALI: Zeitpunkt gestern
+  ///
+  /// In de, this message translates to:
+  /// **'gestern, {time}'**
+  String daliYesterdayAt(String time);
+
+  /// DALI: Zeitpunkt in der letzten Woche
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{vor 1 Tag, {time}} other{vor {count} Tagen, {time}}}'**
+  String daliDaysAgoAt(int count, String time);
+
+  /// DALI: Objekttext aus dem Projekt bei einer Notleuchte
+  ///
+  /// In de, this message translates to:
+  /// **'ETS-Objekt: {text}'**
+  String daliObjectText(String text);
+
+  /// DALI: Kennzeichen Gateway ohne Meldung
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{still seit 1 Tag} other{still seit {count} Tagen}}'**
+  String daliSilentFor(int count);
+
+  /// DALI: zyklisches Lesen ist eingeschaltet
+  ///
+  /// In de, this message translates to:
+  /// **'Liest die Diagnose {interval}'**
+  String daliPollActive(String interval);
+
+  /// DALI: Hinweis unter dem Knopf Diagnose lesen
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{Liest 1 Adresse und sendet dafür eine Leseanforderung auf den Bus.} other{Liest {count} Adressen und sendet dafür Leseanforderungen auf den Bus.}}'**
+  String daliReadSends(int count);
+
+  /// DALI: Gateway aufklappen (Screenreader)
+  ///
+  /// In de, this message translates to:
+  /// **'aufklappen'**
+  String get daliExpand;
+
+  /// DALI: Gateway zuklappen (Screenreader)
+  ///
+  /// In de, this message translates to:
+  /// **'zuklappen'**
+  String get daliCollapse;
+
+  /// DALI: beim Mithören gefundenes Gateway
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{Beim Mithören gefunden, noch nicht übernommen (1 Leuchte). Seine Meldungen zählen erst nach dem Übernehmen: Jedes Gerät am Bus kann sich als Gateway ausgeben.} other{Beim Mithören gefunden, noch nicht übernommen ({count} Leuchten). Seine Meldungen zählen erst nach dem Übernehmen: Jedes Gerät am Bus kann sich als Gateway ausgeben.}}'**
+  String daliSuggestion(int count);
+
+  /// DALI: gefundenes Gateway übernehmen
+  ///
+  /// In de, this message translates to:
+  /// **'Übernehmen'**
+  String get daliConfirm;
+
+  /// DALI: gefundenes Gateway verwerfen
+  ///
+  /// In de, this message translates to:
+  /// **'Verwerfen'**
+  String get daliDismiss;
+
+  /// DALI-Mitteilung: Sammelmitteilung, wenn viele Leuchten zugleich melden
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{DALI: 1 weitere Leuchte meldet eine Änderung} other{DALI: {count} weitere Leuchten melden Fehler oder Änderungen}}'**
+  String daliNotifySummary(int count);
+
+  /// DALI-Details: Link auf das Issue für Gateway-Auszüge
+  ///
+  /// In de, this message translates to:
+  /// **'Issue #6 öffnen'**
+  String get daliIssueLink;
+
+  /// DALI-Inbetriebnahme: Gruppe einschalten
+  ///
+  /// In de, this message translates to:
+  /// **'Einschalten'**
+  String get daliCommOn;
+
+  /// DALI-Inbetriebnahme: Gruppe ausschalten
+  ///
+  /// In de, this message translates to:
+  /// **'Ausschalten'**
+  String get daliCommOff;
+
+  /// DALI-Prüfbuch: überfällig mit Bezug
+  ///
+  /// In de, this message translates to:
+  /// **'{days, plural, =0{{test} überfällig: noch kein Ergebnis} =1{{test} überfällig: kein neues Ergebnis seit 1 Tag} other{{test} überfällig: kein neues Ergebnis seit {days} Tagen}}'**
+  String daliOverdueReason(String test, int days);
+
+  /// DALI-Prüfbuch: Ergebnisse fremder Absender
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Ergebnis von einem anderen Absender als dem Gateway, zählt nicht} other{{count} Ergebnisse von einem anderen Absender als dem Gateway, zählen nicht}}'**
+  String daliForeignCount(int count);
+
+  /// DALI-Prüfbuch: Eintrag von einem anderen Absender als dem Gateway
+  ///
+  /// In de, this message translates to:
+  /// **'fremder Absender {address}'**
+  String daliForeignSender(String address);
+
+  /// DALI-Prüfbuch: Ergebnis kam gesichert an
+  ///
+  /// In de, this message translates to:
+  /// **'verschlüsselt empfangen (KNX Data Secure)'**
+  String get daliDataSecure;
+
+  /// DALI-Prüfbuch: Spalte Absender
+  ///
+  /// In de, this message translates to:
+  /// **'Absender'**
+  String get daliColSource;
+
+  /// DALI-Prüfbuch: Spalte Hinweis
+  ///
+  /// In de, this message translates to:
+  /// **'Hinweis'**
+  String get daliColNote;
+
+  /// DALI-Prüfbuch PDF: Prüfabstände
+  ///
+  /// In de, this message translates to:
+  /// **'Funktionstest {function} · Dauertest {duration}'**
+  String daliIntervalsText(String function, String duration);
+
+  /// DALI-Prüfbuch: Hinweis zur Fälschbarkeit
+  ///
+  /// In de, this message translates to:
+  /// **'Die Ergebnisse stammen aus Bustelegrammen. Ohne KNX Data Secure kann jedes Gerät am Bus sie fälschen; Ergebnisse von einem anderen Absender als dem Gateway sind gekennzeichnet und zählen nicht.'**
+  String get daliLogTrust;
+
+  /// DALI-Prüfbuch: gleiche Meldungen zählen nicht als neuer Test
+  ///
+  /// In de, this message translates to:
+  /// **'Nach einem bestandenen Test meldet ein Gateway oft dieselben Bytes wie zuvor. Busclear zählt das nur als neuen Test, wenn der Konverterstatus (DPT 244.600) den Test als laufend oder anstehend gemeldet hat; sonst erscheint die Leuchte als überfällig, obwohl sie getestet hat. Je Leuchte und Testart zählt höchstens ein Ergebnis pro Stunde.'**
+  String get daliLogRepeats;
+
+  /// DALI-Prüfbuch: Jahr unvollständig
+  ///
+  /// In de, this message translates to:
+  /// **'Prüfbuch {year} unvollständig: Die Datei hat ihre Grenze erreicht oder wurde nur zum Teil gelesen. Ungewöhnlich viele Ergebnisse deuten auf ein fehlerhaftes oder fremdes Gerät am Bus.'**
+  String daliLogLimited(String year);
+
+  /// DALI-Prüfbuch: Nachbau nicht nötig
+  ///
+  /// In de, this message translates to:
+  /// **'Das Prüfbuch führt der Server (Add-on oder Box) ohne Lücken; ein Nachbau ist nicht nötig.'**
+  String get daliLogServerKeeps;
+
+  /// DALI-Prüfbuch PDF: Fußnote zur Zeitspalte
+  ///
+  /// In de, this message translates to:
+  /// **'Zeit = Eingang der Meldung, nicht der Zeitpunkt des Tests. Ein erstmals gesehenes Ergebnis kann älter sein.'**
+  String get daliTimeFootnote;
 
   /// Verbinden: Demo-Modus mit Musterhaus starten
   ///
@@ -4363,6 +6169,12 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Die Box hat den Zugang abgelehnt. QR-Code der Box neu scannen.'**
   String get boxUnauthorized;
+
+  /// Error when pairing: the box rejected the one-time pairing code from its pairing page (wrong, already used or expired).
+  ///
+  /// In de, this message translates to:
+  /// **'Der Kopplungscode gilt nicht mehr: Er läuft nach 10 Minuten ab und gilt nur einmal. Auf der Seite der Box einen neuen QR-Code erzeugen und scannen.'**
+  String get boxCodeInvalid;
 
   /// Error: box not reachable.
   ///
@@ -5858,6 +7670,60 @@ abstract class AppLocalizations {
   /// **'Sperren'**
   String get boxDeviceRevoke;
 
+  /// No description provided for @boxClaimTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Anlage mit dieser Box verbinden?'**
+  String get boxClaimTitle;
+
+  /// No description provided for @boxClaimBody.
+  ///
+  /// In de, this message translates to:
+  /// **'„{box}“ führt eine Anlage mit der Kennung deiner Anlage „{name}“. Das kommt vor, wenn die Box beim Bauherrn steht und du die Anlage per Übergabe bekommen hast.\n\nVerbinde nur, wenn du diese Box kennst: Danach gehen Projekt, Schlüsselbund und Einstellungen dieser Anlage an die Box, und ihr Verlauf erscheint hier. Die Kennung allein beweist nichts, sie steht auch in Übergabepaketen.'**
+  String boxClaimBody(String box, String name);
+
+  /// No description provided for @boxClaimConnect.
+  ///
+  /// In de, this message translates to:
+  /// **'Verbinden'**
+  String get boxClaimConnect;
+
+  /// No description provided for @boxClaimNotNow.
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht jetzt'**
+  String get boxClaimNotNow;
+
+  /// No description provided for @boxClaimThisBox.
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Box'**
+  String get boxClaimThisBox;
+
+  /// No description provided for @boxClaimSection.
+  ///
+  /// In de, this message translates to:
+  /// **'Anlagen, die die Box kennt'**
+  String get boxClaimSection;
+
+  /// No description provided for @boxClaimSectionHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Box führt diese Anlagen, sie sind hier aber noch nicht mit ihr verbunden. Bis dahin geht nichts von ihnen an die Box.'**
+  String get boxClaimSectionHint;
+
+  /// No description provided for @boxDeviceThisApp.
+  ///
+  /// In de, this message translates to:
+  /// **'diese App, früherer Zugang'**
+  String get boxDeviceThisApp;
+
+  /// No description provided for @boxDeviceApp.
+  ///
+  /// In de, this message translates to:
+  /// **'App {key}'**
+  String boxDeviceApp(String key);
+
   /// Box settings section
   ///
   /// In de, this message translates to:
@@ -6755,7 +8621,7 @@ abstract class AppLocalizations {
   /// Tooltip Import in Aufnahmen
   ///
   /// In de, this message translates to:
-  /// **'Importieren: ETS-Telegrammdatei (.xml) oder Diagnosepaket (.zip)'**
+  /// **'Importieren: Aufnahme, Telegramm-CSV, ETS-Telegrammdatei (.xml) oder Diagnosepaket (.zip)'**
   String get diagImportHint;
 
   /// Monitor: Beschriftung vor den Chips der aktiven Filter
@@ -8208,14 +10074,7 @@ abstract class AppLocalizations {
   ///
   /// In de, this message translates to:
   /// **'{frames} Frames: {ack} ACK, {nak} NAK, {busy} BUSY, {repeated} Wiederholungen, {errors} mit Fehlern'**
-  String boxHatBusmonCounts(
-    int frames,
-    int ack,
-    int nak,
-    int busy,
-    int repeated,
-    int errors,
-  );
+  String boxHatBusmonCounts(int frames, int ack, int nak, int busy, int repeated, int errors);
 
   /// KNX HAT test: frames the module saw but did not pass on.
   ///
@@ -8246,6 +10105,408 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Transport Layer'**
   String get boxHatModeTransportLayer;
+
+  /// Box settings: title of the backup screen and its entry.
+  ///
+  /// In de, this message translates to:
+  /// **'Sicherung der Box'**
+  String get boxBackupTitle;
+
+  /// Box settings: subtitle of the backup entry.
+  ///
+  /// In de, this message translates to:
+  /// **'Alle Anlagen mit Verlauf, Projekt, Wächtern und Prüfbuch in einer Datei, und zurück auf eine neue Box.'**
+  String get boxBackupHint;
+
+  /// Box backup: introduction.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Sicherung enthält alle Anlagen der Box: Verlauf, Projekt, Einstellungen, Wächter, Prüfbuch, Hausplan und Busansicht. Box-Passwort, gekoppelte Geräte und Zertifikat sind nie darin: Auf einer neuen Box die Geräte danach neu koppeln.'**
+  String get boxBackupIntro;
+
+  /// Box backup: section and button.
+  ///
+  /// In de, this message translates to:
+  /// **'Sicherung erstellen'**
+  String get boxBackupCreate;
+
+  /// Box backup: switch.
+  ///
+  /// In de, this message translates to:
+  /// **'KNX-Secure-Schlüssel und Zugangsdaten einschließen'**
+  String get boxBackupWithKeys;
+
+  /// Box backup: hint below the switch.
+  ///
+  /// In de, this message translates to:
+  /// **'Keyring, IP-Secure-Passwörter und Zugangsdaten für Mitteilungen und Datenexport, verschlüsselt mit einem eigenen Passwort. Ohne Passwort bleiben sie draußen.'**
+  String get boxBackupWithKeysHint;
+
+  /// Box backup: password field.
+  ///
+  /// In de, this message translates to:
+  /// **'Passwort der Sicherung'**
+  String get boxBackupPassword;
+
+  /// Box backup: second password field.
+  ///
+  /// In de, this message translates to:
+  /// **'Passwort wiederholen'**
+  String get boxBackupPasswordRepeat;
+
+  /// Box backup: password too short.
+  ///
+  /// In de, this message translates to:
+  /// **'Mindestens {count} Zeichen.'**
+  String boxBackupPasswordShort(int count);
+
+  /// Box backup: passwords differ.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Passwörter stimmen nicht überein.'**
+  String get boxBackupPasswordMismatch;
+
+  /// Box backup: progress while the box derives the key.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Box bereitet die Sicherung vor …'**
+  String get boxBackupPreparing;
+
+  /// Box backup: download progress.
+  ///
+  /// In de, this message translates to:
+  /// **'Lade {size} …'**
+  String boxBackupDownloading(String size);
+
+  /// Box backup: upload progress.
+  ///
+  /// In de, this message translates to:
+  /// **'Sende {size} an die Box …'**
+  String boxBackupUploading(String size);
+
+  /// Box backup: progress while restoring.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Box wird wiederhergestellt …'**
+  String get boxBackupRestoring;
+
+  /// Box backup: saved.
+  ///
+  /// In de, this message translates to:
+  /// **'Sicherung gespeichert.'**
+  String get boxBackupSaved;
+
+  /// Box backup: saved on the desktop.
+  ///
+  /// In de, this message translates to:
+  /// **'Gespeichert unter {path}'**
+  String boxBackupSavedTo(String path);
+
+  /// Box backup: backup made without a password.
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne Schlüssel gesichert: Keyring und Zugangsdaten nach dem Wiederherstellen neu eingeben.'**
+  String get boxBackupWithheld;
+
+  /// Box backup: handling note.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Datei enthält den Verlauf im Klartext. Sicher aufbewahren.'**
+  String get boxBackupPlain;
+
+  /// Box backup: download broken off.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Sicherung kam nicht vollständig an. Bitte noch einmal versuchen.'**
+  String get boxBackupIncomplete;
+
+  /// Box backup: title of the folder dialog on the desktop.
+  ///
+  /// In de, this message translates to:
+  /// **'Ordner für die Sicherung'**
+  String get boxBackupChooseFolder;
+
+  /// Box backup: section title.
+  ///
+  /// In de, this message translates to:
+  /// **'Wiederherstellen'**
+  String get boxBackupRestore;
+
+  /// Box backup: explanation of restoring.
+  ///
+  /// In de, this message translates to:
+  /// **'Ersetzt alle Anlagen dieser Box durch die aus der Sicherung, auch auf einer frisch eingerichteten Box. Der bisherige Stand bleibt als früherer Stand auf der Box.'**
+  String get boxBackupRestoreHint;
+
+  /// Box backup: button that opens the file picker.
+  ///
+  /// In de, this message translates to:
+  /// **'Sicherung auswählen …'**
+  String get boxBackupPick;
+
+  /// Box backup: summary of the uploaded backup.
+  ///
+  /// In de, this message translates to:
+  /// **'Sicherung vom {date}: {count, plural, =1{1 Anlage} other{{count} Anlagen}}, {size}'**
+  String boxBackupSummary(String date, int count, String size);
+
+  /// Box backup: the backup has secrets.
+  ///
+  /// In de, this message translates to:
+  /// **'Enthält verschlüsselte Schlüssel und Zugangsdaten.'**
+  String get boxBackupHasKeys;
+
+  /// Box backup: the backup has no secrets.
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne Schlüssel gesichert: Keyring danach aus der ETS neu einlesen.'**
+  String get boxBackupNoKeys;
+
+  /// Box backup: button.
+  ///
+  /// In de, this message translates to:
+  /// **'Box wiederherstellen'**
+  String get boxBackupApply;
+
+  /// Box backup: confirmation title.
+  ///
+  /// In de, this message translates to:
+  /// **'Box wiederherstellen?'**
+  String get boxBackupConfirmTitle;
+
+  /// Box backup: confirmation text.
+  ///
+  /// In de, this message translates to:
+  /// **'Alle Anlagen dieser Box werden durch {count, plural, =1{die Anlage} other{die {count} Anlagen}} aus der Sicherung vom {date} ersetzt. Der bisherige Stand bleibt als früherer Stand auf der Box und lässt sich herunterladen.'**
+  String boxBackupConfirmBody(int count, String date);
+
+  /// Box backup: dialog when the backup password is missing.
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne Schlüssel wiederherstellen?'**
+  String get boxBackupWithoutKeysTitle;
+
+  /// Box backup: explanation in that dialog.
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne das Passwort der Sicherung kommen Verlauf, Projekt und Einstellungen zurück, KNX-Secure-Schlüssel und Zugangsdaten nicht. Den Keyring danach aus der ETS neu einlesen und IP-Secure-Passwörter neu eingeben.'**
+  String get boxBackupWithoutKeysBody;
+
+  /// Box backup: button in that dialog.
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne Schlüssel'**
+  String get boxBackupWithoutKeys;
+
+  /// Box backup: success.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Anlage wiederhergestellt.} other{{count} Anlagen wiederhergestellt.}} Die Box hat offene Verbindungen getrennt, der Monitor verbindet sich von selbst neu.'**
+  String boxBackupRestored(int count);
+
+  /// Box backup: restored without secrets.
+  ///
+  /// In de, this message translates to:
+  /// **'Schlüssel nicht wiederhergestellt: Keyring aus der ETS neu einlesen und IP-Secure-Passwörter neu eingeben.'**
+  String get boxBackupKeysSkipped;
+
+  /// Box backup: wrong backup password.
+  ///
+  /// In de, this message translates to:
+  /// **'Das Passwort der Sicherung stimmt nicht.'**
+  String get boxBackupWrongPassword;
+
+  /// Box backup: read-only mode.
+  ///
+  /// In de, this message translates to:
+  /// **'Nur-Lesen ist an: Wiederherstellen ist gesperrt, Sichern geht.'**
+  String get boxBackupReadOnly;
+
+  /// Box backup: not enough space.
+  ///
+  /// In de, this message translates to:
+  /// **'Auf der Box ist nicht genug Platz für diese Sicherung.'**
+  String get boxBackupNoSpace;
+
+  /// Box backup: too large.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Sicherung ist zu groß (höchstens 4 GB).'**
+  String get boxBackupTooLarge;
+
+  /// Box backup: newer format.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Sicherung stammt von einer neueren Version. Erst die Box aktualisieren.'**
+  String get boxBackupNewer;
+
+  /// Box backup: busy.
+  ///
+  /// In de, this message translates to:
+  /// **'Es läuft schon eine Sicherung.'**
+  String get boxBackupBusy;
+
+  /// Box backup: staged backup missing.
+  ///
+  /// In de, this message translates to:
+  /// **'Die hochgeladene Sicherung ist nicht mehr da. Bitte die Datei noch einmal wählen.'**
+  String get boxBackupStageGone;
+
+  /// Box backup: discard the uploaded backup.
+  ///
+  /// In de, this message translates to:
+  /// **'Verwerfen'**
+  String get boxBackupDiscard;
+
+  /// Box backup: section of states set aside by a restore.
+  ///
+  /// In de, this message translates to:
+  /// **'Frühere Stände'**
+  String get boxBackupPrevious;
+
+  /// Box backup: explanation of earlier states.
+  ///
+  /// In de, this message translates to:
+  /// **'Vor jedem Wiederherstellen legt die Box den bisherigen Stand hier ab. Löschen gibt den Platz frei.'**
+  String get boxBackupPreviousHint;
+
+  /// Box backup: no earlier states.
+  ///
+  /// In de, this message translates to:
+  /// **'Keine.'**
+  String get boxBackupPreviousNone;
+
+  /// Box backup: delete confirmation title.
+  ///
+  /// In de, this message translates to:
+  /// **'Früheren Stand löschen?'**
+  String get boxBackupPreviousDeleteTitle;
+
+  /// Box backup: delete confirmation text.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Stand vom {date} wird von der Box gelöscht. Das lässt sich nicht rückgängig machen.'**
+  String boxBackupPreviousDeleteBody(String date);
+
+  /// Box backup: download an earlier state.
+  ///
+  /// In de, this message translates to:
+  /// **'Herunterladen'**
+  String get boxBackupDownload;
+
+  /// Box backup: help below the password field.
+  ///
+  /// In de, this message translates to:
+  /// **'Mindestens {count} Zeichen. Getrennt notieren: Ohne dieses Passwort kommt beim Wiederherstellen alles außer den Schlüsseln zurück, der Keyring dann neu aus der ETS.'**
+  String boxBackupPasswordHelp(int count);
+
+  /// Box backup: field for the current box password when restoring.
+  ///
+  /// In de, this message translates to:
+  /// **'Box-Passwort (zur Bestätigung)'**
+  String get boxBackupCurrent;
+
+  /// Box backup: help below that field.
+  ///
+  /// In de, this message translates to:
+  /// **'Wiederherstellen ersetzt alle Anlagen der Box, deshalb fragt sie nach ihrem Passwort.'**
+  String get boxBackupCurrentHint;
+
+  /// Box backup: box password field left empty.
+  ///
+  /// In de, this message translates to:
+  /// **'Box-Passwort eingeben.'**
+  String get boxBackupCurrentMissing;
+
+  /// Box backup: download progress with expected size.
+  ///
+  /// In de, this message translates to:
+  /// **'Lade {done} von etwa {total} …'**
+  String boxBackupDownloadingOf(String done, String total);
+
+  /// Box backup: download cancelled.
+  ///
+  /// In de, this message translates to:
+  /// **'Abgebrochen.'**
+  String get boxBackupCancelled;
+
+  /// Box backup: the box software is too old.
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Box kann noch keine Sicherungen. Bitte erst aktualisieren.'**
+  String get boxBackupTooOld;
+
+  /// Box backup: invalid file.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Datei ist beschädigt oder keine Busclear-Sicherung.'**
+  String get boxBackupInvalid;
+
+  /// Box backup: password missing.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Sicherung enthält verschlüsselte Schlüssel: Passwort angeben oder ohne Schlüssel wiederherstellen.'**
+  String get boxBackupPasswordMissing;
+
+  /// Box backup: ticket expired.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Download ist abgelaufen. Bitte noch einmal starten.'**
+  String get boxBackupTicket;
+
+  /// Box backup: integrity check failed.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Sicherung wurde nach dem Sichern verändert und wird nicht wiederhergestellt.'**
+  String get boxBackupTampered;
+
+  /// Box: password locked out for a while.
+  ///
+  /// In de, this message translates to:
+  /// **'Zu viele Fehlversuche. Bitte kurz warten.'**
+  String get boxTooManyAttempts;
+
+  /// Box backup: warning on plain HTTP.
+  ///
+  /// In de, this message translates to:
+  /// **'Unverschlüsselte Verbindung: Passwörter und Sicherung gehen im Klartext durch dieses Netz.'**
+  String get boxBackupPlainNetwork;
+
+  /// Box backup: dialog title on plain HTTP.
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne Verschlüsselung weiter?'**
+  String get boxBackupPlainTitle;
+
+  /// Box backup: dialog text on plain HTTP.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Verbindung zur Box ist nicht verschlüsselt. Passwort der Sicherung, Box-Passwort und die Datei mit den Schlüsseln gehen im Klartext durchs Netz. Sicherer im WLAN der Box, über HTTPS oder am Rechner selbst.'**
+  String get boxBackupPlainBody;
+
+  /// Box backup: continue on plain HTTP.
+  ///
+  /// In de, this message translates to:
+  /// **'Trotzdem'**
+  String get boxBackupPlainGo;
+
+  /// Box backup: not available in the browser.
+  ///
+  /// In de, this message translates to:
+  /// **'Nur in der App.'**
+  String get boxBackupAppOnly;
+
+  /// Box backup: dialog title for an earlier state.
+  ///
+  /// In de, this message translates to:
+  /// **'Früheren Stand herunterladen'**
+  String get boxBackupPreviousTitle;
+
+  /// Box backup: dialog text for an earlier state.
+  ///
+  /// In de, this message translates to:
+  /// **'Mit Passwort kommen die Schlüssel dieses Stands verschlüsselt mit, ohne bleiben sie draußen.'**
+  String get boxBackupPreviousBody;
 
   /// Connect screen: button that opens the introduction to the app.
   ///
@@ -8972,6 +11233,84 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'z. B. Kunde in die Bedienung eingewiesen'**
   String get acceptRemarksHint;
+
+  /// Abnahmeprotokoll: Abschnitt mit freiwilligen Angaben
+  ///
+  /// In de, this message translates to:
+  /// **'Angaben zum Auftrag (optional)'**
+  String get acceptDetailsSection;
+
+  /// Abnahmeprotokoll: Feld und Zelle im PDF
+  ///
+  /// In de, this message translates to:
+  /// **'Bezug auf Norm'**
+  String get acceptStandard;
+
+  /// Abnahmeprotokoll: Beispiel Norm
+  ///
+  /// In de, this message translates to:
+  /// **'z. B. DIN VDE 0100-600'**
+  String get acceptStandardHint;
+
+  /// Abnahmeprotokoll: Feld und Zelle im PDF
+  ///
+  /// In de, this message translates to:
+  /// **'Projektnummer'**
+  String get acceptProjectNumber;
+
+  /// Abnahmeprotokoll: Feld und Zelle im PDF
+  ///
+  /// In de, this message translates to:
+  /// **'Beginn der Gewährleistung'**
+  String get acceptWarrantyStart;
+
+  /// Abnahmeprotokoll: Knopf, solange kein Datum gewählt ist
+  ///
+  /// In de, this message translates to:
+  /// **'Datum wählen'**
+  String get acceptWarrantyPick;
+
+  /// Abnahmeprotokoll: Tooltip
+  ///
+  /// In de, this message translates to:
+  /// **'Datum entfernen'**
+  String get acceptWarrantyClear;
+
+  /// Abnahmeprotokoll: Abschnitt im Formular und im PDF
+  ///
+  /// In de, this message translates to:
+  /// **'Fotos zu den Mängeln'**
+  String get acceptDefects;
+
+  /// Abnahmeprotokoll: Erklärung über den Mängeln
+  ///
+  /// In de, this message translates to:
+  /// **'Zu jedem Punkt mit „Problem“ kannst du ein Foto oder einen Screenshot anhängen. Es erscheint im Protokoll.'**
+  String get acceptDefectsHint;
+
+  /// Abnahmeprotokoll: Knopf je Mangel
+  ///
+  /// In de, this message translates to:
+  /// **'Foto hinzufügen'**
+  String get acceptDefectPhotoAdd;
+
+  /// Abnahmeprotokoll: Tooltip je Mangel
+  ///
+  /// In de, this message translates to:
+  /// **'Foto entfernen'**
+  String get acceptDefectPhotoRemove;
+
+  /// Abnahme-PDF: statt eines fehlenden oder veränderten Fotos
+  ///
+  /// In de, this message translates to:
+  /// **'Foto liegt auf diesem Gerät nicht vor'**
+  String get acceptDefectPhotoMissing;
+
+  /// Bildunterschrift des Mangelfotos in der Fotodokumentation
+  ///
+  /// In de, this message translates to:
+  /// **'Mangel {address} {name}'**
+  String acceptDefectCaption(String address, String name);
 
   /// Abnahmeprotokoll: Sprache wählen
   ///
@@ -11919,6 +14258,12 @@ abstract class AppLocalizations {
   /// **'Angaben'**
   String get companyDetails;
 
+  /// Abschnitt der Seite Firma über USt-IdNr., Eintragung und Techniker
+  ///
+  /// In de, this message translates to:
+  /// **'Weitere Angaben'**
+  String get companyMore;
+
   /// Feld
   ///
   /// In de, this message translates to:
@@ -12117,6 +14462,294 @@ abstract class AppLocalizations {
   /// **'Frühere Berichte'**
   String get srEarlier;
 
+  /// Servicebericht: Art, Umschalter
+  ///
+  /// In de, this message translates to:
+  /// **'Einsatz'**
+  String get srKindVisit;
+
+  /// Servicebericht: Art, Umschalter und Liste
+  ///
+  /// In de, this message translates to:
+  /// **'Wartung'**
+  String get srKindMaintenance;
+
+  /// Servicebericht: Art in der Liste früherer Berichte
+  ///
+  /// In de, this message translates to:
+  /// **'Rückmeldung'**
+  String get srKindReply;
+
+  /// Titel des PDFs einer Wartung
+  ///
+  /// In de, this message translates to:
+  /// **'Wartungsbericht'**
+  String get srMaintPdfTitle;
+
+  /// Vorbelegung „Anlass“ bei einer Wartung
+  ///
+  /// In de, this message translates to:
+  /// **'Regelmäßige Wartung der Anlage'**
+  String get srMaintOccasionDefault;
+
+  /// Wartung: Abschnitt im Formular und im PDF
+  ///
+  /// In de, this message translates to:
+  /// **'Bei diesem Besuch geprüft'**
+  String get srMaintChecklist;
+
+  /// Wartung: fester Prüfpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'Verteiler und Geräte: Sichtprüfung'**
+  String get srMaintCheckVisual;
+
+  /// Wartung: fester Prüfpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'Spannungsversorgung der Anlage'**
+  String get srMaintCheckSupply;
+
+  /// Wartung: fester Prüfpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'Gesundheitsprüfung am Bus'**
+  String get srMaintCheckHealth;
+
+  /// Wartung: fester Prüfpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'Funktionen stichprobenartig getestet'**
+  String get srMaintCheckFunctions;
+
+  /// Wartung: fester Prüfpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'Projektstand und Sicherung aktuell'**
+  String get srMaintCheckBackup;
+
+  /// Servicebericht, Wartung: startet die Gesundheitsprüfung der App am Prüfpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'Jetzt prüfen'**
+  String get srHealthRun;
+
+  /// Servicebericht, Wartung: Gesundheitsprüfung läuft
+  ///
+  /// In de, this message translates to:
+  /// **'Prüfung läuft …'**
+  String get srHealthRunning;
+
+  /// Servicebericht, Wartung: letzte Gesundheitsprüfung mit Zahl der Befunde
+  ///
+  /// In de, this message translates to:
+  /// **'Zuletzt geprüft {when}: {count, plural, =0{keine Befunde} =1{1 Befund} other{{count} Befunde}}'**
+  String srHealthLast(String when, int count);
+
+  /// Servicebericht, Wartung: noch keine Gesundheitsprüfung
+  ///
+  /// In de, this message translates to:
+  /// **'Noch nicht geprüft. Die Prüfung liest die Rückmeldungen wie im Werkzeug „Gesundheit“.'**
+  String get srHealthNever;
+
+  /// Servicebericht, Wartung: ohne Verbindung keine Gesundheitsprüfung
+  ///
+  /// In de, this message translates to:
+  /// **'Zum Prüfen die Anlage verbinden und den Bericht aus dem Monitor öffnen.'**
+  String get srHealthNeedsBus;
+
+  /// Wartung: Ergebnis eines Prüfpunkts
+  ///
+  /// In de, this message translates to:
+  /// **'In Ordnung'**
+  String get srCheckOk;
+
+  /// Wartung: Ergebnis eines Prüfpunkts
+  ///
+  /// In de, this message translates to:
+  /// **'Auffällig'**
+  String get srCheckAttention;
+
+  /// Wartung: Ergebnis eines Prüfpunkts
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht geprüft'**
+  String get srCheckUnchecked;
+
+  /// Wartung: Hinweis im Formular, wenn es einen Vorgänger gibt
+  ///
+  /// In de, this message translates to:
+  /// **'Aufbau und Vergleich: Wartungsbericht vom {date}.'**
+  String srMaintPrevious(String date);
+
+  /// Wartung: Hinweis im Formular ohne Vorgänger
+  ///
+  /// In de, this message translates to:
+  /// **'Erster Wartungsbericht dieser Anlage: noch kein Vergleich.'**
+  String get srMaintFirst;
+
+  /// Wartungs-PDF: Abschnitt mit dem Vergleich
+  ///
+  /// In de, this message translates to:
+  /// **'Seit dem letzten Besuch'**
+  String get srSinceTitle;
+
+  /// Wartungs-PDF: Einleitung des Vergleichs
+  ///
+  /// In de, this message translates to:
+  /// **'Vergleich mit dem Wartungsbericht vom {date}. Verglichen wird nur, was in beiden Berichten enthalten ist.'**
+  String srSinceIntro(String date);
+
+  /// Wartungs-PDF: Hinweise, die es beim letzten Besuch nicht gab
+  ///
+  /// In de, this message translates to:
+  /// **'Neu'**
+  String get srSinceNew;
+
+  /// Wartungs-PDF: Hinweise, die es nicht mehr gibt
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht mehr vorhanden'**
+  String get srSinceGone;
+
+  /// Wartungs-PDF: Hinweise, die es weiter gibt
+  ///
+  /// In de, this message translates to:
+  /// **'Weiterhin vorhanden'**
+  String get srSinceStill;
+
+  /// Wartungs-PDF: Vergleich ohne Hinweise
+  ///
+  /// In de, this message translates to:
+  /// **'Bei beiden Besuchen gab es keine Auffälligkeiten.'**
+  String get srSinceNoFindings;
+
+  /// Wartungs-PDF: ehrlicher Hinweis, wenn nichts vergleichbar ist
+  ///
+  /// In de, this message translates to:
+  /// **'Die Hinweise der beiden Berichte lassen sich nicht vergleichen: Sie haben keine gemeinsame Grundlage (Messung, Gesundheitsprüfung, Sprache).'**
+  String get srSinceNotComparable;
+
+  /// Wartungs-PDF: Unterabschnitt
+  ///
+  /// In de, this message translates to:
+  /// **'Gesundheitsprüfung damals und heute'**
+  String get srSinceHealth;
+
+  /// Wartungs-PDF: Zahl der Befunde je Einstufung
+  ///
+  /// In de, this message translates to:
+  /// **'{fix} zu beheben, {watch} im Auge zu behalten'**
+  String srSinceHealthCounts(int fix, int watch);
+
+  /// Wartungs-PDF: Spalte des letzten Besuchs
+  ///
+  /// In de, this message translates to:
+  /// **'Damals ({date})'**
+  String srSinceThen(String date);
+
+  /// Wartungs-PDF: Spalte dieses Besuchs
+  ///
+  /// In de, this message translates to:
+  /// **'Heute'**
+  String get srSinceNow;
+
+  /// Titel der Seite und Art im Verlauf
+  ///
+  /// In de, this message translates to:
+  /// **'Rückmeldung an den Kunden'**
+  String get replyTitle;
+
+  /// Rückmeldung: Erklärung
+  ///
+  /// In de, this message translates to:
+  /// **'Ein kurzer Stand für den Kunden nach seiner Störungsmeldung, in einfachen Worten und mit deinem Briefkopf. Adressen und Messwerte stehen nur drin, wenn du sie selbst hineinschreibst. Die Rückmeldung wird bei den Serviceberichten gespeichert.'**
+  String get replyExplain;
+
+  /// Titel des PDFs
+  ///
+  /// In de, this message translates to:
+  /// **'Rückmeldung zu Ihrer Störungsmeldung'**
+  String get replyPdfTitle;
+
+  /// Rückmeldung: Feld im Formular
+  ///
+  /// In de, this message translates to:
+  /// **'Was gemeldet wurde'**
+  String get replyReportedLabel;
+
+  /// Rückmeldung: Abschnitt im PDF
+  ///
+  /// In de, this message translates to:
+  /// **'Was Sie gemeldet haben'**
+  String get replyReported;
+
+  /// Rückmeldung: Zeitpunkt der Meldung, Formular und PDF
+  ///
+  /// In de, this message translates to:
+  /// **'Gemeldet am {date}'**
+  String replyReportedOn(String date);
+
+  /// Rückmeldung: Feld im Formular
+  ///
+  /// In de, this message translates to:
+  /// **'Was festgestellt wurde'**
+  String get replyFoundLabel;
+
+  /// Rückmeldung: Abschnitt im PDF
+  ///
+  /// In de, this message translates to:
+  /// **'Was wir festgestellt haben'**
+  String get replyFound;
+
+  /// Rückmeldung: Beispiel
+  ///
+  /// In de, this message translates to:
+  /// **'z. B. Der Bewegungsmelder im Flur reagiert auf die warme Luft der Heizung.'**
+  String get replyFoundHint;
+
+  /// Rückmeldung: Feld und Abschnitt im PDF
+  ///
+  /// In de, this message translates to:
+  /// **'Wie es weitergeht'**
+  String get replyNext;
+
+  /// Rückmeldung: Beispiel
+  ///
+  /// In de, this message translates to:
+  /// **'z. B. Wir stellen den Melder am Donnerstag neu ein.'**
+  String get replyNextHint;
+
+  /// Rückmeldungs-PDF: Techniker
+  ///
+  /// In de, this message translates to:
+  /// **'Ihr Ansprechpartner: {name}'**
+  String replyContact(String name);
+
+  /// Rückmeldungs-PDF: Schlusssatz
+  ///
+  /// In de, this message translates to:
+  /// **'Bei Fragen melden Sie sich gern bei uns.'**
+  String get replyClosing;
+
+  /// Knopf
+  ///
+  /// In de, this message translates to:
+  /// **'Rückmeldung erstellen und teilen'**
+  String get replyCreate;
+
+  /// Rückmeldung: Hinweis, solange beide Felder leer sind
+  ///
+  /// In de, this message translates to:
+  /// **'Schreibe, was festgestellt wurde oder wie es weitergeht.'**
+  String get replyMissing;
+
+  /// Verlauf: Rückmeldung wurde gelöscht
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Rückmeldung ist nicht mehr gespeichert.'**
+  String get replyGone;
+
   /// Ergebniszeile im PDF
   ///
   /// In de, this message translates to:
@@ -12272,6 +14905,210 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Kundendaten bleiben auf diesem Gerät und sind nie Teil eines Diagnosepakets oder Übergabepakets.'**
   String get customerPrivate;
+
+  /// Menü in der Akte
+  ///
+  /// In de, this message translates to:
+  /// **'Akte exportieren'**
+  String get customerExport;
+
+  /// Menü der Liste
+  ///
+  /// In de, this message translates to:
+  /// **'Alle Akten exportieren'**
+  String get customerExportAll;
+
+  /// Menü der Liste
+  ///
+  /// In de, this message translates to:
+  /// **'Akten-Datei öffnen'**
+  String get customerOpenFile;
+
+  /// Titel
+  ///
+  /// In de, this message translates to:
+  /// **'Akten für ein zweites Gerät'**
+  String get customerExportTitle;
+
+  /// Erklärung oben
+  ///
+  /// In de, this message translates to:
+  /// **'Eine passwortgeschützte Datei mit Kundendaten, Besuchen, Protokollen und Serviceberichten. Öffne sie auf deinem zweiten Gerät: Busclear ordnet sie dort den Anlagen zu und ergänzt, was fehlt. Ohne Cloud.'**
+  String get customerExportShort;
+
+  /// Zeile: Umfang
+  ///
+  /// In de, this message translates to:
+  /// **'Alle Akten'**
+  String get customerExportScopeAll;
+
+  /// Zeile: Umfang
+  ///
+  /// In de, this message translates to:
+  /// **'Anlagen mit Akte: {count}'**
+  String customerExportCount(int count);
+
+  /// Schalter
+  ///
+  /// In de, this message translates to:
+  /// **'Fotos mitnehmen'**
+  String get customerExportPhotos;
+
+  /// Schalter, Hinweis
+  ///
+  /// In de, this message translates to:
+  /// **'Fotodokumentation: {count} Fotos. Die Datei wird größer.'**
+  String customerExportPhotosHint(int count);
+
+  /// Knopf
+  ///
+  /// In de, this message translates to:
+  /// **'Datei erstellen und teilen'**
+  String get customerExportCreate;
+
+  /// Hinweis unter dem Knopf
+  ///
+  /// In de, this message translates to:
+  /// **'Nur für deine eigenen Geräte: Die Datei enthält Kundendaten und gehört nicht zum Übergabepaket für den Kunden.'**
+  String get customerExportOwn;
+
+  /// Hinweis, wenn nichts da ist
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Akte zum Exportieren.'**
+  String get customerExportNothing;
+
+  /// Fehler
+  ///
+  /// In de, this message translates to:
+  /// **'Die Datei würde zu groß. Exportiere ohne Fotos oder einzelne Akten.'**
+  String get customerExportTooLarge;
+
+  /// Dateiname
+  ///
+  /// In de, this message translates to:
+  /// **'Kundenakten'**
+  String get customerFilePrefix;
+
+  /// Titel
+  ///
+  /// In de, this message translates to:
+  /// **'Akten übernehmen'**
+  String get customerImportTitle;
+
+  /// Erste Zeile
+  ///
+  /// In de, this message translates to:
+  /// **'Datei von {company}, erstellt am {date}.'**
+  String customerImportFrom(String company, String date);
+
+  /// Abschnitt
+  ///
+  /// In de, this message translates to:
+  /// **'Auf diesem Gerät'**
+  String get customerImportHere;
+
+  /// Zeile: was dazukommt
+  ///
+  /// In de, this message translates to:
+  /// **'Neu: Besuche {visits}, Dokumente {documents}, Fotos {photos}'**
+  String customerImportNew(int visits, int documents, int photos);
+
+  /// Zeile
+  ///
+  /// In de, this message translates to:
+  /// **'Kundendaten kommen dazu'**
+  String get customerImportRecordNew;
+
+  /// Zeile
+  ///
+  /// In de, this message translates to:
+  /// **'Schon auf dem Stand'**
+  String get customerImportUpToDate;
+
+  /// Abschnitt
+  ///
+  /// In de, this message translates to:
+  /// **'Kundendaten weichen ab'**
+  String get customerImportConflicts;
+
+  /// Erklärung
+  ///
+  /// In de, this message translates to:
+  /// **'Auf beiden Geräten stehen Kundendaten, aber nicht dieselben. Ohne Auswahl bleiben die von diesem Gerät.'**
+  String get customerImportConflictHint;
+
+  /// Schalter, nennt die abweichenden Felder
+  ///
+  /// In de, this message translates to:
+  /// **'Aus der Datei übernehmen: {fields}'**
+  String customerImportTakeRecord(String fields);
+
+  /// Abschnitt
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht auf diesem Gerät'**
+  String get customerImportMissing;
+
+  /// Erklärung
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Anlagen gibt es hier noch nicht. Hole sie zuerst auf dieses Gerät, zum Beispiel aus einer Sicherung, und öffne die Datei dann noch einmal.'**
+  String get customerImportMissingHint;
+
+  /// Schalter
+  ///
+  /// In de, this message translates to:
+  /// **'Als leere Anlagen anlegen'**
+  String get customerImportCreate;
+
+  /// Schalter, Hinweis
+  ///
+  /// In de, this message translates to:
+  /// **'Mit Akte, ohne Projekt. Das Projekt lädst du später in die Anlage.'**
+  String get customerImportCreateHint;
+
+  /// Knopf
+  ///
+  /// In de, this message translates to:
+  /// **'Übernehmen'**
+  String get customerImportApply;
+
+  /// Bestätigung
+  ///
+  /// In de, this message translates to:
+  /// **'Akten übernommen: Anlagen {installations}, Besuche {visits}, Dokumente {documents}.'**
+  String customerImportDone(int installations, int visits, int documents);
+
+  /// Hinweis
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht übernommene Fotos: {count} (Fotodokumentation voll oder Bild unlesbar).'**
+  String customerImportPhotosSkipped(int count);
+
+  /// Hinweis
+  ///
+  /// In de, this message translates to:
+  /// **'Die Datei enthält nichts, was hier fehlt.'**
+  String get customerImportNothing;
+
+  /// Fortschritt
+  ///
+  /// In de, this message translates to:
+  /// **'Datei wird geöffnet …'**
+  String get customerImportOpening;
+
+  /// Breite Ansicht ohne Auswahl
+  ///
+  /// In de, this message translates to:
+  /// **'Wähle links eine Anlage.'**
+  String get customerSelectHint;
+
+  /// Screenreader: Liste links
+  ///
+  /// In de, this message translates to:
+  /// **'Anlagen'**
+  String get customerListLabel;
 
   /// Feld
   ///
@@ -12590,6 +15427,66 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Das bisherige Projekt wird ersetzt.'**
   String get handoverImportReplaces;
+
+  /// Dialog: Paket gehört zu einer vorhandenen Anlage
+  ///
+  /// In de, this message translates to:
+  /// **'„{name}“ aktualisieren?'**
+  String handoverUpdateTitle(String name);
+
+  /// Dialog, erster Satz
+  ///
+  /// In de, this message translates to:
+  /// **'Dieses Paket von {company} gehört zu einer Anlage, die schon auf diesem Gerät ist.'**
+  String handoverUpdateIntro(String company);
+
+  /// Dialog: was sich ändert
+  ///
+  /// In de, this message translates to:
+  /// **'Gruppenadressen: {added} neu, {removed} entfernt, {renamed} umbenannt.'**
+  String handoverUpdateGroups(int added, int removed, int renamed);
+
+  /// Dialog: was sich ändert
+  ///
+  /// In de, this message translates to:
+  /// **'Geräte: {added} neu, {removed} entfernt, {renamed} umbenannt.'**
+  String handoverUpdateDevices(int added, int removed, int renamed);
+
+  /// Dialog: nichts ändert sich am Projekt
+  ///
+  /// In de, this message translates to:
+  /// **'Adressen und Geräte sind unverändert.'**
+  String get handoverUpdateNoChanges;
+
+  /// Dialog: Paket mit Schlüsseln
+  ///
+  /// In de, this message translates to:
+  /// **'Die KNX-Secure-Schlüssel werden durch die aus dem Paket ersetzt.'**
+  String get handoverUpdateKeysReplaced;
+
+  /// Dialog: Paket ohne Schlüssel
+  ///
+  /// In de, this message translates to:
+  /// **'Das Paket enthält keine KNX-Secure-Schlüssel. Hier gespeicherte Schlüssel dieser Anlage werden entfernt.'**
+  String get handoverUpdateKeysRemoved;
+
+  /// Dialog: was bleibt
+  ///
+  /// In de, this message translates to:
+  /// **'Dein Verlauf, deine Diagramme, Wächter, Kommentare und Aufnahmen bleiben erhalten.'**
+  String get handoverUpdateKeeps;
+
+  /// Knopf
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Anlage aktualisieren'**
+  String get handoverUpdateConfirm;
+
+  /// Knopf
+  ///
+  /// In de, this message translates to:
+  /// **'Als neue Anlage einrichten'**
+  String get handoverUpdateAsNew;
 
   /// Bestätigung
   ///
@@ -13833,6 +16730,12 @@ abstract class AppLocalizations {
   /// **'Für den eigenen Grafana-Server. Standard aus. Es geht nur etwas hinaus, wenn du unten ein Ziel einträgst; Prometheus ruft nur aus dem lokalen Netz und mit Token ab.'**
   String get dataExportIntro;
 
+  /// Abschnitt des Datenexports über den Schaltern für Prometheus und InfluxDB
+  ///
+  /// In de, this message translates to:
+  /// **'Zähler und Werte'**
+  String get dataExportMetrics;
+
   /// Datenexport: Schalter
   ///
   /// In de, this message translates to:
@@ -13922,6 +16825,12 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Zugangstoken'**
   String get dataExportInfluxToken;
+
+  /// Datenexport: Hinweis, wenn das InfluxDB-Token über http:// gesendet wird
+  ///
+  /// In de, this message translates to:
+  /// **'Über http:// geht das Token unverschlüsselt durchs Netz. Im eigenen Heimnetz ist das üblich; führt der Weg nach draußen, eine https://-Adresse verwenden.'**
+  String get dataExportInfluxPlain;
 
   /// Datenexport: Feld
   ///
@@ -14853,6 +17762,18 @@ abstract class AppLocalizations {
   /// **'Noch keine'**
   String get backupNoneYet;
 
+  /// Sicherung im breiten Fenster: Abschnitt mit Passwort, Erstellen und Einspielen
+  ///
+  /// In de, this message translates to:
+  /// **'Sicherungsdatei'**
+  String get backupFileHead;
+
+  /// Sicherung im breiten Fenster: Abschnitt mit Speicher und letzter Sicherung
+  ///
+  /// In de, this message translates to:
+  /// **'Auf diesem Gerät'**
+  String get backupDeviceHead;
+
   /// No description provided for @appLockMethodSystem.
   ///
   /// In de, this message translates to:
@@ -14912,6 +17833,12 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Wartung'**
   String get customerMaintenance;
+
+  /// Kundenakte bearbeiten: Abschnitt mit Wartungsintervall und Notizen
+  ///
+  /// In de, this message translates to:
+  /// **'Wartung und Notizen'**
+  String get customerMaintenanceNotes;
 
   /// No description provided for @customerMaintEvery.
   ///
@@ -14990,6 +17917,318 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'{shown} von {total}'**
   String hpRoomsOf(int shown, int total);
+
+  /// No description provided for @floorTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Bus auf dem Grundriss'**
+  String get floorTitle;
+
+  /// No description provided for @floorTool.
+  ///
+  /// In de, this message translates to:
+  /// **'Telegramme lassen Punkte auf deinem Grundriss aufleuchten, stumme fallen auf'**
+  String get floorTool;
+
+  /// No description provided for @floorPlanTool.
+  ///
+  /// In de, this message translates to:
+  /// **'Geräte im Hausplan mit Gruppenadressen verbinden, Rundgang, Bus auf dem Plan'**
+  String get floorPlanTool;
+
+  /// No description provided for @floorEmptyTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch kein Grundriss'**
+  String get floorEmptyTitle;
+
+  /// No description provided for @floorEmptyBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Lege eine Ebene an, wähle ein Bild deines Grundrisses und setze Punkte für Leuchten, Taster oder Fühler. Jeder Punkt bekommt seine Gruppenadressen und leuchtet auf, sobald dort ein Telegramm läuft. Die erste Ebene ist in jeder Stufe enthalten.'**
+  String get floorEmptyBody;
+
+  /// No description provided for @floorAddLevel.
+  ///
+  /// In de, this message translates to:
+  /// **'Ebene anlegen'**
+  String get floorAddLevel;
+
+  /// No description provided for @floorDeleteLevel.
+  ///
+  /// In de, this message translates to:
+  /// **'Ebene löschen'**
+  String get floorDeleteLevel;
+
+  /// No description provided for @floorLevelName.
+  ///
+  /// In de, this message translates to:
+  /// **'Name der Ebene'**
+  String get floorLevelName;
+
+  /// No description provided for @floorLevelDefault.
+  ///
+  /// In de, this message translates to:
+  /// **'Erdgeschoss'**
+  String get floorLevelDefault;
+
+  /// No description provided for @floorPickImage.
+  ///
+  /// In de, this message translates to:
+  /// **'Bild wählen'**
+  String get floorPickImage;
+
+  /// No description provided for @floorImageUnreadable.
+  ///
+  /// In de, this message translates to:
+  /// **'Das Bild lässt sich nicht lesen.'**
+  String get floorImageUnreadable;
+
+  /// No description provided for @floorEdit.
+  ///
+  /// In de, this message translates to:
+  /// **'Bearbeiten'**
+  String get floorEdit;
+
+  /// No description provided for @floorEditDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Fertig'**
+  String get floorEditDone;
+
+  /// No description provided for @floorEditHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Tippe auf den Plan, um einen Punkt zu setzen. Tippe auf einen Punkt, um ihn zu ändern, oder ziehe ihn an seinen Platz.'**
+  String get floorEditHint;
+
+  /// No description provided for @floorFromPlan.
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Ansicht stammt aus dem Hausplan. Änderungen machst du dort unter „Nach dem Einzug“.'**
+  String get floorFromPlan;
+
+  /// No description provided for @floorTooNew.
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Busansicht stammt aus einer neueren App-Version. Aktualisiere die App, um sie zu öffnen. Die Datei bleibt, wie sie ist.'**
+  String get floorTooNew;
+
+  /// No description provided for @floorNoPoints.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Punkte auf dieser Ebene.'**
+  String get floorNoPoints;
+
+  /// No description provided for @floorPointName.
+  ///
+  /// In de, this message translates to:
+  /// **'Name'**
+  String get floorPointName;
+
+  /// No description provided for @floorPointAddresses.
+  ///
+  /// In de, this message translates to:
+  /// **'Gruppenadressen wählen'**
+  String get floorPointAddresses;
+
+  /// No description provided for @floorPickSearch.
+  ///
+  /// In de, this message translates to:
+  /// **'Name oder Adresse'**
+  String get floorPickSearch;
+
+  /// No description provided for @floorPickSuggested.
+  ///
+  /// In de, this message translates to:
+  /// **'Vorschlag'**
+  String get floorPickSuggested;
+
+  /// No description provided for @floorPickNoCatalog.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Projekt und keine angelernten Namen. Gib die Adresse oben ein, zum Beispiel 1/2/3.'**
+  String get floorPickNoCatalog;
+
+  /// No description provided for @floorStateActive.
+  ///
+  /// In de, this message translates to:
+  /// **'gerade aktiv'**
+  String get floorStateActive;
+
+  /// No description provided for @floorStateHeard.
+  ///
+  /// In de, this message translates to:
+  /// **'gehört'**
+  String get floorStateHeard;
+
+  /// No description provided for @floorStateSilent.
+  ///
+  /// In de, this message translates to:
+  /// **'lange still'**
+  String get floorStateSilent;
+
+  /// No description provided for @floorStateUnlinked.
+  ///
+  /// In de, this message translates to:
+  /// **'ohne Adresse'**
+  String get floorStateUnlinked;
+
+  /// No description provided for @floorSilentTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Lange still'**
+  String get floorSilentTitle;
+
+  /// No description provided for @floorSilentSince.
+  ///
+  /// In de, this message translates to:
+  /// **'Seit {since} beobachtet und nichts gehört. Manche Geräte senden nur, wenn man sie bedient.'**
+  String floorSilentSince(String since);
+
+  /// No description provided for @floorHeardTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Zuletzt gehört'**
+  String get floorHeardTitle;
+
+  /// No description provided for @floorUnlinkedTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne Gruppenadresse'**
+  String get floorUnlinkedTitle;
+
+  /// No description provided for @floorKindLight.
+  ///
+  /// In de, this message translates to:
+  /// **'Leuchte'**
+  String get floorKindLight;
+
+  /// No description provided for @floorKindButton.
+  ///
+  /// In de, this message translates to:
+  /// **'Taster'**
+  String get floorKindButton;
+
+  /// No description provided for @floorKindBlind.
+  ///
+  /// In de, this message translates to:
+  /// **'Rollladen'**
+  String get floorKindBlind;
+
+  /// No description provided for @floorKindSocket.
+  ///
+  /// In de, this message translates to:
+  /// **'Steckdose'**
+  String get floorKindSocket;
+
+  /// No description provided for @floorKindHeating.
+  ///
+  /// In de, this message translates to:
+  /// **'Heizung'**
+  String get floorKindHeating;
+
+  /// No description provided for @floorKindSensor.
+  ///
+  /// In de, this message translates to:
+  /// **'Melder, Fühler'**
+  String get floorKindSensor;
+
+  /// No description provided for @floorKindContact.
+  ///
+  /// In de, this message translates to:
+  /// **'Kontakt'**
+  String get floorKindContact;
+
+  /// No description provided for @floorKindOther.
+  ///
+  /// In de, this message translates to:
+  /// **'Sonstiges'**
+  String get floorKindOther;
+
+  /// No description provided for @floorStateUnheard.
+  ///
+  /// In de, this message translates to:
+  /// **'noch nichts gehört'**
+  String get floorStateUnheard;
+
+  /// No description provided for @floorUnheardTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch nichts gehört'**
+  String get floorUnheardTitle;
+
+  /// No description provided for @floorUnheardSince.
+  ///
+  /// In de, this message translates to:
+  /// **'Beobachtet seit {since}. Das ist kein Fehler: Viele Geräte senden nur, wenn man sie bedient.'**
+  String floorUnheardSince(String since);
+
+  /// No description provided for @floorDeleteLevelAsk.
+  ///
+  /// In de, this message translates to:
+  /// **'„{name}“ löschen?'**
+  String floorDeleteLevelAsk(String name);
+
+  /// No description provided for @floorDeleteLevelBody.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =0{Die Ebene wird mit ihrem Bild gelöscht.} =1{Die Ebene wird mit ihrem Bild und 1 Punkt gelöscht.} other{Die Ebene wird mit ihrem Bild und {count} Punkten gelöscht.}} Das lässt sich nicht zurückholen.'**
+  String floorDeleteLevelBody(int count);
+
+  /// No description provided for @floorPointTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Punkt'**
+  String get floorPointTitle;
+
+  /// No description provided for @floorPointDeleted.
+  ///
+  /// In de, this message translates to:
+  /// **'Punkt gelöscht'**
+  String get floorPointDeleted;
+
+  /// No description provided for @floorDetailLast.
+  ///
+  /// In de, this message translates to:
+  /// **'zuletzt {time}'**
+  String floorDetailLast(String time);
+
+  /// No description provided for @floorPickTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Gruppenadressen'**
+  String get floorPickTitle;
+
+  /// No description provided for @floorPickCount.
+  ///
+  /// In de, this message translates to:
+  /// **'{count} von {max} gewählt'**
+  String floorPickCount(int count, int max);
+
+  /// No description provided for @floorPickMax.
+  ///
+  /// In de, this message translates to:
+  /// **'Höchstzahl erreicht. Wähle eine Adresse ab, um eine andere zu nehmen.'**
+  String get floorPickMax;
+
+  /// No description provided for @floorPickDiscardTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Geänderte Auswahl verwerfen?'**
+  String get floorPickDiscardTitle;
+
+  /// No description provided for @floorPickDiscard.
+  ///
+  /// In de, this message translates to:
+  /// **'Verwerfen'**
+  String get floorPickDiscard;
+
+  /// No description provided for @hpaTab.
+  ///
+  /// In de, this message translates to:
+  /// **'Nach dem Einzug'**
+  String get hpaTab;
 
   /// No description provided for @exportsData.
   ///
@@ -15357,6 +18596,18 @@ abstract class AppLocalizations {
   /// **'Unverschlüsselt (HTTP): Wer im selben Netz mitliest, sieht alles, was die App an diese Box schickt. Verbinde dich nur in deinem eigenen Netz.'**
   String get boxPairUnencrypted;
 
+  /// Dialog title: the app refuses a box link that would send the access key over plain HTTP to a host on the internet.
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht ohne Verschlüsselung'**
+  String get boxPlainRefusedTitle;
+
+  /// Error and dialog body: the app sent nothing, because access key, box password or pairing code would go over unencrypted HTTP to a host outside the local network.
+  ///
+  /// In de, this message translates to:
+  /// **'{address} liegt nicht im lokalen Netz und ist nur unverschlüsselt (HTTP) erreichbar. Die App schickt den Zugang dorthin nicht: Er wäre unterwegs für jeden lesbar. Auf der Seite der Box unter HTTPS einen neuen QR-Code erzeugen und scannen, oder die Box im eigenen Netz verbinden.'**
+  String boxPlainRefused(String address);
+
   /// Dialog title: a pairing link would replace the box that is already paired.
   ///
   /// In de, this message translates to:
@@ -15705,6 +18956,198 @@ abstract class AppLocalizations {
   /// **'alle'**
   String get dataExportMqttFilterAll;
 
+  /// Datenexport, MQTT: Schalter
+  ///
+  /// In de, this message translates to:
+  /// **'Jedes Telegramm an MQTT'**
+  String get dataExportMqttSwitch;
+
+  /// Datenexport, MQTT: Erklärung zum Schalter
+  ///
+  /// In de, this message translates to:
+  /// **'Unter knx_monitor/telegram/…, mit Name, Datentyp und Wert aus dem ETS-Projekt.'**
+  String get dataExportMqttSwitchHint;
+
+  /// Datenexport, MQTT: Rückfrage beim Einschalten, Titel
+  ///
+  /// In de, this message translates to:
+  /// **'Telegramme an den Broker senden?'**
+  String get dataExportMqttConfirmTitle;
+
+  /// Datenexport, MQTT: Rückfrage beim Einschalten, Text
+  ///
+  /// In de, this message translates to:
+  /// **'Damit gehen Adressen, Namen und Werte der Anlage an den MQTT-Broker. Jeder, der den Broker lesen kann, sieht sie.'**
+  String get dataExportMqttConfirmBody;
+
+  /// Datenexport, MQTT: Rückfrage bestätigen
+  ///
+  /// In de, this message translates to:
+  /// **'Einschalten'**
+  String get dataExportMqttConfirm;
+
+  /// Datenexport, MQTT: Schalter
+  ///
+  /// In de, this message translates to:
+  /// **'Rohdaten mitsenden'**
+  String get dataExportMqttRaw;
+
+  /// Datenexport, MQTT: Erklärung
+  ///
+  /// In de, this message translates to:
+  /// **'Der ganze cEMI-Rahmen, Priorität und ein Schlüssel, an dem eine Datenbank Dubletten erkennt.'**
+  String get dataExportMqttRawHint;
+
+  /// Datenexport, MQTT: Schalter
+  ///
+  /// In de, this message translates to:
+  /// **'Nur Rohdaten'**
+  String get dataExportMqttRawOnly;
+
+  /// Datenexport, MQTT: Erklärung
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne Name, Datentyp, Wert und Einheit aus dem ETS-Projekt.'**
+  String get dataExportMqttRawOnlyHint;
+
+  /// Datenexport, MQTT: Schalter
+  ///
+  /// In de, this message translates to:
+  /// **'Letzten Wert je Adresse behalten'**
+  String get dataExportMqttRetainSwitch;
+
+  /// Datenexport, MQTT: Erklärung
+  ///
+  /// In de, this message translates to:
+  /// **'Zusätzlich unter knx_monitor/value/… mit retain. Wer später abonniert, hat sofort den aktuellen Wert.'**
+  String get dataExportMqttRetainHint;
+
+  /// Datenexport, MQTT: Schalter
+  ///
+  /// In de, this message translates to:
+  /// **'Wiederholungen mitsenden'**
+  String get dataExportMqttRepeats;
+
+  /// Datenexport, MQTT: Schalter
+  ///
+  /// In de, this message translates to:
+  /// **'Auch KNX-Secure-Telegramme'**
+  String get dataExportMqttSecureSwitch;
+
+  /// Datenexport, MQTT: Erklärung
+  ///
+  /// In de, this message translates to:
+  /// **'Entschlüsselt. Auf dem Broker sind sie Klartext.'**
+  String get dataExportMqttSecureHint;
+
+  /// Datenexport, MQTT: Rückfrage, Titel
+  ///
+  /// In de, this message translates to:
+  /// **'KNX-Secure-Telegramme im Klartext senden?'**
+  String get dataExportMqttSecureConfirmTitle;
+
+  /// Datenexport, MQTT: Rückfrage, Text
+  ///
+  /// In de, this message translates to:
+  /// **'Der Server entschlüsselt sie und schickt die Werte offen an den Broker. Der Schutz von KNX Data Secure gilt dort nicht mehr.'**
+  String get dataExportMqttSecureConfirmBody;
+
+  /// Datenexport, MQTT: Feld für den Filter
+  ///
+  /// In de, this message translates to:
+  /// **'Nur diese Gruppenadressen'**
+  String get dataExportMqttFilter;
+
+  /// Datenexport, MQTT: Hinweis zum Filter
+  ///
+  /// In de, this message translates to:
+  /// **'Leer = alle. Beispiel: 1/#,3/2/#,4/1/7'**
+  String get dataExportMqttFilterHint;
+
+  /// Datenexport, MQTT: Knopf
+  ///
+  /// In de, this message translates to:
+  /// **'MQTT übernehmen'**
+  String get dataExportMqttSave;
+
+  /// Datenexport, MQTT: Knopf, verwirft die Einstellungen der App
+  ///
+  /// In de, this message translates to:
+  /// **'Zurück zur Vorgabe'**
+  String get dataExportMqttReset;
+
+  /// Datenexport, MQTT: woher die Einstellungen kommen
+  ///
+  /// In de, this message translates to:
+  /// **'In der App eingestellt. Die Add-on-Optionen bzw. Umgebungsvariablen gelten erst wieder nach „Zurück zur Vorgabe“.'**
+  String get dataExportMqttSourceApp;
+
+  /// Datenexport, MQTT: woher die Einstellungen kommen
+  ///
+  /// In de, this message translates to:
+  /// **'Vorgabe aus den Add-on-Optionen bzw. Umgebungsvariablen. Eine Änderung hier gilt sofort und bleibt nach einem Neustart.'**
+  String get dataExportMqttSourceDefault;
+
+  /// Datenexport, MQTT: Strom pausiert
+  ///
+  /// In de, this message translates to:
+  /// **'Pausiert über den Schalter „Telegramme an MQTT“ in Home Assistant.'**
+  String get dataExportMqttPaused;
+
+  /// Datenexport, MQTT: ungespeicherte Änderung
+  ///
+  /// In de, this message translates to:
+  /// **'Geändert, noch nicht übernommen.'**
+  String get dataExportMqttUnsaved;
+
+  /// Datenexport: Abschnitt
+  ///
+  /// In de, this message translates to:
+  /// **'Home Assistant'**
+  String get dataExportHa;
+
+  /// Datenexport, Home Assistant: Integration aktiv
+  ///
+  /// In de, this message translates to:
+  /// **'Busclear Integration eingerichtet. Sie liefert die Entitäten, das MQTT-Gerät ist pausiert.'**
+  String get dataExportHaIntegration;
+
+  /// Datenexport, Home Assistant: MQTT-Gerät aktiv
+  ///
+  /// In de, this message translates to:
+  /// **'MQTT-Gerät „Busclear“ aktiv. Home Assistant legt die Entitäten über MQTT an.'**
+  String get dataExportHaMqttDevice;
+
+  /// Datenexport, Home Assistant: Discovery aus
+  ///
+  /// In de, this message translates to:
+  /// **'Ankündigung an Home Assistant aus (MQTT_DISCOVERY=false). Zustand und Ereignisse gehen weiter an den Broker.'**
+  String get dataExportHaNoDiscovery;
+
+  /// Datenexport, Home Assistant: Broker getrennt
+  ///
+  /// In de, this message translates to:
+  /// **'MQTT-Broker nicht verbunden.'**
+  String get dataExportHaDisconnected;
+
+  /// Datenexport, Home Assistant: Gesundheitsprüfung des Servers (Issue 12) ist aus, mit dem Weg zum Einschalten
+  ///
+  /// In de, this message translates to:
+  /// **'Gesundheitsprüfung am Server aus. Einschalten: im Add-on die Option „Gesundheitsprüfung für Home Assistant“, bei Docker und Box HEALTH_CHECK=true.'**
+  String get dataExportHaHealthOff;
+
+  /// Datenexport, Home Assistant: Gesundheitsprüfung des Servers ist an, aber noch nie gelaufen
+  ///
+  /// In de, this message translates to:
+  /// **'Gesundheitsprüfung am Server an, noch kein Lauf. Der erste folgt in wenigen Minuten.'**
+  String get dataExportHaHealthNever;
+
+  /// Datenexport, Home Assistant: Gesundheitsprüfung des Servers ist an; Zeit des letzten Laufs und Zahl der Befunde
+  ///
+  /// In de, this message translates to:
+  /// **'Gesundheitsprüfung am Server an. Letzter Lauf {when}: {count, plural, =0{keine Befunde} =1{1 Befund} other{{count} Befunde}}. Details in Home Assistant.'**
+  String dataExportHaHealthRun(String when, int count);
+
   /// Verbinden: Abschnitt weitere Messpunkte (#8)
   ///
   /// In de, this message translates to:
@@ -15777,18 +19220,6 @@ abstract class AppLocalizations {
   /// **'pausiert, Tunnel frei'**
   String get tapPointPaused;
 
-  /// Messpunkt: Schalter aktiv/pausiert (Bedienhilfe)
-  ///
-  /// In de, this message translates to:
-  /// **'Messpunkt aktiv'**
-  String get tapPointActive;
-
-  /// Messpunkt: entfernen (Bedienhilfe)
-  ///
-  /// In de, this message translates to:
-  /// **'Messpunkt entfernen'**
-  String get tapPointRemove;
-
   /// Messpunkt: Grenze erreicht
   ///
   /// In de, this message translates to:
@@ -15804,13 +19235,13 @@ abstract class AppLocalizations {
   /// Monitor: Banner, ein Messpunkt ist getrennt
   ///
   /// In de, this message translates to:
-  /// **'{name} getrennt · {live} von {total} Messpunkten aktiv'**
+  /// **'Messpunkt nicht erreichbar: {name} · {live} von {total} Messpunkten aktiv'**
   String tapDown(String name, int live, int total);
 
   /// Monitor: Banner Messpunkt getrennt, zweite Zeile
   ///
   /// In de, this message translates to:
-  /// **'Die anderen laufen weiter. Der getrennte verbindet sich von selbst neu.'**
+  /// **'Kein Busfehler: Die anderen laufen weiter, er verbindet sich von selbst neu. Was in der Lücke dort fehlt, gilt nicht als gefiltert.'**
   String get tapDownHint;
 
   /// Monitor: Hinweis, ein Messpunkt ist verbunden, sieht aber nichts
@@ -15834,13 +19265,13 @@ abstract class AppLocalizations {
   /// Telegramm-Details: Sichtung an einem Messpunkt
   ///
   /// In de, this message translates to:
-  /// **'+{ms} ms · Hop {hop}'**
+  /// **'+{ms} ms · Routingzähler {hop}'**
   String detailsPathSeen(String ms, int hop);
 
   /// Telegramm-Details: Messpunkt auf der Linie des Senders (höchster Hop)
   ///
   /// In de, this message translates to:
-  /// **'Ursprung · Hop {hop}'**
+  /// **'Ursprung · Routingzähler {hop}'**
   String detailsPathFirst(int hop);
 
   /// Telegramm-Details: an diesem Messpunkt nicht gesehen
@@ -15848,6 +19279,342 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'nicht gesehen, gefiltert oder nur lokal'**
   String get detailsPathMissing;
+
+  /// Telegramm-Details: Messpunkt war zu der Zeit nicht erreichbar (Lücke)
+  ///
+  /// In de, this message translates to:
+  /// **'nicht erreichbar zu dieser Zeit · keine Aussage, ob gefiltert'**
+  String get tapPathAway;
+
+  /// Telegramm-Details: Messpunkt war zu der Zeit pausiert
+  ///
+  /// In de, this message translates to:
+  /// **'pausiert zu dieser Zeit · keine Aussage, ob gefiltert'**
+  String get tapPathPaused;
+
+  /// Telegramm-Details: Anzahl Koppler zwischen Ursprung und Messpunkt (aus dem Hop-Count)
+  ///
+  /// In de, this message translates to:
+  /// **'{count} Koppler dazwischen'**
+  String tapPathCouplers(int count);
+
+  /// Monitor: Sammelzeichen in der Zeile, Messpunkte waren zu der Zeit nicht erreichbar (Tooltip, Bedienhilfe)
+  ///
+  /// In de, this message translates to:
+  /// **'Zu dieser Zeit nicht erreichbar: {labels}'**
+  String tapRowAway(String labels);
+
+  /// Monitor: Trennzeile in der Live-Liste, ab hier war ein Messpunkt nicht erreichbar (Lücke beginnt). label: „Messpunkt 1.2“ live, „1.2 (Name)“ in einer Aufnahme
+  ///
+  /// In de, this message translates to:
+  /// **'{label} nicht erreichbar · {time}'**
+  String tapListGapStart(String label, String time);
+
+  /// Monitor: Trennzeile in der Live-Liste, ab hier war der Messpunkt wieder erreichbar (Lücke endet). label wie bei tapListGapStart
+  ///
+  /// In de, this message translates to:
+  /// **'{label} wieder erreichbar · {time}'**
+  String tapListGapEnd(String label, String time);
+
+  /// Verbinden: Meldung nach dem Entfernen eines Messpunkts
+  ///
+  /// In de, this message translates to:
+  /// **'Messpunkt entfernt: {name}'**
+  String tapPointRemoved(String name);
+
+  /// Verbinden: Entfernen eines Messpunkts zurücknehmen
+  ///
+  /// In de, this message translates to:
+  /// **'Rückgängig'**
+  String get tapPointUndo;
+
+  /// Messpunkt: Schalter aktiv/pausiert mit Namen (Bedienhilfe)
+  ///
+  /// In de, this message translates to:
+  /// **'Messpunkt aktiv: {name}'**
+  String tapPointActiveNamed(String name);
+
+  /// Messpunkt: entfernen mit Namen (Bedienhilfe)
+  ///
+  /// In de, this message translates to:
+  /// **'Messpunkt entfernen: {name}'**
+  String tapPointRemoveNamed(String name);
+
+  /// Suche nach Interfaces: Fehler, davor der Grund
+  ///
+  /// In de, this message translates to:
+  /// **'Die Suche hat nicht geklappt.'**
+  String get tapSearchFailed;
+
+  /// Suche nach Interfaces: noch einmal
+  ///
+  /// In de, this message translates to:
+  /// **'Erneut suchen'**
+  String get tapSearchAgain;
+
+  /// Suche nach Interfaces: zur Handeingabe
+  ///
+  /// In de, this message translates to:
+  /// **'Adresse eingeben'**
+  String get tapSearchByHand;
+
+  /// Suche nach Interfaces: Hinweis auf die Handeingabe
+  ///
+  /// In de, this message translates to:
+  /// **'Die Suche findet nur Interfaces im eigenen Netz. Eines in einem anderen Netz oder hinter einem VPN lässt sich mit seiner Adresse hinzufügen.'**
+  String get tapSearchByHandHint;
+
+  /// Messpunkt: Fehler in Klartext, Netz nicht erreichbar
+  ///
+  /// In de, this message translates to:
+  /// **'Das Netz ist nicht erreichbar. WLAN oder VPN prüfen.'**
+  String get tapErrorNetwork;
+
+  /// Messpunkt: Fehler in Klartext, Verbindung abgelehnt
+  ///
+  /// In de, this message translates to:
+  /// **'Die Gegenstelle nimmt die Verbindung nicht an. Adresse und Port prüfen.'**
+  String get tapErrorRefused;
+
+  /// Messpunkt: Fehler in Klartext, keine Antwort
+  ///
+  /// In de, this message translates to:
+  /// **'Keine Antwort vom Interface.'**
+  String get tapErrorNoAnswer;
+
+  /// Messpunkt: Fehler in Klartext, sonstiger Grund
+  ///
+  /// In de, this message translates to:
+  /// **'Die Verbindung kam nicht zustande.'**
+  String get tapErrorOther;
+
+  /// Monitor, breite Tabelle: Spalte mit den Messpunkten, an denen ein Telegramm gesehen wurde
+  ///
+  /// In de, this message translates to:
+  /// **'Gesehen an'**
+  String get tapColumnSeen;
+
+  /// Messpunkt mit seinem Kurzzeichen (Linie), z. B. im Filter
+  ///
+  /// In de, this message translates to:
+  /// **'Messpunkt {label}'**
+  String tapNamed(String label);
+
+  /// Monitor: Filter, nur an einem Messpunkt gesehen
+  ///
+  /// In de, this message translates to:
+  /// **'Nur an einem Messpunkt'**
+  String get tapQuickSingle;
+
+  /// Monitor: Erklärung zum Filter Nur an einem Messpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'Lokal in seiner Linie geblieben oder vom Koppler gefiltert. Telegramme aus einer Lücke zählen nicht.'**
+  String get tapQuickSingleHint;
+
+  /// Projektprüfung: Name eines Beobachtungspunkts aus einem Messpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'Messpunkt {label}'**
+  String tapObservation(String label);
+
+  /// Monitor: Überschrift der Messpunkt-Karten
+  ///
+  /// In de, this message translates to:
+  /// **'{count} Messpunkte · {live} verbunden'**
+  String tapStripTitle(int count, int live);
+
+  /// Messpunkt-Karte: Zustand
+  ///
+  /// In de, this message translates to:
+  /// **'verbunden'**
+  String get tapStateConnected;
+
+  /// Messpunkt-Karte: Zustand nicht erreichbar
+  ///
+  /// In de, this message translates to:
+  /// **'nicht erreichbar · kein Busfehler'**
+  String get tapStateAway;
+
+  /// Messpunkt-Karte: Zustand pausiert
+  ///
+  /// In de, this message translates to:
+  /// **'pausiert'**
+  String get tapStatePaused;
+
+  /// Messpunkt-Karte: verbunden, es kommt nichts an
+  ///
+  /// In de, this message translates to:
+  /// **'verbunden, aber still'**
+  String get tapStateSilent;
+
+  /// Messpunkt-Karte: Zustand verbindet
+  ///
+  /// In de, this message translates to:
+  /// **'verbindet'**
+  String get tapStateConnecting;
+
+  /// Messpunkt-Karte: Telegramme pro Minute
+  ///
+  /// In de, this message translates to:
+  /// **'{rate}/min'**
+  String tapLoadRate(int rate);
+
+  /// Messpunkt-Karte: Buslast an diesem Messpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'Buslast {percent} %'**
+  String tapLoadPercent(String percent);
+
+  /// Messpunkt-Karte: Wiederholungen an diesem Messpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'{count} wiederholt'**
+  String tapLoadRepeats(int count);
+
+  /// Messpunkt-Karte: gemessener Zeitversatz
+  ///
+  /// In de, this message translates to:
+  /// **'Versatz bis {ms} ms'**
+  String tapLag(String ms);
+
+  /// Messpunkt-Karte: Zeitfenster, das sich selbst erweitert hat
+  ///
+  /// In de, this message translates to:
+  /// **'Fenster {ms} ms (gemessen)'**
+  String tapWindowAuto(int ms);
+
+  /// Monitor: laufende Lücke eines Messpunkts
+  ///
+  /// In de, this message translates to:
+  /// **'seit {from} · Lücke an {label}'**
+  String tapGapOpen(String from, String label);
+
+  /// Monitor: Lücke eines Messpunkts mit Anfang und Ende
+  ///
+  /// In de, this message translates to:
+  /// **'{from} – {to} · Lücke an {label}'**
+  String tapGapClosed(String from, String to, String label);
+
+  /// Topologie: Abzeichen an einer Linie ohne Messpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'nur indirekt sichtbar'**
+  String get tapLineIndirect;
+
+  /// Topologie: Hinweis an einer Linie ohne Messpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Messpunkt in dieser Linie: Lokale Telegramme bleiben hier unsichtbar. Unter Verbinden einen Messpunkt hinzufügen.'**
+  String get tapLineIndirectHint;
+
+  /// Verbinden: wie viele Messpunkte verbunden werden
+  ///
+  /// In de, this message translates to:
+  /// **'Verbinden öffnet {count} Verbindungen.'**
+  String tapConnectCount(int count);
+
+  /// Verbinden: über welchen Messpunkt gesendet wird
+  ///
+  /// In de, this message translates to:
+  /// **'Gruppentelegramme sendet Messpunkt 1, Gerätezugriffe gehen über den Messpunkt in der Linie des Geräts.'**
+  String get tapSendVia;
+
+  /// Verbinden: Knopf, Interfaces für Messpunkte suchen
+  ///
+  /// In de, this message translates to:
+  /// **'Im Netz suchen'**
+  String get tapSearchRun;
+
+  /// Dialogtitel: gefundene Interfaces ankreuzen
+  ///
+  /// In de, this message translates to:
+  /// **'Interfaces als Messpunkte'**
+  String get tapSearchTitle;
+
+  /// Suche nach Interfaces: nichts gefunden
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Interface gefunden.'**
+  String get tapSearchNone;
+
+  /// Suche: angekreuzte Interfaces als Messpunkte hinzufügen
+  ///
+  /// In de, this message translates to:
+  /// **'{count} hinzufügen'**
+  String tapSearchAdd(int count);
+
+  /// Suche: Interface ist schon Messpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'schon Messpunkt'**
+  String get tapSearchAlready;
+
+  /// Suche: Gerät bietet keinen Tunnel
+  ///
+  /// In de, this message translates to:
+  /// **'kann nur Routing, über „Messpunkt hinzufügen“ wählen'**
+  String get tapSearchRoutingOnly;
+
+  /// Suche: Interface hat keinen freien Tunnel
+  ///
+  /// In de, this message translates to:
+  /// **'alle {total} Tunnel belegt'**
+  String tapSearchNoTunnel(int total);
+
+  /// Suche: Interface bringt keine neue Linie
+  ///
+  /// In de, this message translates to:
+  /// **'gleiche Linie wie ein anderer Messpunkt, nur zur Gegenprobe'**
+  String get tapSearchSameLine;
+
+  /// Suche: Interface in einer Linie ohne Messpunkt
+  ///
+  /// In de, this message translates to:
+  /// **'neue Linie'**
+  String get tapSearchNewLine;
+
+  /// Suche: Hinweis vor dem Hinzufügen, letzter freier Tunnel
+  ///
+  /// In de, this message translates to:
+  /// **'Der letzte freie Tunnel wird belegt: {names}. Brauchen ETS oder Visualisierung ihn, den Messpunkt pausieren.'**
+  String tapSearchLastTunnel(String names);
+
+  /// Vorgeschlagener Name eines Messpunkts aus Linie und Gerät
+  ///
+  /// In de, this message translates to:
+  /// **'Linie {line} · {name}'**
+  String tapSearchName(String line, String name);
+
+  /// Messpunkt hinzufügen: dieselbe Verbindung gibt es schon
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Verbindung ist schon ein Messpunkt.'**
+  String get tapDuplicate;
+
+  /// Verbinden: Demo mit zwei Messpunkten starten
+  ///
+  /// In de, this message translates to:
+  /// **'Im Demo-Haus ausprobieren'**
+  String get tapDemo;
+
+  /// Verbinden: Erklärung zur Demo mit Messpunkten
+  ///
+  /// In de, this message translates to:
+  /// **'Zwei Linien, zwei Messpunkte: weitergeleitet, gefiltert, und ein Messpunkt fällt zeitweise aus.'**
+  String get tapDemoHint;
+
+  /// Demo: Name des zweiten Messpunkts
+  ///
+  /// In de, this message translates to:
+  /// **'Linie 1.2 · Demo-Interface'**
+  String get tapDemoName;
+
+  /// Demo: Fehlertext, wenn der zweite Messpunkt ausfällt
+  ///
+  /// In de, this message translates to:
+  /// **'Demo: Interface antwortet nicht'**
+  String get tapDemoDown;
 
   /// Import error: .xknx file cannot be read
   ///
@@ -16177,12 +19944,7 @@ abstract class AppLocalizations {
   ///
   /// In de, this message translates to:
   /// **'Status {status} von {device}: {answered} von {commands} beantwortet'**
-  String checkNoFeedbackRow(
-    String status,
-    String device,
-    int answered,
-    int commands,
-  );
+  String checkNoFeedbackRow(String status, String device, int answered, int commands);
 
   /// Finding: several project senders really heard
   ///
@@ -16338,25 +20100,13 @@ abstract class AppLocalizations {
   ///
   /// In de, this message translates to:
   /// **'{ga} {name} kommt von Linie {from} nicht in Linie {to} an ({count} Telegramme), obwohl dort Geräte darauf hören. Filtertabelle des Kopplers prüfen.'**
-  String topoFilterBlocked(
-    String ga,
-    String name,
-    String from,
-    String to,
-    int count,
-  );
+  String topoFilterBlocked(String ga, String name, String from, String to, int count);
 
   /// Topologie: Messpunkte zeigen unnötig durchgelassene Telegramme
   ///
   /// In de, this message translates to:
   /// **'{ga} {name} kommt von Linie {from} in Linie {to} an ({count} Telegramme), obwohl dort niemand darauf hört.'**
-  String topoFilterLeaked(
-    String ga,
-    String name,
-    String from,
-    String to,
-    int count,
-  );
+  String topoFilterLeaked(String ga, String name, String from, String to, int count);
 
   /// Diagramm: Kennzahl Belegung der Leitung in Prozent
   ///
@@ -16533,8 +20283,7 @@ abstract class AppLocalizations {
   String weekSumTapGaps(String taps, int minutes);
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -16543,8 +20292,7 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['de', 'en'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['de', 'en'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

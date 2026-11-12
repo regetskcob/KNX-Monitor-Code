@@ -10,11 +10,14 @@ import '../l10n/locale_controller.dart';
 import '../model/box_connection.dart';
 import '../model/box_setup.dart';
 import '../platform/addon.dart';
+import '../platform/app_instance.dart';
 import '../platform/box_link.dart';
 import '../platform/native_bridge.dart';
 import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
+import 'box_backup_screen.dart';
+import 'box_claims.dart';
 import 'box_hat_screen.dart';
 import 'common.dart';
 import 'server_restarts.dart';
@@ -433,6 +436,9 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
   Map<String, Object?>? _info;
   Map<String, Object?> _config = const {};
   List<Map<String, Object?>> _devices = const [];
+
+  /// Key of this app instance: another access of the same app is named as such.
+  String? _app;
   String? _error;
   final _password = TextEditingController();
   final _currentPassword = TextEditingController();
@@ -468,6 +474,7 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
     try {
       final info = await Addon.boxInfo();
       final status = await Addon.status();
+      _app ??= await AppInstance.id();
       final devices = info['role'] == 'admin'
           ? [for (final d in await Addon.boxDevices()) (d! as Map).cast<String, Object?>()]
           : const <Map<String, Object?>>[];
@@ -707,6 +714,7 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
                   ),
                 ],
                 const SizedBox(height: Gap.section),
+                const BoxClaimList(),
                 Kennung(s.boxDevices, count: _admin ? _devices.length : null),
                 const SizedBox(height: Gap.item),
                 if (!_admin && _info != null)
@@ -718,7 +726,12 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
                       title: Text(d['name'] as String? ?? ''),
                       subtitle: Text(
                         [
-                          if (d['self'] == true) s.boxDeviceSelf,
+                          if (d['self'] == true)
+                            s.boxDeviceSelf
+                          else if (d['app'] != null && d['app'] == _app)
+                            s.boxDeviceThisApp
+                          else if (d['app'] case final String app)
+                            s.boxDeviceApp(app.substring(0, app.length < 8 ? app.length : 8)),
                           if (d['admin'] == true) s.boxDeviceAdmin,
                           if (d['viewOnly'] == true) s.boxDeviceViewOnly,
                         ].join(' · '),
@@ -758,6 +771,23 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
                     onTap: () =>
                         Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BoxHatScreen())),
                   ),
+                  const SizedBox(height: Gap.section),
+                  Kennung(s.boxBackupTitle),
+                  // Only a box whose server has the backup (`backup` in /api/box) offers it.
+                  if (_info?['backup'] == true)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(s.boxBackupTitle),
+                      subtitle: Text(s.boxBackupHint),
+                      trailing: const Icon(AppIcons.next),
+                      onTap: () =>
+                          Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BoxBackupScreen())),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.only(top: Gap.item),
+                      child: HorizontStatusLine(HorizontStatus.info, s.boxBackupTooOld),
+                    ),
                   const SizedBox(height: Gap.section),
                   Kennung(s.boxPasswordChange),
                   const SizedBox(height: Gap.item),

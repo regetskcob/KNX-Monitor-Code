@@ -25,13 +25,17 @@ final class IncomingRefused extends IncomingFile {
   final IncomingProblem problem;
 }
 
+/// Extensions of the files the app opens from outside: handover package, fault report, customer
+/// files (`lib/export/handover_package.dart`, `lib/export/customer_file.dart`).
+const _extensions = ['.knxhandover', '.knxreport', '.knxcustomers'];
+
 /// Path from the launch arguments (Windows, Linux): the first argument with our
 /// extension, as a path or `file:` URI. Everything else (switches, foreign files,
 /// other schemes) does not count. Never throws.
 String? packagePathFromArgs(List<String> args) {
   for (final arg in args) {
     final lower = arg.toLowerCase();
-    if (!lower.endsWith('.knxhandover') && !lower.endsWith('.knxreport')) continue;
+    if (!_extensions.any(lower.endsWith)) continue;
     if (lower.startsWith('file:')) {
       try {
         return Uri.parse(arg).toFilePath();

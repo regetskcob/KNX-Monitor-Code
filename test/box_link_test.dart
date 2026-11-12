@@ -52,6 +52,71 @@ void main() {
       expect(link.address, '10.42.0.1:8765');
     });
 
+    test('Kopplungslink mit Einmal-Code: wird getauscht, nie gespeichert', () {
+      final fp = 'A' * 43;
+      final link = BoxLink.parse(
+        'knxmonitor://box?url=http%3A%2F%2F10.42.0.1%2F&code=abc_DEF-123&name=KNX-Box-1A2B&fp=$fp',
+      )!;
+      expect(link.code, 'abc_DEF-123');
+      expect(link.key, isEmpty);
+      expect(link.needsClaim, isTrue);
+      expect(link.needsPairing, isFalse);
+      expect(link.carriesSecret, isTrue);
+      // Mit Fingerabdruck läuft auch der Tausch über HTTPS.
+      expect(link.url, Uri.parse('https://10.42.0.1/'));
+      expect('${link.toUri()}', isNot(contains('abc_DEF-123')));
+      final saved = link.paired('geraetezugang');
+      expect(saved.code, isEmpty);
+      expect(saved.needsClaim, isFalse);
+      expect(saved.key, 'geraetezugang');
+      expect(saved.fp, fp);
+      expect(BoxLink.parse('${saved.toUri()}'), saved);
+      // Die Kopplungsseite selbst als Adresse.
+      expect(BoxLink.parse('http://knx-box.local/pair?code=xyz')!.code, 'xyz');
+      // Ein Passwort von Hand ersetzt den Code nicht.
+      expect(link.withPassword('box#pass'), same(link));
+      // Ungültige Zeichen oder Überlänge: kein Link.
+      expect(BoxLink.parse('knxmonitor://box?url=http://10.42.0.1/&code=a%20b'), isNull);
+      expect(BoxLink.parse('knxmonitor://box?url=http://10.42.0.1/&code=${'x' * 129}'), isNull);
+    });
+
+    test('Links mit Schlüssel (Boxen bis 1.11.2) gelten weiter; der Schlüssel geht vor', () {
+      final old = BoxLink.parse('knxmonitor://box?url=http://10.42.0.1/&key=dauerhaft&name=KNX-Box-1A2B')!;
+      expect(old.key, 'dauerhaft');
+      expect(old.needsClaim, isFalse);
+      final both = BoxLink.parse('knxmonitor://box?url=http://10.42.0.1/&key=dauerhaft&code=einmal')!;
+      expect(both.needsClaim, isFalse);
+      expect(both.key, 'dauerhaft');
+      // Aufkleber: unverändert, das Passwort koppelt.
+      final sticker = BoxLink.parse(
+        'knxmonitor://box?url=http%3A%2F%2F10.42.0.1%2F&name=x&ssid=x&wifi=wlanpass12&pw=box',
+      );
+      expect(sticker!.needsPairing, isTrue);
+      expect(sticker.needsClaim, isFalse);
+    });
+
+    test('unverschlüsselt ins Internet: nur ohne Fingerabdruck und nur bei fremder Adresse', () {
+      BoxLink at(String url, [String fp = '']) => BoxLink(url: Uri.parse(url), key: 'k', fp: fp);
+      for (final local in [
+        'http://10.42.0.1/',
+        'http://192.168.1.20:8765/',
+        'http://knx-box.local/',
+        'http://localhost/',
+        // Names only the home network answers: a single label, reserved private domains.
+        'http://nas:8765/',
+        'http://busclear.home.arpa/',
+        'http://box.internal/',
+      ]) {
+        expect(at(local).plainOverInternet, isFalse, reason: local);
+      }
+      for (final foreign in ['http://box.example.com/', 'http://203.0.113.7/', 'http://knx-box.fritz.box/']) {
+        expect(at(foreign).plainOverInternet, isTrue, reason: foreign);
+        expect(at(foreign, 'A' * 43).plainOverInternet, isFalse, reason: 'mit Fingerabdruck HTTPS');
+      }
+      expect(at('https://box.example.com/').plainOverInternet, isFalse);
+      expect(BoxLink(url: Uri.parse('http://box.example.com/')).carriesSecret, isFalse);
+    });
+
     test('Einrichtungslink vom Aufkleber: WLAN und Passwort, Passwort nie gespeichert', () {
       final link = BoxLink.parse(
         'knxmonitor://box?url=http%3A%2F%2F10.42.0.1%2F&name=KNX-Box-1A2B&ssid=KNX-Box-1A2B'

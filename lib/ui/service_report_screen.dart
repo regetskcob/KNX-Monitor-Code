@@ -8,6 +8,7 @@ import 'package:horizont/horizont.dart';
 import '../catalog_store.dart';
 import '../export/pdf_export.dart';
 import '../knx/demo_tunnel.dart';
+import '../knx/knx_tunnel.dart';
 import '../l10n/locale_controller.dart';
 import '../model/acceptance.dart';
 import '../model/annotation.dart';
@@ -18,6 +19,7 @@ import '../model/installation.dart';
 import '../model/recording.dart';
 import '../model/service_report.dart';
 import '../model/site_photos.dart';
+import '../model/telegram_log.dart';
 import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
@@ -26,13 +28,63 @@ import 'figure_box.dart';
 import 'signature_pad.dart';
 import 'telegram_row.dart' show formatDate, formatTime;
 
+/// Name of a report by kind, in the app's language (file name, lists).
+String serviceKindTitle(ServiceKind kind) => switch (kind) {
+  ServiceKind.visit => s.srPdfTitle,
+  ServiceKind.maintenance => s.srMaintPdfTitle,
+  ServiceKind.reply => s.replyTitle,
+};
+
+/// Shares the PDF of a stored report with its screenshots and photos, as far
+/// as they still exist.
+Future<void> shareServiceReport(BuildContext context, ServiceReport r) => sharePdf(
+  context,
+  () async {
+    final shots = <String, Uint8List>{};
+    for (final id in {for (final c in r.comments) ...c.shots}) {
+      try {
+        if (await ShotStore.instance.read(id) case final jpeg?) shots[id] = jpeg;
+      } on Object catch (e) {
+        debugPrint('Screenshot $id: $e');
+      }
+    }
+    final photos = <String, Uint8List>{};
+    for (final p in r.photos) {
+      try {
+        if (await SitePhotoStore.instance.read(p.id) case final jpeg?) photos[p.id] = jpeg;
+      } on Object catch (e) {
+        debugPrint('Foto ${p.id}: $e');
+      }
+    }
+    return ServiceReportPdf(r, shots: shots, photos: photos);
+  },
+  pdfName([serviceKindTitle(r.kind), if (r.customer.isNotEmpty) r.customer].join(' ')),
+  origin: rectOf(context),
+);
+
 /// Service report (Pro): fill in occasion, observation, work done and
 /// recommendation, choose a recording and health check as evidence, optionally
 /// have it signed. Creating it freezes the state and shares the PDF.
 class ServiceReportScreen extends StatefulWidget {
-  const ServiceReportScreen({super.key, this.gateway, this.recordingId});
+  const ServiceReportScreen({
+    super.key,
+    this.gateway,
+    this.recordingId,
+    this.maintenance = false,
+    this.tunnel,
+    this.log,
+  });
 
   final String? gateway;
+
+  /// The connection and its traffic: with them the checklist item "health check on the bus" runs
+  /// the app's own health check and takes its result. Without them (opened from the customer file)
+  /// the item is rated by hand.
+  final KnxTunnel? tunnel;
+  final TelegramLog? log;
+
+  /// Start as a maintenance visit (fixed checklist, compared with the last one).
+  final bool maintenance;
 
   /// Preselected recording (from an incoming fault report).
   final String? recordingId;
@@ -55,6 +107,15 @@ class _ServiceReportScreenState extends State<ServiceReportScreen> {
   bool _useHealth = HealthCheck.instance.last != null;
   Signature _signature = Signature.empty;
   bool _busy = false;
+
+  /// Service call or maintenance visit (a reply to a fault report has its own page).
+  late ServiceKind _kind = widget.maintenance ? ServiceKind.maintenance : ServiceKind.visit;
+
+  /// The last maintenance report of the installation: outline and baseline of
+  /// this one. Loaded when "maintenance" is chosen for the first time.
+  ServiceReport? _previous;
+  bool _previousLoaded = false;
+  final _results = <String, CheckResult>{};
 
   /// Photos chosen for the report; none without a selection.
   final _photos = <String>{};
@@ -84,6 +145,44 @@ class _ServiceReportScreenState extends State<ServiceReportScreen> {
       if (mounted) setState(() {});
     });
     if (widget.recordingId != null) _prefill(widget.recordingId!);
+    if (widget.maintenance) unawaited(_startMaintenance());
+  }
+
+  /// Takes over what a maintenance visit repeats from the last one: the
+  /// outline, the reason, and who and where if the customer file is empty.
+  /// Results and findings are never taken over, they belong to that visit.
+  Future<void> _startMaintenance() async {
+    if (_previousLoaded) return _prefillMaintenance();
+    ServiceReport? previous;
+    try {
+      previous = await ServiceReportStore.instance.lastMaintenance();
+    } on Object catch (e) {
+      debugPrint('Letzter Wartungsbericht: $e');
+    }
+    if (!mounted) return;
+    setState(() {
+      _previous = previous;
+      _previousLoaded = true;
+    });
+    _prefillMaintenance();
+  }
+
+  void _prefillMaintenance() {
+    final previous = _previous;
+    void fill(TextEditingController c, String? text) {
+      if (c.text.trim().isEmpty && text != null && text.isNotEmpty) c.text = text;
+    }
+
+    fill(_occasion, previous?.occasion.isNotEmpty == true ? previous!.occasion : s.srMaintOccasionDefault);
+    fill(_customer, previous?.customer);
+    fill(_site, previous?.site);
+    fill(_technician, previous?.technician);
+    setState(() {});
+  }
+
+  void _setKind(ServiceKind kind) {
+    setState(() => _kind = kind);
+    if (kind == ServiceKind.maintenance) unawaited(_startMaintenance());
   }
 
   @override
@@ -122,6 +221,7 @@ class _ServiceReportScreenState extends State<ServiceReportScreen> {
       final recording = _recordingId == null ? null : await RecordingStore.instance.open(_recordingId!);
       final run = _useHealth ? HealthCheck.instance.last : null;
       final evidence = await collectServiceEvidence(language: _language, recording: recording, run: run);
+      final maintenance = _kind == ServiceKind.maintenance;
       final report = ServiceReport(
         created: DateTime.now(),
         project: CatalogStore.instance.catalog.projectName,
@@ -148,6 +248,14 @@ class _ServiceReportScreenState extends State<ServiceReportScreen> {
         signer: _signer.text.trim(),
         signature: _signature,
         gateway: widget.gateway,
+        kind: _kind,
+        // In the report's language, with the same outline as last time.
+        checklist: [
+          if (maintenance)
+            for (final c in maintenanceChecklist(_language, previous: _previous))
+              ServiceCheck(c.key, c.label, _results[c.key] ?? CheckResult.unchecked),
+        ],
+        previous: maintenance && _previous != null ? ServiceBaseline.of(_previous!) : null,
       );
       await ServiceReportStore.instance.save(report);
       unawaited(CustomerStore.instance.note(VisitKind.serviceReport, text: report.occasion));
@@ -156,7 +264,7 @@ class _ServiceReportScreenState extends State<ServiceReportScreen> {
         _signature = Signature.empty;
         _earlier = ServiceReportStore.instance.list();
       });
-      if (buttonContext.mounted) await _share(buttonContext, report);
+      if (buttonContext.mounted) await shareServiceReport(buttonContext, report);
     } on Object catch (e) {
       debugPrint('Servicebericht: $e');
       if (mounted) showHorizontMessage(context, s.pdfExportFailedGeneric, status: HorizontStatus.critical);
@@ -164,31 +272,6 @@ class _ServiceReportScreenState extends State<ServiceReportScreen> {
       if (mounted) setState(() => _busy = false);
     }
   }
-
-  Future<void> _share(BuildContext context, ServiceReport r) => sharePdf(
-    context,
-    () async {
-      final shots = <String, Uint8List>{};
-      for (final id in {for (final c in r.comments) ...c.shots}) {
-        try {
-          if (await ShotStore.instance.read(id) case final jpeg?) shots[id] = jpeg;
-        } on Object catch (e) {
-          debugPrint('Screenshot $id: $e');
-        }
-      }
-      final photos = <String, Uint8List>{};
-      for (final p in r.photos) {
-        try {
-          if (await SitePhotoStore.instance.read(p.id) case final jpeg?) photos[p.id] = jpeg;
-        } on Object catch (e) {
-          debugPrint('Foto ${p.id}: $e');
-        }
-      }
-      return ServiceReportPdf(r, shots: shots, photos: photos);
-    },
-    pdfName([s.srPdfTitle, if (r.customer.isNotEmpty) r.customer].join(' ')),
-    origin: rectOf(context),
-  );
 
   /// Tick photos for the report.
   Future<void> _pickPhotos(List<SitePhoto> photos) => showModalBottomSheet<void>(
@@ -223,6 +306,54 @@ class _ServiceReportScreenState extends State<ServiceReportScreen> {
     ),
   );
 
+  /// Runs the app's health check (as the tool "Health" does, with its read test) and rates the
+  /// checklist item from the result: findings that are errors or warnings mean "attention".
+  Future<void> _runHealth() async {
+    final tunnel = widget.tunnel, log = widget.log;
+    if (tunnel == null || log == null) return;
+    final run = await HealthCheck.instance.run(tunnel, log);
+    if (run == null || !mounted) return;
+    final serious = run.findings.any((f) => f.kind.severity == Severity.error || f.kind.severity == Severity.warning);
+    setState(() {
+      _results['health'] = serious ? CheckResult.attention : CheckResult.ok;
+      // The report then carries the run as evidence.
+      _useHealth = true;
+    });
+  }
+
+  Widget _healthAction() => ListenableBuilder(
+    listenable: Listenable.merge([HealthCheck.instance, ?widget.tunnel?.state]),
+    builder: (context, _) {
+      final h = HealthCheck.instance;
+      final muted = Theme.of(context).textTheme.bodySmall?.copyWith(color: context.hz.textMuted);
+      final connected = widget.tunnel?.state.value == TunnelState.connected && widget.log != null;
+      final last = h.last;
+      return Wrap(
+        spacing: Gap.item,
+        runSpacing: HzSpace.s4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          if (connected)
+            OutlinedButton(
+              onPressed: h.running ? null : () => unawaited(_runHealth()),
+              child: Text(h.running ? s.srHealthRunning : s.srHealthRun),
+            ),
+          Text(
+            last != null
+                ? s.srHealthLast(
+                    '${formatDate(last.time)} ${formatTime(last.time, seconds: false)}',
+                    last.findings.length,
+                  )
+                : connected
+                ? s.srHealthNever
+                : s.srHealthNeedsBus,
+            style: muted,
+          ),
+        ],
+      );
+    },
+  );
+
   @override
   Widget build(BuildContext context) {
     Widget field(String label, TextEditingController c, {int maxLines = 1, String? hint, bool last = false}) => Padding(
@@ -242,150 +373,297 @@ class _ServiceReportScreenState extends State<ServiceReportScreen> {
     );
     final recordings = _recordings;
     final health = HealthCheck.instance.last;
+    // In two parts, so that a wide window can put them side by side.
+    final visit = <Widget>[
+      ChoiceBar<ServiceKind>(
+        segments: [
+          ButtonSegment(value: ServiceKind.visit, label: Text(s.srKindVisit)),
+          ButtonSegment(value: ServiceKind.maintenance, label: Text(s.srKindMaintenance)),
+        ],
+        selected: _kind,
+        onChanged: _setKind,
+      ),
+      const SizedBox(height: Gap.item),
+      SectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            field(s.srOccasion, _occasion, maxLines: 4, hint: s.srOccasionHint),
+            field(s.srObserved, _observed, maxLines: 6, hint: s.srObservedHint),
+            field(s.srDone, _done, maxLines: 6, hint: s.srDoneHint),
+            field(s.srRecommendation, _recommendation, maxLines: 4, hint: s.srRecommendationHint, last: true),
+          ],
+        ),
+      ),
+      if (_kind == ServiceKind.maintenance) ...[
+        SectionHead(s.srMaintChecklist),
+        Padding(
+          padding: const EdgeInsets.only(bottom: Gap.item),
+          child: Text(
+            _previous == null ? s.srMaintFirst : s.srMaintPrevious(formatDate(_previous!.created)),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.hz.textMuted),
+          ),
+        ),
+        RowCard(
+          children: [
+            // Shown in the app's language; the report stores its own.
+            for (final c in maintenanceChecklist(s.localeName.startsWith('de') ? 'de' : 'en', previous: _previous))
+              _CheckRow(
+                label: c.label,
+                result: _results[c.key] ?? CheckResult.unchecked,
+                onChanged: (r) => setState(() => _results[c.key] = r),
+                // The health check is a tool of the app: run it here and take its result.
+                extra: c.key == 'health' ? _healthAction() : null,
+              ),
+          ],
+        ),
+      ],
+    ];
+    final evidence = <Widget>[
+      SectionHead(s.srIncludes),
+      RowCard(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: HzSpace.s12),
+            child: HorizontField(
+              label: s.srRecording,
+              child: DropdownButton<String?>(
+                icon: const Icon(AppIcons.expand),
+                isExpanded: true,
+                value: recordings.any((r) => r.id == _recordingId) ? _recordingId : null,
+                items: [
+                  DropdownMenuItem(value: null, child: Text(s.srRecordingNone)),
+                  for (final r in recordings)
+                    DropdownMenuItem(
+                      value: r.id,
+                      child: Text(
+                        '${r.name}$metaSeparator${formatDate(r.started)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: (id) {
+                  setState(() => _recordingId = id);
+                  if (id != null) _prefill(id);
+                },
+              ),
+            ),
+          ),
+          if (health != null)
+            SwitchRow(
+              title: s.srUseHealth,
+              meta: '${formatDate(health.time)} ${formatTime(health.time, seconds: false)}',
+              value: _useHealth,
+              onChanged: (v) => setState(() => _useHealth = v),
+            ),
+          // Photos only if there are any, and only the ticked ones.
+          if (SitePhotoStore.instance.photos case final photos when photos.isNotEmpty)
+            CardRow(title: s.srPhotos, value: formatInt(_photos.length), onTap: () => _pickPhotos(photos)),
+        ],
+      ),
+      SectionHead(s.acceptCustomerSection),
+      SectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            field(s.acceptCustomer, _customer),
+            field(s.acceptSite, _site, maxLines: 3),
+            field(s.acceptTechnician, _technician, last: true),
+          ],
+        ),
+      ),
+      // In the browser in the app's language (no isolate, see acceptance).
+      if (!kIsWeb) ...[
+        SectionHead(s.acceptLanguage),
+        FilterBar<String>(
+          segments: const [
+            ButtonSegment(value: 'de', label: Text('Deutsch')),
+            ButtonSegment(value: 'en', label: Text('English')),
+          ],
+          selected: _language,
+          onChanged: (v) => setState(() => _language = v),
+        ),
+      ],
+      SectionHead(s.srSignatureOptional),
+      SectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            field(s.acceptSigner, _signer),
+            OutlinedButton.icon(
+              onPressed: _sign,
+              icon: Icon(_signature.isEmpty ? AppIcons.acceptance : AppIcons.success, size: 18),
+              label: Text(_signature.isEmpty ? s.acceptSignCustomer : s.srSigned),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: Gap.section),
+      Builder(
+        builder: (buttonContext) =>
+            FilledButton(onPressed: _busy ? null : () => _create(buttonContext), child: Text(s.srCreate)),
+      ),
+      FutureBuilder(
+        future: _earlier,
+        builder: (context, snap) {
+          final list = snap.data ?? const <ServiceReport>[];
+          if (list.isEmpty) return const SizedBox.shrink();
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: Gap.section),
+              SectionTitle(s.srEarlier, count: list.length),
+              const SizedBox(height: Gap.item),
+              const Divider(height: Lines.hairline),
+              for (final r in list) ...[
+                Builder(
+                  builder: (rowContext) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(AppIcons.pdf),
+                    title: Text(r.customer.isEmpty ? serviceKindTitle(r.kind) : r.customer),
+                    subtitle: Text(
+                      [
+                        if (r.kind == ServiceKind.maintenance) s.srKindMaintenance,
+                        if (r.kind == ServiceKind.reply) s.srKindReply,
+                        '${formatDate(r.created)} ${formatTime(r.created, seconds: false)}',
+                        if (r.technician.isNotEmpty) r.technician,
+                      ].join(metaSeparator),
+                    ),
+                    onTap: () => shareServiceReport(rowContext, r),
+                  ),
+                ),
+                const Divider(height: Lines.hairline),
+              ],
+            ],
+          );
+        },
+      ),
+    ];
     return Scaffold(
       appBar: AppBar(
         title: Text(s.srTitle),
         actions: [InfoAction(title: s.srTitle, text: s.srExplain)],
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Widths.reading),
-          child: ListView(
-            padding: Gap.page,
-            children: [
-              SectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    field(s.srOccasion, _occasion, maxLines: 4, hint: s.srOccasionHint),
-                    field(s.srObserved, _observed, maxLines: 6, hint: s.srObservedHint),
-                    field(s.srDone, _done, maxLines: 6, hint: s.srDoneHint),
-                    field(s.srRecommendation, _recommendation, maxLines: 4, hint: s.srRecommendationHint, last: true),
-                  ],
-                ),
+      // Phone and narrow windows: one column in reading width. From the expanded width on the
+      // texts of the visit stand on the left, evidence, customer and signature on the right.
+      body: LayoutBuilder(
+        builder: (context, box) {
+          if (box.maxWidth < Breakpoints.expanded) {
+            return Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: Widths.reading),
+                child: ListView(padding: Gap.page, children: [...visit, ...evidence]),
               ),
-              SectionHead(s.srIncludes),
-              RowCard(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: HzSpace.s12),
-                    child: HorizontField(
-                      label: s.srRecording,
-                      child: DropdownButton<String?>(
-                        icon: const Icon(AppIcons.expand),
-                        isExpanded: true,
-                        value: recordings.any((r) => r.id == _recordingId) ? _recordingId : null,
-                        items: [
-                          DropdownMenuItem(value: null, child: Text(s.srRecordingNone)),
-                          for (final r in recordings)
-                            DropdownMenuItem(
-                              value: r.id,
-                              child: Text(
-                                '${r.name}$metaSeparator${formatDate(r.started)}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                        onChanged: (id) {
-                          setState(() => _recordingId = id);
-                          if (id != null) _prefill(id);
-                        },
-                      ),
+            );
+          }
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: Widths.wide),
+              child: SingleChildScrollView(
+                padding: Gap.page,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: visit),
                     ),
-                  ),
-                  if (health != null)
-                    SwitchRow(
-                      title: s.srUseHealth,
-                      meta: '${formatDate(health.time)} ${formatTime(health.time, seconds: false)}',
-                      value: _useHealth,
-                      onChanged: (v) => setState(() => _useHealth = v),
-                    ),
-                  // Photos only if there are any, and only the ticked ones.
-                  if (SitePhotoStore.instance.photos case final photos when photos.isNotEmpty)
-                    CardRow(title: s.srPhotos, value: formatInt(_photos.length), onTap: () => _pickPhotos(photos)),
-                ],
-              ),
-              SectionHead(s.acceptCustomerSection),
-              SectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    field(s.acceptCustomer, _customer),
-                    field(s.acceptSite, _site, maxLines: 3),
-                    field(s.acceptTechnician, _technician, last: true),
-                  ],
-                ),
-              ),
-              // In the browser in the app's language (no isolate, see acceptance).
-              if (!kIsWeb) ...[
-                SectionHead(s.acceptLanguage),
-                FilterBar<String>(
-                  segments: const [
-                    ButtonSegment(value: 'de', label: Text('Deutsch')),
-                    ButtonSegment(value: 'en', label: Text('English')),
-                  ],
-                  selected: _language,
-                  onChanged: (v) => setState(() => _language = v),
-                ),
-              ],
-              SectionHead(s.srSignatureOptional),
-              SectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    field(s.acceptSigner, _signer),
-                    OutlinedButton.icon(
-                      onPressed: _sign,
-                      icon: Icon(_signature.isEmpty ? AppIcons.acceptance : AppIcons.success, size: 18),
-                      label: Text(_signature.isEmpty ? s.acceptSignCustomer : s.srSigned),
+                    const SizedBox(width: Gap.section),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: evidence),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: Gap.section),
-              Builder(
-                builder: (buttonContext) =>
-                    FilledButton(onPressed: _busy ? null : () => _create(buttonContext), child: Text(s.srCreate)),
-              ),
-              FutureBuilder(
-                future: _earlier,
-                builder: (context, snap) {
-                  final list = snap.data ?? const <ServiceReport>[];
-                  if (list.isEmpty) return const SizedBox.shrink();
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: Gap.section),
-                      SectionTitle(s.srEarlier, count: list.length),
-                      const SizedBox(height: Gap.item),
-                      const Divider(height: Lines.hairline),
-                      for (final r in list) ...[
-                        Builder(
-                          builder: (rowContext) => ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(AppIcons.pdf),
-                            title: Text(r.customer.isEmpty ? s.srPdfTitle : r.customer),
-                            subtitle: Text(
-                              [
-                                '${formatDate(r.created)} ${formatTime(r.created, seconds: false)}',
-                                if (r.technician.isNotEmpty) r.technician,
-                              ].join(metaSeparator),
-                            ),
-                            onTap: () => _share(rowContext, r),
-                          ),
-                        ),
-                        const Divider(height: Lines.hairline),
-                      ],
-                    ],
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 }
+
+/// A choice between a few words as a segmented toggle, like [FilterBar] but
+/// with segments at least 44 pt high: these are answers in a form, tapped on
+/// site, not a filter above a list. Scrolls sideways when large text does not
+/// fit.
+class ChoiceBar<T> extends StatelessWidget {
+  const ChoiceBar({super.key, required this.segments, required this.selected, required this.onChanged});
+
+  final List<ButtonSegment<T>> segments;
+  final T selected;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) => SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: box.maxWidth.isFinite ? box.maxWidth : 0),
+        child: SegmentedButton<T>(
+          showSelectedIcon: false,
+          style: const ButtonStyle(
+            minimumSize: WidgetStatePropertyAll(Size(0, HzSize.touch)),
+            padding: WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: HzSpace.s8)),
+          ),
+          segments: segments,
+          selected: {selected},
+          onSelectionChanged: (v) => onChanged(v.first),
+        ),
+      ),
+    ),
+  );
+}
+
+/// A checklist item of a maintenance visit with its three results: label and
+/// choice side by side where there is room, stacked on a phone.
+class _CheckRow extends StatelessWidget {
+  const _CheckRow({required this.label, required this.result, required this.onChanged, this.extra});
+
+  /// Below the label: an action that fills in the result, with what it found.
+  final Widget? extra;
+  final String label;
+  final CheckResult result;
+  final ValueChanged<CheckResult> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final choice = Semantics(
+      label: label,
+      container: true,
+      child: ChoiceBar<CheckResult>(
+        segments: [
+          ButtonSegment(value: CheckResult.ok, label: Text(s.srCheckOk)),
+          ButtonSegment(value: CheckResult.attention, label: Text(s.srCheckAttention)),
+          ButtonSegment(value: CheckResult.unchecked, label: Text(s.srCheckUnchecked)),
+        ],
+        selected: result,
+        onChanged: onChanged,
+      ),
+    );
+    final name = Text(label, style: Theme.of(context).textTheme.bodyMedium);
+    final text = extra == null
+        ? name
+        : Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: HzSpace.s8, children: [name, extra!]);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: HzSpace.s12),
+      child: LayoutBuilder(
+        builder: (context, box) => box.maxWidth < _checkSideBySide
+            ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: HzSpace.s8, children: [text, choice])
+            : Row(
+                spacing: Gap.item,
+                children: [
+                  Expanded(child: text),
+                  SizedBox(width: _checkChoiceWidth, child: choice),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+/// From this width of the card a checklist item fits on one line.
+const _checkSideBySide = 600.0;
+const _checkChoiceWidth = 340.0;

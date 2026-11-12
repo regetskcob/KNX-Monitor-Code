@@ -365,7 +365,17 @@ String _acceptDate(DateTime? d) {
   return '${two(d.day)}.${two(d.month)}.${d.year}';
 }
 
-Future<Uint8List> buildAcceptancePdf(Acceptance a) async {
+/// The optional details of an acceptance report as cells of the summary (label, value, width);
+/// empty when none is filled in, so such a report looks as before.
+List<(String, String, int)> acceptanceDetailCells(Acceptance a) => [
+  if (a.standard.isNotEmpty) (s.acceptStandard, a.standard, 3),
+  if (a.projectNumber.isNotEmpty) (s.acceptProjectNumber, a.projectNumber, 2),
+  if (a.warrantyStart case final d?) (s.acceptWarrantyStart, pdfDate(d), 2),
+];
+
+/// [photos]: the images of the defects by photo ID. An image that is missing or is not the one the
+/// report was signed with (hash) is replaced by a note.
+Future<Uint8List> buildAcceptancePdf(Acceptance a, {Map<String, Uint8List> photos = const {}}) async {
   final fonts = await PdfFonts.load();
   final open = [
     for (final i in a.items)
@@ -432,6 +442,7 @@ Future<Uint8List> buildAcceptancePdf(Acceptance a) async {
         (s.commOpen, '${open.length}', 1),
         (s.connectGateway, a.gateway ?? '—', 3),
       ], fonts),
+      if (a.hasDetails) ...[pw.SizedBox(height: 8), pdfSummary(acceptanceDetailCells(a), fonts)],
       pw.SizedBox(height: 16),
       for (final MapEntry(key: path, value: items) in groups.entries)
         ...pdfSection(
@@ -469,6 +480,39 @@ Future<Uint8List> buildAcceptancePdf(Acceptance a) async {
           ),
         ),
       if (issues.isNotEmpty) ...pdfSection(s.acceptIssues, fonts, count: issues.length, list(issues)),
+      if (a.defectPhotos.isNotEmpty)
+        ...pdfSection(
+          s.acceptDefects,
+          fonts,
+          count: a.defectPhotos.length,
+          pw.Wrap(
+            children: [
+              for (final item in issues)
+                if (a.defectPhotos[item.address] case final photo?)
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.only(bottom: 8, right: 8),
+                    child: pw.SizedBox(
+                      width: 248,
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            [formatGroup(item.address), name(item)].where((t) => t.isNotEmpty).join('  '),
+                            style: pdfStyle(PdfPt.small, font: fonts.medium),
+                          ),
+                          if (item.note case final note?) pw.Text(note, style: pdfStyle(PdfPt.small, color: pdfMuted)),
+                          switch (photos[photo.id]) {
+                                final jpeg? when photo.matches(jpeg) => _commentShot(jpeg),
+                                _ => null,
+                              } ??
+                              pw.Text(s.acceptDefectPhotoMissing, style: pdfStyle(PdfPt.small, color: pdfMuted)),
+                        ],
+                      ),
+                    ),
+                  ),
+            ],
+          ),
+        ),
       if (open.isNotEmpty) ...pdfSection(s.acceptOpenPoints, fonts, count: open.length, list(open)),
       // Boxes and the closing part with signatures do not break across pages.
       if (a.followUps.isNotEmpty) ...[
@@ -540,7 +584,13 @@ Future<Uint8List> buildHealthPdf(HealthRun run, {required CatalogStore store, St
     HealthArea.readings => s.healthAreaValues,
     HealthArea.dpt => s.healthAreaDpt,
     HealthArea.bus => s.healthAreaBus,
+    HealthArea.lighting => s.daliHealthArea,
   };
+  // Lighting only where there is DALI: the row of areas stays as it was for everyone else.
+  final areas = [
+    for (final a in HealthArea.values)
+      if (a != HealthArea.lighting || run.countIn(a) > 0) a,
+  ];
   pw.Widget cell(String text, {pw.Font? font, PdfColor color = pdfInk}) => pdfPad(
     pw.Text(
       text,
@@ -563,7 +613,7 @@ Future<Uint8List> buildHealthPdf(HealthRun run, {required CatalogStore store, St
       pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          for (final a in HealthArea.values) ...[
+          for (final a in areas) ...[
             pw.Expanded(
               child: pw.Container(
                 padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -592,12 +642,12 @@ Future<Uint8List> buildHealthPdf(HealthRun run, {required CatalogStore store, St
                 ),
               ),
             ),
-            if (a != HealthArea.values.last) pw.SizedBox(width: 8),
+            if (a != areas.last) pw.SizedBox(width: 8),
           ],
         ],
       ),
       pw.SizedBox(height: 16),
-      for (final a in HealthArea.values)
+      for (final a in areas)
         if (run.findings.where((f) => f.kind.area == a).toList() case final list when list.isNotEmpty)
           ...pdfSection(
             area(a),
@@ -1410,17 +1460,17 @@ pw.Widget _table(List<Telegram> items, CatalogStore store, PdfFonts fonts, {requ
               pdfPad(_typeBadge(t, fonts)),
               pdfPad(
                 twoLines(
-                  store.info(t.destination)?.name ?? t.destinationText,
-                  store.info(t.destination) == null
+                  store.infoOf(t)?.name ?? t.destinationText,
+                  store.infoOf(t) == null
                       ? null
-                      : [t.destinationText, store.info(t.destination)!.path].whereType<String>().join(' · '),
-                  topStyle: store.info(t.destination) == null ? data : strong,
+                      : [t.destinationText, store.infoOf(t)!.path].whereType<String>().join(' · '),
+                  topStyle: store.infoOf(t) == null ? data : strong,
                 ),
               ),
               pdfPad(
                 t.outgoing
                     ? twoLines(s.rowSent, s.pdfThisDevice, topStyle: body)
-                    : twoLines(t.sourceText, store.device(t.source)?.name, topStyle: data),
+                    : twoLines(t.sourceText, store.deviceOf(t)?.name, topStyle: data),
               ),
               pdfPad(
                 twoLines(
@@ -1430,7 +1480,7 @@ pw.Widget _table(List<Telegram> items, CatalogStore store, PdfFonts fonts, {requ
                   t.type == TelegramType.read
                       ? null
                       : [
-                          if (store.dptOf(t.destination) case final dpt?) 'DPT $dpt',
+                          if (store.dptFor(t) case final dpt?) 'DPT $dpt',
                           t.isSmall ? '${t.data[0]}' : hex(t.data),
                         ].join(' · '),
                   topStyle: alarm != null ? data.copyWith(font: fonts.semibold, color: _critical) : data,
@@ -1536,8 +1586,11 @@ class CommissioningPdf extends PdfJob {
 }
 
 class AcceptancePdf extends PdfJob {
-  const AcceptancePdf(this.acceptance);
+  const AcceptancePdf(this.acceptance, {this.photos = const {}});
   final Acceptance acceptance;
+
+  /// Images of the defects by photo ID; the app reads them beforehand.
+  final Map<String, Uint8List> photos;
 }
 
 class HealthPdf extends PdfJob {
@@ -1625,7 +1678,7 @@ Future<Uint8List> _buildJob(PdfJob job) {
     StatisticsPdf j => buildStatisticsPdf(j.stats, store: store, gateway: j.gateway),
     CommissioningPdf j => buildCommissioningPdf((started: j.started, items: j.items), store: store, gateway: j.gateway),
     HealthPdf j => buildHealthPdf(j.run, store: store, gateway: j.gateway),
-    AcceptancePdf j => buildAcceptancePdf(j.acceptance),
+    AcceptancePdf j => buildAcceptancePdf(j.acceptance, photos: j.photos),
     EtsTasksPdf j => buildEtsTasksPdf(j.tasks, store: store, drawings: j.drawings),
     ServiceReportPdf j => buildServiceReportPdf(j.report, shots: j.shots, photos: j.photos),
     DeviceLabelsPdf j => buildDeviceLabelsPdf(j.labels),
@@ -1656,7 +1709,9 @@ Future<Uint8List> buildPdfInBackground(PdfJob job) async {
     ResidentManualPdf j => Locale(j.manual.language),
     _ => LocaleController.instance.locale,
   };
-  return Isolate.run(_pdfTask(job, await PdfFonts.bytes(), locale, store.catalog, Map.of(store.overrides), head));
+  // Telegrams of an older project state keep its names: the isolate gets those states too.
+  final past = job is TelegramPdf ? store.pastFor(job.telegrams) : null;
+  return Isolate.run(_pdfTask(job, await PdfFonts.bytes(), locale, store.catalog, Map.of(store.overrides), head, past));
 }
 
 /// A separate function so the task only captures its arguments (nothing from the UI that cannot be
@@ -1668,11 +1723,13 @@ Future<Uint8List> Function() _pdfTask(
   GroupCatalog catalog,
   Map<int, Dpt> overrides,
   Letterhead? letterhead,
+  ({List<int?> from, List<GroupCatalog> catalogs})? past,
 ) => () {
   PdfFonts.preloaded = fonts;
   LocaleController.instance.debugSetLocale(locale);
   CatalogStore.instance
     ..catalog = catalog
-    ..overrides = overrides;
+    ..overrides = overrides
+    ..adoptPast(past);
   return buildPdf(job, letterhead: letterhead);
 };

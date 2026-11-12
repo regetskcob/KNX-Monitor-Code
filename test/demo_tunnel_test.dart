@@ -1,8 +1,10 @@
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:knx_monitor/catalog_store.dart';
 import 'package:knx_monitor/knx/demo_tunnel.dart';
 import 'package:knx_monitor/knx/knx_tunnel.dart';
 import 'package:knx_monitor/knx/telegram.dart';
+import 'package:knx_monitor/model/cause_chain.dart';
 
 void main() {
   test('Verbindungsart heißt Demo-Haus, nicht UDP (Forenpaket)', () {
@@ -43,5 +45,76 @@ void main() {
     expect(DemoTunnel.active, isFalse);
     await sub.cancel();
     tunnel.dispose();
+  });
+
+  // Reaktionszeiten in the demo house: before, the initial state sent commands without their
+  // status, and dim values, blinds and setpoints were never answered at all.
+  group('Demo-Haus: jeder Befehl bekommt seine Rückmeldung', () {
+    tearDown(() => DemoTunnel.clock = DateTime.now);
+
+    test('zehn Minuten Verkehr und Befehle aus der App: keiner ohne Rückmeldung, keiner langsam', () {
+      fakeAsync((async) {
+        DemoTunnel.clock = () => async.getClock(DateTime(2026, 11, 11, 10)).now();
+        final tunnel = DemoTunnel();
+        final seen = <Telegram>[];
+        tunnel.telegrams.listen(seen.add);
+        tunnel.connect();
+        async.elapse(const Duration(minutes: 10));
+        // Light, dim value, blind up/down and stop, setpoint.
+        tunnel.write(parseGroup('1/0/0')!, small: 1);
+        tunnel.write(parseGroup('1/2/0')!, data: [128]);
+        tunnel.write(parseGroup('3/1/0')!, small: 1);
+        async.elapse(const Duration(seconds: 5));
+        tunnel.write(parseGroup('3/2/0')!, small: 1);
+        tunnel.write(parseGroup('2/1/0')!, data: [0x0C, 0x1A]);
+        async.elapse(const Duration(seconds: 5));
+
+        final stats = ReactionStats.of(seen, demoCatalog());
+        // Lights, dimmers, blinds and rooms (setpoint) all appear.
+        expect(stats.length, greaterThanOrEqualTo(4 * 8));
+        expect([for (final r in stats) r.missing], everyElement(0));
+        expect([for (final r in stats) r.max!], everyElement(lessThan(const Duration(seconds: 1))));
+        // The blind reports the end position of the command.
+        final position = seen.lastWhere((t) => t.destination == parseGroup('3/0/0'));
+        expect(position.data, [255]);
+        tunnel.disconnect();
+        async.flushTimers();
+        tunnel.dispose();
+      });
+    });
+
+    test('simulate() für Bilder: ebenso', () {
+      var now = DateTime(2026, 11, 11, 10);
+      DemoTunnel.clock = () => now = now.add(const Duration(milliseconds: 400));
+      final tunnel = DemoTunnel();
+      addTearDown(tunnel.dispose);
+      final stats = ReactionStats.of(tunnel.simulate(steps: 400), demoCatalog());
+      expect(stats, isNotEmpty);
+      expect([for (final r in stats) r.missing], everyElement(0));
+    });
+
+    test('gewollter Befund bleibt: DALI-Gruppe 2 meldet auf der Adresse von Gruppe 3', () {
+      fakeAsync((async) {
+        DemoTunnel.clock = () => async.getClock(DateTime(2026, 11, 11, 10)).now();
+        final tunnel = DemoTunnel();
+        final seen = <Telegram>[];
+        tunnel.telegrams.listen(seen.add);
+        tunnel.connect();
+        async.elapse(const Duration(minutes: 1));
+        tunnel.write(DemoDali.groupSwitch(2), small: 1);
+        async.elapse(const Duration(seconds: 10));
+        final stats = ReactionStats.of(seen, demoCatalog());
+        expect(
+          [
+            for (final r in stats)
+              if (r.missing > 0) r.object.key,
+          ],
+          ['DALI Gruppe 2'],
+        );
+        tunnel.disconnect();
+        async.flushTimers();
+        tunnel.dispose();
+      });
+    });
   });
 }

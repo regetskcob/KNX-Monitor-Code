@@ -266,7 +266,7 @@ void main() {
       final client = HttpClient();
       try {
         final request = await client.openUrl(method, Uri.parse('http://127.0.0.1:${server.port}/$path'));
-        if (body != null) request.write(jsonEncode(body));
+        if (body != null) request.write(body is String ? body : jsonEncode(body));
         final response = await request.close();
         return (response.statusCode, await utf8.decodeStream(response));
       } finally {
@@ -292,6 +292,31 @@ void main() {
       expect(((jsonDecode(again) as Map)['settings'] as Map)['hasInfluxToken'], isTrue);
       final (_, cleared) = await call('PUT', 'api/export', {'clearInfluxToken': true});
       expect(((jsonDecode(cleared) as Map)['settings'] as Map)['hasInfluxToken'], isFalse);
+    });
+
+    test('MQTT-Telegrammstrom: nur Admin, ohne Broker 404, unpassende Werte 422', () async {
+      expect((await call('PUT', 'api/export/mqtt', {'enabled': true})).$1, HttpStatus.notFound);
+      final seen = <Map<String, Object?>>[];
+      exporter
+        ..mqttTelegrams = (() => {'enabled': seen.isNotEmpty})
+        ..mqttConfigure = (changes) async {
+          if (changes['filter'] == 'quatsch') throw const FormatException('Filter nicht lesbar');
+          seen.add(changes);
+          return {'enabled': true};
+        };
+      admin = false;
+      expect((await call('PUT', 'api/export/mqtt', {'enabled': true})).$1, HttpStatus.forbidden);
+      expect(seen, isEmpty);
+      admin = true;
+      final (bad, error) = await call('PUT', 'api/export/mqtt', {'filter': 'quatsch'});
+      expect(bad, HttpStatus.unprocessableEntity);
+      expect(error, contains('Filter nicht lesbar'));
+      expect((await call('PUT', 'api/export/mqtt', [1])).$1, HttpStatus.badRequest);
+      expect((await call('PUT', 'api/export/mqtt', '{kein json')).$1, HttpStatus.badRequest);
+      final (ok, text) = await call('PUT', 'api/export/mqtt', {'enabled': true});
+      expect(ok, 200);
+      expect(((jsonDecode(text) as Map)['mqttTelegrams'] as Map)['enabled'], isTrue);
+      expect(seen.single, {'enabled': true});
     });
 
     test('neues InfluxDB-Ziel ohne neues Token: das alte Token geht nicht mit', () async {

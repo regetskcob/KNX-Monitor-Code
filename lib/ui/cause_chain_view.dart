@@ -36,7 +36,7 @@ class CauseChainView extends StatelessWidget {
     return d == null ? formatIndividual(pa) : '${formatIndividual(pa)} ${d.name}';
   }
 
-  static String groupName(Telegram t) => CatalogStore.instance.info(t.destination)?.name ?? t.destinationText;
+  static String groupName(Telegram t) => CatalogStore.instance.infoOf(t)?.name ?? t.destinationText;
 
   @override
   Widget build(BuildContext context) {
@@ -204,44 +204,55 @@ class ReactionTimesScreen extends StatelessWidget {
         title: Text(s.reactTitle),
         actions: [InfoAction(title: s.reactTitle, text: s.reactExplain)],
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Widths.dashboard),
-          child: ListenableBuilder(
-            listenable: log,
-            builder: (context, _) {
-              final stats = ReactionStats.of(log.log, CatalogStore.instance.catalog);
-              // Median over all measured commands, not over the channels.
-              final all = [for (final r in stats) ...r.samples]..sort();
-              final slowest = all.lastOrNull;
-              return ListView(
-                padding: Gap.page,
-                children: [
-                  if (stats.isEmpty)
-                    Text(
-                      CatalogStore.instance.catalog.isEmpty ? s.reactNoProject : s.reactEmpty,
-                      style: theme.textTheme.bodyMedium,
-                    )
-                  else ...[
-                    if (slowest != null)
-                      FigureBox(
-                        figures: [
-                          (label: s.reactMedian, value: formatMs(all[(all.length - 1) ~/ 2]), status: null),
-                          (label: s.reactSlowest, value: formatMs(slowest), status: null),
-                        ],
-                      ),
-                    SectionHead(s.reactPairs, count: stats.length),
-                    RowCard(
-                      flat: true,
-                      children: [for (final r in stats) _StatsRow(stats: r, slowest: slowest)],
-                    ),
-                  ],
-                ],
+      // The ranking runs in two or three columns up to [Widths.wide]; a single column (phone, large
+      // text) and the hints of an empty page stay a reading column.
+      body: ListenableBuilder(
+        listenable: log,
+        builder: (context, _) {
+          final stats = ReactionStats.of(log.log, CatalogStore.instance.catalog);
+          // Median over all measured commands, not over the channels.
+          final all = [for (final r in stats) ...r.samples]..sort();
+          final slowest = all.lastOrNull;
+          return LayoutBuilder(
+            builder: (context, box) {
+              final columns = RowColumns.columnsFor(
+                context,
+                box.maxWidth.clamp(0, Widths.wide) - 2 * Gap.gutter,
+                _StatsRow.minWidth,
+              );
+              return Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: stats.isEmpty || columns == 1 ? Widths.reading : Widths.wide),
+                  child: ListView(
+                    padding: Gap.page,
+                    children: [
+                      if (stats.isEmpty)
+                        Text(
+                          CatalogStore.instance.catalog.isEmpty ? s.reactNoProject : s.reactEmpty,
+                          style: theme.textTheme.bodyMedium,
+                        )
+                      else ...[
+                        if (slowest != null)
+                          FigureBox(
+                            figures: [
+                              (label: s.reactMedian, value: formatMs(all[(all.length - 1) ~/ 2]), status: null),
+                              (label: s.reactSlowest, value: formatMs(slowest), status: null),
+                            ],
+                          ),
+                        SectionHead(s.reactPairs, count: stats.length),
+                        RowColumns(
+                          minWidth: _StatsRow.minWidth,
+                          children: [for (final r in stats) _StatsRow(stats: r, slowest: slowest)],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               );
             },
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -258,6 +269,9 @@ class _StatsRow extends StatelessWidget {
   /// From here a channel counts as slow (actuators usually respond within
   /// 100–300 ms).
   static const slow = Duration(seconds: 1);
+
+  /// Narrowest column a row still reads well in: name, both addresses and the line of figures.
+  static const minWidth = 340.0;
 
   @override
   Widget build(BuildContext context) {

@@ -117,9 +117,10 @@ class TelegramRow extends StatelessWidget {
       child: leading,
     );
 
-    // Horizont: selection is a 2 px line on the left in the accent color on
-    // accent-tint, an alarm the same line in critical (with a badge in the row);
-    // rows are separated by a hairline.
+    // Horizont: selection is accent-tint, in the standard style with a 2 px line
+    // on the left in the accent colour (the soft style leaves it out); an alarm
+    // is the same line in critical (with a badge in the row); rows are separated
+    // by a hairline.
     final alarm = activeAlarm(telegram);
     final hz = context.hz;
     final color = switch (this) {
@@ -128,7 +129,8 @@ class TelegramRow extends StatelessWidget {
       _ when related => hz.accentTint.withValues(alpha: 0.5),
       _ => Colors.transparent,
     };
-    final line = alarm != null ? hz.critical : (focused || selected == true ? hz.accent : Colors.transparent);
+    final chosen = (focused || selected == true) && !context.hzTheme.soft;
+    final line = alarm != null ? hz.critical : (chosen ? hz.accent : Colors.transparent);
     return Material(
       color: color,
       child: InkWell(
@@ -148,7 +150,16 @@ class TelegramRow extends StatelessWidget {
             HzSpace.s16,
             wide ? HzSpace.s8 : HzSpace.s12,
           ),
-          child: wide ? _wide(context, flagged) : _compact(context, flagged),
+          child: wide
+              // The column "Seen at" only where the table has room for it (issue #8).
+              ? LayoutBuilder(
+                  builder: (context, box) => _wide(
+                    context,
+                    flagged,
+                    seenColumn: TelegramTableHeader.hasSeenColumn(box.maxWidth + HzSpace.s16 * 2),
+                  ),
+                )
+              : _compact(context, flagged),
         ),
       ),
     );
@@ -188,58 +199,62 @@ class TelegramRow extends StatelessWidget {
       ],
     );
 
-    return Row(
-      children: [
-        if (showLeading) ...[leading, const SizedBox(width: 12)],
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Address and name first, as in the wide table.
-              Text.rich(
-                TextSpan(
-                  children: [
-                    if (!plain && store.info(t.destination) != null)
-                      TextSpan(
-                        text: '${t.destinationText} ',
-                        style: addressStyle.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                    TextSpan(text: plain ? telegramSentence(t) : store.title(t)),
-                  ],
+    // The value gets its share of this row, not of the window: in the live column beside the
+    // overview (a third of a wide window) a long value pushed the row out of its card.
+    return LayoutBuilder(
+      builder: (context, box) => Row(
+        children: [
+          if (showLeading) ...[leading, const SizedBox(width: 12)],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Address and name first, as in the wide table.
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      if (!plain && store.infoOf(t) != null)
+                        TextSpan(
+                          text: '${t.destinationText} ',
+                          style: addressStyle.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      TextSpan(text: plain ? telegramSentence(t) : store.title(t)),
+                    ],
+                  ),
+                  maxLines: plain ? 3 : 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
                 ),
-                maxLines: plain ? 3 : 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: HzSpace.s2),
-              if (issues.isNotEmpty || activeAlarm(t) != null) ...[
-                IssueChips(issues: issues, telegram: t, alarm: activeAlarm(t)),
-                const SizedBox(height: 3),
+                const SizedBox(height: HzSpace.s2),
+                if (issues.isNotEmpty || activeAlarm(t) != null) ...[
+                  IssueChips(issues: issues, telegram: t, alarm: activeAlarm(t)),
+                  const SizedBox(height: 3),
+                ],
+                if (TapScope.labels.length > 1) ...[TapChips(telegram: t), const SizedBox(height: 3)],
+                Text.rich(meta, maxLines: 2, overflow: TextOverflow.ellipsis, style: metaStyle),
               ],
-              if (tapLabels.value.length > 1) ...[TapChips(telegram: t), const SizedBox(height: 3)],
-              Text.rich(meta, maxLines: 2, overflow: TextOverflow.ellipsis, style: metaStyle),
-            ],
+            ),
           ),
-        ),
-        // Plain language: the value is part of the sentence.
-        if (!plain) ...[
-          const SizedBox(width: 12),
-          ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.4),
-            child: _Value(telegram: t),
-          ),
+          // Plain language: the value is part of the sentence.
+          if (!plain) ...[
+            const SizedBox(width: 12),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: box.maxWidth * 0.4),
+              child: _Value(telegram: t),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
-  Widget _wide(BuildContext context, Widget leading) {
+  Widget _wide(BuildContext context, Widget leading, {bool seenColumn = false}) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final store = CatalogStore.instance;
     final t = telegram;
-    final info = store.info(t.destination);
-    final device = store.device(t.source);
+    final info = store.infoOf(t);
+    final device = store.deviceOf(t);
     final muted = theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
     final mono = context.hzTheme.data;
 
@@ -300,6 +315,16 @@ class TelegramRow extends StatelessWidget {
         ],
       );
     }
+    final names = TelegramTableHeader.hasNameColumn;
+    final under = [
+      ...chips,
+      // Several tap points, but no room for their column: under the name.
+      if (TapScope.labels.length > 1 && !seenColumn)
+        Padding(
+          padding: const EdgeInsets.only(top: HzSpace.s2),
+          child: TapChips(telegram: t),
+        ),
+    ];
     return Row(
       children: [
         SizedBox(
@@ -318,10 +343,19 @@ class TelegramRow extends StatelessWidget {
         ),
         Expanded(
           flex: 3,
-          child: t.outgoing
-              ? twoLines(s.rowSent, s.rowThisTunnel)
-              // Expert mode: also the sender's installation location from the project.
-              : twoLines(t.sourceText, [?device?.name, if (expert) ?device?.location].join(' · ')),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (t.outgoing)
+                twoLines(s.rowSent, s.rowThisTunnel)
+              else
+                // Expert mode: also the sender's installation location from the project.
+                twoLines(t.sourceText, [?device?.name, if (expert) ?device?.location].join(' · ')),
+              // Without the column "Name": its chips under the sender.
+              if (!names) ...under,
+            ],
+          ),
         ),
         const SizedBox(width: HzSpace.s12),
         if (expert) ...[
@@ -331,30 +365,36 @@ class TelegramRow extends StatelessWidget {
           ),
           const SizedBox(width: HzSpace.s12),
         ],
-        Expanded(
-          flex: 5,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              twoLines(
-                info?.name ?? '—',
-                info?.path,
-                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-              ),
-              // Der Hop-Count steht breit in einer eigenen Spalte.
-              ...chips,
-              if (tapLabels.value.length > 1)
-                Padding(
-                  padding: const EdgeInsets.only(top: HzSpace.s2),
-                  child: TapChips(telegram: t),
+        if (names) ...[
+          Expanded(
+            flex: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                twoLines(
+                  info?.name ?? '—',
+                  info?.path,
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
                 ),
-            ],
+                // Der Hop-Count steht breit in einer eigenen Spalte.
+                ...under,
+              ],
+            ),
           ),
-        ),
-        const SizedBox(width: HzSpace.s12),
+          const SizedBox(width: HzSpace.s12),
+        ],
+        // Several tap points (issue #8): where it was seen, in a column of its own.
+        if (seenColumn) ...[
+          SizedBox(
+            width: TelegramTableHeader.seenWidth,
+            child: TapChips(telegram: t),
+          ),
+          const SizedBox(width: HzSpace.s12),
+        ],
+        // Without names the value gets the room of the name.
         Expanded(
-          flex: 3,
+          flex: names ? 3 : 3 + 5,
           child: Align(
             alignment: Alignment.centerRight,
             child: _Value(telegram: t, count: count),
@@ -375,6 +415,20 @@ class TelegramTableHeader extends StatelessWidget {
   static const gaWidth = 88.0;
   static const hopWidth = 56.0;
 
+  /// Column "Seen at": room for three chips in a row, more wrap.
+  static const seenWidth = 132.0;
+
+  /// Table width from which the column "Seen at" is shown. Below, the tap points' chips sit under
+  /// the name, so that names and senders do not break in the middle of a word.
+  static const seenFrom = 1000.0;
+
+  /// Whether a table of [width] shows the column "Seen at": several tap points and room.
+  static bool hasSeenColumn(double width) => TapScope.labels.length > 1 && width >= seenFrom;
+
+  /// Whether the column "Name" shows: only with names from a project or taught in. Without
+  /// them it would read "—" in every row; the value gets its room instead.
+  static bool get hasNameColumn => !CatalogStore.instance.catalog.isEmpty;
+
   @override
   Widget build(BuildContext context) {
     final hz = context.hz;
@@ -386,27 +440,36 @@ class TelegramTableHeader extends StatelessWidget {
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: HzSpace.s16, vertical: HzSpace.s8),
-      child: Row(
-        children: [
-          SizedBox(width: timeWidth, child: Kennung(s.columnTime)),
-          if (expert) SizedBox(width: typeWidth, child: Kennung(s.columnType)),
-          SizedBox(width: gaWidth, child: Kennung(s.columnAddress)),
-          if (LivePlainSetting.instance.value) Expanded(child: Kennung(s.plainColumnEvent)) else ..._columns,
-        ],
+      // The column "Name" follows the project (see [hasNameColumn]).
+      child: ListenableBuilder(
+        listenable: CatalogStore.instance,
+        builder: (context, _) => LayoutBuilder(
+          builder: (context, box) => Row(
+            children: [
+              SizedBox(width: timeWidth, child: Kennung(s.columnTime)),
+              if (expert) SizedBox(width: typeWidth, child: Kennung(s.columnType)),
+              SizedBox(width: gaWidth, child: Kennung(s.columnAddress)),
+              if (LivePlainSetting.instance.value)
+                Expanded(child: Kennung(s.plainColumnEvent))
+              else
+                ..._columns(seen: hasSeenColumn(box.maxWidth + HzSpace.s16 * 2)),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   /// Sender, hop (only in expert mode), name and value as separate columns.
-  List<Widget> get _columns => [
+  List<Widget> _columns({required bool seen}) => [
     // Sender and hop together, the name right next to the value.
     Expanded(flex: 3, child: Kennung(s.columnSender)),
     const SizedBox(width: HzSpace.s12),
     if (expert) ...[SizedBox(width: hopWidth, child: Kennung(s.columnHop)), const SizedBox(width: HzSpace.s12)],
-    Expanded(flex: 5, child: Kennung(s.columnName)),
-    const SizedBox(width: HzSpace.s12),
+    if (hasNameColumn) ...[Expanded(flex: 5, child: Kennung(s.columnName)), const SizedBox(width: HzSpace.s12)],
+    if (seen) ...[SizedBox(width: seenWidth, child: Kennung(s.tapColumnSeen)), const SizedBox(width: HzSpace.s12)],
     Expanded(
-      flex: 3,
+      flex: hasNameColumn ? 3 : 3 + 5,
       child: Align(alignment: Alignment.centerRight, child: Kennung(s.columnValue)),
     ),
   ];
@@ -568,14 +631,22 @@ class TapChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labels = tapLabels.value;
+    final labels = TapScope.labels;
     if (labels.length < 2) return const SizedBox.shrink();
     final hz = context.hz;
     final style = context.hzTheme.data.copyWith(fontSize: 12, height: 16 / 12);
     String label(int tap) => tap < labels.length ? labels[tap] : '${tap + 1}';
     final taps = telegram.taps.toList();
+    // Tap points that were not reachable at that time, as one mark with the names behind it: a
+    // missing chip must not read as "filtered", but a chip per tap point in every row is noise.
+    // Paused ones are not named here at all, the strip above the list says so.
+    final away = [
+      for (var tap = 0; tap < labels.length; tap++)
+        if (!taps.contains(tap) && TapScope.gaps.state(tap, telegram.time) == TapSeen.away) label(tap),
+    ];
+    final awayText = away.isEmpty ? null : s.tapRowAway(away.join(', '));
     return Semantics(
-      label: '${s.detailsPath}: ${taps.map(label).join(', ')}',
+      label: ['${s.detailsPath}: ${taps.map(label).join(', ')}', ?awayText].join(', '),
       child: ExcludeSemantics(
         child: Wrap(
           spacing: HzSpace.s4,
@@ -595,6 +666,24 @@ class TapChips extends StatelessWidget {
                     style: style.copyWith(
                       color: i == 0 ? hz.accentText : hz.text,
                       fontWeight: i == 0 ? FontWeight.w600 : null,
+                    ),
+                  ),
+                ),
+              ),
+            if (awayText != null)
+              Tooltip(
+                message: awayText,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(color: hz.sunken, borderRadius: Radii.row),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.cloud_off_outlined, size: 12, color: hz.textMuted),
+                        const SizedBox(width: 3),
+                        Text('${away.length}', style: style.copyWith(color: hz.textMuted)),
+                      ],
                     ),
                   ),
                 ),

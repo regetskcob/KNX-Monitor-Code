@@ -90,7 +90,7 @@ void main() {
       final client = HttpClient();
       try {
         final request = await client.openUrl(method, Uri.parse('http://127.0.0.1:$port/$path'));
-        request.headers.set(HttpHeaders.authorizationHeader, auth);
+        if (auth.isNotEmpty) request.headers.set(HttpHeaders.authorizationHeader, auth);
         if (body is String) request.write(body);
         final response = await request.close();
         return (response.statusCode, await utf8.decodeStream(response));
@@ -102,8 +102,13 @@ void main() {
     setUp(() async {
       await start(env: {'BOX': '1', 'BOX_PASSWORD': 'test-pass', 'LAN_ACCESS': 'yes'});
       password = 'Basic ${base64.encode(utf8.encode('x:test-pass'))}';
+      // Wie die App: Einmal-Code von der Seite, dann gegen den Gerätezugang tauschen (ohne Anmeldung).
       final page = (await call('POST', 'pair', password, body: 'name=Gast')).$2;
-      device = 'Bearer ${RegExp(r'key=([A-Za-z0-9_-]+)').firstMatch(page)![1]}';
+      expect(page, isNot(contains('key=')));
+      final code = RegExp(r'code=([A-Za-z0-9_-]+)').firstMatch(page)![1];
+      final claimed = await call('POST', 'api/box/claim', '', body: '{"code":"$code","name":"App"}');
+      expect(claimed.$1, 200, reason: claimed.$2);
+      device = 'Bearer ${(jsonDecode(claimed.$2) as Map)['key']}';
       final paired = (await call('POST', 'api/box/pair', password, body: '{"name":"App"}')).$2;
       admin = 'Bearer ${(jsonDecode(paired) as Map)['key']}';
     });
@@ -186,21 +191,87 @@ void main() {
       expect((await call('GET', 'api/ha/silent', admin)).$2, '[]');
       // Without admin rights, with the password or a wrong token: no.
       expect((await call('GET', 'api/ha/state', device)).$1, HttpStatus.forbidden);
-      final page = (await call('POST', 'pair', password, body: 'name=Flur&viewOnly=1')).$2;
+      final page = (await call('POST', 'pair', password, body: 'name=Flur&viewOnly=1&direct=1')).$2;
       final viewer = 'Bearer ${RegExp(r'key=([A-Za-z0-9_-]+)').firstMatch(page)![1]}';
       expect((await call('GET', 'api/ha/state', viewer)).$1, HttpStatus.forbidden);
       expect((await call('POST', 'api/ha/recording', device, body: '{"on":false}')).$1, HttpStatus.forbidden);
       expect((await call('GET', 'api/ha/state', password)).$1, HttpStatus.forbidden);
       expect((await call('GET', 'api/ha/state', 'Bearer falsch')).$1, HttpStatus.unauthorized);
       // The pairing page hands out a device with admin rights when asked to.
-      final managed = (await call('POST', 'pair', password, body: 'name=Home+Assistant&admin=1')).$2;
+      final managed = (await call('POST', 'pair', password, body: 'name=Home+Assistant&admin=1&direct=1')).$2;
       final ha = 'Bearer ${RegExp(r'key=([A-Za-z0-9_-]+)').firstMatch(managed)![1]}';
       expect((await call('GET', 'api/ha/state', ha)).$1, 200);
       expect((await call('POST', 'api/ha/claim', ha)).$2, '{"claimed":true}');
       // Admin and view only together: admin wins, view only is dropped.
-      final both = (await call('POST', 'pair', password, body: 'name=Beides&admin=1&viewOnly=1')).$2;
+      final both = (await call('POST', 'pair', password, body: 'name=Beides&admin=1&viewOnly=1&direct=1')).$2;
       final key = 'Bearer ${RegExp(r'key=([A-Za-z0-9_-]+)').firstMatch(both)![1]}';
       expect((await call('GET', 'api/ha/state', key)).$1, 200);
+    }, timeout: const Timeout(Duration(minutes: 2)));
+
+    test('Ereigniskanal: jede Rolle liest, fremde Herkunft und ohne Anmeldung nicht', () async {
+      Future<int> upgrade(String? auth, {String? origin}) async {
+        final client = HttpClient();
+        try {
+          final request = await client.getUrl(Uri.parse('http://127.0.0.1:$port/ws/events'));
+          request.headers
+            ..set(HttpHeaders.connectionHeader, 'Upgrade')
+            ..set(HttpHeaders.upgradeHeader, 'websocket')
+            ..set('Sec-WebSocket-Key', 'dGhlIHNhbXBsZSBub25jZQ==')
+            ..set('Sec-WebSocket-Version', '13');
+          if (auth != null) request.headers.set(HttpHeaders.authorizationHeader, auth);
+          if (origin != null) request.headers.set('origin', origin);
+          final response = await request.close();
+          if (response.statusCode == HttpStatus.switchingProtocols) {
+            expect(response.headers.value('sec-websocket-accept'), 's3pPLMBiTxaQ9kYGzzhZRbK+xOo=');
+          }
+          return response.statusCode;
+        } finally {
+          client.close(force: true);
+        }
+      }
+
+      final page = (await call('POST', 'pair', password, body: 'name=Flur&viewOnly=1&direct=1')).$2;
+      final viewer = 'Bearer ${RegExp(r'key=([A-Za-z0-9_-]+)').firstMatch(page)![1]}';
+      for (final auth in [admin, device, viewer]) {
+        expect(await upgrade(auth), HttpStatus.switchingProtocols);
+      }
+      expect(await upgrade(null), HttpStatus.unauthorized);
+      expect(await upgrade('Bearer falsch'), HttpStatus.unauthorized);
+      // Cross-site WebSocket from a foreign page in the same browser.
+      expect(await upgrade(device, origin: 'http://evil.example'), HttpStatus.forbidden);
+      expect(await upgrade(device, origin: 'http://127.0.0.1:$port'), HttpStatus.switchingProtocols);
+      // The integration learns from the state that the channel is there.
+      expect((jsonDecode((await call('GET', 'api/ha/state', admin)).$2) as Map)['events'], 1);
+
+      // A viewer takes at most two places; the integration (admin) still gets in.
+      // A fresh viewer: the upgrades above may not have given their places back yet.
+      final hall = (await call('POST', 'pair', password, body: 'name=Halle&viewOnly=1&direct=1')).$2;
+      final second = 'Bearer ${RegExp(r'key=([A-Za-z0-9_-]+)').firstMatch(hall)![1]}';
+      final held = <WebSocket>[];
+      for (var i = 0; i < 2; i++) {
+        held.add(
+          await WebSocket.connect('ws://127.0.0.1:$port/ws/events', headers: {HttpHeaders.authorizationHeader: second})
+            ..listen((_) {}, onError: (Object _) {}),
+        );
+      }
+      await expectLater(
+        WebSocket.connect('ws://127.0.0.1:$port/ws/events', headers: {HttpHeaders.authorizationHeader: second}),
+        throwsA(isA<WebSocketException>()),
+      );
+      expect(await upgrade(admin), HttpStatus.switchingProtocols);
+      for (final ws in held) {
+        await ws.close();
+      }
+
+      // A real client: hello first.
+      // ignore: close_sinks
+      final ws = await WebSocket.connect(
+        'ws://127.0.0.1:$port/ws/events',
+        headers: {HttpHeaders.authorizationHeader: viewer},
+      );
+      final hello = (jsonDecode(await ws.first as String) as Map).cast<String, Object?>();
+      expect(hello['type'], 'hello');
+      expect(hello['v'], 1);
     }, timeout: const Timeout(Duration(minutes: 2)));
 
     test('Roh-Relay nur mit Admin-Recht', () async {
@@ -262,7 +333,7 @@ void main() {
       expect((rules.last as Map)['owner'], isA<String>());
       expect((rules.first as Map).containsKey('owner'), isFalse);
       // Nur ansehen: schreibt gar nichts.
-      final page = (await call('POST', 'pair', password, body: 'name=Flur&viewOnly=1')).$2;
+      final page = (await call('POST', 'pair', password, body: 'name=Flur&viewOnly=1&direct=1')).$2;
       final viewer = 'Bearer ${RegExp(r'key=([A-Za-z0-9_-]+)').firstMatch(page)![1]}';
       expect((await call('PUT', 'api/files/watch_rules.json', viewer, body: '{"rules":[]}')).$1, HttpStatus.forbidden);
       expect((await call('PUT', 'api/files/charts.json', viewer, body: '{}')).$1, HttpStatus.forbidden);

@@ -68,3 +68,5 @@ Future<List<String>> allStoredPaths() async => const [];
 Future<StorageExtras> storageExtras() async => noStorageExtras;
 
 Future<void> deleteQuarantinedFiles() async {}
+
+Future<void> deleteCorruptCopies(AppStorage storage, String path) async {}

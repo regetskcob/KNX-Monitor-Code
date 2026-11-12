@@ -52,6 +52,166 @@ pw.Widget? _commentShot(Uint8List jpeg) {
   }
 }
 
+String _checkWord(CheckResult r) => switch (r) {
+  CheckResult.ok => s.srCheckOk,
+  CheckResult.attention => s.srCheckAttention,
+  CheckResult.unchecked => s.srCheckUnchecked,
+};
+
+PdfColor _checkColor(CheckResult r) => switch (r) {
+  CheckResult.ok => _positive,
+  CheckResult.attention => _warning,
+  CheckResult.unchecked => pdfMuted,
+};
+
+/// The section "Since the last visit" of a maintenance report as texts, in the language set for the
+/// PDF: what [buildServiceReportPdf] prints, and what the tests read. `null` without a previous
+/// maintenance report. [note] replaces the three groups when nothing was comparable or nothing was
+/// found on either visit; [health] and [checks] only hold what both reports contain.
+({
+  String title,
+  String intro,
+  String? note,
+  List<(String, List<ServiceLine>)> groups,
+  ({String label, String then, String now})? health,
+  List<(String, CheckResult, CheckResult)> checks,
+  String thenHead,
+  String nowHead,
+})?
+serviceSinceLastVisit(ServiceReport r) {
+  final c = r.comparison;
+  if (c == null) return null;
+  final groups = [
+    if (c.added.isNotEmpty) (s.srSinceNew, c.added),
+    if (c.gone.isNotEmpty) (s.srSinceGone, c.gone),
+    if (c.remaining.isNotEmpty) (s.srSinceStill, c.remaining),
+  ];
+  return (
+    title: s.srSinceTitle,
+    intro: s.srSinceIntro(pdfDate(c.previous)),
+    note: !c.linesCompared
+        ? s.srSinceNotComparable
+        : groups.isEmpty
+        ? s.srSinceNoFindings
+        : null,
+    groups: groups,
+    health: switch ((c.healthBefore, c.healthNow)) {
+      (final before?, final now?) => (
+        label: s.srSinceHealth,
+        then: s.srSinceHealthCounts(before.fix, before.watch),
+        now: s.srSinceHealthCounts(now.fix, now.watch),
+      ),
+      _ => null,
+    },
+    checks: [for (final x in c.checks) (x.label, x.before, x.now)],
+    thenHead: s.srSinceThen(pdfDate(c.healthTimeBefore ?? c.previous)),
+    nowHead: s.srSinceNow,
+  );
+}
+
+/// The comparison of a maintenance report with the one before it.
+List<pw.Widget> _sinceLastVisit(ServiceReport r, PdfFonts fonts) {
+  final since = serviceSinceLastVisit(r);
+  if (since == null) return const [];
+  pw.Widget head(String text) => pdfPad(pw.Text(text, style: pdfStyle(PdfPt.small, color: pdfMuted)));
+  pw.Widget word(CheckResult result) => pdfPad(
+    pw.Text(
+      _checkWord(result),
+      style: pdfStyle(PdfPt.body, font: fonts.semibold, color: _checkColor(result)),
+    ),
+  );
+  return pdfSection(
+    since.title,
+    fonts,
+    pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(since.intro, style: pdfStyle(PdfPt.small, color: pdfMuted)),
+        pw.SizedBox(height: 6),
+        if (since.note case final note?) pw.Text(note, style: pdfStyle(PdfPt.body)),
+        for (final (label, lines) in since.groups) ...[
+          pw.Text('$label · ${lines.length}', style: pdfStyle(PdfPt.body, font: fonts.semibold)),
+          pw.SizedBox(height: 2),
+          _serviceLines(lines, fonts),
+          pw.SizedBox(height: 6),
+        ],
+        if (since.health != null || since.checks.isNotEmpty) ...[
+          pw.SizedBox(height: 6),
+          pw.Table(
+            columnWidths: const {0: pw.FlexColumnWidth(4), 1: pw.FlexColumnWidth(3), 2: pw.FlexColumnWidth(3)},
+            children: [
+              pw.TableRow(children: [pw.SizedBox(), head(since.thenHead), head(since.nowHead)]),
+              if (since.health case final h?)
+                pw.TableRow(
+                  decoration: pdfRowDecoration(0),
+                  children: [
+                    pdfPad(pw.Text(h.label, style: pdfStyle(PdfPt.body))),
+                    pdfPad(pw.Text(h.then, style: pdfStyle(PdfPt.body))),
+                    pdfPad(pw.Text(h.now, style: pdfStyle(PdfPt.body))),
+                  ],
+                ),
+              for (final (i, (label, before, now)) in since.checks.indexed)
+                pw.TableRow(
+                  decoration: pdfRowDecoration(i + (since.health == null ? 0 : 1)),
+                  children: [
+                    pdfPad(pw.Text(label, style: pdfStyle(PdfPt.body))),
+                    word(before),
+                    word(now),
+                  ],
+                ),
+            ],
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+/// The texts of a reply to a fault report in the language set for the PDF, in the order printed:
+/// (heading, text). Only what the electrician wrote, plus the day of the report; no addresses, no
+/// measured values, no checksum.
+List<(String, String)> faultReplySections(ServiceReport r) => [
+  if (r.occasion.isNotEmpty || r.reportedAt != null)
+    (
+      s.replyReported,
+      [if (r.reportedAt case final t?) s.replyReportedOn(pdfDate(t)), if (r.occasion.isNotEmpty) r.occasion].join('\n'),
+    ),
+  if (r.observed.isNotEmpty) (s.replyFound, r.observed),
+  if (r.recommendation.isNotEmpty) (s.replyNext, r.recommendation),
+];
+
+/// Short status for the customer after a fault report, on the letterhead: what was reported and
+/// when, what was found, what happens next.
+Future<Uint8List> _buildFaultReplyPdf(ServiceReport r) async {
+  final fonts = await PdfFonts.load();
+  return pdfDocument(
+    title: s.replyPdfTitle,
+    subtitle: r.customer.isEmpty ? null : r.customer,
+    fonts: fonts,
+    content: [
+      pw.Text(pdfDate(r.created), style: pdfStyle(PdfPt.body, color: pdfMuted)),
+      pw.SizedBox(height: 12),
+      for (final (label, text) in faultReplySections(r)) ...[
+        pw.Inseparable(child: pdfNote(text, fonts, label: label)),
+        pw.SizedBox(height: 8),
+      ],
+      pw.SizedBox(height: 8),
+      pw.Text(s.replyClosing, style: pdfStyle(PdfPt.body)),
+      if (r.technician.isNotEmpty) ...[
+        pw.SizedBox(height: 4),
+        pw.Text(s.replyContact(r.technician), style: pdfStyle(PdfPt.body)),
+      ],
+    ],
+  );
+}
+
+/// Title of a service report by kind.
+String serviceReportTitle(ServiceReport r) => switch (r.kind) {
+  ServiceKind.visit => s.srPdfTitle,
+  ServiceKind.maintenance => s.srMaintPdfTitle,
+  ServiceKind.reply => s.replyPdfTitle,
+};
+
 /// Service report for laypeople: the result in one sentence at the top, then occasion, observation,
 /// work done and recommendation; measurement, comments and notes as evidence after that, and at the
 /// end the signature and the checksum.
@@ -60,11 +220,12 @@ Future<Uint8List> buildServiceReportPdf(
   Map<String, Uint8List> shots = const {},
   Map<String, Uint8List> photos = const {},
 }) async {
+  if (r.kind == ServiceKind.reply) return _buildFaultReplyPdf(r);
   final fonts = await PdfFonts.load();
   String when(DateTime t) => '${pdfDate(t)} ${_clock(t).substring(0, 5)}';
   final summary = r.attention == 0 ? s.srResultGood : s.srResultAttention(r.attention);
   return pdfDocument(
-    title: s.srPdfTitle,
+    title: serviceReportTitle(r),
     subtitle: r.customer.isEmpty ? null : r.customer,
     project: r.project,
     fonts: fonts,
@@ -89,6 +250,31 @@ Future<Uint8List> buildServiceReportPdf(
       ])
         if (text.isNotEmpty) ...[pdfNote(text, fonts, label: label), pw.SizedBox(height: 8)],
       pw.SizedBox(height: 8),
+      if (r.checklist.isNotEmpty)
+        ...pdfSection(
+          s.srMaintChecklist,
+          fonts,
+          count: r.checklist.length,
+          pw.Table(
+            columnWidths: const {0: pw.FlexColumnWidth(5), 1: pw.FlexColumnWidth(2)},
+            children: [
+              for (final (i, c) in r.checklist.indexed)
+                pw.TableRow(
+                  decoration: pdfRowDecoration(i),
+                  children: [
+                    pdfPad(pw.Text(c.label, style: pdfStyle(PdfPt.body))),
+                    pdfPad(
+                      pw.Text(
+                        _checkWord(c.result),
+                        style: pdfStyle(PdfPt.body, font: fonts.semibold, color: _checkColor(c.result)),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ..._sinceLastVisit(r, fonts),
       if (r.recordingStart != null && r.recordingEnd != null) ...[
         ...pdfSection(
           s.srMeasurement,

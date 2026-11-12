@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
@@ -9,9 +10,11 @@ import 'package:knx_monitor/knx/knx_tunnel.dart';
 import 'package:knx_monitor/knx/telegram.dart';
 import 'package:knx_monitor/l10n/locale_controller.dart';
 import 'package:knx_monitor/model/commissioning.dart';
+import 'package:knx_monitor/model/telegram_log.dart';
 import 'package:knx_monitor/theme/app_theme.dart';
 import 'package:knx_monitor/ui/commissioning_screen.dart';
 import 'package:knx_monitor/ui/common.dart';
+import 'package:knx_monitor/ui/device_sheet.dart';
 import 'package:knx_monitor/platform/storage.dart';
 import 'package:knx_monitor/platform/storage_io.dart';
 
@@ -109,5 +112,44 @@ void main() {
     await tester.pump();
     expect(c.items[temp]!.state, CheckState.ok);
     expect(find.byKey(ValueKey(rm)), findsOneWidget);
+  });
+
+  testWidgets('Absender in den Details öffnet das Geräteblatt', (tester) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    c.prepare([temp]);
+    c.setRollCall(true);
+    addTearDown(() => c.setRollCall(false));
+    c.observe(
+      Telegram(
+        time: DateTime(2026, 11, 11, 14, 2),
+        source: parseIndividual('1.1.50')!,
+        destination: temp,
+        type: TelegramType.write,
+        data: Uint8List.fromList([0x0C, 0x24]),
+        isSmall: false,
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: CommissioningScreen(tunnel: tunnel, log: TelegramLog()),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(
+      find.descendant(of: find.byType(AddressTitle), matching: find.textContaining('Ist-Temperatur')).first,
+    );
+    await tester.pump();
+    final link = find.byType(DeviceLink);
+    expect(link, findsOneWidget);
+    expect(find.descendant(of: link, matching: find.textContaining('1.1.50')), findsOneWidget);
+    await tester.tap(link);
+    await tester.pumpAndSettle();
+    expect(find.byType(DeviceTraffic), findsOneWidget);
+    // Saving the observed item runs on a timer.
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 5));
   });
 }

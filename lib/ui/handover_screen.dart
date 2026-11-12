@@ -10,6 +10,7 @@ import 'package:pdf/widgets.dart' as pw show Barcode, BarcodeBar;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../catalog_store.dart';
+import '../export/customer_file.dart';
 import '../export/diagnostics_bundle.dart';
 import '../export/handover_package.dart';
 import '../knx/knx_tunnel.dart';
@@ -20,6 +21,7 @@ import '../l10n/locale_controller.dart';
 import '../model/annotation.dart';
 import '../model/company.dart';
 import '../model/customer.dart';
+import '../model/customer_transfer.dart';
 import '../model/handover.dart';
 import '../model/incoming_file.dart';
 import '../model/installation.dart';
@@ -31,8 +33,10 @@ import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'common.dart';
 import 'company_screen.dart';
+import 'customer_transfer_screen.dart';
 import 'customers_screen.dart';
 import 'figure_box.dart';
+import 'form_columns.dart';
 import 'plan_screen.dart';
 import '../platform/secret_clipboard.dart';
 
@@ -93,104 +97,142 @@ class _HandoverScreenState extends State<HandoverScreen> {
         title: Text(s.handoverTitle),
         actions: [InfoAction(title: s.handoverTitle, text: '${s.handoverExplain}\n\n${s.handoverPasswordHint}')],
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Widths.reading),
-          child: ListenableBuilder(
-            listenable: company,
-            builder: (context, _) => ListView(
-              padding: Gap.page,
-              children: [
-                Text(s.handoverShort, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
-                if (!company.company.isSet) ...[
-                  const SizedBox(height: Gap.item),
-                  Text(s.handoverNeedsCompany, style: TextStyle(color: hz.warning)),
-                  const SizedBox(height: Gap.item),
-                  OutlinedButton(
-                    onPressed: () =>
-                        Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const CompanyScreen())),
-                    child: Text(s.companyTitle),
+      // Phone and narrow windows: one column in reading width. From the expanded width on, what
+      // goes into the package stands on the left, the password and the way out on the right.
+      body: ListenableBuilder(
+        listenable: company,
+        builder: (context, _) => FormColumns(
+          intro: [
+            Text(s.handoverShort, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
+            if (!company.company.isSet) ...[
+              const SizedBox(height: Gap.item),
+              Text(s.handoverNeedsCompany, style: TextStyle(color: hz.warning)),
+              const SizedBox(height: Gap.item),
+              OutlinedButton(
+                onPressed: () =>
+                    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const CompanyScreen())),
+                child: Text(s.companyTitle),
+              ),
+            ],
+          ],
+          columns: [
+            [
+              SectionHead(s.handoverContents),
+              RowCard(
+                children: [
+                  CardRow(
+                    title: s.handoverProject,
+                    meta: [
+                      if (catalog.devices.isNotEmpty) s.deviceCount(catalog.devices.length),
+                      s.groupAddressCount(catalog.length),
+                      InstallationStore.instance.active.gateway?.address ?? s.handoverNoGateway,
+                    ].join(metaSeparator),
                   ),
-                ],
-                SectionHead(s.handoverContents),
-                RowCard(
-                  children: [
-                    CardRow(
-                      title: s.handoverProject,
-                      meta: [
-                        if (catalog.devices.isNotEmpty) s.deviceCount(catalog.devices.length),
-                        s.groupAddressCount(catalog.length),
-                        InstallationStore.instance.active.gateway?.address ?? s.handoverNoGateway,
-                      ].join(metaSeparator),
-                    ),
-                    if (keys.loaded)
-                      SwitchRow(
-                        title: s.handoverIncludeKeys,
-                        meta: s.handoverIncludeKeysHint,
-                        value: _keys,
-                        onChanged: (v) => setState(() => _keys = v),
-                      ),
+                  if (keys.loaded)
                     SwitchRow(
-                      title: s.handoverProtect,
-                      value: _encrypted,
-                      onChanged: _keys ? null : (v) => setState(() => _protect = v),
+                      title: s.handoverIncludeKeys,
+                      meta: s.handoverIncludeKeysHint,
+                      value: _keys,
+                      onChanged: (v) => setState(() => _keys = v),
                     ),
-                  ],
-                ),
-                if (_encrypted) ...[
-                  SectionHead(s.handoverPassword),
-                  SectionCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Center(child: PasswordQr(data: _password)),
-                        const SizedBox(height: Gap.item),
-                        SelectableText(
-                          _password,
-                          textAlign: TextAlign.center,
-                          style: context.mono(theme.textTheme.bodyLarge),
-                        ),
-                        const SizedBox(height: Gap.item),
-                        Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: HzSpace.s8,
-                          children: [
-                            TextButton.icon(
-                              onPressed: () => unawaited(copySecret(_password)),
-                              icon: const Icon(AppIcons.copy, size: 18),
-                              label: Text(s.handoverCopyPassword),
-                            ),
-                            TextButton(
-                              onPressed: () => setState(() => _password = generatePackagePassword()),
-                              child: Text(s.handoverNewPassword),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  SwitchRow(
+                    title: s.handoverProtect,
+                    value: _encrypted,
+                    onChanged: _keys ? null : (v) => setState(() => _protect = v),
                   ),
                 ],
-                const SizedBox(height: Gap.section),
-                Builder(
-                  builder: (buttonContext) => FilledButton(
-                    onPressed: _busy || !company.company.isSet || catalog.isEmpty ? null : () => _create(buttonContext),
-                    child: Text(s.handoverCreate),
-                  ),
-                ),
-                if (catalog.isEmpty) ...[
-                  const SizedBox(height: Gap.item),
-                  Text(s.handoverNoProject, style: theme.textTheme.bodySmall?.copyWith(color: hz.textFaint)),
-                ],
-                const SizedBox(height: Gap.item),
-                OutlinedButton(onPressed: () => unawaited(pickPackageFile(context)), child: Text(s.packageOpenMenu)),
+              ),
+            ],
+            [
+              if (_encrypted) ...[
+                SectionHead(s.handoverPassword),
+                PasswordCard(password: _password, onNew: () => setState(() => _password = generatePackagePassword())),
               ],
-            ),
-          ),
+              const SizedBox(height: Gap.section),
+              Builder(
+                builder: (buttonContext) => FilledButton(
+                  onPressed: _busy || !company.company.isSet || catalog.isEmpty ? null : () => _create(buttonContext),
+                  child: Text(s.handoverCreate),
+                ),
+              ),
+              if (catalog.isEmpty) ...[
+                const SizedBox(height: Gap.item),
+                Text(s.handoverNoProject, style: theme.textTheme.bodySmall?.copyWith(color: hz.textFaint)),
+              ],
+              const SizedBox(height: Gap.item),
+              OutlinedButton(onPressed: () => unawaited(pickPackageFile(context)), child: Text(s.packageOpenMenu)),
+            ],
+          ],
         ),
       ),
     );
   }
+}
+
+/// The password of a protected file: QR code, the password as text, copy and a new one. The QR
+/// code stands above the text on a phone and beside it where the card is wide enough.
+class PasswordCard extends StatelessWidget {
+  const PasswordCard({super.key, required this.password, required this.onNew});
+
+  final String password;
+
+  /// Asks for another password.
+  final VoidCallback onNew;
+
+  /// From this inner width on the password fits beside the QR code.
+  static const _sideBySide = 560.0;
+
+  @override
+  Widget build(BuildContext context) => SectionCard(
+    child: LayoutBuilder(
+      builder: (context, box) {
+        final beside = box.maxWidth >= _sideBySide;
+        final text = SelectableText(
+          password,
+          textAlign: beside ? TextAlign.start : TextAlign.center,
+          style: context.mono(Theme.of(context).textTheme.bodyLarge),
+        );
+        final actions = Wrap(
+          alignment: beside ? WrapAlignment.start : WrapAlignment.center,
+          spacing: HzSpace.s8,
+          children: [
+            TextButton.icon(
+              onPressed: () => unawaited(copySecret(password)),
+              icon: const Icon(AppIcons.copy, size: 18),
+              label: Text(s.handoverCopyPassword),
+            ),
+            TextButton(onPressed: onNew, child: Text(s.handoverNewPassword)),
+          ],
+        );
+        if (!beside) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(child: PasswordQr(data: password)),
+              const SizedBox(height: Gap.item),
+              text,
+              const SizedBox(height: Gap.item),
+              actions,
+            ],
+          );
+        }
+        return Row(
+          spacing: Gap.section,
+          children: [
+            PasswordQr(data: password),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                spacing: Gap.item,
+                children: [text, actions],
+              ),
+            ),
+          ],
+        );
+      },
+    ),
+  );
 }
 
 /// QR code of a short text, always dark on white so cameras can read it.
@@ -392,6 +434,9 @@ Future<bool> openPackageFile(BuildContext context, Uint8List bytes) async {
     case PackageKind.faultReport:
       await _receiveReport(context, bytes);
       return true;
+    case PackageKind.customerFile:
+      await _importCustomerFile(context, bytes);
+      return true;
     case null:
       return false;
   }
@@ -450,10 +495,28 @@ Future<void> _importHandover(BuildContext context, Uint8List bytes) async {
     try {
       final entered = password;
       final package = await withProgress(context, s.handoverOpening, () => openHandover(bytes, password: entered));
-      // Tier limit as when creating an installation. Only now: whether the package belongs to an
-      // installation that is here already is decided by its key, which is part of the payload.
-      if (await handoverNeedsNewInstallation(package.id, key: package.key) &&
-          installations.list.length >= Plan.instance.maxInstallations) {
+      // Only now: whether the package belongs to an installation that is here already is decided
+      // by its key, which is part of the payload.
+      final target = await handoverTarget(package);
+      var asNew = false;
+      if (target.installation case final existing? when target.asks) {
+        // Never replaced without asking: what changes, what stays, or set it up next to it.
+        final changes = await handoverChanges(package, existing);
+        if (!context.mounted) return;
+        final choice = await showAdaptiveDialog<HandoverChoice>(
+          context: context,
+          builder: (_) => HandoverUpdateDialog(
+            installation: existing.name,
+            company: company,
+            changes: changes,
+            canSetUpNew: installations.switchable,
+          ),
+        );
+        if (choice == null) return;
+        asNew = choice == HandoverChoice.setUpNew;
+      }
+      // Tier limit as when creating an installation.
+      if ((asNew || target.installation == null) && installations.list.length >= Plan.instance.maxInstallations) {
         if (!context.mounted) return;
         final plan = Plan.instance;
         if (plan.installationsCapped) return say(s.planOneInstallationHere, HorizontStatus.warning);
@@ -465,7 +528,7 @@ Future<void> _importHandover(BuildContext context, Uint8List bytes) async {
         if (installations.list.length >= plan.maxInstallations) return;
       }
       if (!context.mounted) return;
-      final installation = await withProgress(context, s.handoverOpening, () => applyHandover(package));
+      final installation = await withProgress(context, s.handoverOpening, () => applyHandover(package, asNew: asNew));
       return say(s.handoverImported(company, installation.name), HorizontStatus.positive);
     } on PackageException catch (e) {
       if (e.problem != PackageProblem.wrongPassword) return say(packageProblemText(e.problem), HorizontStatus.critical);
@@ -474,6 +537,70 @@ Future<void> _importHandover(BuildContext context, Uint8List bytes) async {
       debugPrint('Übergabepaket: $e');
       return say(s.packageCorrupt, HorizontStatus.critical);
     }
+  }
+}
+
+/// Answer to "this package belongs to an installation that is here already".
+enum HandoverChoice { update, setUpNew }
+
+/// Asks before a package replaces the project of an installation: what changes (addresses,
+/// devices, keys), that the customer's own data stays, and the way out as a new installation.
+class HandoverUpdateDialog extends StatelessWidget {
+  const HandoverUpdateDialog({
+    super.key,
+    required this.installation,
+    required this.company,
+    required this.changes,
+    this.canSetUpNew = true,
+  });
+
+  final String installation;
+  final String company;
+  final HandoverChanges changes;
+
+  /// Not in the add-on: it has one installation.
+  final bool canSetUpNew;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = changes;
+    final muted = Theme.of(context).textTheme.bodySmall?.copyWith(color: context.hz.textMuted);
+    return AlertDialog.adaptive(
+      title: Text(s.handoverUpdateTitle(installation)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: Gap.inner,
+          children: [
+            Text(s.handoverUpdateIntro(company)),
+            if (c.groupsChanged) Text(s.handoverUpdateGroups(c.groupsAdded, c.groupsRemoved, c.groupsRenamed)),
+            if (c.devicesChanged) Text(s.handoverUpdateDevices(c.devicesAdded, c.devicesRemoved, c.devicesRenamed)),
+            if (!c.groupsChanged && !c.devicesChanged) Text(s.handoverUpdateNoChanges),
+            if (c.packageHasKeys)
+              Text(s.handoverUpdateKeysReplaced)
+            else if (c.installationHasKeys != false)
+              Text(s.handoverUpdateKeysRemoved),
+            Text(s.handoverUpdateKeeps, style: muted),
+          ],
+        ),
+      ),
+      actions: [
+        horizontDialogAction(context, label: s.commonCancel, onPressed: () => Navigator.pop(context)),
+        if (canSetUpNew)
+          horizontDialogAction(
+            context,
+            label: s.handoverUpdateAsNew,
+            onPressed: () => Navigator.pop(context, HandoverChoice.setUpNew),
+          ),
+        horizontDialogAction(
+          context,
+          label: s.handoverUpdateConfirm,
+          primary: true,
+          onPressed: () => Navigator.pop(context, HandoverChoice.update),
+        ),
+      ],
+    );
   }
 }
 
@@ -519,6 +646,50 @@ Future<void> _receiveReport(BuildContext context, Uint8List bytes) async {
   say(s.faultReceived(installation.name), HorizontStatus.positive);
   await Navigator.of(context)
       .push(MaterialPageRoute<void>(builder: (_) => CustomerDetailScreen(installation: installation)));
+}
+
+/// The electrician's own customer files from another own device: password, then the screen that
+/// shows what would be added. Pro like the customer files themselves; nothing here is offered in
+/// the customer's flows (a customer never gets such a file).
+Future<void> _importCustomerFile(BuildContext context, Uint8List bytes) async {
+  final colors = context.hz;
+  final messenger = ScaffoldMessenger.of(context);
+  void say(String text, HorizontStatus status) =>
+      messenger.showSnackBar(horizontMessageSnackBar(colors, text, status: status));
+  try {
+    CustomerFile.readManifest(bytes);
+  } on PackageException catch (e) {
+    return say(packageProblemText(e.problem), HorizontStatus.critical);
+  }
+  if (!await unlock(context, Feature.customerRecords) || !context.mounted) return;
+  var wrong = false;
+  while (true) {
+    if (!context.mounted) return;
+    final password = await showAdaptiveDialog<String>(
+      context: context,
+      builder: (_) => _PasswordDialog(wrong: wrong),
+    );
+    if (password == null || !context.mounted) return;
+    try {
+      final (file, items) = await withProgress(context, s.customerImportOpening, () async {
+        final file = await openCustomerFile(bytes, password: password);
+        return (file, await planCustomerImport(file));
+      });
+      if (!context.mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => CustomerImportScreen(file: file, items: items),
+        ),
+      );
+      return;
+    } on PackageException catch (e) {
+      if (e.problem != PackageProblem.wrongPassword) return say(packageProblemText(e.problem), HorizontStatus.critical);
+      wrong = true;
+    } on Object catch (e) {
+      debugPrint('Kundenakten-Datei: $e');
+      return say(s.packageCorrupt, HorizontStatus.critical);
+    }
+  }
 }
 
 /// "Set up by company X" with contact details, in the installation's card.

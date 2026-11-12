@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 
 import '../l10n/locale_controller.dart';
+import 'dali.dart';
+import 'dali_text.dart';
 import 'telegram.dart';
 
 export 'package:knx/knx.dart' show canEncodeDpt, dptUnit, encodeForDpt;
@@ -21,6 +23,9 @@ String? decodeDpt(Dpt dpt, Telegram t) {
       _ => null,
     };
   }
+
+  // DALI diagnostics of a KNX-DALI gateway: decoded for display only, never sent.
+  if (isDaliDpt(dpt.main, dpt.sub)) return daliValueText(dpt, t);
 
   return switch ((dpt.main, d.length)) {
     (5, 1) => switch (dpt.sub) {

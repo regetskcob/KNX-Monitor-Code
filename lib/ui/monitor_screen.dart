@@ -30,13 +30,16 @@ import 'company_screen.dart';
 import 'customers_screen.dart';
 import 'handover_screen.dart';
 import 'commissioning_screen.dart';
+import 'floor_view_screen.dart';
 import 'health_screen.dart';
+import 'home_plan/home_plan_screen.dart';
 import 'diagnostics_screen.dart';
 import 'trigger_dialog.dart';
 import '../theme/palette.dart';
 import 'gateway_sheet.dart';
 import 'log_view.dart';
 import 'recordings_screen.dart';
+import 'tap_strip.dart';
 import 'telegram_row.dart';
 import 'betrieb/betrieb_menu.dart';
 import 'betrieb/site_notes_screen.dart';
@@ -75,6 +78,9 @@ import 'security_screen.dart';
 import 'service_report_screen.dart';
 import 'load_values_screen.dart';
 import 'site_docs_screen.dart';
+import 'dali_screen.dart';
+import '../model/dali_alarms.dart';
+import '../model/server_features.dart';
 
 /// Live monitor after connecting: listens immediately, starts in the overview.
 class MonitorScreen extends StatefulWidget {
@@ -84,6 +90,10 @@ class MonitorScreen extends StatefulWidget {
 
   /// View shown when opening (default: overview).
   final LogTab initialTab;
+
+  /// Demo house: the quiet check without a read test runs this long after opening, once the
+  /// initial state and the first traffic are there.
+  static const demoPassiveAfter = Duration(seconds: 45);
 
   @override
   State<MonitorScreen> createState() => _MonitorScreenState();
@@ -99,6 +109,10 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
   late final _alarms = AlarmNotifier(widget.tunnel is SharedTunnel ? const Stream.empty() : widget.tunnel.telegrams);
 
   KnxTunnel get _tunnel => widget.tunnel;
+
+  late final _daliAlarms = DaliAlarmNotifier(
+    serverNotifies: () => widget.tunnel is SharedTunnel && ServerFeatures.instance.dali,
+  );
 
   @override
   void initState() {
@@ -122,6 +136,10 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
         .where((_) => _tunnel is! DemoTunnel && _tunnel is! SharedTunnel)
         .listen(HistoryStore.instance.add);
     _alarms; // report alarms from now on
+    // DALI: faults per luminaire; on the add-on or box the server reports them if it can.
+    _daliAlarms;
+    DaliAccess.attach(_tunnel, _model);
+    unawaited(DaliAccess.prepare());
     if (_tunnel is SharedTunnel) _tunnel.state.addListener(_onSharedState);
     _watchSub = WatchRules.instance.hits.listen(_onWatchHit);
     WatchRules.instance.addListener(_syncAwake);
@@ -137,14 +155,14 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
       }
     });
     // Without automation: check quietly after a while (without reading) so that
-    // the traffic light on the start page has something to say. Not in the demo.
-    if (_tunnel is! DemoTunnel) {
-      _passiveTimer = Timer(const Duration(minutes: 10), () {
-        if (mounted && _tunnel.state.value == TunnelState.connected) {
-          HealthCheck.instance.maybePassiveRun(_tunnel, _model);
-        }
-      });
-    }
+    // the traffic light on the start page has something to say. In the demo house sooner
+    // ([MonitorScreen.demoPassiveAfter]): nobody stays there for ten minutes, and the light would read
+    // "not checked yet" for the whole visit. Its run stays in memory (HealthCheck.startDemo).
+    _passiveTimer = Timer(_tunnel is DemoTunnel ? MonitorScreen.demoPassiveAfter : const Duration(minutes: 10), () {
+      if (mounted && _tunnel.state.value == TunnelState.connected) {
+        HealthCheck.instance.maybePassiveRun(_tunnel, _model);
+      }
+    });
   }
 
   /// Box or add-on is back: catches up on what did not arrive in the meantime.
@@ -159,6 +177,9 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
   /// Tapping a watcher's notification: details in the live list.
   final _openAddress = StreamController<int>.broadcast();
   final _openTab = StreamController<LogTab>.broadcast();
+
+  /// Search set by tools outside the log view (diagnostics), see [_filterAndReturn].
+  final _filter = StreamController<String>.broadcast();
 
   /// Watcher armed: the screen stays on so the app keeps listening in the
   /// foreground (otherwise iOS disconnects the tunnel in the background).
@@ -237,6 +258,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
     _watchSub.cancel();
     _openAddress.close();
     _openTab.close();
+    _filter.close();
     WatchRules.instance.removeListener(_syncAwake);
     SoundAck.instance.removeListener(_syncAwake);
     Plan.instance.removeListener(_syncAwake);
@@ -254,6 +276,8 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
     _passiveTimer?.cancel();
     HealthCheck.instance.cancel();
     _alarms.dispose();
+    _daliAlarms.dispose();
+    DaliAccess.detach(_tunnel);
     _triggerSub.cancel();
     _historySub.cancel();
     HistoryStore.instance.flush();
@@ -320,10 +344,19 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
   void _openHealth() =>
       pushTool<void>(context, (_) => HealthScreen(tunnel: _tunnel, log: _model, gateway: _model.gatewayLabel));
 
+  /// Sets the search in the monitor and returns there from the tools.
+  void _filterAndReturn(String query) {
+    final route = ModalRoute.of(context);
+    if (!_filter.isClosed) _filter.add(query);
+    Navigator.of(context).popUntil((r) => r == route || r.isFirst);
+  }
+
   void _openDiagnostics() => pushTool<void>(
     context,
     (_) => DiagnosticsScreen(
       tunnel: _tunnel,
+      log: _model,
+      onFilter: _filterAndReturn,
       // On top of the diagnostics so that "Back" leads to the diagnostics.
       onHealth: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -449,6 +482,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
         initialTab: widget.initialTab,
         openAddress: _openAddress.stream,
         openTab: _openTab.stream,
+        filter: _filter.stream,
         title: InkWell(
           borderRadius: Radii.tile,
           onTap: () => showGatewaySheet(context, _tunnel),
@@ -487,6 +521,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
               ),
             ),
             _TapBanner(tunnel: _tunnel),
+            TapStrip(tunnel: _tunnel, log: _model),
             const _SecureBanner(),
             const _AckBanner(),
             const SiteNotesBanner(),
@@ -534,7 +569,10 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
               feature: Feature.busMonitor,
               subtitle: s.busmonTool,
               group: ToolGroup.bus,
-              open: (_) => pushTool<void>(context, (_) => BusMonitorScreen(monitor: _tunnel)),
+              open: (_) => pushTool<void>(
+                context,
+                (_) => BusMonitorScreen(monitor: _tunnel, log: _model, onFilter: _filterAndReturn),
+              ),
             ),
           ToolEntry(
             icon: AppIcons.recordings,
@@ -586,6 +624,17 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             group: ToolGroup.check,
             open: (_) => _openHealth(),
           ),
+          // DALI lighting: only where the installation has a gateway or a DALI type (the demo house
+          // has one).
+          if (daliKnown())
+            ToolEntry(
+              icon: AppIcons.light,
+              title: s.daliTitle,
+              subtitle: s.daliTool,
+              group: ToolGroup.check,
+              order: 2,
+              open: (_) => openDali(context, asTool: true),
+            ),
           ToolEntry(
             icon: AppIcons.commissioning,
             expertOnly: true,
@@ -596,7 +645,12 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             order: 1,
             open: (_) => pushTool<void>(
               context,
-              (_) => CommissioningScreen(tunnel: _tunnel, gateway: _model.gatewayLabel, log: _model),
+              (_) => CommissioningScreen(
+                tunnel: _tunnel,
+                gateway: _model.gatewayLabel,
+                log: _model,
+                onFilter: _filterAndReturn,
+              ),
             ),
           ),
           ToolEntry(
@@ -616,7 +670,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
               expertOnly: true,
               title: s.huntTitle,
               feature: Feature.faultHunt,
-              subtitle: Addon.box != null ? s.huntTool : s.huntToolAddon,
+              subtitle: Addon.onBox ? s.huntTool : s.huntToolAddon,
               group: ToolGroup.record,
               order: 4,
               open: (_) => pushTool<void>(context, (_) => const FaultHuntScreen()),
@@ -667,7 +721,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
           ),
           // Enthusiast tools (Plus): Home Assistant, response times, security.
           // The Home Assistant configuration exists only on the server, not in the apps.
-          if (Addon.embedded)
+          if (Addon.inHomeAssistant)
             ToolEntry(
               icon: AppIcons.fileCode,
               title: s.haTitle,
@@ -696,6 +750,29 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             feature: Feature.securityCheck,
             open: (_) => pushTool<void>(context, (_) => SecurityScreen(tunnel: _tunnel, log: _model)),
           ),
+          // Bus on the floor plan: with any floor plan of one's own, no tier for the first level.
+          ToolEntry(
+            icon: AppIcons.place,
+            title: s.floorTitle,
+            subtitle: s.floorTool,
+            group: ToolGroup.bus,
+            order: 3,
+            open: (_) => pushTool<void>(context, (_) => FloorViewScreen(log: _model), title: s.floorTitle),
+          ),
+          // House plan with the bus attached, opened on "after moving in": that part needs the
+          // live stream. Planning itself starts from the start screen.
+          if (homePlanAvailable)
+            ToolEntry(
+              icon: AppIcons.homePlan,
+              title: s.hpaTab,
+              subtitle: s.floorPlanTool,
+              group: ToolGroup.check,
+              order: 4,
+              open: (_) => pushTool<void>(
+                context,
+                (_) => HomePlanScreen(log: _model, tunnel: _tunnel, initialTab: HomePlanScreen.afterMoveInTab),
+              ),
+            ),
           // Installation from a handover package: reporting works on every tier.
           if (HandoverStore.instance.origin case final origin?)
             ToolEntry(
@@ -736,7 +813,10 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             group: ToolGroup.documents,
             order: 1,
             feature: Feature.serviceReport,
-            open: (_) => pushTool<void>(context, (_) => ServiceReportScreen(gateway: _model.gatewayLabel)),
+            open: (_) => pushTool<void>(
+              context,
+              (_) => ServiceReportScreen(gateway: _model.gatewayLabel, tunnel: _tunnel, log: _model),
+            ),
           ),
           ToolEntry(
             icon: AppIcons.live,
@@ -1182,6 +1262,7 @@ class _TapBanner extends StatelessWidget {
       builder: (context, points, _) {
         final active = points.where((p) => !p.paused).toList();
         final live = active.where((p) => p.connected).length;
+        // Not reachable is a gap of that tap point, not a bus fault: the wording says so.
         final down = active.where((p) => !p.connected && p.state == TunnelState.disconnected).toList();
         final silent = active.where((p) => p.connected && p.silent).toList();
         return AnimatedSize(

@@ -37,7 +37,6 @@ import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayOutputStream
-import java.io.File
 
 class MainActivity : FlutterFragmentActivity() {
     /// Geöffnete Dateien, bis die App sie abholt (`incomingFiles`).
@@ -76,7 +75,7 @@ class MainActivity : FlutterFragmentActivity() {
     /// Fall aus ihm; die Leserechte daran bleiben, solange die Activity lebt.
     private fun takeIncomingFile(intent: Intent?, remember: Boolean): Boolean {
         val uri = intent?.data ?: return false
-        if (intent.action != Intent.ACTION_VIEW || uri.scheme !in setOf("content", "file")) return false
+        if (intent.action != Intent.ACTION_VIEW || uri.scheme != "content") return false
         intent.data = null
         if (remember) incomingFiles.add(uri)
         return remember
@@ -114,15 +113,11 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    /// Jede App darf diese Activity mit einer URI starten. Eigene Dateien (eigener
-    /// Datenordner, eigene Provider) dürfen so nicht in die App zurückkommen.
+    /// Any app may start this activity with a URI. Only content:// is read, never a file://
+    /// path the app is merely told about (code review, KNX-Monitor-Code#3), and the app's own
+    /// providers must not come back in this way.
     private fun mayReadIncoming(uri: Uri): Boolean {
-        if (uri.scheme == "file") {
-            val file = File(uri.path ?: return false).canonicalFile
-            val own = File(applicationInfo.dataDir).canonicalPath + File.separator
-            return file.isFile && !file.path.startsWith(own) &&
-                file.name.lowercase().let { it.endsWith(".knxhandover") || it.endsWith(".knxreport") }
-        }
+        if (uri.scheme != "content") return false
         val authority = uri.authority ?: return false
         return packageManager.resolveContentProvider(authority, 0)?.packageName != packageName
     }

@@ -1,0 +1,277 @@
+# /en/hausbau/: building a house with KNX, the explaining entry page of the
+# topic. The clickable prototype stays /en/bauherren/. What is available, in
+# testing or in the works is set in stand.yaml only: entries with "feature" get
+# their badge from there. If an entry needs other words per state, it carries
+# the keys soon / test / live instead of "text" or "value".
+states:
+  live: Available
+  test: In testing
+  soon: In the works
+plus: Plus
+demo: Demo house, all details are made up.
+# Links from other pages once /hausbau/ is released.
+link_from_bauherren: 'New to the topic? [Building a house with KNX](/en/hausbau/) explains the way from the start.'
+hero:
+  kennung: Building a house with KNX
+  title: Decide early, while the walls are still open.
+  lead: Building or renovating and thinking about KNX? The important questions come up long before the first push button. What should the house do in everyday life, what of that has to go into the wall, and by when must it be settled? "Plan a home" in Busclear takes you from everyday wishes to the documents for your electrician.
+  primary: See the way
+  secondary: Try the prototype
+  alt: Drawing of a house in section. The green bus cable runs from the distribution board to push buttons and detectors in all four rooms, with shutters at the windows.
+  labels:
+    board: Board
+    button: Button
+    sensor: Detector
+    blind: Shutter
+note: '**Good to know:** function catalogue and deadlines are put together to the best of our knowledge and haven''t had a professional review yet. The plan is a basis for discussion, your contractor has the last word.'
+early:
+  label: Decide early
+  title: Three kinds of wishes, and only one of them is urgent.
+  text: You can still program a scene in your second winter. The cable to the shutter belongs in the shell, because later it only arrives with chases and dust. That is why the plan classifies every wish.
+  cards:
+  - tag: Shell
+    title: Must go into the rough-in
+    text: Cables, boxes and conduits. This should be settled before concrete is poured, cables are laid and walls are plastered.
+    examples: [Motorised blinds, Push button in the room, Presence detector, Heating per room]
+    urgent: true
+  - tag: Later
+    title: Can be retrofitted
+    text: Can still be added after moving in, without opening a wall.
+    examples: [Smoke alarm on the bus, Water leak sensor]
+  - tag: Any time
+    title: Pure programming
+    text: Comes from what is already installed. You decide that at leisure once you live in the house.
+    examples: [Good morning scene, Automatic shading, Presence simulation]
+  caption: Examples from the function catalogue of "Plan a home". It starts with 27 entries and grows with feedback.
+path:
+  label: The way
+  title: Seven steps from the everyday wish to the check after moving in.
+  text: You need neither a bus nor ETS for this, and you don't have to know actuator channels. Each step builds on the one before, and you may still skip ahead.
+  legend_title: How to read the badges
+  legend:
+  - state: live
+    value: In the Home Assistant add-on, on the Busclear Box and in the Linux app
+  - state: test
+    value: In the apps for iPhone, iPad, Mac and Android, not public yet
+  - state: soon
+    value: Being built right now, coming with one of the next releases
+  steps:
+  - title: Wishes
+    feature: plan
+    text: You play through everyday moments such as waking up, leaving the house or summer heat. For each moment you see which wishes are behind it.
+  - title: Room book
+    feature: plan
+    text: Per room you note what it should do, with the priority "Must", "Nice to have" or "Prepare only".
+  - title: Floor plan
+    feature: plan
+    text: Upload the plan and place devices. The plan asks when a push button ends up behind the open door or a sunny facade has no shading.
+    plus: Checks and more levels
+  - title: Channel count
+    feature: plan
+    text: Counted from the plan, what is switched, dimmed, moved and heated, with the reserve you choose. That lets you compare quotes on the same basis.
+  - title: Deadlines
+    feature: plan
+    text: What should be settled before pouring concrete, rough-in and plastering, matched to your type of construction and with your dates.
+    plus: Deadlines per construction type
+  - title: With your electrician
+    feature: plan
+    text: You take plan and device list into the conversation as PDF and CSV.
+    plus: Dimensions in the PDF and DXF
+    extra:
+      feature: exchange
+      text: Share. You approve the version that applies and share the plan as a home plan package. If your electrician uses Busclear, they send back questions and proposals.
+  - title: After moving in
+    feature: walk
+    text: The devices in the plan get their group addresses, then you go through them room by room in the walk-through.
+    plus: Linking and walk-through
+    extra:
+      feature: busview
+      text: The bus on the floor plan, also in the add-on and as a dashboard card.
+  try:
+    title: Rather try it first?
+    text: The prototype shows everyday moments and a floor plan to tap, right in the browser.
+    link: To the prototype
+plan:
+  label: Room book and floor plan
+  title: On the plan you notice what would bother you every day.
+  text: The room book says what each room should do. On the floor plan every wish gets its place, and there you see whether it fits. The plan asks questions and forbids nothing.
+  checks_title: Questions to the plan
+  checks:
+  - term: Button
+    value: Does it sit behind the open door or behind furniture?
+  - term: Detector
+    value: Does the presence detector cover the whole room?
+  - term: Facade
+    value: Does the sunny side have shading, and the awning a wind rule?
+  - term: Gaps
+    value: Are there wishes without a device, and is the distribution board drawn in?
+  - term: Scale
+    value: Is a scale set, so heights and distances are right?
+  rooms:
+    living: Living & dining
+    kitchen: Kitchen
+    hall: Hall
+    office: Office
+  kinds:
+    light: Light
+    socket: Socket
+    button: Push button
+    blind: Shutter
+  plan_alt: Floor plan of a ground floor with four rooms. Lights, sockets, shutters and a push button are drawn in, the push button next to the living room door is marked with a hint.
+  hint_label: Check
+  hint: The push button sits behind the open door. The plan suggests moving it to the handle side.
+  book_title: Room book
+  book_head: [Room, Wish, Priority]
+  book:
+  - [Living & dining, Dimmable light, Must]
+  - [Living & dining, Motorised blinds, Must]
+  - [Kitchen, Switchable sockets, Nice to have]
+  - [Hall, All-off button at the door, Must]
+  - [Office, Socket with current metering, Prepare only]
+channels:
+  label: Channels and deadlines
+  title: A number for the quote, a point in time for every decision.
+  text: The channel count comes from the plan, you calculate nothing yourself. You choose the reserve as 0, 20, 30 or 50 %, rounded up per kind of channel. Your contractor decides which actuators fit, and the prices come from their quote.
+  table_title: Channel count
+  table_head: [Kind, Channels, With 30 % reserve]
+  table:
+  - [Switching channels, 14, 19]
+  - [Dimming channels, 6, 8]
+  - [Blind channels, 9, 12]
+  - [Heating circuits, 7, 10]
+  - [Push buttons and detectors, 16, 16]
+  table_note: Inputs such as push buttons and detectors get no surcharge.
+  deadlines_title: What should be settled by when
+  deadlines_text: Using solid construction as the example. In timber and prefab houses much is fixed before factory planning already, the plan matches the deadlines to your type of construction.
+  deadlines:
+  - title: Fix the floor plan
+    text: Door swings, furniture roughly placed, room for the distribution board
+  - title: Before the ceiling is poured
+    text: Boxes and conduits for presence detectors, ceiling outlets and spots
+  - title: Rough-in
+    text: Bus cable to every push button, cables to the shutters, spare boxes
+  - title: Before insulation and facade
+    text: Outdoor lights, conduit to the roof for the weather station
+  - title: Before plastering
+    text: Photograph every wall, ideally with a folding rule
+  - title: Before the screed
+    text: Sensors in a conduit, conduits to the terrace
+  - title: Commissioning and acceptance
+    text: Check the functions room by room, have the project file handed over
+electrician:
+  label: With your electrician
+  title: Documents your electrician can work with.
+  text: Instead of wishes mentioned in passing you bring a list that you go through together. Everything is created on your device, and only what you send yourself is passed on.
+  points:
+  - term: PDF
+    feature: plan
+    value: Plan and list to print. With Plus it includes height above floor and distance to the wall per device
+  - term: CSV
+    feature: plan
+    value: The device list for Excel and the calculation
+  - term: DXF
+    feature: plan
+    value: One drawing per level for your planner's CAD. Part of Plus
+  - term: Home plan
+    feature: plan
+    value: The plan file itself, so nothing has to be typed again
+  - term: Share
+    feature: exchange
+    value: You share the plan as a home plan package (`.knxplan`), without cloud and without an account. If your electrician uses Busclear, they add a question or a proposal and send a reply back, and you accept or decline. "Approve version" records what applies, with "Approved on …" and the date. A package from someone else replaces your plan only after asking, and "Bring back the previous plan" restores it with its images
+moved:
+  label: After moving in
+  title: Was it built as planned?
+  text: Once the installation runs, the plan gets a second job. The devices in the plan receive their group addresses, you go through them room by room in the walk-through, and the floor plan shows the bus where it runs through the house. Daily control stays with Home Assistant or your visualisation.
+  points:
+  - term: Link
+    feature: walk
+    value: Under Menu › After moving in the devices in the plan get their group addresses, from the ETS project, from taught-in names or by pressing a button. Part of Plus
+  - term: Walk-through
+    feature: walk
+    value: Room by room through the devices. Trigger or press on the device, see the feedback and record it as "OK" or "issue", with a note on the issue. Part of Plus
+  - term: Bus
+    feature: busview
+    value: Under Menu › Bus on the floor plan, telegrams light up the device, and devices silent for long stand out. It works without the package, with any floor plan of your own. The first level is included in every tier, more levels are part of Plus
+  - term: Dashboard
+    feature: busview
+    value: The same view in the Home Assistant add-on in the browser and as the dashboard card "Busclear floor plan"
+  bus_title: Bus on the floor plan
+  bus_alt: The same floor plan with the bus. Two lights and a shutter are highlighted as active now, the other devices have been heard already, a socket in the kitchen is drawn as not heard yet with a hollow ring.
+  bus_legend:
+    active: active now
+    heard: heard
+    silent: not heard yet
+  bus_note: Not heard yet is no fault, some devices only send when they are operated. Only after 12 hours of observed time does the app show a device as "silent for long", with a warning sign.
+  walk_title: Walk-through
+  walk_progress: 2 of 4 checked, 1 issue
+  walk_head: [Room, Device, Result]
+  walk:
+  - room: Living & dining
+    device: Light, dimmable
+    result: OK
+    ok: true
+  - room: Living & dining
+    device: Shutter
+    result: OK
+    ok: true
+  - room: Kitchen
+    device: Socket, switchable
+    result: issue
+    note: no feedback
+    ok: false
+  - room: Hall
+    device: Push button
+    result: open
+state:
+  label: Status
+  title: What exists today and what is still to come.
+  text: '"Plan a home" is the first stage and has been out since version 1.9.2. We don''t name a date for the other parts, they come when they are finished and tested.'
+  head: [Part, Where, Status]
+  rows:
+  - feature: plan
+    part: '**Plan a home:** wishes, room book, floor plan, channel count, checks, deadlines, PDF, CSV and DXF'
+    where: '[Home Assistant add-on](/en/addon/), [Busclear Box](/en/box/) and Linux app'
+  - feature: apps
+    part: '**Plan a home** in the apps'
+    where: iPhone, iPad, Mac and Android
+  - feature: exchange
+    part: '**Sharing with your electrician:** home plan package, questions and proposals, approved versions'
+    where: With one of the next releases
+  - feature: walk
+    part: '**After moving in:** link group addresses and walk through the devices room by room'
+    where: With one of the next releases
+  - feature: busview
+    part: '**Bus on the floor plan**'
+    where: App, add-on and card for dashboards
+  tiers: '**Free and Plus:** Free are wishes, room book, one level with floor plan, channel count, PDF without dimensions, CSV, the home plan file and sharing. Plus covers checks, deadlines, more levels, dimensions in the PDF, DXF, and linking and walk-through after moving in. The bus on the floor plan has its first level in every tier. In the beta everything is still free, nothing can be bought yet. [The tiers at a glance](/en/#roadmap)'
+talk:
+  label: Have your say
+  title: Building right now? Tell us what you miss when planning.
+  text: Feedback decides what comes first. On GitHub you vote with 👍 and write how you approached your planning. Electricians and planners are asked too, for example about the format they like to receive. The issue is in German first, with English below.
+  primary: To the topic on GitHub
+  secondary: Try the prototype
+  questions_title: What I would like to hear from you
+  questions:
+  - What was hardest about your planning?
+  - What would you have liked to know earlier?
+  - Which devices or functions are missing from the list?
+faq:
+  label: Questions
+  title: Frequently asked questions
+  items:
+  - q: Does this replace my electrician or planner?
+    a: The plan helps you clarify your wishes and hand them over cleanly. Electrical installation, actuators, distribution board and protection stay with your contractor, lighting design with a lighting designer.
+  - q: Do I need a KNX installation or ETS for this?
+    a: No. Planning works without a bus, without a gateway and without an ETS project. Only the check after moving in needs the running installation.
+  - q: Does it work for a renovation too?
+    a: Yes. At the start the plan asks where you stand and how the house is built, and matches the deadlines to that.
+  - q: How reliable are function catalogue and deadlines?
+    a: They are put together to the best of our knowledge and haven't had a professional review yet. Take them as a basis for discussion. What applies to you is decided by your contractor.
+  - q: Does the app tell me what KNX costs?
+    a: 'It shows what can be calculated from the plan: channels, devices and reserve. That lets you compare quotes on the same basis. Prices come from your contractor''s quote.'
+  - q: What is free, and what do I need Plus for?
+    a: 'Free are wishes, room book, one level with floor plan, channel count, PDF without dimensions, CSV, the home plan file and sharing. Plus covers checks, deadlines, more levels, dimensions in the PDF, DXF, and linking and walk-through after moving in. The bus on the floor plan has its first level in every tier. In the beta everything is still free, nothing can be bought yet. The tiers are in the [roadmap on the home page](/en/#roadmap).'
+  - q: Where do my floor plan and wishes live?
+    a: On your device. You can pass them on as a file, yourself and only if you want to.
+  - q: How does this differ from the page "Home builder package"?
+    a: This page explains the way. The [home builder package](/en/bauherren/) is the clickable prototype for it, with everyday moments and a floor plan to try.

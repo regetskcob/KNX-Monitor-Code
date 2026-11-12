@@ -14,6 +14,7 @@ import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'common.dart';
+import 'figure_box.dart';
 
 /// Gallery of shared templates: shipped with the app and searchable.
 /// Adopting puts the template into your own library, where it is applied to the
@@ -93,72 +94,119 @@ class _TemplateGalleryScreenState extends State<TemplateGalleryScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(s.galleryTitle)),
-    body: Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: Widths.reading),
-        child: FutureBuilder(
-          future: _gallery,
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              // Otherwise the spinner would turn forever.
-              return Padding(
-                padding: Gap.page,
-                child: HorizontNotice(
-                  HorizontStatus.critical,
-                  action: TextButton(
-                    onPressed: () => setState(() => _gallery = loadTemplateGallery(bundle: widget.bundle)),
-                    child: Text(s.boxSetupRetry),
-                  ),
-                  child: Text(s.actionFailed),
-                ),
-              );
-            }
-            if (!snapshot.hasData) return const Center(child: CircularProgressIndicator.adaptive());
-            return ListenableBuilder(
-              listenable: Listenable.merge([_search, CustomTemplates.instance, CatalogStore.instance]),
-              builder: (context, _) => _list(context, snapshot.data!),
-            );
-          },
-        ),
-      ),
+    // A gallery: one reading column on a phone, a grid of template cards up to [Widths.wide] as soon
+    // as two fit side by side.
+    body: LayoutBuilder(
+      builder: (context, box) {
+        final columns = RowColumns.columnsFor(
+          context,
+          box.maxWidth.clamp(0, Widths.wide) - 2 * Gap.gutter,
+          _cardWidth,
+          max: _maxColumns,
+          gap: Gap.section,
+        );
+        return Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: columns > 1 ? Widths.wide : Widths.reading),
+            child: _body(columns),
+          ),
+        );
+      },
     ),
   );
 
-  Widget _list(BuildContext context, List<GalleryTemplate> gallery) {
+  /// Narrowest template card: title, two to four lines of description, the button.
+  static const _cardWidth = 320.0;
+  static const _maxColumns = 4;
+
+  Widget _body(int columns) => FutureBuilder(
+    future: _gallery,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        // Otherwise the spinner would turn forever.
+        return Padding(
+          padding: Gap.page,
+          child: HorizontNotice(
+            HorizontStatus.critical,
+            action: TextButton(
+              onPressed: () => setState(() => _gallery = loadTemplateGallery(bundle: widget.bundle)),
+              child: Text(s.boxSetupRetry),
+            ),
+            child: Text(s.actionFailed),
+          ),
+        );
+      }
+      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator.adaptive());
+      return ListenableBuilder(
+        listenable: Listenable.merge([_search, CustomTemplates.instance, CatalogStore.instance]),
+        builder: (context, _) => _list(context, snapshot.data!, columns),
+      );
+    },
+  );
+
+  Widget _list(BuildContext context, List<GalleryTemplate> gallery, int columns) {
     final theme = Theme.of(context);
     final hz = context.hz;
+    final wide = columns > 1;
     final shown = [
       for (final t in gallery)
         if (t.matches(_search.text, _language)) t,
     ];
+    final intro = Text(s.galleryIntro, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted));
+    final search = TextField(
+      controller: _search,
+      decoration: InputDecoration(labelText: s.gallerySearch, prefixIcon: const Icon(AppIcons.search)),
+    );
+    final submit = Builder(
+      builder: (button) => OutlinedButton.icon(
+        onPressed: () => _submit(rectOf(button)),
+        icon: Icon(AppIcons.share, size: 18),
+        label: Text(s.gallerySubmit),
+      ),
+    );
     return ListView(
       padding: Gap.page,
       children: [
-        Text(s.galleryIntro, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
-        const SizedBox(height: Gap.item),
-        TextField(
-          controller: _search,
-          decoration: InputDecoration(labelText: s.gallerySearch, prefixIcon: const Icon(AppIcons.search)),
-        ),
+        if (wide)
+          // Explanation as running text on the left, the search over the last card column.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            spacing: Gap.section,
+            children: [
+              Expanded(
+                flex: columns - 1,
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: Widths.reading),
+                    child: intro,
+                  ),
+                ),
+              ),
+              Expanded(child: search),
+            ],
+          )
+        else ...[
+          intro,
+          const SizedBox(height: Gap.item),
+          search,
+        ],
         const SizedBox(height: Gap.section),
         if (shown.isEmpty)
           HorizontEmptyHint(icon: AppIcons.search, text: s.galleryNoMatch)
+        else if (wide)
+          CardGrid(columns: columns, children: [for (final t in shown) _card(context, t, fill: true)])
         else
           for (final t in shown) ...[_card(context, t), const SizedBox(height: Gap.item)],
-        const SizedBox(height: Gap.item),
-        Builder(
-          builder: (button) => OutlinedButton.icon(
-            onPressed: () => _submit(rectOf(button)),
-            icon: Icon(AppIcons.share, size: 18),
-            label: Text(s.gallerySubmit),
-          ),
-        ),
+        SizedBox(height: wide ? Gap.section : Gap.item),
+        if (wide) Align(alignment: AlignmentDirectional.centerStart, child: submit) else submit,
       ],
     );
   }
 
-  Widget _card(BuildContext context, GalleryTemplate t) {
+  /// [fill]: the card takes the height of its grid row and keeps the button at the bottom.
+  Widget _card(BuildContext context, GalleryTemplate t, {bool fill = false}) {
     final theme = Theme.of(context);
     final hz = context.hz;
     final store = CatalogStore.instance;
@@ -167,6 +215,7 @@ class _TemplateGalleryScreenState extends State<TemplateGalleryScreen> {
     final adopted = CustomTemplates.instance.rules.any((r) => r.name == rule.name);
     return SectionCard(
       title: rule.name,
+      fill: fill,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -177,6 +226,7 @@ class _TemplateGalleryScreenState extends State<TemplateGalleryScreen> {
             style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted),
           ),
           const SizedBox(height: Gap.item),
+          if (fill) const Spacer(),
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: adopted

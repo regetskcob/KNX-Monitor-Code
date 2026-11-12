@@ -91,7 +91,8 @@ class AlarmNotifier {
   final _lastSent = <int, DateTime>{};
 
   void _onTelegram(Telegram t) {
-    if (t.type == TelegramType.read) return;
+    // DALI diagnostics report many luminaires on one address: DaliAlarmNotifier tells them apart.
+    if (t.type == TelegramType.read || isDaliDiagnostic(t.destination)) return;
     final kind = activeAlarm(t);
     final was = _active[t.destination] ?? false;
     _active[t.destination] = kind != null;

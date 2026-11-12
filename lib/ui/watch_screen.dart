@@ -16,6 +16,9 @@ import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'common.dart';
+import 'dali_watch.dart';
+import 'figure_box.dart' show RowCard, RowColumns;
+import '../model/dali.dart';
 import 'plan_screen.dart';
 import 'statistics_screen.dart' show FigureBox;
 
@@ -80,43 +83,88 @@ class WatchScreen extends StatelessWidget {
       ),
       body: ValueListenableBuilder(
         valueListenable: WatchRules.instance,
-        builder: (context, rules, _) => Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: Widths.reading),
-            child: ListView(
-              padding: Gap.page,
-              children: [
-                if (rules.isEmpty) ...[
-                  Text(explain, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
-                  const SizedBox(height: Gap.section),
-                  HorizontEmptyHint(
-                    icon: AppIcons.watch,
-                    text: s.watchEmpty,
-                    action: (label: s.watchNew, onPressed: () => _add(context)),
-                  ),
-                ] else ...[
-                  FigureBox(
-                    figures: [
-                      (s.watchActive, formatInt(rules.where((r) => r.enabled).length)),
-                      (s.watchTitle, formatInt(rules.length)),
+        builder: (context, rules, _) => LayoutBuilder(
+          builder: (context, box) {
+            // From expanded on the watchers stand in newspaper columns up to [Widths.wide]; the
+            // explanation of the empty page stays a reading column.
+            final wide = box.maxWidth >= Breakpoints.expanded && rules.isNotEmpty;
+            final columns = !wide
+                ? 1
+                : RowColumns.columnsFor(context, box.maxWidth.clamp(0, Widths.wide) - 2 * Gap.gutter, _ruleWidth);
+            final perColumn = (rules.length / columns).ceil();
+            return Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: wide ? Widths.wide : Widths.reading),
+                child: ListView(
+                  padding: Gap.page,
+                  children: [
+                    // DALI gateways known: the template for their faults is one tap away.
+                    if (DaliStore.instance.gateways.any((g) => g.trusted)) ...[
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: OutlinedButton.icon(
+                          onPressed: () => addDaliWatch(context),
+                          icon: const Icon(AppIcons.light, size: 18),
+                          label: Text(s.daliWatchTemplate),
+                        ),
+                      ),
+                      const SizedBox(height: Gap.section),
                     ],
-                  ),
-                  const SizedBox(height: Gap.section),
-                  SectionTitle(s.watchTitle, count: rules.length),
-                  const SizedBox(height: HzSpace.s4),
-                  for (final (i, r) in rules.indexed) ...[
-                    if (i > 0) const Divider(height: Lines.hairline),
-                    _RuleRow(rule: r),
+                    if (rules.isEmpty) ...[
+                      Text(explain, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
+                      const SizedBox(height: Gap.section),
+                      HorizontEmptyHint(
+                        icon: AppIcons.watch,
+                        text: s.watchEmpty,
+                        action: (label: s.watchNew, onPressed: () => _add(context)),
+                      ),
+                    ] else ...[
+                      FigureBox(
+                        figures: [
+                          (s.watchActive, formatInt(rules.where((r) => r.enabled).length)),
+                          (s.watchTitle, formatInt(rules.length)),
+                        ],
+                      ),
+                      const SizedBox(height: Gap.section),
+                      SectionTitle(s.watchTitle, count: rules.length),
+                      const SizedBox(height: HzSpace.s4),
+                      if (columns == 1)
+                        for (final (i, r) in rules.indexed) ...[
+                          if (i > 0) const Divider(height: Lines.hairline),
+                          _RuleRow(rule: r),
+                        ]
+                      else
+                        // Down the first column, then the next. Every column keeps its place even
+                        // with few watchers, so a single one is not stretched across the window.
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: RowColumns.gap,
+                          children: [
+                            for (var c = 0; c < columns; c++)
+                              Expanded(
+                                child: RowCard(
+                                  flat: true,
+                                  children: [
+                                    for (final r in rules.skip(c * perColumn).take(perColumn)) _RuleRow(rule: r),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                    ],
                   ],
-                ],
-              ],
-            ),
-          ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
   }
+
+  /// Minimum width of a column of watchers: name, sound, switch and delete side by side.
+  static const _ruleWidth = 400.0;
 }
 
 class _RuleRow extends StatelessWidget {
@@ -150,7 +198,8 @@ class _RuleRow extends StatelessWidget {
     final name = CatalogStore.instance.info(rule.address)?.name;
     final meta = theme.textTheme.bodySmall?.copyWith(color: hz.textFaint);
     final details = [
-      ?rule.condition.valueText,
+      // A flag rule (DALI fault) says what it watches in its title.
+      ?(rule.bits == null ? rule.condition.valueText : rule.title),
       // Name the sound explicitly: many do not read the bell alone as a switch;
       // the switch next to it is "active".
       rule.sound ? s.watchWithSound : s.watchSilent,

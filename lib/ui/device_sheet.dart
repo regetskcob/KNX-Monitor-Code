@@ -35,6 +35,8 @@ import '../model/device_shapes.dart';
 import '../model/push_buttons.dart';
 import '../model/filter.dart';
 import 'plan_screen.dart';
+import '../model/dali.dart';
+import 'dali_screen.dart';
 
 /// Name for a sender that is not in the project: the factory address
 /// 15.15.255 gets its own, as it is mostly a fresh interface (e.g. the
@@ -78,6 +80,12 @@ Future<void> showDeviceSheet(
                 Navigator.pop(sheet);
                 onFilter(senderQuery(formatIndividual(address)));
               },
+        onLineFilter: onFilter == null
+            ? null
+            : (query) {
+                Navigator.pop(sheet);
+                onFilter(query);
+              },
       ),
     ),
   ),
@@ -93,6 +101,57 @@ Future<void> openDeviceMap(BuildContext context, {required int address, required
   );
 }
 
+/// A sender (or other device address) that opens its device sheet on tap, as in the live list,
+/// overview and topology. With a chevron as the cue, at least [kMinInteractiveDimension] high and
+/// announced as a button.
+class DeviceLink extends StatelessWidget {
+  const DeviceLink({super.key, required this.address, required this.log, required this.child, this.onFilter});
+
+  final int address;
+  final TelegramLog log;
+
+  /// What the row shows (address, name, …).
+  final Widget child;
+
+  /// "Filter in monitor" in the sheet; `null` hides it.
+  final ValueChanged<String>? onFilter;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    hint: s.devOpenHint,
+    child: InkWell(
+      onTap: () => showDeviceSheet(context, address: address, log: log, onFilter: onFilter),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: kMinInteractiveDimension),
+        child: Row(
+          children: [
+            Expanded(child: child),
+            const SizedBox(width: HzSpace.s4),
+            Icon(AppIcons.next, size: HzIconSize.inline, color: context.hz.textMuted),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Shows all senders of [line] in the monitor's live list (`von:1.1.*`), as the other filter
+/// jumps do. A plain icon button with the line in its tooltip and label.
+class LineFilterButton extends StatelessWidget {
+  const LineFilterButton({super.key, required this.line, required this.onFilter});
+
+  final int line;
+  final ValueChanged<String> onFilter;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: s.devLineShow(formatLine(line)),
+    onPressed: () => onFilter(lineQuery(line)),
+    icon: const Icon(AppIcons.filter),
+  );
+}
+
 class DeviceTraffic extends StatefulWidget {
   const DeviceTraffic({
     super.key,
@@ -103,6 +162,7 @@ class DeviceTraffic extends StatefulWidget {
     this.scrollController,
     this.onMap,
     this.onFilter,
+    this.onLineFilter,
     this.onClose,
     this.embedded = false,
   });
@@ -120,6 +180,9 @@ class DeviceTraffic extends StatefulWidget {
   final ScrollController? scrollController;
   final VoidCallback? onMap;
   final VoidCallback? onFilter;
+
+  /// Shows the device's line in the live list (with the query of [lineQuery]); `null` hides it.
+  final ValueChanged<String>? onLineFilter;
 
   /// Closes the detail (embedded only, e.g. in the topology).
   final VoidCallback? onClose;
@@ -264,15 +327,24 @@ class _DeviceTrafficState extends State<DeviceTraffic> {
                             ),
                           ),
                           const SizedBox(height: HzSpace.s4),
-                          SelectableText(
-                            [
-                              ?device?.product,
-                              s.devLineHops(
-                                formatLine(widget.line ?? lineOf(widget.address)),
-                                widget.hops?.toString() ?? '—',
+                          Row(
+                            children: [
+                              Flexible(
+                                child: SelectableText(
+                                  [
+                                    ?device?.product,
+                                    s.devLineHops(
+                                      formatLine(widget.line ?? lineOf(widget.address)),
+                                      widget.hops?.toString() ?? '—',
+                                    ),
+                                  ].join(metaSeparator),
+                                  style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted),
+                                ),
                               ),
-                            ].join(metaSeparator),
-                            style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted),
+                              // The line opens the live list filtered by it.
+                              if (widget.onLineFilter case final filter?)
+                                LineFilterButton(line: widget.line ?? lineOf(widget.address), onFilter: filter),
+                            ],
                           ),
                         ],
                       ),
@@ -315,6 +387,18 @@ class _DeviceTrafficState extends State<DeviceTraffic> {
                 if (!wide) ...[
                   const SizedBox(height: Gap.section),
                   EvenRow(children: [?mapButton, ?filterButton]),
+                ],
+                // A DALI gateway: its luminaires and groups are in the lighting view.
+                if (DaliAccess.available && DaliStore.instance.gateway(widget.address) != null) ...[
+                  const SizedBox(height: Gap.inner),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: OutlinedButton.icon(
+                      onPressed: () => openDali(context, gateway: widget.address),
+                      icon: const Icon(AppIcons.light, size: 18),
+                      label: Text(s.daliTitle),
+                    ),
+                  ),
                 ],
                 const SizedBox(height: Gap.section),
                 // Comments on this device from all sessions.

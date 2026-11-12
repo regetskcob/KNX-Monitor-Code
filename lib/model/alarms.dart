@@ -1,4 +1,5 @@
 import '../catalog_store.dart';
+import '../knx/dali.dart';
 import '../knx/group_catalog.dart';
 import '../knx/telegram.dart';
 
@@ -38,11 +39,18 @@ AlarmKind? alarmKindOf(GroupInfo? info) {
 ///
 /// 1-bit: value 1 = active. DPT 21.001: bit 1 (fault), bit 3 (alarm) or bit 4
 /// (alarm not acknowledged) set. Read requests are never active.
+///
+/// DALI diagnostics (DPT 237.600, 238.600): a set fault flag is an active fault of the luminaire
+/// named in the payload; the state per luminaire is kept by the DALI model, not per address.
 AlarmKind? activeAlarm(Telegram t) {
   if (t.type == TelegramType.read || t.data.isEmpty) return null;
+  if (isDaliDiagnostic(t.destination)) {
+    final report = t.isSmall ? null : decodeDaliReport(CatalogStore.instance.dptFor(t)!.main, t.data);
+    return report != null && !report.readRequest && report.faults != 0 ? AlarmKind.fault : null;
+  }
   final kind = alarmKindFor(t.destination);
   if (kind == null) return null;
-  final dpt = CatalogStore.instance.info(t.destination)?.dpt;
+  final dpt = CatalogStore.instance.infoOf(t)?.dpt;
   if (dpt?.main == 21) {
     final bits = t.data[0];
     if (bits & 0x18 != 0) return AlarmKind.alarm;
@@ -50,6 +58,13 @@ AlarmKind? activeAlarm(Telegram t) {
     return null;
   }
   return t.isSmall && t.data[0] & 0x01 == 1 ? kind : null;
+}
+
+/// Whether [address] carries DALI diagnostics (DPT 237.600 or 238.600), by the project or the type
+/// chosen in the app.
+bool isDaliDiagnostic(int address) {
+  final dpt = CatalogStore.instance.dptOf(address);
+  return dpt != null && isDaliDiagnosticDpt(dpt.main, dpt.sub);
 }
 
 /// [alarmKindOf] for an address, cached per project (checking the name is too

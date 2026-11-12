@@ -9,6 +9,7 @@ import 'package:mqtt_client/mqtt_server_client.dart';
 import 'bus.dart';
 import 'catalog_info.dart';
 import 'exporter.dart';
+import 'atomic_file.dart';
 import 'key_figures.dart';
 import 'ha.dart';
 import 'telegram_stream.dart';
@@ -172,7 +173,9 @@ class MqttBridge {
     this.interval = const Duration(seconds: 60),
     this.retry = const Duration(minutes: 5),
     bool discovery = true,
-    this.telegrams,
+    TelegramStream? telegrams,
+    TelegramStreamSettings? defaults,
+    this.settingsFile,
     this.installation,
     String? boot,
     DateTime Function() clock = DateTime.now,
@@ -182,6 +185,19 @@ class MqttBridge {
        _sinkFactory = sink ?? MqttClientSink.new,
        _broker = broker ?? brokerFromSupervisor,
        _discoveryOn = discovery,
+       _defaults =
+           defaults ??
+           (telegrams == null
+               ? const TelegramStreamSettings()
+               : TelegramStreamSettings(
+                   enabled: true,
+                   repeats: telegrams.repeats,
+                   secure: telegrams.secure,
+                   raw: telegrams.raw,
+                   rawOnly: telegrams.rawOnly,
+                   retainValues: telegrams.retainValues,
+                   filter: telegrams.filter.text,
+                 )),
        _figures = KeyFigures(currentBus, clock: clock);
 
   /// Bus of the active installation (changes with the installation).
@@ -190,9 +206,104 @@ class MqttBridge {
   final Duration interval;
   final Duration retry;
 
-  /// Every telegram to `knx_monitor/telegram/…` (issue #11); `null` = off.
-  /// Switched on by the add-on option `mqtt_telegrams` or MQTT_TELEGRAMS=true.
-  final TelegramStream? telegrams;
+  /// Every telegram to `knx_monitor/telegram/…` (issue #11); `null` = off or paused.
+  /// Set up by the add-on option `mqtt_telegrams` or MQTT_TELEGRAMS=true ([_defaults]) or in
+  /// the app ([configure]); paused by the switch on the MQTT device ([setPaused]).
+  TelegramStream? get telegrams => _paused ? null : _stream;
+  late TelegramStream? _stream = _settings.stream();
+
+  /// Settings from the add-on options or environment.
+  final TelegramStreamSettings _defaults;
+
+  /// Settings in force: [_defaults] until the app changed them ([_fromApp]).
+  late TelegramStreamSettings _settings = _defaults;
+  bool _fromApp = false;
+
+  /// Paused by `knx_monitor/telegrams/set OFF`. The switch only pauses a stream an admin has
+  /// set up: nobody on the broker can start sending bus data that was never released.
+  bool _paused = false;
+
+  /// Where the app's settings and the pause are kept (`mqtt_stream.json`); `null` = the
+  /// stream cannot be changed while running (tests, older setups).
+  final File? settingsFile;
+
+  TelegramStreamSettings get settings => _settings;
+
+  /// Reads [settingsFile]; call before [start].
+  Future<void> loadSettings() async {
+    final file = settingsFile;
+    if (file == null) return;
+    try {
+      if (!await file.exists()) return;
+      final j = (jsonDecode(await file.readAsString()) as Map).cast<String, Object?>();
+      _paused = j['paused'] == true;
+      if (j['settings'] case final Map<dynamic, dynamic> m) {
+        _settings = TelegramStreamSettings.fromJson(m.cast<String, Object?>());
+        _fromApp = true;
+      }
+      _stream = _settings.stream();
+    } on Object catch (e) {
+      stderr.writeln('MQTT: ${file.path} nicht lesbar, es gelten die Vorgaben: $e');
+    }
+  }
+
+  Future<void> _store() async {
+    final file = settingsFile;
+    if (file == null) return;
+    if (!_fromApp && !_paused) {
+      if (await file.exists()) await file.delete();
+      return;
+    }
+    await writeAtomic(file, text: jsonEncode({if (_fromApp) 'settings': _settings.toJson(), 'paused': _paused}));
+  }
+
+  /// Changes the stream from the app: [changes] as in [TelegramStreamSettings.merge], or
+  /// `{"reset": true}` to go back to the add-on options or environment. Takes effect at once;
+  /// throws a [FormatException] for values that do not fit. Returns [telegramStatus].
+  Future<Map<String, Object?>> configure(Map<String, Object?> changes) async {
+    if (settingsFile == null) throw const FormatException('Hier nicht einstellbar.');
+    final before = _settings;
+    if (changes['reset'] == true) {
+      _settings = _defaults;
+      _fromApp = false;
+    } else {
+      _settings = _settings.merge(changes);
+      _fromApp = true;
+    }
+    // Setting it up again in the app ends a pause: the admin's word counts.
+    if (changes.containsKey('enabled') || changes['reset'] == true) _paused = false;
+    _stream = _settings.stream();
+    await _store();
+    final sink = _sink;
+    if (sink != null && (!_settings.retainValues || !_settings.enabled || _settings.filter != before.filter)) {
+      _clearValues(sink);
+    }
+    stdout.writeln(
+      'MQTT: Telegrammstrom ${_fromApp ? 'in der App eingestellt' : 'zurück auf die Vorgabe'}: '
+      '${_settings.enabled ? 'an' : 'aus'}'
+      '${_settings.enabled && _settings.secure ? ', mit KNX-Data-Secure-Telegrammen' : ''}'
+      '${_settings.enabled && _settings.filter.isNotEmpty ? ', nur ${_settings.filter}' : ''}',
+    );
+    if (sink != null) await announce();
+    return telegramStatus();
+  }
+
+  /// Pauses or resumes a stream that is set up (switch on the MQTT device).
+  Future<void> setPaused(bool paused) async {
+    if (!_settings.enabled || paused == _paused) return;
+    _paused = paused;
+    await _store();
+    _publishState();
+  }
+
+  /// Removes the retained last values from the broker: they would otherwise stay there for
+  /// good after "keep last value" is switched off.
+  void _clearValues(MqttSink sink) {
+    for (final group in _lastValues.keys) {
+      sink.publish('$base/value/${TelegramStream.formatGroup3(group)}', '', retain: true);
+    }
+    _lastValues.clear();
+  }
 
   /// Installation id in the stream's payload (`inst`); `null` = the active
   /// installation's id (MQTT_INSTALLATION overrides it).
@@ -282,6 +393,13 @@ class MqttBridge {
   static const _device = 'knx_monitor';
   static const alarmTriggers = ['alarm_on', 'alarm_off', 'fault_on', 'fault_off'];
 
+  /// Entities of the telegram stream on the MQTT device (component, key).
+  static const streamEntities = [
+    ('switch', 'telegram_stream'),
+    ('sensor', 'telegrams_sent'),
+    ('sensor', 'telegrams_dropped'),
+  ];
+
   /// Device triggers on a change of the bus connection; topics
   /// `bus/connected` and `bus/disconnected`.
   static const busTriggers = ['bus_connected', 'bus_disconnected'];
@@ -314,6 +432,7 @@ class MqttBridge {
     if (sink == null) return;
     sink.messages.listen((m) => _settled = Future.wait([_settled, _onMessage(m)]).then((_) {}));
     sink.subscribe('$base/recording/set');
+    sink.subscribe('$base/telegrams/set');
     // Home Assistant restarted: announce everything again.
     sink.subscribe('$_discovery/status');
     // Discovery off: the broker delivers earlier retained announcements of this
@@ -479,18 +598,25 @@ class MqttBridge {
   }
 
   /// State of the telegram stream for the app (`GET /api/export`,
-  /// [DataExporter.mqttTelegrams]); `null` while the stream is off.
+  /// [DataExporter.mqttTelegrams]): the settings always, the counters while it is set up.
   Map<String, Object?> telegramStatus() => {
-    'enabled': telegrams != null,
-    if (telegrams case final t?) ...{
-      'connected': connected,
-      'secure': t.secure,
-      'repeats': t.repeats,
-      'raw': t.raw,
-      'rawOnly': t.rawOnly,
-      'retainValues': t.retainValues,
+    'enabled': _settings.enabled,
+    'paused': _paused,
+    // Whether the app can change it, and whose settings are in force.
+    'configurable': settingsFile != null,
+    'source': _fromApp ? 'app' : 'default',
+    'defaultEnabled': _defaults.enabled,
+    'connected': connected,
+    // The MQTT device in Home Assistant: announced, or left to the Busclear integration.
+    'discovery': discovery,
+    'secure': _settings.secure,
+    'repeats': _settings.repeats,
+    'raw': _settings.raw,
+    'rawOnly': _settings.rawOnly,
+    'retainValues': _settings.retainValues,
+    'filter': _settings.filter,
+    if (_settings.enabled) ...{
       'valuesSent': valuesSent,
-      'filter': t.filter.text,
       'boot': boot,
       'seq': telegramSeq,
       'sent': telegramsSent,
@@ -502,7 +628,18 @@ class MqttBridge {
 
   Future<void> _onMessage((String, String) m) async {
     final (topic, payload) = m;
-    if (topic == '$base/recording/set') {
+    if (topic == '$base/telegrams/set') {
+      final command = payload.trim().toUpperCase();
+      if (command != 'ON' && command != 'OFF') {
+        stderr.writeln('MQTT: telegrams/set mit "$command" ignoriert (nur ON oder OFF)');
+      } else if (!_settings.enabled) {
+        // Never switched on from the broker: only an admin sets the stream up.
+        stderr.writeln('MQTT: telegrams/set ignoriert, der Telegrammstrom ist nicht eingerichtet');
+      } else {
+        stdout.writeln('MQTT: Telegrammstrom über telegrams/set ${command == 'ON' ? 'fortgesetzt' : 'pausiert'}');
+        await setPaused(command == 'OFF');
+      }
+    } else if (topic == '$base/recording/set') {
       // Only ON and OFF: anything else used to switch the recording off. Every change is logged,
       // because anyone on the broker can send it (security review, 07.11.).
       final command = payload.trim().toUpperCase();
@@ -535,7 +672,8 @@ class MqttBridge {
     final state = {
       ..._figures.state(),
       // Telegram stream (issue #11): counters for systems without the app.
-      if (telegrams != null) ...{
+      if (_settings.enabled) ...{
+        'telegram_stream': !_paused,
         'telegrams_sent': telegramsSent,
         'telegrams_dropped': telegramsDropped,
         'telegrams_secure_skipped': telegramsSecureSkipped,
@@ -683,6 +821,34 @@ class MqttBridge {
       'entity_category': 'diagnostic',
       'value_template': "{{ 'ON' if value_json.low_space else 'OFF' }}",
     });
+    // Telegram stream (issue #11): switch and counters while it is set up, removed otherwise.
+    if (_settings.enabled) {
+      entity('switch', 'telegram_stream', {
+        'name': t['telegram_stream'],
+        'icon': 'mdi:transit-connection-variant',
+        'entity_category': 'config',
+        'command_topic': '$base/telegrams/set',
+        'value_template': "{{ 'ON' if value_json.telegram_stream else 'OFF' }}",
+      });
+      entity('sensor', 'telegrams_sent', {
+        'name': t['telegrams_sent'],
+        'icon': 'mdi:upload-network',
+        'state_class': 'total_increasing',
+        'entity_category': 'diagnostic',
+        'value_template': '{{ value_json.telegrams_sent }}',
+      });
+      entity('sensor', 'telegrams_dropped', {
+        'name': t['telegrams_dropped'],
+        'icon': 'mdi:upload-off',
+        'state_class': 'total_increasing',
+        'entity_category': 'diagnostic',
+        'value_template': '{{ value_json.telegrams_dropped }}',
+      });
+    } else {
+      for (final (component, key) in streamEntities) {
+        sink.publish('$_discovery/$component/$_device/$key/config', '', retain: true);
+      }
+    }
     // Event entities have their own topic, not the state.
     for (final (key, types) in [
       ('watcher', ['fired']),
@@ -786,6 +952,9 @@ class MqttBridge {
     'free_space': 'Freier Speicher',
     'low_space': 'Speicher knapp',
     'bus_subtype': 'KNX-Bus',
+    'telegram_stream': 'Telegramme an MQTT',
+    'telegrams_sent': 'MQTT-Telegramme gesendet',
+    'telegrams_dropped': 'MQTT-Telegramme verworfen',
   };
 
   static const _en = {
@@ -808,5 +977,8 @@ class MqttBridge {
     'free_space': 'Free space',
     'low_space': 'Low space',
     'bus_subtype': 'KNX bus',
+    'telegram_stream': 'Telegrams to MQTT',
+    'telegrams_sent': 'MQTT telegrams sent',
+    'telegrams_dropped': 'MQTT telegrams dropped',
   };
 }

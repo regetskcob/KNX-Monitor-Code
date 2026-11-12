@@ -10,6 +10,7 @@ import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
 import '../model/commissioning.dart';
 import '../model/customer.dart';
+import '../model/dali.dart';
 import '../model/plan.dart';
 import '../model/sound_ack.dart';
 import '../model/telegram_log.dart';
@@ -19,6 +20,7 @@ import '../theme/tokens.dart';
 import 'common.dart';
 import 'acceptance_screen.dart';
 import 'device_sheet.dart';
+import 'dali_commissioning_screen.dart';
 import 'figure_box.dart';
 import 'plan_screen.dart';
 import 'send_sheet.dart';
@@ -29,18 +31,21 @@ import 'telegram_row.dart';
 enum _Filter { all, open, noAnswer, issue, done }
 
 /// Entries in the header menu.
-enum _Menu { readAll, rollCall, acceptance, restart }
+enum _Menu { readAll, rollCall, daliGroups, acceptance, restart }
 
 /// Commissioning checklist: reads status addresses, responses are checked off,
 /// the rest is rated by hand; report as PDF.
 class CommissioningScreen extends StatefulWidget {
-  const CommissioningScreen({super.key, required this.tunnel, this.gateway, this.log});
+  const CommissioningScreen({super.key, required this.tunnel, this.gateway, this.log, this.onFilter});
 
   final KnxTunnel tunnel;
   final String? gateway;
 
   /// Monitor traffic, used for the device drawings in the details.
   final TelegramLog? log;
+
+  /// Sets the monitor's filter from a device sheet opened here ("Filter in monitor", its line).
+  final ValueChanged<String>? onFilter;
 
   @override
   State<CommissioningScreen> createState() => _CommissioningScreenState();
@@ -205,6 +210,7 @@ class _CommissioningScreenState extends State<CommissioningScreen> {
                                 address: selected,
                                 tunnel: widget.tunnel,
                                 log: widget.log,
+                                onFilter: widget.onFilter,
                                 // Rated: move on to the next open item.
                                 onMarked: (state) {
                                   if (state == CheckState.open) return;
@@ -234,12 +240,20 @@ class _CommissioningScreenState extends State<CommissioningScreen> {
     onSelected: (entry) => switch (entry) {
       _Menu.readAll => _start(),
       _Menu.rollCall => _setRollCall(!_c.rollCall),
+      _Menu.daliGroups => Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => DaliCommissioningScreen(tunnel: widget.tunnel))),
       _Menu.acceptance => _openAcceptance(),
       _Menu.restart => _restart(),
     },
     itemBuilder: (context) => [
       PopupMenuItem(value: _Menu.readAll, enabled: _c.items.isNotEmpty && !_c.running, child: Text(s.commReadAll)),
       CheckedPopupMenuItem(value: _Menu.rollCall, checked: _c.rollCall, child: Text(s.commRollCall)),
+      // Switch the DALI groups one by one, where the project has a gateway with groups.
+      if (DaliStore.instance.gateways.any(
+        (g) => DaliStore.instance.groupsOf(g.address).any((x) => x.switchGroup != null),
+      ))
+        PopupMenuItem(value: _Menu.daliGroups, child: Text(s.daliCommOpen)),
       PopupMenuItem(value: _Menu.acceptance, enabled: _c.items.isNotEmpty, child: Text(s.acceptTitle)),
       PopupMenuItem(value: _Menu.restart, child: Text(s.commRestart)),
     ],
@@ -435,6 +449,7 @@ class _CommissioningScreenState extends State<CommissioningScreen> {
               address: item.address,
               tunnel: widget.tunnel,
               log: widget.log,
+              onFilter: widget.onFilter,
               onMarked: (_) => Navigator.pop(sheet),
             ),
           ),
@@ -521,8 +536,13 @@ class _CheckRow extends StatelessWidget {
     return HorizontSelectable(
       selected: selected,
       onTap: onTap,
-      // The leading line counts as part of the edge: icons stay at 4.
-      padding: const EdgeInsetsDirectional.fromSTEB(HzSpace.s4 - Lines.selection, HzSpace.s12, HzSpace.s4, HzSpace.s12),
+      // In the standard style the leading line counts as part of the edge: icons stay at 4.
+      padding: EdgeInsetsDirectional.fromSTEB(
+        HzSpace.s4 - (context.hzTheme.soft ? 0 : Lines.selection),
+        HzSpace.s12,
+        HzSpace.s4,
+        HzSpace.s12,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -576,6 +596,7 @@ class _ItemDetail extends StatefulWidget {
     required this.tunnel,
     required this.log,
     required this.onMarked,
+    this.onFilter,
     this.onNext,
     this.onClose,
   });
@@ -583,6 +604,7 @@ class _ItemDetail extends StatefulWidget {
   final int address;
   final KnxTunnel tunnel;
   final TelegramLog? log;
+  final ValueChanged<String>? onFilter;
 
   /// After "In Ordnung" (OK), "Problem" or "Zurücksetzen" (reset): close the
   /// sheet or move to the next open item.
@@ -667,7 +689,16 @@ class _ItemDetailState extends State<_ItemDetail> {
               ),
               if (origin.isNotEmpty) ...[
                 const SizedBox(height: HzSpace.s2),
-                Text(origin, style: theme.textTheme.bodySmall?.copyWith(color: hz.textFaint)),
+                // The sender opens its device sheet, as in the live list.
+                switch ((item.source, log)) {
+                  (final source?, final log?) => DeviceLink(
+                    address: source,
+                    log: log,
+                    onFilter: widget.onFilter,
+                    child: Text(origin, style: theme.textTheme.bodySmall?.copyWith(color: hz.textFaint)),
+                  ),
+                  _ => Text(origin, style: theme.textTheme.bodySmall?.copyWith(color: hz.textFaint)),
+                },
               ],
             ],
           ),

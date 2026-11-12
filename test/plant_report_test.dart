@@ -7,7 +7,11 @@ import 'package:knx_monitor/model/plan.dart';
 import 'package:knx_monitor/model/plant_report.dart';
 import 'package:knx_monitor/theme/app_theme.dart';
 import 'package:knx_monitor/ui/plan_screen.dart' show featureName;
+import 'package:knx_monitor/ui/common.dart';
+import 'package:knx_monitor/ui/figure_box.dart';
 import 'package:knx_monitor/ui/plant_report_screen.dart';
+
+import 'window.dart';
 
 final _from = DateTime(2026, 10);
 final _to = DateTime(2026, 11);
@@ -202,5 +206,52 @@ void main() {
     expect(find.text('behoben'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('in Ordnung'), 200);
     expect(find.text('in Ordnung'), findsOneWidget);
+  });
+
+  testWidgets('Bericht im breiten Fenster: Befunde links, Kennzahlen des Busses rechts daneben', (tester) async {
+    await pumpWindow(tester, PlantReportDetailScreen(report: _report()), wideWindow);
+    await tester.pumpAndSettle();
+    final findings = tester.getTopLeft(find.text('Befunde'));
+    final outages = tester.getTopLeft(find.text('Ausfälle'));
+    expect(findings.dx, lessThan(wideWindow.width / 2));
+    expect(outages.dx, greaterThan(wideWindow.width / 2));
+    expect(outages.dy, findings.dy);
+    expect(find.byType(SectionCard), findsWidgets);
+    await pumpWindow(tester, PlantReportDetailScreen(report: _report()), phoneWindow, textScale: 2);
+    await tester.pumpAndSettle();
+    expect(find.byType(SectionCard), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  group('Breite', () {
+    final settings = {'enabled': true, 'notifyKind': 'ntfy', 'notifyUrl': 'https://ntfy.sh', 'notifyTopic': 'haus'};
+
+    testWidgets('1400 pt: Einstellungen, Wartung und Mitteilungen links, Berichte rechts daneben', (tester) async {
+      await pumpWindow(tester, PlantReportScreen(client: _FakeClient(settings)), wideWindow);
+      await tester.pumpAndSettle();
+      expect(columnsOf(tester, find.byType(SectionHead)), hasLength(2));
+      final left = tester.getTopLeft(find.text('Einstellungen'));
+      final right = tester.getTopLeft(find.text('Berichte'));
+      expect(right.dx, greaterThan(wideWindow.width / 2));
+      expect(right.dy, left.dy, reason: 'beide Spalten beginnen oben');
+      for (final head in ['Wartung', 'Mitteilungen']) {
+        expect(tester.getTopLeft(find.text(head)).dx, left.dx);
+      }
+      // Every field keeps its label.
+      for (final label in ['Zeitraum', 'Ziel', 'Adresse', 'Topic', 'Zugangstoken']) {
+        expect(find.text(label), findsOneWidget);
+      }
+      expect(find.text('Zwischenstand erstellen'), findsOneWidget);
+    });
+
+    testWidgets('Telefon: eine Liste wie bisher, auch bei doppelter Schrift ohne Überlauf', (tester) async {
+      for (final scale in [1.0, 2.0]) {
+        await pumpWindow(tester, PlantReportScreen(client: _FakeClient(settings)), phoneWindow, textScale: scale);
+        await tester.pumpAndSettle();
+        expect(find.byType(SectionHead), findsNothing);
+        expect(find.byType(ListView), findsOneWidget);
+        expect(find.text('Einstellungen'), findsNothing);
+      }
+    });
   });
 }

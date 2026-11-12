@@ -5,6 +5,7 @@ import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
 import '../theme/tokens.dart';
 import '../model/analysis.dart';
+import '../model/tap_points.dart';
 import '../theme/palette.dart';
 import 'telegram_row.dart';
 import '../theme/app_icons.dart';
@@ -88,6 +89,7 @@ class _LiveListState extends State<LiveList> {
       index[items[items.length - 1 - i]] = i;
     }
     final animate = widget.live && _atTop;
+    final marks = gapMarks(TapScope.labels.length > 1 ? TapScope.gaps.all : const []);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -113,30 +115,46 @@ class _LiveListState extends State<LiveList> {
                         itemBuilder: (context, i) {
                           final index = items.length - 1 - i;
                           final t = items[index];
-                          return KeyedSubtree(
-                            key: ObjectKey(t),
-                            child: Arrival(
-                              animate: animate && widget.isFresh(t),
-                              child: _Marked(
-                                context: widget.isContext?.call(t) ?? false,
-                                mark: widget.markOf?.call(t),
-                                child: TelegramRow(
-                                  telegram: t,
-                                  wide: wide,
-                                  // Stripes by index from the oldest telegram, stable when inserting.
-                                  zebra: index.isOdd,
-                                  issues: widget.issuesOf(t),
-                                  selected: widget.selection?.contains(t),
-                                  focused: identical(t, widget.focused),
-                                  related: widget.focused?.destination == t.destination,
-                                  onTap: () => widget.onTap(t),
-                                  onLongPress: () => widget.onLongPress(t),
-                                  onSecondaryTapUp: widget.onContextMenu == null
-                                      ? null
-                                      : (d) => widget.onContextMenu!(t, d.globalPosition),
-                                ),
+                          // Where a tap point went away or came back between this telegram and
+                          // the next newer one: a line above the row (issue #8).
+                          final between = marksBetween(
+                            marks,
+                            t.time,
+                            index + 1 < items.length ? items[index + 1].time : null,
+                          );
+                          final row = Arrival(
+                            animate: animate && widget.isFresh(t),
+                            child: _Marked(
+                              context: widget.isContext?.call(t) ?? false,
+                              mark: widget.markOf?.call(t),
+                              child: TelegramRow(
+                                telegram: t,
+                                wide: wide,
+                                // Stripes by index from the oldest telegram, stable when inserting.
+                                zebra: index.isOdd,
+                                issues: widget.issuesOf(t),
+                                selected: widget.selection?.contains(t),
+                                focused: identical(t, widget.focused),
+                                related: widget.focused?.destination == t.destination,
+                                onTap: () => widget.onTap(t),
+                                onLongPress: () => widget.onLongPress(t),
+                                onSecondaryTapUp: widget.onContextMenu == null
+                                    ? null
+                                    : (d) => widget.onContextMenu!(t, d.globalPosition),
                               ),
                             ),
+                          );
+                          return KeyedSubtree(
+                            key: ObjectKey(t),
+                            child: between.isEmpty
+                                ? row
+                                : Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      for (final m in between.reversed) _GapLine(mark: m),
+                                      row,
+                                    ],
+                                  ),
                           );
                         },
                       ),
@@ -176,6 +194,87 @@ class _LiveListState extends State<LiveList> {
           ],
         );
       },
+    );
+  }
+}
+
+/// Start or end of a span in which a tap point was not reachable (issue #8), as a line in the list.
+/// [time] is what the line says; [at] where it sits: the edge of the span in which telegrams
+/// count as "not reachable" ([TapGap.covers], with [TapGaps.slack]), start included, end not.
+typedef GapMark = ({DateTime time, DateTime at, int tap, bool start});
+
+/// Starts and ends of [gaps] that were unreachable (not paused, the strip names those), oldest
+/// first. An open gap has a start only.
+List<GapMark> gapMarks(List<TapGap> gaps) => [
+  for (final g in gaps)
+    if (!g.paused) ...[
+      (time: g.from, at: g.from.subtract(TapGaps.slack), tap: g.tap, start: true),
+      if (g.to case final to?) (time: to, at: to.add(TapGaps.slack), tap: g.tap, start: false),
+    ],
+]..sort((a, b) => a.at.compareTo(b.at));
+
+/// The [marks] that sit after [from] up to and including [to] (`null` = no end), oldest first: a
+/// telegram right at a start is inside the gap (above its line), one right at an end outside.
+List<GapMark> marksBetween(List<GapMark> marks, DateTime from, DateTime? to) {
+  if (marks.isEmpty) return const [];
+  // First mark after [from], by halving.
+  var lo = 0, hi = marks.length;
+  while (lo < hi) {
+    final mid = (lo + hi) >> 1;
+    if (marks[mid].at.isAfter(from)) {
+      hi = mid;
+    } else {
+      lo = mid + 1;
+    }
+  }
+  final out = <GapMark>[];
+  for (var i = lo; i < marks.length && (to == null || !marks[i].at.isAfter(to)); i++) {
+    out.add(marks[i]);
+  }
+  return out;
+}
+
+/// A tap point went away or came back here: a quiet line between two rows.
+class _GapLine extends StatelessWidget {
+  const _GapLine({required this.mark});
+
+  final GapMark mark;
+
+  @override
+  Widget build(BuildContext context) {
+    final hz = context.hz;
+    // A recording names its tap points: "1.2 (MDT IP-Interface)"; live "Messpunkt 1.2".
+    final labels = TapScope.labels;
+    final short = mark.tap < labels.length ? labels[mark.tap] : '${mark.tap + 1}';
+    final name = TapScope.nameOf(mark.tap);
+    final label = name == null ? s.tapNamed(short) : '$short ($name)';
+    final time = formatTime(mark.time, millis: false);
+    final text = mark.start ? s.tapListGapStart(label, time) : s.tapListGapEnd(label, time);
+    // As other notes in the content: body size, secondary text, an icon of row size.
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: hz.sunken,
+        border: Border(
+          bottom: BorderSide(color: hz.line, width: Lines.hairline),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: HzSpace.s16, vertical: HzSpace.s8),
+        child: Semantics(
+          label: text,
+          child: ExcludeSemantics(
+            child: Row(
+              children: [
+                Icon(mark.start ? AppIcons.tapAway : AppIcons.tapBack, size: HzIconSize.inline, color: hz.textMuted),
+                const SizedBox(width: HzSpace.s8),
+                Expanded(
+                  child: Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

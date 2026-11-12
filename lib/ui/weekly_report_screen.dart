@@ -23,7 +23,7 @@ WeeklyReport currentReport(KnxTunnel? tunnel, {DateTime? at}) {
     now,
     basis: ReportBasis(
       continuous: tunnel is SharedTunnel,
-      server: Addon.box != null ? s.weekServerBox : s.weekServerAddon,
+      server: Addon.onBox ? s.weekServerBox : s.weekServerAddon,
       listened: listened,
       days: days,
     ),

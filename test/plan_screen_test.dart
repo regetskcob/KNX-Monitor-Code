@@ -4,9 +4,12 @@ import 'package:knx_monitor/l10n/app_localizations.dart';
 import 'package:knx_monitor/model/plan.dart';
 import 'package:knx_monitor/model/plan_source.dart';
 import 'package:knx_monitor/platform/license_plan.dart';
+import 'package:knx_monitor/theme/app_icons.dart';
 import 'package:knx_monitor/theme/app_theme.dart';
 import 'package:knx_monitor/ui/plan_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'window.dart';
 
 class _Store extends PlanSource {
   _Store({this.list = const [], this.failing = false, this.awaiting = false});
@@ -190,6 +193,51 @@ void main() {
       await tester.tap(find.text('Freischalten'));
       await tester.pumpAndSettle();
       expect(find.textContaining('Diese Lizenz stimmt nicht'), findsOneWidget);
+    });
+  });
+
+  group('Breite', () {
+    const offers = [_pro, PlanOffer(id: 'plus_yearly', tier: Tier.plus, price: '19,00 €', period: OfferPeriod.yearly)];
+
+    testWidgets('breites Fenster: Stufen nebeneinander, Punkte in Spalten, Kaufknöpfe auf einer Höhe', (tester) async {
+      await tester.runAsync(() async {
+        await Plan.instance.load(using: _Store(list: offers));
+        await Plan.instance.refreshing;
+      });
+      await pumpWindow(tester, const PlanScreen(), wideWindow);
+      await tester.pump(const Duration(seconds: 1));
+      final pro = tester.getTopLeft(find.text('Pro'));
+      final plus = tester.getTopLeft(find.text('Plus'));
+      expect(plus.dy, pro.dy);
+      expect(plus.dx, greaterThan(wideWindow.width / 2));
+      // Punkte spaltenweise: der letzte Pro-Punkt steht rechts neben dem ersten, nicht 20 Zeilen tiefer.
+      final first = tester.getTopLeft(find.text('Diagnose'));
+      final last = tester.getTopLeft(find.text('Dazu alles aus Plus'));
+      expect(last.dx, greaterThan(first.dx));
+      expect(last.dx, lessThan(plus.dx));
+      // Gleich hohe Karten: die Knöpfe beider Stufen enden auf einer Linie.
+      expect(
+        tester.getBottomLeft(find.text('19,00 € pro Jahr')).dy,
+        tester.getBottomLeft(find.text('99,00 € pro Jahr')).dy,
+      );
+      await pumpWindow(tester, const PlanScreen(), wideWindow, textScale: 2);
+      await tester.pump(const Duration(seconds: 1));
+      // Nur Pro: eine Karte über die Breite.
+      await pumpWindow(tester, const PlanScreen(reason: 'Anlass', need: Tier.pro), wideWindow);
+      await tester.pump(const Duration(seconds: 1));
+      expect(columnsOf(tester, find.byIcon(AppIcons.success)), hasLength(3));
+    });
+
+    testWidgets('Telefon und schmales Fenster: Stufen untereinander, Punkte in einer Spalte', (tester) async {
+      await tester.runAsync(() async {
+        await Plan.instance.load(using: _Store(list: offers));
+        await Plan.instance.refreshing;
+      });
+      for (final (size, scale) in [(phoneWindow, 1.0), (phoneWindow, 2.0), (const Size(800, 1000), 1.0)]) {
+        await pumpWindow(tester, const PlanScreen(), size, textScale: scale);
+        await tester.pump(const Duration(seconds: 1));
+        expect(columnsOf(tester, find.byIcon(AppIcons.success)), hasLength(1), reason: '$size, Schrift $scale');
+      }
     });
   });
 }

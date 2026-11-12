@@ -166,7 +166,7 @@ class _FaultHuntScreenState extends State<FaultHuntScreen> {
                   padding: Gap.page,
                   children: [
                     Text(
-                      Addon.box != null ? s.huntExplain : s.huntExplainAddon,
+                      Addon.onBox ? s.huntExplain : s.huntExplainAddon,
                       style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted),
                     ),
                     const SizedBox(height: Gap.section),
@@ -277,7 +277,7 @@ class _FaultHuntScreenState extends State<FaultHuntScreen> {
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
             title: Text(s.huntOnlyWindow),
-            subtitle: SwitchHint(Addon.box != null ? s.huntOnlyWindowExplain : s.huntOnlyWindowExplainAddon),
+            subtitle: SwitchHint(Addon.onBox ? s.huntOnlyWindowExplain : s.huntOnlyWindowExplainAddon),
             value: _night,
             onChanged: (v) => setState(() => _night = v),
           ),

@@ -578,6 +578,59 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    Future<void> protect(WidgetTester tester, Size size, {double scale = 1}) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      CompanyStore.instance.company = const Company(name: 'Elektro Muster');
+      CatalogStore.instance.catalog = _catalog;
+      addTearDown(() => CatalogStore.instance.catalog = GroupCatalog.empty);
+      await tester.pumpWidget(
+        MediaQuery(
+          data: MediaQueryData(size: size, textScaler: TextScaler.linear(scale)),
+          child: app(const HandoverScreen()),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Mit Passwort schützen'));
+      await tester.pump();
+    }
+
+    testWidgets('1400 pt: Inhalt links, Passwort und Erstellen rechts daneben', (tester) async {
+      await protect(tester, const Size(1400, 900));
+      final contents = tester.getTopLeft(find.text('Inhalt'));
+      final password = tester.getTopLeft(find.text('Passwort'));
+      expect(contents.dx, lessThan(100));
+      expect(password.dx, greaterThan(700));
+      expect(password.dy, contents.dy);
+      expect(password.dy, lessThan(200));
+      expect(tester.getTopLeft(find.text('Paket erstellen und teilen')).dx, greaterThan(700));
+      // In the wide card the password stands beside the QR code.
+      expect(tester.getTopLeft(find.text('Kopieren')).dx, greaterThan(tester.getTopRight(find.byType(PasswordQr)).dx));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Telefon: eine Spalte, das Passwort unter dem QR-Code', (tester) async {
+      await protect(tester, const Size(375, 1600));
+      expect(tester.getTopLeft(find.text('Passwort')).dx, tester.getTopLeft(find.text('Inhalt')).dx);
+      expect(tester.getTopLeft(find.text('Passwort')).dy, greaterThan(tester.getTopLeft(find.text('Inhalt')).dy));
+      expect(
+        tester.getTopLeft(find.text('Kopieren')).dy,
+        greaterThan(tester.getBottomLeft(find.byType(PasswordQr)).dy),
+      );
+    });
+
+    testWidgets('375 pt breit, Textgröße 2.0: kein Überlauf', (tester) async {
+      await protect(tester, const Size(375, 667), scale: 2);
+      expect(tester.takeException(), isNull);
+      await tester.dragUntilVisible(
+        find.text('Paket oder Meldung öffnen'),
+        find.byType(ListView),
+        const Offset(0, -300),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('Kontakt in der Karte der Anlage', (tester) async {
       await tester.pumpWidget(
         app(

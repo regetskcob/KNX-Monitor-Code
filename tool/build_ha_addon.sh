@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Builds the web app for the Home Assistant add-on and copies it to
 # ha-addon/knx_monitor/web. Optionally transfers it straight to Home Assistant:
 #
@@ -21,15 +21,15 @@ du -sh "$out"
 if [ -n "$1" ]; then
   # One connection for all steps – the password is asked only once.
   sock="$(mktemp -u /tmp/knx-addon-ssh.XXXXXX)"
-  ssh_opts="-o ControlMaster=auto -o ControlPath=$sock -o ControlPersist=60"
-  ssh $ssh_opts "$1" 'mkdir -p /tmp/knx_monitor'
-  rsync -a --delete --exclude '.dart_tool' -e "ssh $ssh_opts" ha-addon/knx_monitor/ "$1:/tmp/knx_monitor/"
+  ssh_opts=(-o ControlMaster=auto -o "ControlPath=$sock" -o ControlPersist=60)
+  ssh "${ssh_opts[@]}" "$1" 'mkdir -p /tmp/knx_monitor'
+  rsync -a --delete --exclude '.dart_tool' -e "ssh ${ssh_opts[*]}" ha-addon/knx_monitor/ "$1:/tmp/knx_monitor/"
   # Non-root users (e.g. "hassio" in the Advanced SSH add-on) need sudo for /addons.
-  ssh -t $ssh_opts "$1" 'if [ "$(id -u)" = 0 ]; then s=; else s=sudo; fi
+  ssh -t "${ssh_opts[@]}" "$1" 'if [ "$(id -u)" = 0 ]; then s=; else s=sudo; fi
     $s mkdir -p /addons/knx_monitor && $s rsync -a --delete /tmp/knx_monitor/ /addons/knx_monitor/ && rm -rf /tmp/knx_monitor
     # Local development: build locally instead of pulling the published image.
     $s sed -i "/^image:/d" /addons/knx_monitor/config.yaml'
-  ssh $ssh_opts -O exit "$1" 2>/dev/null || true
+  ssh "${ssh_opts[@]}" -O exit "$1" 2>/dev/null || true
   echo "Copied. In Home Assistant: Settings → Add-ons → Add-on Store → ⋮ → Check for updates,"
   echo "then install Busclear under \"Local add-ons\" and enable \"Show in sidebar\"."
 fi

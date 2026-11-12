@@ -14,4 +14,8 @@ regexes = [
   # Installation and app instance keys in tests (docs/keys.md): identifiers, no credentials.
   '''0b6a1c1e-7d0e-4f6e-9a55-3f2a9c01be77''',
   '''00112233445566778899aabbccddeeff''',
+  # Made-up group key, tunnel password and backup password of the box backup tests.
+  '''AAECAwQFBgcICQoLDA0ODw==''',
+  '''tunnel-geheim-123''',
+  '''ein\+langes\+passwort''',
 ]

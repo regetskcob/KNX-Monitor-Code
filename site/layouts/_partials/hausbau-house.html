@@ -1,0 +1,30 @@
+{{- /*
+  Hero drawing of /hausbau/: a house in section while the walls are still
+  open. The bus (green) runs from the distribution board along the ceilings
+  to push buttons and detectors. (dict "alt" … "labels" (dict board button sensor blind))
+*/ -}}
+<svg class="hb-house" viewBox="0 0 358 206" role="img" aria-label="{{ .alt }}">
+  <path class="bh-house" d="M59 176V74L179 18l120 56v102Z"/>
+  <path class="bh-floor" d="M59 124H299M179 74v102M59 74H299"/>
+  {{- range slice (dict "x" 102 "y" 88 "s" 0.3) (dict "x" 222 "y" 88 "s" 0.7) (dict "x" 102 "y" 139 "s" 0.3) (dict "x" 222 "y" 139 "s" 0.15) }}
+  <rect class="bh-window" x="{{ .x }}" y="{{ .y }}" width="34" height="26"/>
+  <rect class="hb-blind" x="{{ .x }}" y="{{ .y }}" width="34" height="{{ mul 26 .s }}"/>
+  {{- end }}
+  <rect class="hb-board" x="64" y="146" width="13" height="26" rx="1.5"/>
+  <path class="hb-board-line" d="M67 152h7M67 157h7M67 162h7"/>
+  <path class="hb-bus" d="M77 152H88V130H292M88 130V80H292M168 130v22M288 130v22M168 80v22M288 80v22"/>
+  {{- range slice (slice 168 152) (slice 288 152) (slice 168 102) (slice 288 102) }}
+  <rect class="hb-node" x="{{ sub (index . 0) 4 }}" y="{{ index . 1 }}" width="8" height="8" rx="1.5"/>
+  {{- end }}
+  {{- range slice (slice 124 130) (slice 244 130) (slice 124 80) (slice 244 80) }}
+  <path class="hb-node" d="M{{ sub (index . 0) 6 }} {{ index . 1 }}a6 6 0 0 0 12 0Z"/>
+  {{- end }}
+  <path class="bh-horizon" d="M0 176H358"/>
+  <g class="hb-labels">
+    <text x="70" y="192" text-anchor="middle">{{ .labels.board }}</text>
+    <text x="168" y="192" text-anchor="middle">{{ .labels.button }}</text>
+    <text x="244" y="192" text-anchor="middle">{{ .labels.sensor }}</text>
+    <text x="357" y="100" text-anchor="end">{{ .labels.blind }}</text>
+  </g>
+  <path class="hb-leader" d="M70 184v-10M168 184v-22M244 184v-46M308 97H258"/>
+</svg>

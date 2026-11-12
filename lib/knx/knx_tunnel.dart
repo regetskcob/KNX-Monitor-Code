@@ -75,7 +75,9 @@ class KnxTunnel {
     this.tcp = false,
     this.requestedAddress,
     this.fallback = true,
-  });
+  }) {
+    tapPoints.addListener(_followGaps);
+  }
 
   final String host;
   final int port;
@@ -128,7 +130,11 @@ class KnxTunnel {
   /// points for a SharedTunnel. Empty with a single one.
   final tapPoints = ValueNotifier<List<TapStatus>>(const []);
 
+  /// Number of this connection among the tap points of a MultiTunnel (0 = first, or alone).
+  int tapIndex = 0;
+
   TapMerger? _tapMerger;
+  final _tapBacklog = TapBacklog();
   Timer? _tapFlush;
   int _tapOfFrame = 0;
 
@@ -252,7 +258,12 @@ class KnxTunnel {
     _socketSub = null;
     disconnect();
     _tapFlush?.cancel();
-    if (tapPoints.value.isNotEmpty && tapLabels.value.isNotEmpty) tapLabels.value = const [];
+    if (tapPoints.value.isNotEmpty) {
+      if (tapLabels.value.isNotEmpty) tapLabels.value = const [];
+      tapGaps.update(const [], DateTime.now());
+      secureTapCache.clear();
+    }
+    tapPoints.removeListener(_followGaps);
     _telegrams.close();
     _frames.close();
     _busmon.close();
@@ -287,6 +298,8 @@ class KnxTunnel {
   void receiveCemi(Uint8List input) {
     if (_telegrams.isClosed) return;
     var cemi = input;
+    var viaTaps = false;
+    var secured = false;
     // KNX Data Secure: decrypt with a loaded keyring, otherwise count.
     if (DataSecure.isSecure(cemi)) {
       final keys = KeyringStore.instance;
@@ -294,14 +307,16 @@ class KnxTunnel {
       if (ds == null) {
         keys.withoutKey.value++;
       } else {
-        // Several tap points: the copy from a further one gets the first one's decryption.
+        // Several tap points: the identical frame from another tap point within the merge window
+        // is a further sighting; everything else meets the replay check (SecureTapCache).
         final several = tapLabels.value.length > 1;
-        final again = several ? secureTapCache.seen(cemi) : null;
-        final (result, plain) = again != null ? (SecureResult.decrypted, again) : ds.receive(cemi);
+        final tap = _tapOfFrame != 0 ? _tapOfFrame : tapIndex;
+        final (result, plain) = several ? secureTapCache.receive(ds, tap, cemi) : ds.receive(cemi);
+        viaTaps = several;
         switch (result) {
           case SecureResult.decrypted:
-            if (several && again == null) secureTapCache.remember(cemi, plain);
             cemi = plain;
+            secured = true;
           case SecureResult.noKey:
             keys.withoutKey.value++;
           case SecureResult.invalid:
@@ -319,6 +334,10 @@ class KnxTunnel {
     final frame = CemiFrame.parse(cemi);
     if (frame != null) _frames.add(frame);
     final t = Telegram.fromCemi(cemi);
+    // For the emergency lighting log (`sec`): the mark travels with the frame (issue #6).
+    if (secured && t != null) markDataSecure(t);
+    // So the cache recognises it when the merger gives it back (first copy or further sighting).
+    if (viaTaps) secureTapCache.tag(t?.raw ?? const []);
     if (t != null) _deliver(_tapOfFrame, t);
   }
 
@@ -334,14 +353,16 @@ class KnxTunnel {
   }
 
   /// Merges telegrams of [live] tap points ([receiveCemiAt]) into one stream; [live] ≤ 1 and no
-  /// windows ends merging once nothing is pending.
+  /// windows ends merging once nothing is pending. [hand] are the windows set by hand among
+  /// [windows]: only those count for Data Secure, not the measured ones.
   @protected
-  void useTaps(int live, {Map<int, Duration> windows = const {}}) {
+  void useTaps(int live, {Map<int, Duration> windows = const {}, Map<int, Duration> hand = const {}}) {
     final m = _tapMerger ??= TapMerger();
     m.taps = live < 1 ? 1 : live;
     m.windows
       ..clear()
       ..addAll(windows);
+    secureTapCache.windows = Map.of(hand);
   }
 
   void _deliver(int tap, Telegram t) {
@@ -350,13 +371,21 @@ class KnxTunnel {
       _telegrams.add(tap == 0 ? t : t.atTap(tap));
       return;
     }
-    _emitMerged(m.add(tap, t));
+    final ready = m.add(tap, t);
+    _emitMerged(ready);
+    // Never hold back without limit (clock set back, flood).
+    if (_tapBacklog.note(fed: 1, left: TapBacklog.leaving(ready), pending: m.pending)) _emitMerged(m.flushAll());
     _scheduleTapFlush();
   }
 
   void _emitMerged(List<Telegram> ready) {
     if (_telegrams.isClosed) return;
     for (final t in ready) {
+      // A Data Secure copy that did not end up in the entry of its first copy is a replay.
+      if (!secureTapCache.released(t.raw, merged: t.sightings.isNotEmpty)) {
+        KeyringStore.instance.rejected.value++;
+        continue;
+      }
       _telegrams.add(t);
     }
   }
@@ -368,10 +397,19 @@ class KnxTunnel {
     var wait = due.difference(DateTime.now());
     if (wait.isNegative) wait = Duration.zero;
     _tapFlush = Timer(wait, () {
-      _emitMerged(_tapMerger?.flush(DateTime.now()) ?? const []);
+      final ready = _tapMerger?.flush(DateTime.now()) ?? const <Telegram>[];
+      _tapBacklog.note(left: TapBacklog.leaving(ready), pending: _tapMerger?.pending ?? false);
+      _emitMerged(ready);
       _scheduleTapFlush();
     });
   }
+
+  /// Keeps [tapGaps] in step with [tapPoints]: when which tap point was away.
+  void _followGaps() => tapGaps.update(tapPoints.value, tapNow);
+
+  /// The time the tap points' gaps are noted with; the demo house has its own clock.
+  @protected
+  DateTime get tapNow => DateTime.now();
 
   /// For subclasses: the connection was lost.
   @protected

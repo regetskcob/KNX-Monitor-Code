@@ -15,6 +15,8 @@ import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'handover_screen.dart' show openPackageFile;
 import 'project_file_help_screen.dart';
+import 'project_states_screen.dart';
+import 'telegram_row.dart' show formatDate;
 
 /// Imports an ETS project (.knxproj) or a group address CSV and reports the
 /// result in a snackbar. Asks for the project password if needed.
@@ -117,6 +119,10 @@ class CatalogTile extends StatelessWidget {
   /// Offers "Anlernen" (learn addresses; only when connected).
   final VoidCallback? onTeachIn;
 
+  /// From this width the buttons stand beside the text: with one button, with several.
+  static const _beside = 360.0;
+  static const _besideMany = 600.0;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -176,7 +182,7 @@ class CatalogTile extends StatelessWidget {
               ),
             if (onTeachIn != null) TextButton(onPressed: onTeachIn, child: Text(s.learnTitle)),
             // In the add-on: the project Home Assistant's KNX integration already has.
-            if (Addon.embedded)
+            if (Addon.inHomeAssistant)
               Tooltip(
                 message: s.catalogFromHomeAssistantTooltip,
                 child: TextButton(
@@ -197,8 +203,10 @@ class CatalogTile extends StatelessWidget {
         return _TileFrame(
           child: LayoutBuilder(
             // Narrow (phone, card in the installation): buttons below the text,
-            // otherwise the title wraps and the hint turns into a column.
-            builder: (context, box) => box.maxWidth < 360
+            // otherwise the title wraps and the hint turns into a column. With more than the
+            // import button (teach-in, Home Assistant, remove) the row needs more room: on a
+            // 440 pt phone the text was squeezed to one letter per line.
+            builder: (context, box) => box.maxWidth < (actions.length > 2 ? _besideMany : _beside)
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -211,7 +219,12 @@ class CatalogTile extends StatelessWidget {
                           ?close,
                         ],
                       ),
-                      Row(mainAxisAlignment: MainAxisAlignment.end, children: actions),
+                      // Wraps instead of running out when the labels are long (English).
+                      Wrap(
+                        alignment: WrapAlignment.end,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: actions,
+                      ),
                     ],
                   )
                 : Row(
@@ -234,8 +247,11 @@ class CatalogTile extends StatelessWidget {
 Future<void> showProjectSheet(BuildContext context, {VoidCallback? onTeachIn}) => showModalBottomSheet<void>(
   context: context,
   showDragHandle: true,
+  // As tall as its content and scrollable: at large type project, states and keyring need more
+  // than half a phone screen.
+  isScrollControlled: true,
   builder: (context) => SafeArea(
-    child: Padding(
+    child: SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(Gap.gutter, 0, Gap.gutter, Gap.gutter),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -252,6 +268,7 @@ Future<void> showProjectSheet(BuildContext context, {VoidCallback? onTeachIn}) =
                     onTeachIn();
                   },
           ),
+          const ProjectStatesRow(),
           const SizedBox(height: Gap.inner),
           const KeyringTile(),
         ],
@@ -259,6 +276,67 @@ Future<void> showProjectSheet(BuildContext context, {VoidCallback? onTeachIn}) =
     ),
   ),
 );
+
+/// Row below the project that opens its states (issue #5): how many there are and since when the
+/// current one is valid. Nothing without a project.
+class ProjectStatesRow extends StatelessWidget {
+  const ProjectStatesRow({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hz = context.hz;
+    final store = CatalogStore.instance;
+    return ListenableBuilder(
+      listenable: Listenable.merge([store, LocaleController.instance]),
+      builder: (context, _) {
+        final states = store.projectStates;
+        if (states.isEmpty) return const SizedBox.shrink();
+        final from = states.last.from;
+        return Padding(
+          padding: const EdgeInsets.only(top: Gap.inner),
+          child: Material(
+            color: hz.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: Radii.tile,
+              side: BorderSide(color: hz.line, width: Lines.hairline),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () =>
+                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ProjectStatesScreen())),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: HzSize.touch),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(Gap.card, HzSpace.s8, HzSpace.s8, HzSpace.s8),
+                  child: Row(
+                    children: [
+                      Icon(AppIcons.history, color: hz.textMuted),
+                      const SizedBox(width: Gap.inner),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(s.projectStatesRow(states.length), style: theme.textTheme.titleSmall),
+                            Text(
+                              from == null ? s.projectStateFromStart : s.projectStateSince(formatDate(from)),
+                              style: context.figures(theme.textTheme.bodySmall).copyWith(color: hz.textMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(AppIcons.next, color: hz.textMuted),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 
 Future<String?> _askPassword(BuildContext context, {required bool wrong, bool keyring = false}) {
   if (!context.mounted) return Future.value();

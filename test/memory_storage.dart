@@ -7,8 +7,14 @@ class MemoryStorage implements AppStorage {
   @override
   Future<String?> read(String path) async => files[path];
 
+  /// Hört bei jedem Schreiben mit (Tests zur Reihenfolge).
+  void Function(String path, String text)? onWrite;
+
   @override
-  Future<void> write(String path, String text) async => files[path] = text;
+  Future<void> write(String path, String text) async {
+    files[path] = text;
+    onWrite?.call(path, text);
+  }
 
   @override
   Future<void> append(String path, String text) async => files[path] = '${files[path] ?? ''}$text';

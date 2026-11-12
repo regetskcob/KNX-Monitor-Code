@@ -34,6 +34,18 @@
 				<string>de.regetskcob.knx-monitor.report</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Busclear Kundenakten</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>de.regetskcob.knx-monitor.customers</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
@@ -124,6 +136,27 @@
 				<key>public.mime-type</key>
 				<array>
 					<string>application/vnd.knx-monitor.report</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Busclear Kundenakten</string>
+			<key>UTTypeIdentifier</key>
+			<string>de.regetskcob.knx-monitor.customers</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>knxcustomers</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.knx-monitor.customers</string>
 				</array>
 			</dict>
 		</dict>

@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:web/web.dart' as web;
 
+import '../l10n/locale_controller.dart';
 import 'addon.dart';
 import 'box_link.dart';
 import 'login_web.dart';
@@ -105,7 +106,7 @@ Future<Map<String, Object?>> addonPut(String path, Map<String, Object?> body, {D
     (await _decode(await http.put(_api(path), headers: {'Content-Type': 'application/json'}, body: jsonEncode(body))))
         as Map<String, Object?>;
 
-Future<Object?> addonPost(String path, Map<String, Object?> body) async =>
+Future<Object?> addonPost(String path, Map<String, Object?> body, {Duration? timeout}) async =>
     _decode(await http.post(_api(path), headers: {'Content-Type': 'application/json'}, body: jsonEncode(body)));
 
 Future<Object?> addonPatch(String path, Map<String, Object?> body) async =>
@@ -117,6 +118,21 @@ Future<Object?> addonDelete(String path) async => _decode(await http.delete(_api
 Future<Uint8List?> addonGetFile(String path, {String base = 'api/files/'}) async => null;
 
 Future<void> addonPutFile(String path, List<int> bytes) async {}
+
+// The box backup is managed from the app (box settings); the browser has the page /pair.
+Future<void> addonDownloadToFile(
+  String path,
+  String target,
+  void Function(int bytes)? onProgress,
+  bool Function()? cancelled,
+) => throw AddonException(s.boxBackupAppOnly);
+
+Future<Map<String, Object?>> addonUpload(
+  String path,
+  Stream<List<int>> data,
+  int? length,
+  void Function(int bytes)? onProgress,
+) => throw AddonException(s.boxBackupAppOnly);
 
 /// The browser downloads [path] itself (straight to disk, with the Ingress or
 /// box session); nothing passes through the app's memory, hence `null`. First
@@ -146,3 +162,9 @@ Future<bool> addonReachable(BoxLink link) async => true;
 
 Future<String> addonPairBox(BoxLink link, String password, String deviceName, {String? app}) =>
     throw const AddonException('Nur in der App');
+
+Future<String> addonClaimBox(BoxLink link, String deviceName, {String? app}) =>
+    throw const AddonException('Nur in der App');
+
+/// In the browser the app pairs with nothing: the page's own server is the only one it talks to.
+String? addonRefusal(BoxLink link) => null;

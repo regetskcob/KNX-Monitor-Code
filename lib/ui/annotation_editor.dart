@@ -69,37 +69,6 @@ class _AnnotationDialogState extends State<_AnnotationDialog> {
     Navigator.pop(context, (note: note, shots: _shots, delete: false));
   }
 
-  /// Value before → value then, one row per series.
-  Widget _values(BuildContext context) {
-    final hz = context.hz;
-    final theme = Theme.of(context);
-    final name = theme.textTheme.bodySmall?.copyWith(color: hz.textMuted);
-    final value = context.mono(theme.textTheme.bodyMedium).copyWith(color: hz.text);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: HzSpace.s4,
-      children: [
-        Kennung(s.annotationValuesLabel),
-        for (final v in widget.values)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Expanded(
-                child: Text(v.name, style: name, maxLines: 1, overflow: TextOverflow.ellipsis),
-              ),
-              const SizedBox(width: HzSpace.s12),
-              if (v.before case final before?) ...[
-                Text(before, style: value.copyWith(color: hz.textMuted)),
-                Text('  →  ', style: value.copyWith(color: hz.textFaint)),
-              ],
-              Text(v.now, style: value.copyWith(fontWeight: FontWeight.w600)),
-            ],
-          ),
-      ],
-    );
-  }
-
   /// Wide screens (iPad, Mac, browser) get a regular dialog with buttons
   /// instead of the narrow phone alert.
   Widget _action(
@@ -143,7 +112,10 @@ class _AnnotationDialogState extends State<_AnnotationDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(widget.about, style: context.mono(muted)),
-            if (widget.values.isNotEmpty) ...[const SizedBox(height: HzSpace.s16), _values(context)],
+            if (widget.values.isNotEmpty) ...[
+              const SizedBox(height: HzSpace.s16),
+              AnnotationValues(values: widget.values),
+            ],
             const SizedBox(height: HzSpace.s16),
             HorizontField(
               label: s.annotationNoteLabel,
@@ -309,13 +281,59 @@ class _ShotPickerState extends State<ShotPicker> {
   }
 }
 
+/// The chart's values at a comment: value before → value then, one row per series.
+class AnnotationValues extends StatelessWidget {
+  const AnnotationValues({super.key, required this.values});
+
+  final List<ChartValue> values;
+
+  @override
+  Widget build(BuildContext context) {
+    final hz = context.hz;
+    final theme = Theme.of(context);
+    final name = theme.textTheme.bodySmall?.copyWith(color: hz.textMuted);
+    final value = context.mono(theme.textTheme.bodyMedium).copyWith(color: hz.text);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: HzSpace.s4,
+      children: [
+        Kennung(s.annotationValuesLabel),
+        for (final v in values)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Expanded(
+                child: Text(v.name, style: name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: HzSpace.s12),
+              if (v.before case final before?) ...[
+                Text(before, style: value.copyWith(color: hz.textMuted)),
+                Text('  →  ', style: value.copyWith(color: hz.textFaint)),
+              ],
+              Text(v.now, style: value.copyWith(fontWeight: FontWeight.w600)),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
 /// Thumbnail of a screenshot; tapping shows it full size.
 class ShotThumb extends StatelessWidget {
-  const ShotThumb({super.key, required this.id, this.onRemove, this.size = 64});
+  const ShotThumb({super.key, required this.id, this.onRemove, this.size = 64, this.width, this.fit = BoxFit.cover});
 
   final String id;
   final VoidCallback? onRemove;
+
+  /// Height of the picture.
   final double size;
+
+  /// Width; by default 1.4 times [size].
+  final double? width;
+
+  /// [BoxFit.contain] where the picture is large enough to be read in place.
+  final BoxFit fit;
 
   @override
   Widget build(BuildContext context) {
@@ -325,7 +343,7 @@ class ShotThumb extends StatelessWidget {
       builder: (context, snapshot) {
         final bytes = snapshot.data;
         final image = Container(
-          width: size * 1.4,
+          width: width ?? size * 1.4,
           height: size,
           decoration: BoxDecoration(
             borderRadius: Radii.tile,
@@ -333,7 +351,7 @@ class ShotThumb extends StatelessWidget {
             color: hz.sunken,
           ),
           clipBehavior: Clip.antiAlias,
-          child: bytes == null ? null : Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true),
+          child: bytes == null ? null : Image.memory(bytes, fit: fit, gaplessPlayback: true),
         );
         return Stack(
           clipBehavior: Clip.none,

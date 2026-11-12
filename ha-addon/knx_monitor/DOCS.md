@@ -84,7 +84,9 @@ history are explained in the day list ("bus disconnected for 3 min",
 "add-on not running for 11 h").
 
 The history, settings and an imported keyring are part of Home Assistant
-backups.
+backups. That is the add-on's backup; the separate box backup of the Busclear
+Box and the Docker container has no button here. To move from the add-on to a
+box, its API (`/api/backup`, docs/backup-format.md) works through Ingress too.
 
 ### Overview of the last seven days
 
@@ -182,15 +184,24 @@ all of them, also while no app is open.
 - Over VPN use a TCP tunnel and a larger merge window (e.g. 250 ms): the
   receive time is taken here, not on the bus. Routing usually does not get
   through a VPN.
-- The merge window measures itself: if the same telegram turns up at a tap
-  point only after the window (it then appears twice), three such late copies
-  widen that tap point's window to 1.5 times the lag seen, at most 2 s. It
-  never narrows, and a window set by hand stays as it is. The status shows a
-  widened window as `autoWindowMs`; it applies until the next restart.
+- The merge window measures itself from the telegrams that arrive at several
+  tap points: the status shows the largest recent lag of each tap point
+  (`lagUs`), and the window grows as soon as 1.5 times that lag no longer fits,
+  or after three copies that came too late (they appear twice). At most 1 s;
+  after a calm stretch it comes back down, and a window set by hand stays as it
+  is. The status shows a widened window as `autoWindowMs`.
 - KNX Data Secure telegrams are decrypted at the tap point that sees them
-  first. The same telegram at further tap points (identical bytes within 3
-  seconds) gets that decryption and becomes a sighting like any other
-  telegram; a replay later is still refused.
+  first. The identical telegram from another tap point joins that entry as a
+  sighting while it is still open, within 100 ms or the window set by hand for
+  those tap points (measured windows do not count). It never becomes an entry
+  of its own; the same telegram again at the same tap point, later, or with
+  other content is refused as a replay, as with a single tap point.
+- Device access (programming, diagnostics) is sent over the tap point on the
+  device's line, everything else over the normal connection. Read-only mode
+  holds for every tap point.
+- The same connection counts once (same interface and port, or the same
+  routing group), and the server accepts only host names, IP addresses and,
+  for routing, multicast groups as tap point addresses.
 - A tap point that is connected but hears nothing while the others deliver is
   reported as silent (`silent` in the status, a notice in the app). Typical
   case: routing in a network without an IP router – tunnelling interfaces
@@ -353,6 +364,20 @@ MQTT** (`mqtt_telegrams`) and restart the add-on; Docker and the box use
 `MQTT_TELEGRAMS=true` (with `MQTT_HOST` and friends). Anyone who can read the
 broker sees the addresses, names and values of your installation.
 
+**In the app:** from the next version on, Tools › Data export has the same
+settings (stream on or off, group addresses, last value, raw data, repeats, KNX
+Secure telegrams). A change there applies at once, without a restart, and is
+kept. From then on the app's settings count, not the add-on options or
+environment variables, until you choose **Back to default** there. It needs a
+broker (Mosquitto in Home Assistant, `MQTT_HOST` elsewhere) and admin rights.
+
+**In Home Assistant:** while the stream is set up, the MQTT device "Busclear"
+has a switch **Telegrams to MQTT** (`knx_monitor/telegrams/set`, `ON`/`OFF`)
+and the diagnostic sensors **MQTT telegrams sent** and **MQTT telegrams
+dropped**. The switch pauses and resumes the stream, for instance from an
+automation. It cannot start a stream that was never set up: nobody on the
+broker can make the server send bus data that an admin has not released.
+
 Topic: `knx_monitor/telegram/<main>/<middle>/<sub>`, e.g.
 `knx_monitor/telegram/1/2/3`; subscribe to a range with
 `knx_monitor/telegram/1/#`. QoS 0, not retained.
@@ -449,7 +474,8 @@ EMQX rule into TimescaleDB):
   After a restart of the add-on a topic is filled again by the next telegram
   of its address; the broker keeps the old value until then. To clear the
   values, delete the retained topics on the broker (e.g.
-  `mosquitto_pub -t knx_monitor/value/1/2/3 -r -n`).
+  `mosquitto_pub -t knx_monitor/value/1/2/3 -r -n`). Switching the option off
+  in the app clears the values the server has sent since its start.
 - **Only these group addresses to MQTT** (`mqtt_filter`; `MQTT_FILTER`):
   three-level addresses or ranges separated by commas, `#` as the last level
   takes everything below it, e.g. `1/#,3/2/#,4/1/7`. Empty sends everything.
@@ -548,6 +574,12 @@ While it is set up, the add-on stops announcing its MQTT entities; remove the
 integration and they come back. The integration reaches only a few endpoints of
 the add-on with its own token (`/api/ha/`), everything else stays behind Ingress.
 
+On a Busclear Box or in Docker (Home Assistant Container, no Supervisor) the
+integration gets the same events through the server's event channel
+`/ws/events` from Busclear 1.12.0 on, so event entities and device triggers
+work there too. The format is documented for other systems (ioBroker) in the
+[wiki](https://github.com/regetskcob/KNX-Monitor-Code/wiki/Event-channel).
+
 ## Dashboard card
 
 Charts you save in Busclear (Tools → Charts) can go straight onto your
@@ -582,6 +614,23 @@ type: custom:knx-monitor-chart-card
 chart: Living room
 hours: 24
 title: Climate # optional
+```
+
+### Floor plan card
+
+The card **Busclear floor plan** (`custom:knx-monitor-floor-card`) shows the
+bus on your floor plan: points light up when one of their group addresses is
+on the bus, and points that were not heard in the recorded history (up to
+seven days) stand out as silent. Draw the view in Busclear under Menu › Bus on
+the floor plan: add a level, pick an image, place points and choose their
+group addresses. The card only reads; it is a technical view, not a control
+panel. In YAML mode add `/local/knx-monitor/knx-monitor-floor-card.js` as a
+second resource.
+
+```yaml
+type: custom:knx-monitor-floor-card
+floor: f1 # optional, the first level otherwise
+title: Ground floor # optional
 ```
 
 ## Installation report
@@ -644,6 +693,18 @@ dashboard_card: true
   paused, the bus not connected or the add-on not running does not count.
   Docker and the Busclear Box use `SILENT_AFTER_HOURS`. A single address can
   still be ignored in the repair itself.
+- `health_check`: the health check for Home Assistant (default off). With it
+  on, the add-on checks the recorded traffic of today and yesterday once a
+  day at about 3 o'clock and whenever the service `knx_monitor.run_health_check`
+  of the Busclear integration asks for it: payloads that do not fit the
+  datapoint type, implausible or stuck readings, senders that repeat a lot,
+  read requests nobody answers, addresses that stopped sending, DALI lamp and
+  gear faults. The integration then shows the sensors "Health" (ok, hints,
+  faults) and "Health findings". The check only reads the history and the
+  project and sends nothing on the bus, so it is the same in read-only mode;
+  the app's read test (who answers a read request) is not part of it. Docker
+  and the Busclear Box use `HEALTH_CHECK=true`. The app shows under Tools ›
+  Data export › Home Assistant whether it is on and when it last ran.
 
 ## Updates and going back
 

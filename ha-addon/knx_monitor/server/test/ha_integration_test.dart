@@ -127,6 +127,8 @@ void main() {
       containsAll(['connected', 'recording', 'per_minute', 'today', 'bus_load', 'open_alarms', 'low_space']),
     );
     expect(state['claimed'], isFalse);
+    // Format version of /ws/events: without it the integration does not connect there.
+    expect(state['events'], EventChannel.formatVersion);
   });
 
   test('recording on and off', () async {

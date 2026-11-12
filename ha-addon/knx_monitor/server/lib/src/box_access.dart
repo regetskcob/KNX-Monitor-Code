@@ -8,6 +8,17 @@ import 'dart:typed_data';
 import 'package:pointycastle/export.dart';
 import 'package:qr/qr.dart';
 
+import 'atomic_file.dart';
+
+/// Too many failed attempts at the box password (or too many checks at once); answer 429 with
+/// `Retry-After` [retryAfter].
+class TooManyAttemptsException implements Exception {
+  const TooManyAttemptsException(this.retryAfter);
+  final Duration retryAfter;
+  @override
+  String toString() => 'Zu viele Fehlversuche, bitte warten.';
+}
+
 /// Who makes a request to the box.
 enum BoxRole {
   /// Box password (browser, HTTP Basic): everything, including pairing devices.
@@ -93,8 +104,19 @@ class BoxDevice {
 ///   (which asks for a user name that does not matter). HTTP Basic with the
 ///   password (any user name) still works for tools such as curl, which get
 ///   the `WWW-Authenticate` challenge as before.
-/// - **App:** device token as `Authorization: Bearer …`, created on `/pair`
-///   and shown there as a QR code (`knxmonitor://box?url=…&key=…`).
+/// - **App:** device token as `Authorization: Bearer …`. The page `/pair` shows a QR code with a
+///   one-time pairing code (`knxmonitor://box?url=…&code=…`, [createPairingCode]): valid for
+///   [pairingCodeLifetime], usable once, kept only as a hash and only in memory. The app
+///   exchanges it for its device token with `POST /api/box/claim` ([claimPath]); the device is
+///   created at that moment, so the lasting secret never is in a link. Only on request the page
+///   shows the device token itself (Home Assistant, ioBroker, apps up to 1.11.2, which do not
+///   know the code).
+///
+/// - **Failed attempts:** wrong passwords, tokens and pairing codes count per sender; from the
+///   fifth on the sender waits ([_fail]). Counts and running lockouts are kept in
+///   `access-strikes.json` and survive a restart ([_loadStrikes]). No lockout lasts longer than
+///   [_maxLockout], and a password reset on the device (`password-reset`, [_consumeReset]) clears
+///   them all.
 ///
 /// - **Network:** by default only from the box Wi-Fi. Over the cable (the
 ///   network at the gateway, at the customer's site their LAN) only after
@@ -117,6 +139,7 @@ class BoxAccess {
   BoxAccess._(
     this._file,
     this._lanFile,
+    this._strikesFile,
     this.name,
     this._iterations,
     this._clock,
@@ -157,6 +180,7 @@ class BoxAccess {
     final access = BoxAccess._(
       File('${data.path}/access.json'),
       File('${data.path}/lan-access'),
+      File('${data.path}/$strikesFileName'),
       (name == null || name.trim().isEmpty) ? Platform.localHostname : name.trim(),
       iterations,
       clock,
@@ -212,6 +236,7 @@ class BoxAccess {
       access._lanAccess = initialLanAccess;
       await access._save();
     }
+    await access._loadStrikes();
     await access._consumeReset();
     // Box from 1.9.1: is the sticker password still valid? In the background, the old
     // 200,000 rounds took longer on the Pi than the startup check of setup.sh.
@@ -242,6 +267,8 @@ class BoxAccess {
   /// New password from the SD card (`knx-box-reset.txt`, see secrets.sh):
   /// whoever has the card in hand can get back into the box this way, without
   /// the passwords having to stay there permanently. Paired devices are kept.
+  /// Failed attempts and lockouts are cleared with it: the reset is the way back in, so nothing
+  /// counted before may stand in its way.
   Future<void> _consumeReset() async {
     final file = File('${_file.parent.path}/password-reset');
     if (!await file.exists()) return;
@@ -253,6 +280,8 @@ class BoxAccess {
         _required = false;
         _stickerChecked = true;
         await _save();
+        _strikes.clear();
+        _strikesChanged();
         stdout.writeln('Busclear Box: Passwort von der SD-Karte übernommen');
       }
     } on Object catch (e) {
@@ -266,6 +295,12 @@ class BoxAccess {
 
   /// Choice for the firewall (`yes`/`no`), see knx-box-lan.path.
   final File _lanFile;
+
+  /// Failed attempts and lockouts across restarts, see [_loadStrikes].
+  final File _strikesFile;
+
+  /// Name of [_strikesFile] in the data folder.
+  static const strikesFileName = 'access-strikes.json';
 
   /// Name of the box in the QR code (e.g. the Wi-Fi SSID).
   final String name;
@@ -327,7 +362,19 @@ class BoxAccess {
   /// every request costs 200,000 PBKDF2 rounds.
   final _acceptedBasic = <String>{};
 
+  /// Failed attempts per sender (address, or `device:<id>` for [confirmPassword]): how many, and
+  /// until when the sender waits. Stored in [_strikesFile] whenever it changes.
   final _strikes = <String, ({int count, DateTime until})>{};
+
+  /// The longest wait after failed attempts. Nothing locks longer, whatever count or clock say.
+  static const _maxLockout = Duration(minutes: 15);
+
+  /// How long a stored count is kept over a restart once its wait is over. While the server runs
+  /// counts stay as before (until the password is entered correctly).
+  static const _strikeMemory = Duration(hours: 24);
+
+  /// At most this many senders in [_strikesFile].
+  static const _maxStoredStrikes = 1024;
 
   /// Running password checks per sender: each one occupies a core for
   /// seconds, and a failed attempt only counts when it finishes. Without a
@@ -396,14 +443,19 @@ class BoxAccess {
       await _loginOrLogout(request, peer, now);
       return null;
     }
+    // The app hands in a pairing code: it has no access yet, the code is the credential.
+    if (request.uri.path == claimPath) {
+      await _claim(request, peer, now);
+      return null;
+    }
     final auth = request.headers.value(HttpHeaders.authorizationHeader) ?? '';
     // A valid device token is checked first: a lockout of the sender (behind
     // a reverse proxy or NAT that is everyone) must not lock out paired apps.
     // Wrong tokens still count and are refused during the lockout.
     final bearer = auth.startsWith('Bearer ') ? _deviceFor(auth.substring(7).trim()) : null;
-    final strike = _strikes[peer];
-    if (bearer == null && strike != null && strike.until.isAfter(now)) {
-      response.headers.set(HttpHeaders.retryAfterHeader, '${strike.until.difference(now).inSeconds + 1}');
+    final locked = _lockedFor(peer, now);
+    if (bearer == null && locked != null) {
+      response.headers.set(HttpHeaders.retryAfterHeader, '${locked.inSeconds + 1}');
       return _deny(response, HttpStatus.tooManyRequests, 'Zu viele Fehlversuche, bitte warten.');
     }
     // The browser loads the manifest without credentials; it only contains
@@ -447,7 +499,7 @@ class BoxAccess {
     }
     // Only the password itself clears the failed attempts: otherwise a valid device token
     // in between would allow unlimited further guessing.
-    if (auth.startsWith('Basic ')) _strikes.remove(peer);
+    if (auth.startsWith('Basic ')) _forgive(peer);
     // Foreign pages in the same browser (CSRF, cross-site WebSocket). The app
     // does not send an Origin.
     final origin = request.headers.value('origin');
@@ -647,9 +699,9 @@ class BoxAccess {
       return;
     }
     final next = safeNext(form['next']);
-    final strike = _strikes[peer];
-    if (strike != null && strike.until.isAfter(now)) {
-      final seconds = strike.until.difference(now).inSeconds + 1;
+    final locked = _lockedFor(peer, now);
+    if (locked != null) {
+      final seconds = locked.inSeconds + 1;
       response.headers.set(HttpHeaders.retryAfterHeader, '$seconds');
       await _loginAnswer(
         response,
@@ -682,7 +734,7 @@ class BoxAccess {
       return;
     }
     unawaited(_rehash(password));
-    _strikes.remove(peer);
+    _forgive(peer);
     _startSession(response, _clock(), secure: secure);
     // The sticker password is still valid: first set an own one.
     await _redirect(response, _mustChange ? '/pair' : next);
@@ -731,13 +783,33 @@ class BoxAccess {
   /// counts as a failed login. Not while the sticker password still has to be
   /// replaced: that one is printed on the box anyway.
   Future<bool> _confirmCurrent(HttpRequest request, Object? current) async {
+    return confirmPassword(request, current);
+  }
+
+  /// [_confirmCurrent] for other services: restoring a box backup replaces everything on the box,
+  /// so it asks for the current password like locking out all devices (box_backup.dart).
+  ///
+  /// Failed attempts count per sender and per paired device: the lockout in [guard] lets a valid
+  /// device token through, so without the second key an admin token could guess the password
+  /// without limit. During a lockout, and while too many checks run at once, it throws
+  /// [TooManyAttemptsException] (the caller answers 429).
+  Future<bool> confirmPassword(HttpRequest request, Object? current) async {
     if (_required) return true;
+    final now = _clock();
+    final peer = _peerAddress(request);
+    final keys = [peer, if (_selfOf(request) case final id?) 'device:$id'];
+    for (final key in keys) {
+      if (_lockedFor(key, now) case final locked?) throw TooManyAttemptsException(locked);
+    }
     if (current is! String || current.isEmpty || current.length > 128) {
-      if (current is String && current.isNotEmpty) _fail(_peerAddress(request), _clock());
+      if (current is String && current.isNotEmpty) keys.forEach((k) => _fail(k, now));
       return false;
     }
-    final ok = await verifyPassword(current);
-    if (!ok) _fail(_peerAddress(request), _clock());
+    if (_tooManyChecks(peer)) throw const TooManyAttemptsException(Duration(seconds: 5));
+    final ok = await _counted(peer, () => verifyPassword(current));
+    for (final key in keys) {
+      ok ? _forgive(key) : _fail(key, now);
+    }
     return ok;
   }
 
@@ -766,11 +838,34 @@ class BoxAccess {
     return o.host.toLowerCase() == h.host.toLowerCase() && o.port == h.port;
   }
 
+  /// Wait after the [count]th failed attempt: from the 5th 30 s, then doubled up to [_maxLockout].
+  static Duration _waitAfter(int count) =>
+      count < 5 ? Duration.zero : Duration(seconds: min(30 * (1 << min(count - 5, 10)), _maxLockout.inSeconds));
+
+  /// How long [key] still waits after failed attempts, `null` if it does not.
+  ///
+  /// Never longer than [_maxLockout]: if the clock was set back in the meantime (a box without
+  /// a battery starts with an old time), the end would lie far ahead and nobody could log in.
+  /// Such an entry is shortened to the wait its count stands for, counted from now.
+  Duration? _lockedFor(String key, DateTime now) {
+    final strike = _strikes[key];
+    if (strike == null || !strike.until.isAfter(now)) return null;
+    final left = strike.until.difference(now);
+    if (left <= _maxLockout) return left;
+    final wait = _waitAfter(strike.count);
+    _strikes[key] = (count: strike.count, until: now.add(wait));
+    _strikesChanged();
+    return wait > Duration.zero ? wait : null;
+  }
+
+  /// The right password: [key]'s failed attempts are forgotten. Writes only if there were any.
+  void _forgive(String key) {
+    if (_strikes.remove(key) != null) _strikesChanged();
+  }
+
   void _fail(String peer, DateTime now) {
     final count = (_strikes[peer]?.count ?? 0) + 1;
-    // From the 5th failed attempt 30 s, then doubled up to 15 min.
-    final wait = count < 5 ? Duration.zero : Duration(seconds: min(30 * (1 << min(count - 5, 10)), 15 * 60));
-    _strikes[peer] = (count: count, until: now.add(wait));
+    _strikes[peer] = (count: count, until: now.add(_waitAfter(count)));
     // There are only so many senders in a LAN; still, the list must not grow.
     // Expired entries go first; a running lockout only when the list is far
     // beyond that (many addresses), and then the one ending soonest, so that
@@ -785,7 +880,96 @@ class BoxAccess {
         _strikes.remove(soonest);
       }
     }
+    _strikesChanged();
     stderr.writeln('Busclear Box: Fehlversuch $count von $peer');
+  }
+
+  // --- Failed attempts across restarts ---------------------------------------------------
+
+  /// Reads [_strikesFile]: without it a restart (a power cut, an update, a crash someone
+  /// provokes) would hand out fresh attempts.
+  ///
+  /// It can never lock anyone out for good: a wait that lies further ahead than its count allows
+  /// (clock set back; at most [_maxLockout]) is shortened to that wait from now, counts whose
+  /// wait ended more than [_strikeMemory] ago are dropped, and an unreadable file is deleted. A
+  /// password reset on the device clears everything ([_consumeReset]); so does deleting the file
+  /// while the server is stopped.
+  Future<void> _loadStrikes() async {
+    if (!await _strikesFile.exists()) return;
+    final now = _clock();
+    try {
+      // Bounded: the file is the server's own, but nothing here may depend on that.
+      if (await _strikesFile.length() > 512 * 1024) throw const FormatException('zu groß');
+      final j = jsonDecode(await _strikesFile.readAsString());
+      final stored = j is Map && j['strikes'] is Map ? j['strikes'] as Map : const <Object?, Object?>{};
+      for (final MapEntry(:key, :value) in stored.entries) {
+        if (_strikes.length >= _maxStoredStrikes) break;
+        if (key is! String || key.isEmpty || key.length > 64 || value is! Map) continue;
+        final count = value['count'];
+        final until = value['until'];
+        if (count is! int || count < 1 || until is! int) continue;
+        var end = DateTime.fromMillisecondsSinceEpoch(until);
+        if (!end.add(_strikeMemory).isAfter(now)) continue;
+        final wait = _waitAfter(count);
+        if (end.difference(now) > wait) end = now.add(wait);
+        _strikes[key] = (count: min(count, 1 << 20), until: end);
+      }
+    } on Object catch (e) {
+      stderr.writeln('$strikesFileName unlesbar, verworfen: $e');
+      _strikes.clear();
+      try {
+        await _strikesFile.delete();
+      } on FileSystemException {
+        // The next change overwrites it.
+      }
+    }
+  }
+
+  bool _strikesDirty = false;
+  Future<void>? _strikesWriting;
+
+  /// Stores [_strikes] after a change. Changes while a write runs are collected into one more
+  /// write, so a burst of failed attempts costs the SD card two writes, not one each. Requests
+  /// that change nothing (a refused one during a lockout, a login without earlier failures)
+  /// never get here.
+  void _strikesChanged() {
+    _strikesDirty = true;
+    _strikesWriting ??= _writeStrikes();
+  }
+
+  Future<void> _writeStrikes() async {
+    try {
+      while (_strikesDirty) {
+        _strikesDirty = false;
+        final now = _clock();
+        final keep = [
+          for (final e in _strikes.entries)
+            if (e.value.until.add(_strikeMemory).isAfter(now)) e,
+        ];
+        if (keep.isEmpty) {
+          if (await _strikesFile.exists()) await _strikesFile.delete();
+          continue;
+        }
+        // Too many: those that wait longest stay.
+        if (keep.length > _maxStoredStrikes) {
+          keep.sort((a, b) => b.value.until.compareTo(a.value.until));
+          keep.length = _maxStoredStrikes;
+        }
+        await writeAtomic(
+          _strikesFile,
+          text: jsonEncode({
+            'version': 1,
+            'strikes': {
+              for (final e in keep) e.key: {'count': e.value.count, 'until': e.value.until.millisecondsSinceEpoch},
+            },
+          }),
+        );
+      }
+    } on Object catch (e) {
+      stderr.writeln('$strikesFileName: $e');
+    } finally {
+      _strikesWriting = null;
+    }
   }
 
   /// Concurrent logins with the same credentials are computed only once.
@@ -889,6 +1073,7 @@ class BoxAccess {
     _stickerChecked = true;
     _acceptedBasic.clear();
     _sessions.clear();
+    _codes.clear();
     await _save();
     onAccessChanged?.call();
     if (wasSticker) await _requestScrub('box');
@@ -937,6 +1122,144 @@ class BoxAccess {
     return key;
   }
 
+  // --- One-time pairing codes -----------------------------------------------------------
+
+  /// Where the app hands in a pairing code (`POST`, no other credentials), see [_claim].
+  static const claimPath = '/api/box/claim';
+
+  /// How long a pairing code from `/pair` can be handed in.
+  static const pairingCodeLifetime = Duration(minutes: 10);
+
+  /// Open and recently used codes; the oldest goes first.
+  static const _maxCodes = 8;
+
+  /// Pairing codes of this run, newest last. In memory only: a restart ends open codes.
+  final _codes = <PairingCode>[];
+
+  /// Codes that wait or were handed in during this run (for the page `/pair`).
+  List<PairingCode> get pairingCodes {
+    _pruneCodes(_clock());
+    return List.unmodifiable(_codes);
+  }
+
+  /// Expired codes go, and used ones after a day; they are only kept to be shown.
+  void _pruneCodes(DateTime now) => _codes.removeWhere(
+    (c) => c.used == null ? !c.expires.isAfter(now) : now.difference(c.used!) > const Duration(hours: 24),
+  );
+
+  /// Creates a one-time pairing code for a device with the given rights and returns it in plain
+  /// text (only this once; 256 random bits, of which only the SHA-256 is kept). Nothing is
+  /// paired yet: the device comes into being when the app hands the code in ([claimPairing]).
+  String createPairingCode(String deviceName, {bool admin = false, bool viewOnly = false}) {
+    final now = _clock();
+    _pruneCodes(now);
+    while (_codes.length >= _maxCodes) {
+      _codes.removeAt(0);
+    }
+    final code = base64Url.encode(_bytes(32)).replaceAll('=', '');
+    final name = deviceName.trim();
+    _codes.add(
+      PairingCode._(
+        id: _hex(_bytes(6)),
+        hash: _sha256(utf8.encode(code)),
+        name: name.length > 40 ? name.substring(0, 40) : name,
+        admin: admin,
+        viewOnly: viewOnly && !admin,
+        created: now,
+        expires: now.add(pairingCodeLifetime),
+      ),
+    );
+    return code;
+  }
+
+  /// Withdraws the open code with [id] (button on `/pair`).
+  void cancelPairingCode(String id) => _codes.removeWhere((c) => c.id == id && c.used == null);
+
+  /// Exchanges [code] for a device token: `{key, id, name}` like `POST /api/box/pair`, or `null`
+  /// if the code is unknown, already used or expired (the three are not told apart).
+  ///
+  /// The device gets the rights chosen on the page and the name given there; without one,
+  /// [deviceName] as the app calls itself. The code is spent before anything is stored, so two
+  /// requests at once cannot both win.
+  Future<Map<String, Object?>?> claimPairing(String code, {String deviceName = '', String? app}) async {
+    if (code.isEmpty || code.length > 128) return null;
+    final now = _clock();
+    _pruneCodes(now);
+    final hash = _sha256(utf8.encode(code));
+    PairingCode? found;
+    for (final c in _codes) {
+      if (c.used == null && _equal(c.hash, hash)) found = c;
+    }
+    if (found == null) return null;
+    found.used = now;
+    final key = await pair(
+      found.name.isEmpty ? deviceName : found.name,
+      admin: found.admin,
+      viewOnly: found.viewOnly,
+      app: app,
+    );
+    return {'key': key, 'id': _devices.last.id, 'name': name};
+  }
+
+  /// `POST /api/box/claim` `{code, name, app}` → `{key, id, name}`.
+  ///
+  /// The only request besides the login that works without credentials: the code is one. A
+  /// wrong, used or expired code counts as a failed attempt like a wrong password, and during a
+  /// lockout nothing is checked at all.
+  Future<void> _claim(HttpRequest request, String peer, DateTime now) async {
+    final response = request.response;
+    response.headers.set(HttpHeaders.cacheControlHeader, 'no-store');
+    if (request.method != 'POST') {
+      await _deny(response, HttpStatus.methodNotAllowed, 'Nicht erlaubt.');
+      return;
+    }
+    // The app sends no Origin; a web page has no business here.
+    final origin = request.headers.value('origin');
+    if (origin != null && !_sameOrigin(origin, request.headers.value(HttpHeaders.hostHeader))) {
+      await _deny(response, HttpStatus.forbidden, 'Fremde Herkunft.');
+      return;
+    }
+    if (_lockedFor(peer, now) case final locked?) {
+      response.headers.set(HttpHeaders.retryAfterHeader, '${locked.inSeconds + 1}');
+      await _deny(response, HttpStatus.tooManyRequests, 'Zu viele Fehlversuche, bitte warten.');
+      return;
+    }
+    final builder = BytesBuilder(copy: false);
+    await for (final chunk in request) {
+      builder.add(chunk);
+      if (builder.length > 4096) {
+        await _deny(response, HttpStatus.requestEntityTooLarge, 'Zu groß.');
+        return;
+      }
+    }
+    final Map<String, Object?> body;
+    try {
+      body = (jsonDecode(utf8.decode(builder.takeBytes())) as Map).cast<String, Object?>();
+    } on Object {
+      await _deny(response, HttpStatus.badRequest, 'Ungültige Anfrage.');
+      return;
+    }
+    final code = body['code'];
+    if (code is! String || code.isEmpty) {
+      await _deny(response, HttpStatus.badRequest, 'Kopplungscode fehlt.');
+      return;
+    }
+    final deviceName = body['name'];
+    final result = await claimPairing(
+      code,
+      deviceName: deviceName is String ? deviceName : '',
+      app: BoxDevice.appKey(body['app']),
+    );
+    if (result == null) {
+      _fail(peer, _clock());
+      await _deny(response, HttpStatus.forbidden, 'Kopplungscode ungültig, schon benutzt oder abgelaufen.');
+      return;
+    }
+    response.headers.contentType = ContentType.json;
+    response.write(jsonEncode(result));
+    await response.close();
+  }
+
   /// Enables or disables access over the cable.
   Future<void> setLanAccess(bool enabled) async {
     _lanAccess = enabled;
@@ -957,22 +1280,26 @@ class BoxAccess {
     onAccessChanged?.call();
   }
 
-  /// Locks out everyone: devices, browser sessions and cached logins (after an
-  /// incident nothing logged in before may stay in).
+  /// Locks out everyone: devices, browser sessions, cached logins and open pairing codes (after
+  /// an incident nothing logged in or handed out before may stay in).
   Future<void> revokeAll() async {
     _devices.clear();
     _sessions.clear();
     _acceptedBasic.clear();
+    _codes.clear();
     await _save();
     onAccessChanged?.call();
   }
 
-  /// Pairing link for the app, e.g. `knxmonitor://box?url=http://10.42.0.1:8765/&key=…`.
+  /// Pairing link for the app, e.g. `knxmonitor://box?url=http://10.42.0.1:8765/&code=…`, with a
+  /// one-time pairing [code] ([createPairingCode]). Only for apps that do not know the code yet
+  /// and for integrations the link carries the device token itself ([key]).
   ///
   /// With a certificate, `fp` is added: newer apps then switch to HTTPS and pin
   /// exactly this certificate, older ones stay on the HTTP address. Only with an
   /// HTTPS port other than 443 (Docker) does the HTTPS address itself go into the link.
-  Uri pairingLink(String host, String key) {
+  Uri pairingLink(String host, {String? code, String? key}) {
+    assert((code == null) != (key == null), 'either a pairing code or a device token');
     final fp = tlsFingerprint;
     final bare = host.split(':').first;
     return Uri(
@@ -980,7 +1307,8 @@ class BoxAccess {
       host: 'box',
       queryParameters: {
         'url': fp != null && tlsPort != 443 ? 'https://$bare:$tlsPort/' : 'http://$host/',
-        'key': key,
+        'code': ?code,
+        'key': ?key,
         'name': name,
         'fp': ?fp,
       },
@@ -1011,7 +1339,10 @@ class BoxAccess {
   Future<void>? _saving;
 
   /// Waits until pending saves have finished (shutdown, tests).
-  Future<void> flush() => (_saving ?? Future<void>.value()).catchError((Object _) {});
+  Future<void> flush() async {
+    await (_saving ?? Future<void>.value()).catchError((Object _) {});
+    await _strikesWriting;
+  }
 
   /// Writes sequentially: two concurrent saves would otherwise share the temp
   /// file.
@@ -1079,7 +1410,12 @@ class BoxAccess {
       return true;
     }
     if (path.startsWith('/api/box/') && _api.contains(path)) {
-      await _handleApi(request, role);
+      try {
+        await _handleApi(request, role);
+      } on TooManyAttemptsException catch (e) {
+        response.headers.set(HttpHeaders.retryAfterHeader, '${e.retryAfter.inSeconds + 1}');
+        await _deny(response, HttpStatus.tooManyRequests, 'Zu viele Fehlversuche, bitte warten.');
+      }
       return true;
     }
     if (path != '/pair' && !path.startsWith('/pair/')) return false;
@@ -1088,53 +1424,72 @@ class BoxAccess {
       await _deny(response, HttpStatus.badRequest, 'Ungültige Adresse.');
       return true;
     }
+    Uri? link;
     String? key;
-    String? notice;
+    String? notice = request.method == 'GET' ? backupNotice(request.uri.queryParameters['backup']) : null;
     if (request.method == 'POST') {
       final form = await _form(request);
       if (form == null) {
         await _deny(response, HttpStatus.requestEntityTooLarge, 'Zu groß.');
         return true;
       }
-      switch (path) {
-        case '/pair':
-          // The page itself needs the password, so it may also hand out a
-          // device with admin rights (as POST /api/box/pair does): Home
-          // Assistant and ioBroker need one for /api/ha/.
-          key = await pair(form['name'] ?? '', admin: form['admin'] == '1', viewOnly: form['viewOnly'] == '1');
-        case '/pair/revoke':
-          if (form['id'] == '*') {
-            if (await _confirmCurrent(request, form['current'])) {
-              await revokeAll();
-              notice = 'Alle Geräte gesperrt.';
+      try {
+        switch (path) {
+          case '/pair':
+            // The page itself needs the password, so it may also hand out a
+            // device with admin rights (as POST /api/box/pair does): Home
+            // Assistant and ioBroker need one for /api/ha/.
+            final admin = form['admin'] == '1';
+            final viewOnly = form['viewOnly'] == '1';
+            if (form['direct'] == '1') {
+              // Asked for explicitly: the device token itself, for what cannot hand in a code.
+              key = await pair(form['name'] ?? '', admin: admin, viewOnly: viewOnly);
+              link = pairingLink(host, key: key);
             } else {
+              link = pairingLink(
+                host,
+                code: createPairingCode(form['name'] ?? '', admin: admin, viewOnly: viewOnly),
+              );
+            }
+          case '/pair/cancel':
+            cancelPairingCode(form['id'] ?? '');
+            notice = 'Kopplungscode verworfen.';
+          case '/pair/revoke':
+            if (form['id'] == '*') {
+              if (await _confirmCurrent(request, form['current'])) {
+                await revokeAll();
+                notice = 'Alle Geräte gesperrt.';
+              } else {
+                notice = 'Das aktuelle Passwort stimmt nicht.';
+              }
+            } else {
+              await revoke(form['id'] ?? '');
+              notice = 'Gerät gesperrt.';
+            }
+          case '/pair/lan':
+            if (container) {
+              notice = _containerLan;
+            } else {
+              await setLanAccess(form['enabled'] == '1');
+              notice = lanAccess ? 'Zugriff über das Kabel ist frei.' : 'Zugriff über das Kabel ist aus.';
+            }
+          case '/pair/password':
+            final next = form['password'] ?? '';
+            if (next.length < 8) {
+              notice = 'Das neue Passwort braucht mindestens 8 Zeichen.';
+            } else if (!await _confirmCurrent(request, form['current'])) {
               notice = 'Das aktuelle Passwort stimmt nicht.';
+            } else {
+              try {
+                await changePassword(next);
+                notice = 'Passwort geändert. Bitte gleich mit dem neuen anmelden.';
+              } on SamePasswordException {
+                notice = 'Das ist das Passwort vom Aufkleber. Bitte ein eigenes wählen.';
+              }
             }
-          } else {
-            await revoke(form['id'] ?? '');
-            notice = 'Gerät gesperrt.';
-          }
-        case '/pair/lan':
-          if (container) {
-            notice = _containerLan;
-          } else {
-            await setLanAccess(form['enabled'] == '1');
-            notice = lanAccess ? 'Zugriff über das Kabel ist frei.' : 'Zugriff über das Kabel ist aus.';
-          }
-        case '/pair/password':
-          final next = form['password'] ?? '';
-          if (next.length < 8) {
-            notice = 'Das neue Passwort braucht mindestens 8 Zeichen.';
-          } else if (!await _confirmCurrent(request, form['current'])) {
-            notice = 'Das aktuelle Passwort stimmt nicht.';
-          } else {
-            try {
-              await changePassword(next);
-              notice = 'Passwort geändert. Bitte gleich mit dem neuen anmelden.';
-            } on SamePasswordException {
-              notice = 'Das ist das Passwort vom Aufkleber. Bitte ein eigenes wählen.';
-            }
-          }
+        }
+      } on TooManyAttemptsException {
+        notice = 'Zu viele Fehlversuche, bitte warten.';
       }
     } else if (request.method != 'GET' || path != '/pair') {
       await _deny(response, HttpStatus.methodNotAllowed, 'Nicht erlaubt.');
@@ -1145,7 +1500,7 @@ class BoxAccess {
       ..set(HttpHeaders.cacheControlHeader, 'no-store');
     final peer = request.connectionInfo?.remoteAddress;
     final plainLan = request.requestedUri.scheme != 'https' && !(peer != null && _fromWlan(peer));
-    response.write(_page(key == null ? null : pairingLink(host, key), notice, plainLan: plainLan, host: host));
+    response.write(_page(link, notice, key: key, plainLan: plainLan, host: host));
     await response.close();
     return true;
   }
@@ -1160,7 +1515,8 @@ class BoxAccess {
   };
 
   /// Management from the app, without a browser (admin rights only: box
-  /// password or a device paired with it):
+  /// password or a device paired with it). `POST /api/box/claim` is not among them: it takes a
+  /// pairing code instead of credentials and is answered in [guard] ([_claim]).
   ///
   /// - `POST /api/box/pair` `{name}` → `{key, id, name}`: new device with
   ///   admin rights; this is how the app pairs with the sticker password.
@@ -1326,8 +1682,9 @@ class BoxAccess {
     }
   }
 
-  String _page(Uri? link, String? notice, {bool plainLan = false, String host = ''}) {
+  String _page(Uri? link, String? notice, {String? key, bool plainLan = false, String host = ''}) {
     const e = HtmlEscape(HtmlEscapeMode.attribute);
+    final codes = pairingCodes.reversed.toList();
     final devices = [..._devices]..sort((a, b) => b.created.compareTo(a.created));
     final out = StringBuffer()
       ..write('<!doctype html><html lang="de"><head><meta charset="utf-8">')
@@ -1361,19 +1718,53 @@ class BoxAccess {
       out
         ..write('<section class="pair"><h2>Mit der Kamera scannen</h2>')
         ..write(qrSvg('$link'))
-        ..write('<p><a class="button" href="${e.convert('$link')}">In der App öffnen</a></p>')
-        ..write('<p class="hint">Der Code gilt, bis das Gerät gesperrt wird, und wird nur jetzt angezeigt. ')
-        ..write('Seite danach schließen.</p></section>');
+        ..write('<p><a class="button" href="${e.convert('$link')}">In der App öffnen</a></p>');
+      if (key == null) {
+        out
+          ..write('<p class="hint">Der Code gilt ${pairingCodeLifetime.inMinutes} Minuten und nur einmal; er wird ')
+          ..write('nur jetzt angezeigt. Das Gerät erscheint unten, sobald die App ihn eingelöst hat. Meldet die ')
+          ..write('App „Zugang abgelehnt“, kennt sie den Code noch nicht (bis 1.11.2): App aktualisieren oder ')
+          ..write('unten „Schlüssel direkt anzeigen“ wählen.</p></section>');
+      } else {
+        out
+          ..write('<p class="hint">Schlüssel für Home Assistant und ioBroker:</p>')
+          ..write('<p><code>${e.convert(key)}</code></p>')
+          ..write('<p class="hint">Dieser Schlüssel gilt, bis das Gerät gesperrt wird, und steht so im Link und ')
+          ..write('im QR-Code: nicht weitergeben, nicht fotografieren. Er wird nur jetzt angezeigt. Seite danach ')
+          ..write('schließen.</p></section>');
+      }
     }
     out
-      ..write('<section><h2>Neues Gerät koppeln</h2><form method="post" action="/pair">')
+      ..write('<section><h2>Neues Gerät koppeln</h2><form class="stack" method="post" action="/pair">')
       ..write('<input name="name" maxlength="40" placeholder="z. B. iPad Bauleitung" autocomplete="off">')
       ..write('<label class="check"><input type="checkbox" name="viewOnly" value="1"> Nur ansehen: ')
       ..write('schaltet nichts und schickt nichts auf den Bus</label>')
       ..write('<label class="check"><input type="checkbox" name="admin" value="1"> Verwalten: darf alles wie mit ')
       ..write('dem Passwort, für Home Assistant und ioBroker</label>')
-      ..write('<button>QR-Code erzeugen</button></form></section>')
-      ..write('<section><h2>Gekoppelte Geräte</h2>');
+      ..write('<label class="check"><input type="checkbox" name="direct" value="1"> Schlüssel direkt anzeigen: ')
+      ..write('nur für Home Assistant, ioBroker und Apps bis 1.11.2. Statt des Einmal-Codes steht dann der ')
+      ..write('dauerhafte Schlüssel im Link</label>')
+      ..write('<button>QR-Code erzeugen</button></form></section>');
+    if (codes.isNotEmpty) {
+      out.write('<section><h2>Kopplungscodes</h2><ul>');
+      for (final c in codes) {
+        final used = c.used;
+        out
+          ..write('<li><span><b>${c.name.isEmpty ? 'Ohne Namen' : e.convert(c.name)}</b>')
+          ..write(c.admin ? ' <small>· verwalten</small>' : (c.viewOnly ? ' <small>· nur ansehen</small>' : ''))
+          ..write('<br><small>')
+          ..write(used == null ? 'wartet auf die App, gültig bis ${_date(c.expires)}' : 'eingelöst ${_date(used)}')
+          ..write('</small></span>');
+        if (used == null) {
+          out
+            ..write('<form method="post" action="/pair/cancel"><input type="hidden" name="id" ')
+            ..write('value="${e.convert(c.id)}"><button class="quiet">Verwerfen</button></form>');
+        }
+        out.write('</li>');
+      }
+      out.write('</ul></section>');
+    }
+    out.write('<section><h2>Gekoppelte Geräte</h2>');
     if (devices.isEmpty) {
       out.write('<p class="hint">Noch keine.</p>');
     } else {
@@ -1400,10 +1791,36 @@ class BoxAccess {
       ..write('<input type="password" name="password" minlength="8" autocomplete="new-password" ')
       ..write('placeholder="Neues Passwort"><button>Ändern</button></form></section>')
       ..write(container ? _containerLanSection() : _boxLanSection())
+      ..write(_backupSection)
       ..write('<form method="post" action="$logoutPath" class="end"><a class="hint" href="/">Zum Monitor</a>')
       ..write('<button class="quiet">Abmelden</button></form></main></body></html>');
     return '$out';
   }
+
+  /// Download of the whole backup (box_backup.dart, `POST /api/backup/form`). Restoring needs the
+  /// app or the API (docs/backup-format.md): it asks back before it replaces anything.
+  String get _backupSection =>
+      '<section><h2>Sicherung</h2><p class="hint">Alle Anlagen mit Verlauf, Projekt, Wächtern und Prüfbuch '
+      'in einer Datei. Mit Passwort (mindestens 12 Zeichen) kommen KNX-Secure-Schlüssel und Zugangsdaten '
+      'verschlüsselt dazu, ohne bleiben sie draußen. Das Passwort getrennt notieren: Ohne es kommt beim '
+      'Wiederherstellen alles außer den Schlüsseln zurück. $_passwordWord, gekoppelte Geräte und Zertifikat '
+      'sind nie darin. Die Datei enthält den Verlauf im Klartext: sicher aufbewahren. Wiederherstellen in der '
+      'App über das Zahnrad der Verbindung.</p><form method="post" action="/api/backup/form" class="stack">'
+      '<label for="backup-password">Passwort für die Schlüssel (freiwillig)</label>'
+      '<input type="password" id="backup-password" name="password" minlength="12" autocomplete="new-password">'
+      '<label for="backup-password2">Passwort wiederholen</label>'
+      '<input type="password" id="backup-password2" name="password2" autocomplete="new-password">'
+      '<button>Sicherung herunterladen</button></form></section>';
+
+  /// Notice on `/pair` after a failed backup download from the form (`?backup=<problem>`, set by
+  /// box_backup.dart), so the browser shows text instead of the JSON error.
+  static String? backupNotice(String? problem) => switch (problem) {
+    'mismatch' => 'Sicherung: Die beiden Passwörter stimmen nicht überein.',
+    'passwordShort' => 'Sicherung: Das Passwort braucht mindestens 12 Zeichen.',
+    'busy' => 'Sicherung: Es läuft schon eine Sicherung, bitte gleich noch einmal versuchen.',
+    null => null,
+    _ => 'Sicherung: Das hat nicht geklappt, bitte noch einmal versuchen.',
+  };
 
   /// Docker: why the switch is not here.
   static const _containerLan = 'Im Container über LAN_ACCESS einstellen (yes oder no) und den Container neu starten.';
@@ -1438,8 +1855,12 @@ class BoxAccess {
       'border-bottom:1px solid var(--line)}small,.hint{color:var(--muted)}.notice{padding:10px;'
       'border:1px solid var(--line);border-radius:10px}.pair{text-align:center}'
       '.pair svg{width:min(100%,320px);height:auto;background:#fff;border-radius:12px}'
-      'form.end{justify-content:space-between;align-items:center;margin-top:28px}'
-      '.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}';
+      'form.stack{flex-direction:column;align-items:stretch}form.stack label{color:var(--muted);font-size:14px}form.end{justify-content:space-between;align-items:center;margin-top:28px}'
+      // The choices of a new device one below the other: three texts side by side became columns
+      // a few words wide.
+      'form.stack label.check{display:flex;gap:8px;align-items:flex-start;color:var(--fg);font-size:15px}'
+      'input[type=checkbox]{flex:none;width:18px;height:18px;margin:2px 0 0;padding:0}'
+      'code{word-break:break-all}.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}';
 
   // --- Helpers ------------------------------------------------------------------
 
@@ -1468,6 +1889,37 @@ class BoxAccess {
     }
     return diff == 0;
   }
+}
+
+/// A one-time pairing code handed out on `/pair` ([BoxAccess.createPairingCode]): what the device
+/// will be, until when the code can be handed in and when that happened. The code itself is not
+/// in here, only its hash.
+class PairingCode {
+  PairingCode._({
+    required this.id,
+    required this.hash,
+    required this.name,
+    required this.admin,
+    required this.viewOnly,
+    required this.created,
+    required this.expires,
+  });
+
+  /// Names the code on the page (to withdraw it); grants nothing.
+  final String id;
+
+  /// SHA-256 of the code.
+  final String hash;
+
+  /// Name for the device as entered on the page; empty: the app's own.
+  final String name;
+  final bool admin;
+  final bool viewOnly;
+  final DateTime created;
+  final DateTime expires;
+
+  /// When the code was handed in; `null` while it waits.
+  DateTime? used;
 }
 
 /// The new password is the one printed on the sticker.

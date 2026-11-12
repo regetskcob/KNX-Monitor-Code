@@ -17,6 +17,9 @@ fit its direction before they are worth your time.
 - Run `tool/release.sh verify` before you push. It runs the same checks as
   the CI: layout, format, analysis, tests, web build, add-on server.
 - Keep one topic per pull request.
+- Dart code is formatted with `dart format` at a line width of 120 (set in
+  `analysis_options.yaml`, not the Dart default of 80). Code comments and
+  documentation are in English.
 - Anything that sends telegrams to the bus needs a test, and it must respect
   the read-only switch (`READ_ONLY` / add-on option `read_only`).
 - Texts the user sees exist in German and English (`lib/l10n/`).

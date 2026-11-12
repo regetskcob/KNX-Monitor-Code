@@ -142,14 +142,20 @@ void main() {
       await wait(800);
     }
 
-    Future<void> openTool(String title) async {
+    /// Opens a tool from the menu. A [required] one that cannot be reached fails the walk-through;
+    /// otherwise it is only logged (pages that depend on platform or tier).
+    Future<bool> openTool(String title, {bool required = true}) async {
       await toMonitor();
       await openMenu();
       // Telefon: Liste ist länger als der Bildschirm – erst hinscrollen.
       // Seitenleiste am Tablet bleibt gescrollt: erst nach oben, dann nach unten suchen.
       // Welche Liste die Seitenleiste ist, hängt vom Layout ab (Telefon:
       // Menüseite, Tablet quer: neben dem Inhalt) – alle der Reihe nach probieren.
-      final lists = find.byType(Scrollable).evaluate().toList().reversed;
+      // Lists that can be hit first: dragging one hidden behind another only fills the log with
+      // warnings; they still come last, in case the title is only there.
+      bool reachable(Element list) => find.byElementPredicate((e) => e == list).hitTestable().evaluate().isNotEmpty;
+      final all = find.byType(Scrollable).evaluate().toList().reversed;
+      final lists = [...all.where(reachable), ...all.where((l) => !reachable(l))];
       outer:
       for (final list in lists) {
         for (final step in [-300.0, 300.0]) {
@@ -166,8 +172,11 @@ void main() {
           }
         }
       }
-      if (find.text(title).evaluate().isEmpty) log.add('NICHT ERREICHT: $title');
-      await tapText(title, wait_: 1500);
+      if (find.text(title).evaluate().isEmpty) {
+        log.add('${required ? 'NICHT ERREICHT' : 'FEHLT: Werkzeug'}: $title');
+        return false;
+      }
+      return tapText(title, wait_: 1500);
     }
 
     Future<void> waitWhileCancel({int seconds = 90}) async {
@@ -284,20 +293,29 @@ void main() {
 
     await openTool(s.topoTitle);
     await shot('topologie');
-    // Only the fold's head: the metric strip above carries the same word.
+    // Only the fold's head: the metric strip above carries the same word. Phone and tablet fold
+    // the devices of a line; from 1200 pt (Mac, iPad landscape) they stand in the tree by
+    // distribution board and sensors, without a fold, and a device opens beside the lines.
     final devicesHead = find.descendant(of: find.byType(SectionTitle), matching: find.textContaining(s.topoDevices));
-    if (await tapFinder(devicesHead, 'Geräteliste aufklappen')) {
+    final folded = devicesHead.evaluate().isNotEmpty;
+    if (!folded || await tapFinder(devicesHead, 'Geräteliste aufklappen')) {
       await shot('topologie_geraete');
-      if (await tapFinder(find.textContaining('1.1.1'), 'Gerät 1.1.x', wait_: 1500)) {
+      if (await tapFinder(find.textContaining('1.1.1').hitTestable(), 'Gerät 1.1.x', wait_: 1500)) {
         await shot('geraetefenster');
+        // Back closes the sheet, or the details beside the lines first (wide).
         await back();
       }
     }
 
     await openTool(s.mapTitle);
     await shot('karte_uebersicht');
-    // Nur in der Karte suchen – am Tablet hat auch die Seitenleiste Pfeile.
-    final mapEntry = find.descendant(of: find.byType(CommunicationMapScreen), matching: find.byIcon(AppIcons.next));
+    // Nur in der Karte suchen – am Tablet hat auch die Seitenleiste Pfeile. Das Telefon zeigt eine
+    // Liste mit Pfeilen; ab 600 pt die Gerätekarte, deren Knoten (Gerät 1.1.x) sich antippen lassen.
+    final map = find.byType(CommunicationMapScreen);
+    final arrows = find.descendant(of: map, matching: find.byIcon(AppIcons.next));
+    final mapEntry = arrows.evaluate().isNotEmpty
+        ? arrows
+        : find.descendant(of: map, matching: find.textContaining(RegExp(r'^\d+\.\d+\.\d+$'))).hitTestable();
     if (await tapFinder(mapEntry, 'Karten-Eintrag', wait_: 1200)) {
       await shot('karte_knoten');
       await back();
@@ -343,6 +361,24 @@ void main() {
       await shot('inbetriebnahme_scroll');
     }
 
+    // Pages rebuilt for wide windows in November 2026: each once, only looked at. A page behind
+    // the paywall shows "Plus und Pro" instead, which is one of the rebuilt pages too.
+    for (final (title, name) in [
+      (s.reactTitle, 'reaktionszeiten'),
+      (s.loadTitle, 'strom_last'),
+      (s.watchTitle, 'waechter'),
+      (s.customerTitle, 'kundenakte'),
+      (s.handoverTitle, 'uebergabepaket'),
+      (s.siteDocsTitle, 'fotodoku'),
+      (s.annotationsTitle, 'kommentare'),
+      (s.companyTitle, 'firma'),
+      (s.learnTitle, 'anlernen'),
+      (s.exportsTitle, 'exporte'),
+      (s.lessonsTitle, 'knx_lernen'),
+    ]) {
+      if (await openTool(title, required: false)) await shot('breit_$name');
+    }
+
     // Busmonitor zuletzt (übernimmt kurz den Tunnel).
     await openTool(s.busmonTitle);
     await wait(8000);
@@ -364,7 +400,13 @@ void main() {
     // --- Englisch: zurück zum Verbinden, umstellen, neu verbinden -------------------------
     // Monitor → Verbinden; die Rückfrage „Verbindung trennen?“ bestätigen.
     Future<void> disconnect() async {
+      await toMonitor();
       await back();
+      // Mac and tablet: the monitor is the root there, "back" does nothing. Disconnect from the
+      // sidebar instead (since the walk-through of 10 Nov 2026 the English part was skipped).
+      if (find.text(s.monitorLeaveTitle).evaluate().isEmpty && onMonitor()) {
+        await openTool(s.monitorDisconnect, required: false);
+      }
       // „Trennen“ steht auch in der Seitenleiste – die liegt aber hinter dem
       // Dialog (adaptiv: auf iOS kein Material-Dialog).
       if (find.text(s.monitorLeaveTitle).evaluate().isNotEmpty) {
@@ -395,6 +437,8 @@ void main() {
       await toLanguage();
       await tapText(wasLocale.languageCode == 'de' ? 'Deutsch' : 'English', wait_: 800);
       await shot('zurueck_deutsch');
+    } else {
+      log.add('NICHT ERREICHT: Sprachwechsel auf dem Verbinden-Bildschirm');
     }
 
     if (_local) await AppStorage.instance.write('tour/log.txt', log.isEmpty ? 'alles gefunden' : log.join('\n'));

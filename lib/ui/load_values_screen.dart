@@ -13,6 +13,7 @@ import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'charts_screen.dart';
+import 'common.dart';
 import 'figure_box.dart';
 import 'telegram_row.dart' show formatDate, formatTime;
 import 'value_board.dart' show Sparkline;
@@ -109,55 +110,84 @@ class _LoadValuesScreenState extends State<LoadValuesScreen> {
           ),
         ],
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Widths.reading),
-          child: ListenableBuilder(
-            listenable: store,
-            builder: (context, _) {
-              final channels = loadChannels(
-                store.catalog.groups.values,
-                _telegrams(),
-                dptOf: store.dptOf,
-                now: LoadValuesScreen.clock(),
-              );
-              if (channels.isEmpty) {
-                return Center(
-                  child: HorizontEmptyHint(icon: AppIcons.chart, text: s.loadNone, detail: s.loadNoneDetail),
-                );
-              }
-              // Largest first; current and power can only be compared per kind.
-              final sorted = [...channels]
-                ..sort((a, b) {
-                  final kind = b.kind.index.compareTo(a.kind.index);
-                  return kind != 0 ? kind : (b.latest?.value ?? 0).compareTo(a.latest?.value ?? 0);
-                });
-              final top = sorted.firstOrNull;
-              return ListView(
-                padding: Gap.page,
-                children: [
-                  FigureBox(
-                    figures: [
-                      (label: s.loadChannelsLabel, value: formatInt(channels.length), status: null),
-                      if (top?.latest case final latest?)
-                        (label: s.loadHighest, value: formatLoad(top!.kind, latest.value), status: null),
+      // One reading column on a phone; from two card columns on, the channels form a card grid up to
+      // [Widths.wide], largest first row by row.
+      body: LayoutBuilder(
+        builder: (context, box) {
+          final columns = RowColumns.columnsFor(
+            context,
+            box.maxWidth.clamp(0, Widths.wide) - 2 * Gap.gutter,
+            _ChannelRow.minWidth,
+            max: _maxColumns,
+            gap: Gap.section,
+          );
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: columns > 1 ? Widths.wide : Widths.reading),
+              child: ListenableBuilder(
+                listenable: store,
+                builder: (context, _) {
+                  final channels = loadChannels(
+                    store.catalog.groups.values,
+                    _telegrams(),
+                    dptOf: store.dptOf,
+                    now: LoadValuesScreen.clock(),
+                  );
+                  if (channels.isEmpty) {
+                    return Center(
+                      child: HorizontEmptyHint(icon: AppIcons.chart, text: s.loadNone, detail: s.loadNoneDetail),
+                    );
+                  }
+                  // Largest first; current and power can only be compared per kind.
+                  final sorted = [...channels]
+                    ..sort((a, b) {
+                      final kind = b.kind.index.compareTo(a.kind.index);
+                      return kind != 0 ? kind : (b.latest?.value ?? 0).compareTo(a.latest?.value ?? 0);
+                    });
+                  final top = sorted.firstOrNull;
+                  return ListView(
+                    padding: Gap.page,
+                    children: [
+                      FigureBox(
+                        figures: [
+                          (label: s.loadChannelsLabel, value: formatInt(channels.length), status: null),
+                          if (top?.latest case final latest?)
+                            (label: s.loadHighest, value: formatLoad(top!.kind, latest.value), status: null),
+                        ],
+                      ),
+                      SectionHead(s.loadConsumers, count: sorted.length),
+                      if (columns == 1)
+                        RowCard(
+                          flat: true,
+                          children: [for (final c in sorted) _ChannelRow(channel: c, log: widget.log)],
+                        )
+                      else
+                        CardGrid(
+                          columns: columns,
+                          children: [
+                            for (final c in sorted)
+                              SectionCard(
+                                fill: true,
+                                padding: EdgeInsets.zero,
+                                child: _ChannelRow(channel: c, log: widget.log, card: true),
+                              ),
+                          ],
+                        ),
                     ],
-                  ),
-                  SectionHead(s.loadConsumers, count: sorted.length),
-                  RowCard(
-                    flat: true,
-                    children: [for (final c in sorted) _ChannelRow(channel: c, log: widget.log)],
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
+                  );
+                },
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 }
+
+/// At most this many card columns: beyond that the curves get too short to read.
+const _maxColumns = 4;
 
 /// Value with unit: current in A, power in W, or in kW from 1000 W.
 String formatLoad(LoadKind kind, double value) => switch (kind) {
@@ -182,10 +212,16 @@ String loadHintText(LoadKind kind, LoadHint hint) => switch (hint.kind) {
 };
 
 class _ChannelRow extends StatelessWidget {
-  const _ChannelRow({required this.channel, required this.log});
+  const _ChannelRow({required this.channel, required this.log, this.card = false});
 
   final LoadChannel channel;
   final TelegramLog log;
+
+  /// Inside a card of the grid: padded all round, with a taller curve.
+  final bool card;
+
+  /// Narrowest card: name and value on one line, the line with the maximum below on one or two.
+  static const minWidth = 340.0;
 
   @override
   Widget build(BuildContext context) {
@@ -203,7 +239,7 @@ class _ChannelRow extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: HzSpace.s12),
+        padding: card ? const EdgeInsets.all(Gap.card) : const EdgeInsets.symmetric(vertical: HzSpace.s12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -233,7 +269,7 @@ class _ChannelRow extends StatelessWidget {
               const SizedBox(height: HzSpace.s8),
               ExcludeSemantics(
                 child: SizedBox(
-                  height: HzSpace.s24,
+                  height: card ? HzSpace.s48 : HzSpace.s24,
                   child: Sparkline(values: [for (final x in recent) x.value], color: hz.accentText),
                 ),
               ),

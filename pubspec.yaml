@@ -3,7 +3,7 @@ description: "KNX group monitor and diagnostic tool (KNXnet/IP)."
 publish_to: 'none'
 
 # <name>+<build>; the build number must grow with every store upload.
-version: 1.11.2+36
+version: 1.12.0+37
 
 environment:
   sdk: ^3.13.5
@@ -39,7 +39,7 @@ dependencies:
     git:
       url: https://github.com/regetskcob/horizont.git
       path: flutter
-      ref: v0.10.0
+      ref: v0.13.0
   mobile_scanner: ^7.5.0
   url_launcher: ^6.3.3
   purchases_flutter: ^11.0.0
@@ -73,6 +73,8 @@ flutter:
     # Galerie geteilter Vorlagen: fest ausgeliefert, kein Netzabruf.
     - assets/templates/
     # Funktionskatalog des Hausplans, Momente, Fristen.
+    # DALI gateway profiles: what a gateway family's objects mean (docs/dali.md).
+    - assets/dali_profiles/
 
 dependency_overrides:
   # Baut sonst nicht mit Visual Studio 2026, siehe third_party/local_auth_windows/README.vendored.md.

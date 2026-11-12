@@ -80,6 +80,24 @@ void main() {
       await store.load();
       expect(store.list.map((i) => i.name), ['Musterhaus']);
     });
+
+    test('doppelte Kennung im Index: der erste Eintrag bleibt, gespeichert ohne den zweiten', () async {
+      SharedPreferences.setMockInitialValues({});
+      await File('${dir.path}/installations.json').writeAsString(
+        jsonEncode({
+          'version': 2,
+          'list': [
+            {'id': 'aaaaaaaaaaaa', 'name': 'Musterhaus', 'created': 0},
+            {'id': 'aaaaaaaaaaaa', 'name': 'Doppelt', 'created': 0},
+            {'id': 'bbbbbbbbbbbb', 'name': 'Büro', 'created': 0},
+          ],
+        }),
+      );
+      await store.load();
+      expect(store.list.map((i) => i.name), unorderedEquals(['Musterhaus', 'Büro']));
+      expect(await File('${dir.path}/installations.json').readAsString(), isNot(contains('Doppelt')));
+      await expectLater(store.create('Noch eins', id: 'aaaaaaaaaaaa'), throwsArgumentError);
+    });
   });
 
   test('Migration: bisherige Daten werden die erste Installation', () async {

@@ -253,35 +253,62 @@ class _TeachInScreenState extends State<TeachInScreen> {
         title: Text(s.learnTitle),
         actions: [InfoAction(title: s.learnTitle, text: s.learnExplain)],
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Widths.reading),
-          child: ListenableBuilder(
-            listenable: _store,
-            builder: (context, _) => ListView(
-              padding: Gap.page,
-              children: [
-                FigureBox(
-                  figures: [
-                    (label: s.learnNamed, value: formatInt(_store.learned.groups.length), status: null),
-                    (
-                      label: s.learnOpenCount,
-                      value: formatInt(_seen.where((a) => _store.info(a) == null).length),
-                      status: null,
+      body: ListenableBuilder(
+        listenable: _store,
+        builder: (context, _) => LayoutBuilder(
+          builder: (context, box) {
+            final wide = box.maxWidth >= Breakpoints.expanded;
+            final card = switch (_event) {
+              final e? => _EventCard(state: this, event: e),
+              null => _listening(context),
+            };
+            return Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: wide ? Widths.wide : Widths.reading),
+                child: ListView(
+                  padding: Gap.page,
+                  children: [
+                    FigureBox(
+                      figures: [
+                        (label: s.learnNamed, value: formatInt(_store.learned.groups.length), status: null),
+                        (
+                          label: s.learnOpenCount,
+                          value: formatInt(_seen.where((a) => _store.info(a) == null).length),
+                          status: null,
+                        ),
+                      ],
                     ),
+                    if (_demo) ...[
+                      const SizedBox(height: Gap.item),
+                      Text(s.learnDemoNote, style: theme.textTheme.bodySmall?.copyWith(color: hz.textFaint)),
+                    ],
+                    if (wide)
+                      // The work on the left (listen, name the caught event), what is already named
+                      // beside it; the card starts level with the heading on the right.
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        spacing: Gap.section,
+                        children: [
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: Gap.section),
+                              child: card,
+                            ),
+                          ),
+                          Expanded(child: _learnedList(context)),
+                        ],
+                      )
+                    else ...[
+                      const SizedBox(height: Gap.item),
+                      card,
+                      _learnedList(context),
+                    ],
                   ],
                 ),
-                if (_demo) ...[
-                  const SizedBox(height: Gap.item),
-                  Text(s.learnDemoNote, style: theme.textTheme.bodySmall?.copyWith(color: hz.textFaint)),
-                ],
-                const SizedBox(height: Gap.item),
-                if (_event case final e?) _EventCard(state: this, event: e) else _listening(context),
-                _learnedList(context),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );

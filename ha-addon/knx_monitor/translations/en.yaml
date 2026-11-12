@@ -77,3 +77,11 @@ configuration:
       regularly only after this many hours without a telegram. Default 12. A
       smaller value reports earlier, but also detectors that simply had
       nothing to say for a while. Time without recording does not count.
+  health_check:
+    name: Health check for Home Assistant
+    description: >-
+      The add-on checks the recorded traffic once a day and on request
+      (service "Run health check" of the Busclear integration): wrong data
+      types, implausible or stuck readings, repeats, unanswered reads,
+      addresses that stopped sending. It only reads the history and sends
+      nothing on the bus. Off by default.

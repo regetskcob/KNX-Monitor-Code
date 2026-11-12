@@ -185,6 +185,9 @@ class _ExportsScreenState extends State<ExportsScreen> {
     }
   }
 
+  /// From this row width the check button stands beside the title.
+  static const _checkBeside = 440.0;
+
   /// Check button for health and commissioning; `null` for the others.
   Widget? _checkButton(_Item item) {
     if (item != _Item.health && item != _Item.commissioning) return null;
@@ -294,14 +297,31 @@ class _ExportsScreenState extends State<ExportsScreen> {
       builder: (rowContext) {
         final available = _available(item);
         final check = _checkButton(item);
-        return CardRow(
+        Widget tile({Widget? trailing}) => CardRow(
           // Not exportable without data, but it can still be checked.
           enabled: available || check != null,
           title: _label(item),
           meta: _state(item),
           chevron: available,
-          trailing: check,
+          trailing: trailing,
           onTap: available ? () => _export(item, rectOf(rowContext)) : null,
+        );
+        if (check == null) return tile();
+        // On a phone the button leaves the title too little room ("Gesundheitsprüfun-g"): it
+        // moves below the row there.
+        return LayoutBuilder(
+          builder: (context, box) => box.maxWidth >= _checkBeside
+              ? tile(trailing: check)
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    tile(),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: Gap.item),
+                      child: check,
+                    ),
+                  ],
+                ),
         );
       },
     );

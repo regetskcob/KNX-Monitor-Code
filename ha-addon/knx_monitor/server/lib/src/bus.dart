@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'alarms.dart';
+import 'dali_watch.dart';
 import 'atomic_file.dart';
 import 'exporter.dart';
 import 'ha.dart';
@@ -23,6 +25,7 @@ import 'report.dart';
 
 import 'package:knx/secure.dart';
 
+import 'secure_taps.dart';
 import 'tap_silence.dart';
 import 'tap_window.dart';
 import 'telegram_json.dart';
@@ -113,23 +116,80 @@ class BusConfig {
   /// At most this many further tap points (8 in all, as in the app).
   static const maxTaps = 7;
 
-  /// Usable tap point entries only, with known keys and clamped values.
+  /// Longest name of a tap point; it ends up in status, log and history.
+  static const maxTapName = 80;
+
+  static final _tapHost = RegExp(r'^[A-Za-z0-9]([A-Za-z0-9._:-]{0,251}[A-Za-z0-9])?$');
+
+  /// Whether [host] can be a tap point's address for [mode]: a host name or IP address for a
+  /// tunnel, an IPv4 multicast group (or empty = the KNX default) for routing.
+  static bool validTapHost(String mode, String host) {
+    if (mode == 'routing') {
+      if (host.isEmpty) return true;
+      final a = InternetAddress.tryParse(host);
+      return a != null && a.type == InternetAddressType.IPv4 && a.rawAddress[0] >= 224 && a.rawAddress[0] <= 239;
+    }
+    if (!_tapHost.hasMatch(host)) return false;
+    // Digits and dots only is meant as an IPv4 address and must be one ("300.1" is not).
+    if (!RegExp(r'^[0-9.]+$').hasMatch(host)) return true;
+    final parts = host.split('.');
+    return parts.length == 4 && parts.every((p) => p.isNotEmpty && p.length <= 3 && int.parse(p) <= 255);
+  }
+
+  /// Name without control characters (it is written to the log) and at most [maxTapName] long.
+  static String _tapName(Object? raw, String fallback) {
+    var name = raw is String ? raw.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), ' ').trim() : '';
+    if (name.isEmpty) name = fallback.isEmpty ? 'Routing' : fallback;
+    return name.length > maxTapName ? name.substring(0, maxTapName) : name;
+  }
+
+  /// Why one entry of `taps` in a request is not usable; `null` if it is.
+  static String? invalidTap(Object? t) {
+    if (t is! Map) return 'taps: Objekt je Messpunkt erwartet.';
+    final mode = t['mode'];
+    final host = t['host'];
+    if (mode is! String || !const {'udp', 'tcp', 'routing'}.contains(mode)) {
+      return 'taps: mode udp, tcp oder routing erwartet.';
+    }
+    if (host is! String || !validTapHost(mode, host)) return 'taps: host ist keine gültige Adresse.';
+    if (t['name'] case final name? when name is! String || name.length > maxTapName) {
+      return 'taps: name mit höchstens $maxTapName Zeichen erwartet.';
+    }
+    if (t['port'] case final port? when port is! int || port < 1 || port > 65535) {
+      return 'taps: port von 1 bis 65535 erwartet.';
+    }
+    if (t['windowMs'] case final w? when w is! int || w < 10 || w > 5000) {
+      return 'taps: windowMs von 10 bis 5000 erwartet.';
+    }
+    if (t['tunnelAddress'] case final a? when a is! String || parseIndividual(a) == null) {
+      return 'taps: tunnelAddress wie 1.1.250 erwartet.';
+    }
+    if (t['paused'] case final p? when p is! bool) return 'taps: paused true oder false erwartet.';
+    return null;
+  }
+
+  /// Usable tap point entries only, with known keys and clamped values. The same connection
+  /// twice (mode, host and port; routing: the multicast group) counts once: a second tunnel to
+  /// the same interface shows nothing new and takes a tunnel away from ETS or the visualisation.
   static List<Map<String, Object?>> cleanTaps(Object? raw) {
     if (raw is! List) return const [];
     final out = <Map<String, Object?>>[];
+    final seen = <String>{};
     for (final t in raw) {
       if (t is! Map || out.length >= maxTaps) continue;
       final mode = t['mode'];
       final host = t['host'];
       if (mode is! String || !const {'udp', 'tcp', 'routing'}.contains(mode)) continue;
-      if (host is! String || (host.isEmpty && mode != 'routing')) continue;
+      if (host is! String || host.isEmpty && mode != 'routing' || !validTapHost(mode, host)) continue;
       final port = t['port'];
+      final usedPort = port is int && port >= 1 && port <= 65535 ? port : 3671;
+      if (!seen.add(mode == 'routing' ? 'routing|$host' : '${host.toLowerCase()}|$usedPort')) continue;
       final window = t['windowMs'];
       out.add({
-        'name': t['name'] is String ? t['name'] : host,
+        'name': _tapName(t['name'], host),
         'mode': mode,
         'host': host,
-        'port': port is int && port >= 1 && port <= 65535 ? port : 3671,
+        'port': usedPort,
         'tunnelAddress': switch (t['tunnelAddress']) {
           final String a when parseIndividual(a) != null => a,
           _ => null,
@@ -170,10 +230,13 @@ class BusConfig {
         if (value != null && value is! String) return '$key: Text erwartet.';
       } else if (key == 'secure' && value != null && value is! Map) {
         return 'secure: Objekt erwartet.';
-      } else if (key == 'taps' &&
-          value != null &&
-          (value is! List || value.length > maxTaps || value.any((t) => t is! Map))) {
-        return 'taps: Liste mit höchstens $maxTaps Messpunkten erwartet.';
+      } else if (key == 'taps' && value != null) {
+        if (value is! List || value.length > maxTaps) {
+          return 'taps: Liste mit höchstens $maxTaps Messpunkten erwartet.';
+        }
+        for (final t in value) {
+          if (invalidTap(t) case final error?) return error;
+        }
       }
     }
     return null;
@@ -304,6 +367,8 @@ class BusService {
     this.readOnly = false,
     this.telegram,
     Map<String, Object?>? Function()? mqttTelegrams,
+    Future<Map<String, Object?>> Function(Map<String, Object?> changes)? mqttConfigure,
+    Map<String, Object?>? Function()? healthCheck,
   }) : _linkFactory = readOnly ? ((c) => ReadOnlyLink((link ?? defaultLink)(c))) : link ?? defaultLink,
        recorder = Recorder(data, clock: clock?.now),
        hunt = FaultHunt(data),
@@ -311,6 +376,14 @@ class BusService {
     final send = notify ?? ({required id, required title, required message}) async {};
     alarms = AlarmWatch(data, notify: send, onChange: _alarmEvent);
     watchers = WatchRuleSet(data, notify: send);
+    dali = DaliWatch(
+      data,
+      dptOf: alarms.dptOf,
+      formatGroup: alarms.formatGroup,
+      notify: send,
+      onChange: _daliEvent,
+      timeKnown: () => clock?.synced != false,
+    );
     report = ReportService(
       data,
       recorder: recorder,
@@ -321,7 +394,10 @@ class BusService {
       homeAssistant: homeAssistant,
       restarts: restarts,
     );
-    exporter = DataExporter(data, source: _ExportSource(this))..mqttTelegrams = mqttTelegrams;
+    exporter = DataExporter(data, source: _ExportSource(this))
+      ..mqttTelegrams = mqttTelegrams
+      ..mqttConfigure = mqttConfigure
+      ..healthCheck = healthCheck;
   }
 
   /// Events for Home Assistant automations (see [HomeAssistant]);
@@ -344,6 +420,25 @@ class BusService {
 
   void _alarmEvent(AlarmChange c) =>
       _fire(HomeAssistant.alarmEvent, {'address': c.groupAddress, 'name': c.name, 'kind': c.kind, 'active': c.active});
+
+  /// A DALI luminaire or group enters or leaves a fault: the same event as an alarm address, with
+  /// the luminaire's name and its DALI address.
+  void _daliEvent(DaliFaultChange c) => _fire(HomeAssistant.alarmEvent, {
+    'address': c.groupAddress,
+    'name': c.name,
+    'kind': 'fault',
+    'active': c.faults != 0,
+    'dali': {
+      'gateway': c.gateway,
+      c.test
+              ? 'test'
+              : c.isGroup
+              ? 'group'
+              : 'address':
+          c.address,
+      'faults': c.faults,
+    },
+  });
 
   /// Loads the catalog first: it determines the group address style, and the
   /// alarm check may not have loaded it yet when the first telegram arrives.
@@ -372,6 +467,14 @@ class BusService {
   final Availability availability;
   late final AlarmWatch alarms;
   late final WatchRuleSet watchers;
+
+  /// DALI: faults per luminaire and the emergency lighting log.
+  late final DaliWatch dali;
+
+  /// What this server can do beyond the basics; the app asks before it relies on it (status
+  /// `features`): `bitsCheck` = watchers on flags (check kind `bits`), `dali` = faults per
+  /// luminaire and the emergency lighting log are handled here.
+  static const features = ['bitsCheck', 'dali'];
 
   /// Data export to Prometheus and InfluxDB; off until the user enables it.
   late final DataExporter exporter;
@@ -404,6 +507,7 @@ class BusService {
 
   /// Merges main connection and tap points; `null` without further tap points.
   TapMerger? _merger;
+  final _backlog = TapBacklog();
   Timer? _mergeFlush;
 
   /// Data Secure flags of a telegram until the merger releases it (keyed by its raw frame).
@@ -419,7 +523,13 @@ class BusService {
   Uint8List? _description;
   int _generation = 0;
   int _beatCount = 0;
+
+  /// Telegrams of the running day; after a restart preset from the history
+  /// ([todayCounted]).
   int today = 0;
+
+  /// Completes once [today] holds the telegrams recorded before the start.
+  Future<void> todayCounted = Future.value();
 
   /// KNX HAT in bus monitor mode: acknowledgements and corrupt frames since start.
   final busmon = BusmonCounters();
@@ -479,37 +589,9 @@ class BusService {
     }
   }
 
-  /// Secured telegrams decrypted just now, by sender, destination and secured APDU (without the
-  /// control fields, which couplers change on the way): the decrypted APDU and when.
-  final _recentSecure = <String, (List<int>, DateTime)>{};
-
-  /// How long a secured telegram from one tap point counts as the same one at another.
-  static const secureTapWindow = Duration(seconds: 3);
-
-  static String _secureKey(List<int> cemi) {
-    final i = 2 + cemi[1];
-    return [
-      ...cemi.sublist(i + 2, i + 6),
-      ...cemi.sublist(i + 7),
-    ].map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-  }
-
-  /// Notes the decrypted form of [cemi] (secured, accepted by the replay check) for [secureSeenAt].
-  void rememberSecure(List<int> cemi, Uint8List decrypted, DateTime now) {
-    _recentSecure.removeWhere((_, v) => now.difference(v.$2) > secureTapWindow);
-    final j = 2 + decrypted[1];
-    _recentSecure[_secureKey(cemi)] = (decrypted.sublist(j + 7, j + 8 + decrypted[j + 6]), now);
-  }
-
-  /// [cemi] rebuilt with the decrypted APDU if the same secured telegram was decrypted at another
-  /// tap point within [secureTapWindow]; `null` otherwise.
-  Uint8List? secureSeenAt(List<int> cemi, DateTime now) {
-    final hit = _recentSecure[_secureKey(cemi)];
-    if (hit == null || now.difference(hit.$2) > secureTapWindow) return null;
-    final i = 2 + cemi[1];
-    final apdu = hit.$1;
-    return Uint8List.fromList([...cemi.sublist(0, i + 6), apdu.length - 1, ...apdu]);
-  }
+  /// Lets the copy of a secured telegram at a further tap point through, and only that
+  /// ([SecureTapCache]); the window follows the merge windows in use.
+  final secureTaps = SecureTapCache();
 
   /// Notes the sequence number of a telegram that [DataSecure.receive] accepted.
   void _noteSequence(Uint8List cemi) {
@@ -586,6 +668,7 @@ class BusService {
     await _loadSequences();
     await _reloadKeys();
     await recorder.start();
+    todayCounted = _countToday();
     _beat = Timer.periodic(const Duration(minutes: 1), (_) => _heartbeat());
     await report.load();
     await exporter.start();
@@ -595,6 +678,28 @@ class BusService {
     });
     _reportSoon = Timer(const Duration(minutes: 2), () => unawaited(report.tick()));
     _restart();
+  }
+
+  /// Presets [today] from the history of the running day, so the counter does
+  /// not start at 0 after a restart. Read in an isolate (a busy day has
+  /// 100,000 lines) while telegrams keep coming; only lines from before the
+  /// start count, the rest [_process] counts itself.
+  Future<void> _countToday() async {
+    final clock = this.clock;
+    // Box without a confirmed time: the day is not known yet.
+    if (clock != null && !clock.synced) return;
+    final started = clock?.now() ?? DateTime.now();
+    final day = Recorder.dayName(started);
+    final path = data.path;
+    final before = started.microsecondsSinceEpoch;
+    try {
+      final count = await Isolate.run(() => countDayBefore(path, day, before));
+      if (_todayName.isEmpty) _todayName = day;
+      // The day changed meanwhile: its counter starts at 0 anyway.
+      if (_todayName == day) today += count;
+    } on Object catch (e) {
+      stderr.writeln('Telegramme heute: $e');
+    }
   }
 
   static Future<BusConfig> _readConfig(File file) async =>
@@ -650,6 +755,9 @@ class BusService {
       ..enabled = config.alarms
       ..language = config.language;
     watchers.language = config.language;
+    dali
+      ..enabled = config.alarms
+      ..language = config.language;
   }
 
   Future<void> _heartbeat() async {
@@ -834,6 +942,10 @@ class BusService {
             },
           );
     final merger = _merger;
+    // Data Secure counts windows set by hand only, never the measured ones.
+    secureTaps
+      ..clear()
+      ..windows = Map.of(merger?.windows ?? const <int, Duration>{});
     _autoWindows.clear();
     _meter = merger == null
         ? null
@@ -879,7 +991,10 @@ class BusService {
   void _updateMergerTaps() {
     final m = _merger;
     if (m == null) return;
-    m.taps = (state == 'connected' ? 1 : 0) + _tapState.values.where((t) => t['state'] == 'connected').length;
+    // A tap point that hears nothing is not waited for: entries leave once the others saw them.
+    m.taps =
+        (state == 'connected' && !_silence.silent(0) ? 1 : 0) +
+        _tapState.entries.where((t) => t.value['state'] == 'connected' && !_silence.silent(t.key)).length;
     if (m.taps < 1) m.taps = 1;
   }
 
@@ -1094,7 +1209,10 @@ class BusService {
   /// Whatever comes from the bus must never stop the server: frames can be
   /// forged (UDP), and a listener error would otherwise end the process.
   void _onFrame(Uint8List frame, {int tap = 0}) {
-    if (_merger != null && _silence.heard(tap)) _broadcastState();
+    if (_merger != null && _silence.heard(tap)) {
+      _updateMergerTaps();
+      _broadcastState();
+    }
     try {
       _handleFrame(frame, tap: tap);
     } on Object catch (e) {
@@ -1132,23 +1250,14 @@ class BusService {
     final secured = DataSecure.isSecure(cemi);
     var decryptedOk = false;
     if (ds != null && secured) {
-      // The same secured telegram seen at a further tap point (issue #8): its sequence number is
-      // spent, so the replay check would refuse it and it would go missing there. Within a few
-      // seconds the bytes from another tap point get the result of the first; a real replay later
-      // still meets the check.
-      final again = _merger == null ? null : secureSeenAt(cemi, now);
-      if (again != null) {
-        plain = again;
-        decryptedOk = true;
-      } else {
-        final (result, decrypted) = ds.receive(cemi);
-        decryptedOk = result == SecureResult.decrypted;
-        if (decryptedOk) {
-          _noteSequence(cemi);
-          if (_merger != null) rememberSecure(cemi, decrypted, now);
-        }
-        plain = decrypted;
-      }
+      // Several tap points (issue #8): the identical frame from another tap point within the merge
+      // window is a further sighting, everything else meets the replay check ([SecureTapCache]).
+      final merging = _merger;
+      final (result, decrypted) = merging == null ? ds.receive(cemi) : secureTaps.receive(ds, tap, cemi, at: now);
+      decryptedOk = result == SecureResult.decrypted;
+      // The counter is the same for a further sighting; noting it again changes nothing.
+      if (decryptedOk) _noteSequence(cemi);
+      plain = decrypted;
     }
     final merger = _merger;
     if (merger == null) {
@@ -1157,10 +1266,19 @@ class BusService {
       return;
     }
     final t = Telegram.fromCemi(plain, time: now);
+    // So the cache recognises it when the merger gives it back (first copy or further sighting).
+    if (ds != null && secured) secureTaps.tag(t?.raw ?? const []);
     if (t == null) return;
     _secureOf[t.raw] = (secured, decryptedOk);
-    for (final ready in merger.add(tap, t)) {
-      _processMerged(ready);
+    final ready = merger.add(tap, t);
+    for (final r in ready) {
+      _processMerged(r);
+    }
+    // Never hold back without limit (clock set back, flood).
+    if (_backlog.note(fed: 1, left: TapBacklog.leaving(ready), pending: merger.pending)) {
+      for (final r in merger.flushAll()) {
+        _processMerged(r);
+      }
     }
     _scheduleMergeFlush();
   }
@@ -1173,6 +1291,7 @@ class BusService {
     if (wait.isNegative) wait = Duration.zero;
     _mergeFlush = Timer(wait, () {
       final ready = _merger?.flush(clock?.now() ?? DateTime.now()) ?? const <Telegram>[];
+      _backlog.note(left: TapBacklog.leaving(ready), pending: _merger?.pending ?? false);
       for (final t in ready) {
         _processMerged(t);
       }
@@ -1181,11 +1300,19 @@ class BusService {
   }
 
   void _processMerged(Telegram t) {
+    // A Data Secure copy that did not end up in the entry of its first copy is a replay: it must
+    // not become an entry of its own (history, MQTT, alarms, watchers).
+    if (!secureTaps.released(t.raw, merged: t.sightings.isNotEmpty)) {
+      if (secureTaps.dropped == 1 || secureTaps.dropped % 100 == 0) {
+        stderr.writeln('Data Secure: Kopie ohne ihr erstes Exemplar verworfen (${secureTaps.dropped})');
+      }
+      return;
+    }
     if (_meter?.released(t) case (final tap, final window)?) {
       _merger?.windows[tap] = window;
-      _autoWindows[tap] = window;
+      window > TapWindowMeter.floor ? _autoWindows[tap] = window : _autoWindows.remove(tap);
       stdout.writeln(
-        'Messpunkt ${tap == 0 ? 'Hauptanschluss' : config.taps[tap - 1]['name']}: Zeitfenster auf ${window.inMilliseconds} ms erweitert (gemessener Versatz)',
+        'Messpunkt ${tap == 0 ? 'Hauptanschluss' : config.taps[tap - 1]['name']}: Zeitfenster jetzt ${window.inMilliseconds} ms (gemessener Versatz)',
       );
       _broadcastState();
     }
@@ -1221,6 +1348,13 @@ class BusService {
     telegram?.call(line, secure: secured, decrypted: decryptedOk);
     unawaited(hunt.add(line, now).catchError((Object e) => stderr.writeln('Fehlerjagd: $e')));
     unawaited(alarms.check(line).catchError((Object e) => stderr.writeln('Alarm: $e')));
+    // After the catalog: the datapoint types decide what is DALI.
+    unawaited(
+      alarms
+          .loadCatalog()
+          .then((_) => dali.check(line, secure: secured))
+          .catchError((Object e) => stderr.writeln('DALI: $e')),
+    );
     unawaited(
       watchers
           .check(line, now: now, onHit: (hit) => _watcherEvent(hit, line))
@@ -1248,6 +1382,7 @@ class BusService {
     'state': state,
     'error': error,
     if (readOnly) 'readOnly': true,
+    'features': features,
     'problem': ?problem,
     if (configLost) 'configLost': true,
     'restarts': ?restartSummary?.call(),
@@ -1256,6 +1391,7 @@ class BusService {
     'link': _link == null ? null : linkLabel(_link!.label),
     'address': _link?.address,
     if (_autoWindows[0] case final w? when config.taps.isNotEmpty) 'autoWindowMs': w.inMilliseconds,
+    if (_meter?.lagOf(0) case final lag? when config.taps.isNotEmpty) 'lagUs': lag.inMicroseconds,
     if (config.taps.isNotEmpty)
       'taps': [
         for (final (i, t) in config.taps.indexed)
@@ -1268,6 +1404,7 @@ class BusService {
             'address': ?_tapState[i + 1]?['address'],
             if (_silence.silent(i + 1)) 'silent': true,
             if (_autoWindows[i + 1] case final w?) 'autoWindowMs': w.inMilliseconds,
+            if (_meter?.lagOf(i + 1) case final lag?) 'lagUs': lag.inMicroseconds,
           },
       ],
     'description': _description == null ? null : hexOf(_description!),
@@ -1387,6 +1524,25 @@ class BusService {
     }
   }
 
+  /// The connection that sends [cemi] (issue #8): access to an individual address goes over the
+  /// tap point on the device's line (fewer coupler hops), everything else, and a device without a
+  /// tap point on its line, over the main connection. `null` if that one is not connected. Every
+  /// link comes from the same factory, so read-only ([ReadOnlyLink]) holds for each.
+  BusLink? linkFor(Uint8List cemi) {
+    final main = _link;
+    final i = cemi.length < 2 ? 0 : 2 + cemi[1];
+    if (cemi.length >= i + 6 && i >= 2 && cemi[i + 1] & 0x80 == 0) {
+      final line = cemi[i + 4];
+      bool onLine(BusLink? l) => l?.address != null && l!.address != 0 && l.address! >> 8 == line;
+      if (!(main != null && state == 'connected' && onLine(main))) {
+        for (final MapEntry(key: n, value: l) in _tapLinks.entries) {
+          if (_tapState[n]?['state'] == 'connected' && onLine(l)) return l;
+        }
+      }
+    }
+    return main == null || state != 'connected' ? null : main;
+  }
+
   /// Send results: 0 sent, 1 not connected, 2 connection error, 3 invalid
   /// frame, 4 device busy, 5 not allowed (only group values without admin
   /// rights, nothing at all for a viewer), 6 read-only is on. Never throws: an error here would end as an
@@ -1405,8 +1561,8 @@ class BusService {
         return reply(5, 'Dieses Gerät darf nur Gruppenwerte senden. Mit dem Box-Passwort koppeln.');
       }
       if (!client.admin) cemi = normalizeDeviceCemi(cemi);
-      final link = _link;
-      if (link == null || state != 'connected') return reply(1, 'Nicht verbunden');
+      final link = linkFor(cemi);
+      if (link == null) return reply(1, 'Nicht verbunden');
       if (!_lockDevice(client, cemi)) return reply(4, 'Gerät wird gerade von einer anderen Ansicht geprüft');
       await link.send(cemi);
       reply(0);

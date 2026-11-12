@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'dali.dart';
 import 'dpt_value.dart';
 
 /// Watchers in the add-on or on the box: the same rules as in the app
@@ -9,7 +10,8 @@ import 'dpt_value.dart';
 ///
 /// The app stores the rules as `watch_rules.json` next to the project, already
 /// in checkable form (`check`): without a value every telegram, for small data
-/// types the matching raw values, for numbers a comparison. Rules without
+/// types the matching raw values, for numbers a comparison, for flag datapoints
+/// (DALI diagnostics) a mask on the bits ([bitsCheckMatches]). Rules without
 /// `check` are still checked by the app only.
 class WatchRuleSet {
   WatchRuleSet(
@@ -154,6 +156,7 @@ class _Rule {
     this.dpt,
     this.op,
     this.n,
+    this.bits,
   });
 
   /// `null` for disabled rules and those only the app checks.
@@ -176,6 +179,11 @@ class _Rule {
         bytes: check['bytes'] as int? ?? 0,
         values: values.cast<int>().toSet(),
       );
+    }
+    // Flags of the payload: `bytes` and `mask` must be there, or the rule could never fire.
+    if (check['bits'] case final Map<Object?, Object?> bits) {
+      if (bits['bytes'] is! int || bits['mask'] is! int) return null;
+      return _Rule(id: id, address: address, label: label, name: name, bits: bits.cast<String, Object?>());
     }
     if (check['num'] case [final int main, final int? sub]) {
       return _Rule(
@@ -212,11 +220,15 @@ class _Rule {
   final String? op;
   final double? n;
 
+  /// Check on the flags of the payload (see [bitsCheckMatches]).
+  final Map<String, Object?>? bits;
+
   bool matches(Map<String, Object?> t) {
     if (t['d'] != address) return false;
     if (any) return true;
     final data = hexBytes(t['x'] as String? ?? '');
     final isSmall = t['m'] == true;
+    if (bits case final bits?) return !isSmall && bitsCheckMatches(bits, data);
     if (values.isNotEmpty) {
       if (isSmall != small || (!small && data.length != bytes) || data.isEmpty) return false;
       return values.contains(data.fold<int>(0, (v, b) => (v << 8) | b));

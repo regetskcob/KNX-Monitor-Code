@@ -2,11 +2,16 @@ import 'dart:math';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:knx_monitor/catalog_store.dart';
 import 'package:knx_monitor/knx/demo_tunnel.dart';
 import 'package:knx_monitor/knx/group_catalog.dart';
 import 'package:knx_monitor/knx/telegram.dart';
 import 'package:knx_monitor/l10n/locale_controller.dart';
 import 'package:knx_monitor/model/learning.dart';
+import 'package:knx_monitor/ui/learn_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'window.dart';
 
 void main() {
   tearDown(() => LocaleController.instance.debugSetLocale(const Locale('de')));
@@ -71,5 +76,46 @@ void main() {
   test('Quiz ohne Projekt fällt auf allgemeine Fragen zurück', () {
     final quiz = buildQuiz(GroupCatalog.empty, random: Random(2));
     expect(quiz.map((q) => q.term), [Term.groupAddress, Term.tunnel, Term.flags]);
+  });
+
+  group('Fensterbreite', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      CatalogStore.instance.catalog = demoCatalog();
+    });
+    tearDown(() => CatalogStore.instance.catalog = GroupCatalog.empty);
+
+    testWidgets('breites Fenster: Lektionen als Karten mit Text, Quiz und Begriffe rechts daneben', (tester) async {
+      LessonTarget? went;
+      await pumpWindow(tester, LearnScreen(onTry: (t) => went = t), wideWindow);
+      // Alles steht auf der Seite, nichts muss geöffnet werden.
+      for (final lesson in lessons) {
+        expect(find.text(lesson.title), findsOneWidget);
+        expect(find.text(lesson.text), findsOneWidget);
+      }
+      expect(columnsOf(tester, find.textContaining(RegExp(r'^\d · '))), hasLength(2));
+      expect(tester.getTopLeft(find.text(s.quizStart)).dx, greaterThan(wideWindow.width / 2));
+      expect(tester.getTopLeft(find.text(s.glossaryTitle).last).dx, greaterThan(wideWindow.width / 2));
+      // Das Quiz läuft an Ort und Stelle.
+      await tester.tap(find.text(s.quizStart));
+      await tester.pump();
+      expect(find.text(s.quizStart), findsNothing);
+      expect(find.text(s.quizDemoNote), findsNothing, reason: 'Fragen aus dem geladenen Projekt');
+      // „Ausprobieren“ schließt nur die Lektionen: hier gibt es keine Lektionsseite dazwischen.
+      await tester.tap(find.text(s.lessonsTry(lessons.first.tryIt)));
+      expect(went, lessons.first.target);
+    });
+
+    testWidgets('Telefon: Listen wie bisher, auch bei doppelter Schrift ohne Überlauf', (tester) async {
+      for (final scale in [1.0, 2.0]) {
+        await pumpWindow(tester, const LearnScreen(), phoneWindow, textScale: scale);
+        expect(find.text(lessons.first.title), findsOneWidget);
+        expect(find.text(lessons.first.text), findsNothing, reason: 'öffnet sich erst auf Tippen');
+      }
+      // Tablet hochkant: Karten in zwei Spalten; mit doppelter Schrift wieder die Liste, ohne Überlauf.
+      await pumpWindow(tester, const LearnScreen(), const Size(800, 1000));
+      expect(find.text(lessons.first.text), findsOneWidget);
+      await pumpWindow(tester, const LearnScreen(), const Size(800, 1000), textScale: 2);
+    });
   });
 }

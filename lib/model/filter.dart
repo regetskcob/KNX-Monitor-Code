@@ -64,6 +64,12 @@ bool get _german => s.localeName.startsWith('de');
 /// Search by sender in the UI language (`von:1.1.5` or `from:1.1.5`).
 String senderQuery(String address) => '${_german ? 'von' : 'from'}:$address';
 
+/// Search for all senders of [line] (`von:1.1.*`); the monitor shows it in the live list.
+String lineQuery(int line) => senderQuery('${(line >> 4) & 0x0F}.${line & 0x0F}.*');
+
+/// Whether [query] is exactly a [lineQuery] (in either language).
+bool isLineQuery(String query) => RegExp(r'^(von|from):\d+\.\d+\.\*$').hasMatch(query.trim().toLowerCase());
+
 /// Search by time of day in the UI language (`zeit:14:05` or `time:14:05`).
 String timeQuery(String time) => '${_german ? 'zeit' : 'time'}:$time';
 
@@ -183,7 +189,7 @@ class _Term {
           return (t, _) => types.contains(t.type);
         case 'dpt':
           return (t, _) {
-            final dpt = CatalogStore.instance.dptOf(t.destination);
+            final dpt = CatalogStore.instance.dptFor(t);
             return dpt != null && (dpt.toString() == value || dpt.toString().startsWith('$value.'));
           };
         case 'von' || 'from':
@@ -204,16 +210,14 @@ class _Term {
           ];
           // Seen at one tap point only, while several record (issue #8).
           final single = value.split('|').any((v) => const {'einzeln', 'single', 'einmal'}.contains(v));
-          return (t, log) =>
-              quick.any((q) => matchesQuick(q, t, log)) ||
-              (single && tapLabels.value.length > 1 && t.sightings.isEmpty);
+          return (t, log) => quick.any((q) => matchesQuick(q, t, log)) || (single && seenAtOneTapOnly(t));
         case 'zeit' || 'time':
           return _time(value);
         // Tap point by its chip label (the line, e.g. "1.2"), several with |: seen there (issue #8).
         case 'messpunkt' || 'tap':
           final wanted = value.split('|').where((v) => v.isNotEmpty).toSet();
           return (t, _) {
-            final labels = tapLabels.value;
+            final labels = TapScope.labels;
             return t.taps.any((tap) => tap < labels.length && wanted.contains(labels[tap]));
           };
       }
@@ -252,9 +256,9 @@ class _Term {
     final needle = normalizeSearch(body);
     return (t, _) {
       final store = CatalogStore.instance;
-      final info = store.info(t.destination);
+      final info = store.infoOf(t);
       bool has(String? text) => text != null && normalizeSearch(text).contains(needle);
-      return has(info?.name) || has(info?.path) || has(store.device(t.source)?.name) || has(store.value(t));
+      return has(info?.name) || has(info?.path) || has(store.deviceOf(t)?.name) || has(store.value(t));
     };
   }
 }

@@ -16,6 +16,7 @@ import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'common.dart';
 import 'figure_box.dart';
+import 'form_columns.dart';
 import 'telegram_row.dart' show formatDate;
 
 /// Back up and restore everything, in every tier.
@@ -155,9 +156,6 @@ class _FullBackupScreenState extends State<FullBackupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final hz = context.hz;
-    final muted = theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted);
     return Scaffold(
       appBar: AppBar(
         title: Text(s.backupTitle),
@@ -168,58 +166,134 @@ class _FullBackupScreenState extends State<FullBackupScreen> {
           ),
         ],
       ),
-      body: ListView(
-        padding: Gap.page,
+      body: LayoutBuilder(
+        builder: (context, box) => box.maxWidth < Breakpoints.expanded ? _narrow(context) : _wide(context),
+      ),
+    );
+  }
+
+  /// App storage, older versions and the date of the last backup.
+  Widget _figures() => FutureBuilder(
+    future: Future.wait<Object>([_estimate, _extras]),
+    builder: (context, snapshot) {
+      final bytes = snapshot.data?[0] as int?;
+      final extras = snapshot.data?[1] as StorageExtras?;
+      final side = extras == null ? 0 : extras.previousBytes + extras.corruptBytes;
+      return RowCard(
         children: [
-          Text(s.backupShort, style: muted),
-          const SizedBox(height: Gap.item),
+          if (bytes != null) _Figure(label: s.backupAppStorage, value: _size(bytes)),
+          // Older and damaged versions only when they take up space.
+          if (side > 0) _Figure(label: s.backupPrevious, value: _size(side)),
+          _Figure(label: s.backupLastRow, value: _last == null ? s.backupNoneYet : formatDate(_last!)),
+        ],
+      );
+    },
+  );
+
+  List<Widget> _progress(BuildContext context) => [
+    if (_busy) ...[
+      const LinearProgressIndicator(),
+      const SizedBox(height: Gap.item),
+      Text(s.backupSlow, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.hz.textFaint)),
+      const SizedBox(height: Gap.item),
+    ],
+  ];
+
+  /// Phone and narrow window: everything in one list.
+  Widget _narrow(BuildContext context) {
+    final muted = Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.hz.textMuted);
+    return ListView(
+      padding: Gap.page,
+      children: [
+        Text(s.backupShort, style: muted),
+        const SizedBox(height: Gap.item),
+        SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              HorizontField(
+                label: s.backupPassword,
+                child: TextField(controller: _first, obscureText: true),
+              ),
+              const SizedBox(height: Gap.inner),
+              HorizontField(
+                label: s.backupRepeat,
+                child: TextField(
+                  controller: _second,
+                  obscureText: true,
+                  decoration: InputDecoration(errorText: _error),
+                ),
+              ),
+              const SizedBox(height: Gap.inner),
+              ..._progress(context),
+              FilledButton(onPressed: _busy ? null : () => unawaited(_create()), child: Text(s.backupCreate)),
+            ],
+          ),
+        ),
+        const SizedBox(height: Gap.item),
+        OutlinedButton(onPressed: _busy ? null : () => unawaited(_restore()), child: Text(s.backupRestore)),
+        const SizedBox(height: Gap.item),
+        _figures(),
+      ],
+    );
+  }
+
+  /// From [Breakpoints.expanded]: the file with its password and both actions on the left, the
+  /// state of this device and what a backup holds (otherwise behind the info symbol) on the right.
+  Widget _wide(BuildContext context) {
+    final muted = Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.hz.textMuted);
+    return FormColumns(
+      intro: [Text(s.backupShort, style: muted)],
+      columns: [
+        [
+          SectionHead(s.backupFileHead),
           SectionCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextField(
-                  controller: _first,
-                  obscureText: true,
-                  decoration: InputDecoration(hintText: s.backupPassword),
+                HorizontField(
+                  label: s.backupPassword,
+                  child: TextField(controller: _first, obscureText: true),
                 ),
-                const SizedBox(height: Gap.item),
-                TextField(
-                  controller: _second,
-                  obscureText: true,
-                  decoration: InputDecoration(hintText: s.backupRepeat, errorText: _error),
+                const SizedBox(height: Gap.inner),
+                HorizontField(
+                  label: s.backupRepeat,
+                  child: TextField(
+                    controller: _second,
+                    obscureText: true,
+                    decoration: InputDecoration(errorText: _error),
+                  ),
                 ),
-                const SizedBox(height: Gap.item),
-                if (_busy) ...[
-                  const LinearProgressIndicator(),
-                  const SizedBox(height: Gap.item),
-                  Text(s.backupSlow, style: theme.textTheme.bodySmall?.copyWith(color: hz.textFaint)),
-                  const SizedBox(height: Gap.item),
-                ],
-                FilledButton(onPressed: _busy ? null : () => unawaited(_create()), child: Text(s.backupCreate)),
+                const SizedBox(height: Gap.inner),
+                ..._progress(context),
+                Wrap(
+                  spacing: Gap.item,
+                  runSpacing: Gap.item,
+                  children: [
+                    FilledButton(onPressed: _busy ? null : () => unawaited(_create()), child: Text(s.backupCreate)),
+                    OutlinedButton(onPressed: _busy ? null : () => unawaited(_restore()), child: Text(s.backupRestore)),
+                  ],
+                ),
               ],
             ),
           ),
-          const SizedBox(height: Gap.item),
-          OutlinedButton(onPressed: _busy ? null : () => unawaited(_restore()), child: Text(s.backupRestore)),
-          const SizedBox(height: Gap.item),
-          FutureBuilder(
-            future: Future.wait<Object>([_estimate, _extras]),
-            builder: (context, snapshot) {
-              final bytes = snapshot.data?[0] as int?;
-              final extras = snapshot.data?[1] as StorageExtras?;
-              final side = extras == null ? 0 : extras.previousBytes + extras.corruptBytes;
-              return RowCard(
-                children: [
-                  if (bytes != null) _Figure(label: s.backupAppStorage, value: _size(bytes)),
-                  // Older and damaged versions only when they take up space.
-                  if (side > 0) _Figure(label: s.backupPrevious, value: _size(side)),
-                  _Figure(label: s.backupLastRow, value: _last == null ? s.backupNoneYet : formatDate(_last!)),
-                ],
-              );
-            },
+        ],
+        [
+          SectionHead(s.backupDeviceHead),
+          _figures(),
+          SectionHead(s.handoverContents),
+          SectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(s.backupExplain),
+                const SizedBox(height: Gap.inner),
+                Text(Betrieb.enabled ? s.backupNotIncludedTeam : s.backupNotIncluded, style: muted),
+              ],
+            ),
           ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -232,13 +306,27 @@ class _Figure extends StatelessWidget {
   final String value;
 
   @override
-  Widget build(BuildContext context) => CardRow(
-    title: label,
-    trailing: Text(
+  Widget build(BuildContext context) {
+    final figure = Text(
       value,
       style: context.figures(Theme.of(context).textTheme.bodyLarge).copyWith(fontWeight: FontWeight.w600),
-    ),
-  );
+    );
+    // With large text label and value do not fit side by side on a phone: the value moves below.
+    return LayoutBuilder(
+      builder: (context, box) => box.maxWidth < 420 && MediaQuery.textScalerOf(context).scale(1) > 1.3
+          ? Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Gap.inner, vertical: Gap.item),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: Theme.of(context).textTheme.bodyLarge),
+                  figure,
+                ],
+              ),
+            )
+          : CardRow(title: label, trailing: figure),
+    );
+  }
 }
 
 /// Unobtrusive backup reminder on the connect screen. No dialog, blocks

@@ -18,6 +18,7 @@ import 'knx/demo_tunnel.dart';
 import 'model/box_keyring_consent.dart';
 import 'model/box_share.dart';
 import 'model/installation.dart';
+import 'model/project_states.dart';
 import 'model/teach_in.dart';
 import 'platform/addon.dart';
 import 'platform/pbkdf2.dart';
@@ -78,6 +79,179 @@ class CatalogStore extends ChangeNotifier {
   void _merge() {
     _catalog = withNames(mergeLearned(_project, _learned), names);
     groupStyle = _catalog.style;
+    _resetPast();
+  }
+
+  // --- Project states (issue #5) ---------------------------------------------------
+
+  /// Time of an import; replaceable in tests.
+  @visibleForTesting
+  static DateTime Function() now = DateTime.now;
+
+  ProjectStates _states = ProjectStates();
+
+  /// Start of the current state in microseconds, `null` without older states: the only thing
+  /// the lookups of a live telegram touch.
+  int? _pastBefore;
+
+  /// Older states as shown catalogs (with learned data and name corrections), built on first use.
+  List<GroupCatalog?> _past = const [];
+
+  void _resetPast() {
+    _pastBefore = _beforeDemo == null ? _states.currentFrom?.microsecondsSinceEpoch : null;
+    _past = _pastBefore == null ? const [] : List.filled(_states.states.length - 1, null);
+  }
+
+  /// The states of the installation, oldest first, the last one current. One entry (valid from the
+  /// beginning) for an installation that never replaced its project; empty without a project.
+  List<ProjectState> get projectStates {
+    if (_beforeDemo != null || _project.isEmpty && _project.devices.isEmpty) return const [];
+    if (_states.states.isNotEmpty) return List.unmodifiable(_states.states);
+    return [ProjectState(name: fileName, project: _project.projectName, count: _project.length)];
+  }
+
+  /// What state [index] of [projectStates] changed against the one before.
+  ProjectChanges projectChanges(int index) => _states.changesOf(index, _project);
+
+  /// Earliest and latest start of state [index]; `null` for the oldest (from the beginning).
+  ({DateTime? after, DateTime? before})? projectStateDateRange(int index) => _states.dateRange(index);
+
+  /// Corrects the start of state [index], e.g. to the day the installation was reprogrammed.
+  /// `false` if [from] is not between the neighbouring states or lies in the future.
+  Future<bool> setProjectStateFrom(int index, DateTime from) async {
+    if (from.isAfter(now()) || !_states.setFrom(index, from)) return false;
+    _resetPast();
+    notifyListeners();
+    await _saveStates();
+    return true;
+  }
+
+  /// Removes state [index]; the state before then stays valid until the next one. Removing the
+  /// current state returns to the project before it.
+  Future<void> removeProjectState(int index) async {
+    if (_states.states.length < 2) return;
+    final previous = _states.remove(index, _project);
+    if (previous != null) {
+      await _saveStates();
+      catalog = previous;
+      await _save(previous, _states.states.last.name ?? fileName ?? '');
+    } else {
+      _resetPast();
+      await _saveStates();
+    }
+    notifyListeners();
+  }
+
+  Future<void> _saveStates() async {
+    // Demo: persist nothing.
+    if (_beforeDemo != null || DemoTunnel.active) return;
+    try {
+      if (_states.hasPast) {
+        await _storage.write(projectStatesPath, jsonEncode(_states.toJson()));
+      } else {
+        // One state needs no file (and an installation from before has none).
+        await _storage.delete(projectStatesPath);
+      }
+    } on Object catch (e) {
+      // An older add-on or box refuses the file name: the states then last until the app closes.
+      debugPrint('Projektstände nicht gespeichert: $e');
+    }
+  }
+
+  Future<void> _loadStates() async {
+    _states =
+        await readStored(
+          _storage,
+          projectStatesPath,
+          (text) => ProjectStates.fromJson(jsonDecode(text) as Map<String, Object?>),
+        ) ??
+        ProjectStates();
+  }
+
+  /// [next] replaces the project: the one so far stays as a state valid until now.
+  Future<void> _replace(GroupCatalog next, String name) async {
+    if (_beforeDemo == null && !DemoTunnel.active) {
+      _states.push(_project, next, at: now(), name: name);
+      // The states first: if the app ends in between, both states show the old project.
+      await _saveStates();
+    }
+    catalog = next;
+    await _save(next, name);
+  }
+
+  /// Index in [projectStates] of the state valid at [time].
+  int projectStateAt(DateTime time) => _pastBefore == null ? 0 : _states.indexAt(time);
+
+  /// The older state [t] is named with; `null` for a telegram of the current state.
+  ProjectState? pastStateOf(Telegram t) {
+    final before = _pastBefore;
+    if (before == null || t.time.microsecondsSinceEpoch >= before) return null;
+    return _states.states[_states.indexAt(t.time)];
+  }
+
+  /// Start of the current state if there are older ones: telegrams before it are named by them.
+  DateTime? get currentStateFrom => _pastBefore == null ? null : _states.currentFrom;
+
+  /// The catalog as it was shown at [time]: the state of then, with what was learned and with the
+  /// name corrections that still fit (the project name they correct is the one of then).
+  GroupCatalog catalogAt(DateTime time) {
+    final before = _pastBefore;
+    if (before == null || time.microsecondsSinceEpoch >= before) return _catalog;
+    final index = _states.indexAt(time);
+    if (_past[index] case final cached?) return cached;
+    final project = _states.catalogOf(index, _project);
+    return _past[index] = withNames(mergeLearned(project, _learned), {
+      for (final MapEntry(:key, :value) in names.entries)
+        if (project[key]?.name == _project[key]?.name) key: value,
+    });
+  }
+
+  /// The catalog for [t]: live telegrams pay one null check, or one comparison once there are
+  /// older states.
+  GroupCatalog _at(Telegram t) {
+    final before = _pastBefore;
+    return before == null || t.time.microsecondsSinceEpoch >= before ? _catalog : catalogAt(t.time);
+  }
+
+  /// Group address of [t] as the project knew it at its time.
+  GroupInfo? infoOf(Telegram t) => _at(t)[t.destination];
+
+  /// Sender of [t] as the project knew it at its time.
+  DeviceInfo? deviceOf(Telegram t) => _at(t).devices[t.source];
+
+  /// Datapoint type of [t]: user-chosen, otherwise from the project of its time.
+  Dpt? dptFor(Telegram t) => overrides[t.destination] ?? _at(t)[t.destination]?.dpt;
+
+  /// For an isolate (PDF): the catalogs needed to name [telegrams] of older states, by their
+  /// start; `null` when all of them belong to the current state.
+  ({List<int?> from, List<GroupCatalog> catalogs})? pastFor(Iterable<Telegram> telegrams) {
+    final before = _pastBefore;
+    if (before == null) return null;
+    final used = <int>{};
+    for (final t in telegrams) {
+      if (t.time.microsecondsSinceEpoch < before) used.add(_states.indexAt(t.time));
+    }
+    if (used.isEmpty) return null;
+    final states = _states.states;
+    // All older states in order, so the lookup by time stays the same; unused ones stay empty.
+    return (
+      from: [for (var i = 0; i < states.length; i++) states[i].from?.microsecondsSinceEpoch],
+      catalogs: [
+        for (var i = 0; i < states.length - 1; i++)
+          used.contains(i) ? catalogAt(states[i].from ?? DateTime.fromMicrosecondsSinceEpoch(0)) : GroupCatalog.empty,
+      ],
+    );
+  }
+
+  /// In an isolate: takes over what [pastFor] returned.
+  void adoptPast(({List<int?> from, List<GroupCatalog> catalogs})? past) {
+    if (past == null) return;
+    _states = ProjectStates([
+      for (final from in past.from)
+        ProjectState(from: from == null ? null : DateTime.fromMicrosecondsSinceEpoch(from), groups: {}, devices: {}),
+    ]);
+    _pastBefore = _states.currentFrom?.microsecondsSinceEpoch;
+    _past = List.of(past.catalogs);
   }
 
   ({GroupCatalog project, GroupCatalog learned, Map<int, String> names})? _beforeDemo;
@@ -92,6 +266,7 @@ class CatalogStore extends ChangeNotifier {
       _learned = GroupCatalog.empty;
       names = {};
     }
+    // The demo house has one state; [_resetPast] looks at [_beforeDemo].
     catalog = demo;
     notifyListeners();
   }
@@ -217,6 +392,7 @@ class CatalogStore extends ChangeNotifier {
     fileName = null;
     overrides = {};
     names = {};
+    _states = ProjectStates();
     await load();
   }
 
@@ -224,6 +400,7 @@ class CatalogStore extends ChangeNotifier {
     await _loadOverrides();
     await _loadNames();
     await _loadLearned();
+    await _loadStates();
     final prefs = await SharedPreferences.getInstance();
     fileName = prefs.getString(_name);
     String? json;
@@ -242,6 +419,7 @@ class CatalogStore extends ChangeNotifier {
       if (json != null) await keepCorrupt(_storage, _path, json);
       catalog = GroupCatalog.empty;
     }
+    _resetPast();
     notifyListeners();
   }
 
@@ -372,8 +550,7 @@ class CatalogStore extends ChangeNotifier {
 
     phase.value = ImportPhase.saving;
     await _paint();
-    catalog = parsed;
-    await _save(parsed, name);
+    await _replace(parsed, name);
     notifyListeners();
     return true;
   }
@@ -394,8 +571,7 @@ class CatalogStore extends ChangeNotifier {
       );
       phase.value = ImportPhase.saving;
       await _paint();
-      catalog = parsed;
-      await _save(parsed, 'Home Assistant');
+      await _replace(parsed, 'Home Assistant');
       notifyListeners();
       return true;
     } finally {
@@ -453,8 +629,7 @@ class CatalogStore extends ChangeNotifier {
           if (c[a] case final g? when g.name != project[a]!.name) a: g.name,
       };
     }
-    catalog = project;
-    await _save(project, name);
+    await _replace(project, name);
     if (projectNames != null) await _saveNames();
     this.overrides = Map.of(overrides);
     final text = jsonEncode({
@@ -530,9 +705,16 @@ class CatalogStore extends ChangeNotifier {
   }
 
   Future<void> clear() async {
+    // Removing the project removes its older states too: nothing of it stays on the device.
+    _states = ProjectStates();
     catalog = GroupCatalog.empty;
     fileName = null;
     await _storage.delete(_path);
+    try {
+      await _storage.delete(projectStatesPath);
+    } on Object catch (e) {
+      debugPrint('Projektstände nicht entfernt: $e');
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_name);
     await prefs.remove(_legacyCsv);
@@ -543,18 +725,18 @@ class CatalogStore extends ChangeNotifier {
 
   DeviceInfo? device(int address) => catalog.devices[address];
 
-  /// Display name: name from the catalog or the group address.
-  String title(Telegram t) => catalog[t.destination]?.name ?? t.destinationText;
+  /// Display name: name from the catalog (of the telegram's time) or the group address.
+  String title(Telegram t) => infoOf(t)?.name ?? t.destinationText;
 
   /// Source: „1.1.18 Heizungsaktor“ (heating actuator) or just the address.
   String sender(Telegram t) {
-    final d = device(t.source);
+    final d = deviceOf(t);
     return d == null ? t.sourceText : '${t.sourceText} ${d.name}';
   }
 
-  /// Value, decoded with the DPT from the catalog, otherwise heuristically.
+  /// Value, decoded with the DPT from the catalog (of the telegram's time), otherwise heuristically.
   String value(Telegram t) {
-    final dpt = dptOf(t.destination);
+    final dpt = dptFor(t);
     return (dpt == null ? null : decodeDpt(dpt, t)) ?? t.valueText;
   }
 }

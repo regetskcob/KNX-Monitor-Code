@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'atomic_file.dart';
+import 'dali.dart' show emergencyLogMaxBytes;
 import 'http.dart';
 
 final _safePath = RegExp(r'^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*/?$');
@@ -16,6 +17,8 @@ final _safePath = RegExp(r'^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*/?$');
 /// credentials for third-party services (`/api/report`, `/api/export`).
 const _private = {
   'access.json',
+  // Failed attempts and lockouts (BoxAccess): deleting it would hand out fresh attempts.
+  'access-strikes.json',
   'server.json',
   'report_settings.json',
   'export.json',
@@ -41,6 +44,9 @@ const _adminOnly = 'secure_keys.json';
 /// as a list under the given key whose entries are told apart by the given
 /// field. Everything else (project, fault hunt, history) changes the
 /// installation for everyone. See [mergeDeviceEntries].
+/// Folder whose files may only be appended to (the emergency lighting log).
+const _appendOnly = 'dali_tests';
+
 const _deviceWritable = {'charts.json': ('charts', 'name'), 'watch_rules.json': ('rules', 'id')};
 
 /// Field in which the server notes which paired device created an entry of a
@@ -48,10 +54,10 @@ const _deviceWritable = {'charts.json': ('charts', 'name'), 'watch_rules.json': 
 const ownerField = 'owner';
 
 /// What the app stores through this API, by first path segment (files and folders of
-/// `AppStorage` in the app, plus what the server writes for it). Not enforced yet: the path list
-/// is new (security review 07.11.: allowlist instead of the blocklist [_private]), so for now an
-/// unknown name is only logged once. When the logs of a release stay quiet, refuse the rest.
-/// `test/known_app_files_test.dart` checks every file name in the app's code against it.
+/// `AppStorage` in the app, plus what the server writes for it, such as `hunts/`). Anything else
+/// is refused (security review 07.11.: allowlist instead of the blocklist [_private]; enforced
+/// since 11.11., after the logs of 1.11 stayed quiet). `test/known_app_files_test.dart` checks
+/// every file and folder name in the app's code against it.
 const knownAppFiles = {
   'annotations.json',
   'assets',
@@ -65,19 +71,30 @@ const knownAppFiles = {
   'crash',
   'crash_log.txt',
   'customer.json',
+  'dali.json',
+  'dali_state.json',
+  'dali_tests',
   'dpt_overrides.json',
   'exports',
   'fault_hunt.json',
   'fault_report.json',
+  'floor_view.json',
+  'floor_view_images',
   'ga_plan.json',
   'handover_origin.json',
   'health.json',
   'history',
+  'hunts',
   'home_plan.json',
+  'home_plan_exchange.json',
   'home_plan_images',
+  'home_plan_live.json',
+  'home_plan_previous.json',
+  'home_plan_previous_images',
   'knx.yaml',
   'learned.json',
   'name_overrides.json',
+  'project_states.json',
   'protocols',
   'recordings',
   'secure_keys.json',
@@ -95,14 +112,15 @@ const knownAppFiles = {
 
 final _reportedUnknown = <String>{};
 
-/// Logs the first path segment of [relative] once if it is not in [knownAppFiles] (and not
-/// `.bak`/`.corrupt-…` of a known one). Returns whether it was unknown.
+/// Whether the first path segment of [relative] is not in [knownAppFiles] (and not
+/// `.bak`/`.corrupt-…` of a known one); such a request is refused. Logged once per name, so a
+/// file the app starts using without an entry shows up in the logs.
 bool reportUnknownFile(String relative) {
   final top = relative.split('/').first;
   final base = top.replaceFirst(RegExp(r'\.(bak|corrupt-\d+)$'), '');
   if (top.isEmpty || knownAppFiles.contains(base)) return false;
   if (_reportedUnknown.add(top)) {
-    stderr.writeln('Datei-API: "$top" steht nicht auf der Positivliste (noch nicht gesperrt, siehe knownAppFiles)');
+    stderr.writeln('Datei-API: "$top" steht nicht auf der Positivliste, abgewiesen (siehe knownAppFiles)');
   }
   return true;
 }
@@ -160,7 +178,13 @@ Future<void> serveFile(
     response.statusCode = HttpStatus.methodNotAllowed;
     return response.close();
   }
-  reportUnknownFile(relative);
+  if (reportUnknownFile(relative)) {
+    response
+      ..statusCode = HttpStatus.forbidden
+      ..headers.contentType = ContentType.text
+      ..write('Diese Datei gehört nicht zur App.');
+    return response.close();
+  }
   if (_isPrivate(relative.split('/').first) || relative.toLowerCase().endsWith('.tmp')) {
     response.statusCode = HttpStatus.forbidden;
     return response.close();
@@ -173,6 +197,38 @@ Future<void> serveFile(
       ..headers.contentType = ContentType.text
       ..write('Nur mit dem Box-Passwort.');
     return response.close();
+  }
+  // The emergency lighting log is append only: nobody rewrites or deletes a year through the file
+  // API (it goes with the installation), and appending stops at the year's limit.
+  if (relative.startsWith('$_appendOnly/') && !relative.endsWith('/')) {
+    if (request.method == 'PUT' || request.method == 'DELETE') {
+      response
+        ..statusCode = HttpStatus.methodNotAllowed
+        ..headers.contentType = ContentType.text
+        ..write('Prüfbuch: nur anhängen.');
+      return response.close();
+    }
+    if (request.method == 'POST') {
+      // The body counts as it really is (chunked requests have no length), and check plus append
+      // run in one step per file, so two requests at once cannot both pass the limit. The server's
+      // own recorder (dali_watch.dart) appends through the same queue.
+      final file = File('${data.path}/$relative');
+      final size = await file.exists() ? await file.length() : 0;
+      final room = emergencyLogMaxBytes - size;
+      final bytes = room <= 0 ? null : await readBody(request, room);
+      if (bytes == null) {
+        response.statusCode = HttpStatus.requestEntityTooLarge;
+        return response.close();
+      }
+      await file.parent.create(recursive: true);
+      response.statusCode = await serialized(file, () async {
+        final now = await file.exists() ? await file.length() : 0;
+        if (now + bytes.length > emergencyLogMaxBytes) return HttpStatus.requestEntityTooLarge;
+        await file.writeAsBytes(bytes, mode: FileMode.append, flush: true);
+        return HttpStatus.noContent;
+      });
+      return response.close();
+    }
   }
   if (relative.endsWith('/')) {
     final dir = Directory('${data.path}/$relative');

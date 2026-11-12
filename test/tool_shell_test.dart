@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:horizont/horizont.dart';
 import 'package:knx_monitor/theme/app_theme.dart';
 import 'package:knx_monitor/ui/more_menu.dart';
 import 'package:knx_monitor/ui/tool_shell.dart';
@@ -49,8 +50,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Seite Gesundheit'), findsOneWidget);
     expect(find.byType(MoreSidebar), findsOneWidget);
-    // Leiste auf eigenem Material-Grund (sonst gelbe Doppellinie unter Text).
-    expect(find.ancestor(of: find.byType(MoreSidebar), matching: find.byType(Material)), findsWidgets);
+    // Leiste auf eigenem Material-Grund (sonst gelbe Doppellinie unter Text); HorizontSidebar bringt ihn mit.
+    expect(find.descendant(of: find.byType(HorizontSidebar), matching: find.byType(Material)), findsWidgets);
 
     // Wechsel in der Leiste ersetzt die Gesundheit; die Leiste bleibt.
     await tester.tap(find.text('Topologie'));

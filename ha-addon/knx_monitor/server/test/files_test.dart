@@ -18,6 +18,7 @@ void main() {
     data = await Directory.systemTemp.createTemp('files');
     for (final name in [
       'access.json',
+      'access-strikes.json',
       'server.json',
       'box-password.txt',
       'time-request.json',
@@ -92,9 +93,39 @@ void main() {
     expect(await File('${data.path}/catalog.json').readAsString(), '{}');
   });
 
+  test('Notlicht-Prüfbuch: nur anhängen, nie überschreiben oder löschen, und nur bis zur Grenze', () async {
+    const path = 'dali_tests/2026.ndjson';
+    expect((await send(path, method: 'POST', body: '{"a":1}\n')).$1, 204);
+    expect((await send(path, method: 'POST', body: '{"a":2}\n')).$1, 204);
+    expect((await send(path, method: 'PUT', body: '')).$1, 405);
+    expect((await send(path, method: 'DELETE')).$1, 405);
+    expect(File('${data.path}/$path').readAsStringSync(), '{"a":1}\n{"a":2}\n');
+    // Full: no more appending.
+    File('${data.path}/$path').writeAsBytesSync(List.filled(4 * 1024 * 1024, 0x20), mode: FileMode.append);
+    expect((await send(path, method: 'POST', body: '{"a":3}\n')).$1, 413);
+    expect((await send('dali_tests/')).$1, 200);
+  });
+
+  test('Notlicht-Prüfbuch: Grenze gilt auch ohne Längenangabe und bei gleichzeitigen Anfragen', () async {
+    const path = 'dali_tests/2027.ndjson';
+    const max = 4 * 1024 * 1024;
+    final file = File('${data.path}/$path');
+    await file.parent.create(recursive: true);
+    await file.writeAsBytes(List.filled(max - 120, 0x20));
+    // send() streams the body chunked (contentLength -1): it used to count as zero.
+    expect((await send(path, method: 'POST', body: 'x' * 200)).$1, 413);
+    expect(file.lengthSync(), max - 120);
+    // Ten requests of 50 bytes at once, room for two: never past the limit.
+    final results = await Future.wait([for (var i = 0; i < 10; i++) send(path, method: 'POST', body: 'y' * 50)]);
+    expect(results.where((r) => r.$1 == 204), hasLength(2));
+    expect(results.where((r) => r.$1 == 413), hasLength(8));
+    expect(file.lengthSync(), max - 20);
+  });
+
   test('Dateien des Servers: weder lesen noch schreiben noch löschen', () async {
     for (final name in [
       'access.json',
+      'access-strikes.json',
       'server.json',
       'box-password.txt',
       'time-request.json',
@@ -111,9 +142,9 @@ void main() {
   });
 
   test('Liste zeigt die Dateien des Servers nicht', () async {
-    await Directory('${data.path}/sub').create();
-    await File('${data.path}/sub/a.json').writeAsString('1');
-    expect(jsonDecode((await send('sub/')).$2), [
+    await Directory('${data.path}/site_photos').create();
+    await File('${data.path}/site_photos/a.json').writeAsString('1');
+    expect(jsonDecode((await send('site_photos/')).$2), [
       {'name': 'a.json', 'size': 1},
     ]);
   });
@@ -273,10 +304,27 @@ void main() {
     expect(bodiesInFlight, 0);
   });
 
-  test('Positivliste der Datei-API meldet nur, sperrt noch nicht', () {
+  test('Positivliste der Datei-API: Unbekanntes wird abgewiesen', () async {
     expect(reportUnknownFile('catalog.json'), isFalse);
     expect(reportUnknownFile('history/2026-11-09.ndjson'), isFalse);
+    expect(reportUnknownFile('hunts/abc/hits.ndjson'), isFalse);
     expect(reportUnknownFile('catalog.json.bak'), isFalse);
     expect(reportUnknownFile('irgendwas.json'), isTrue);
+    for (final method in ['GET', 'PUT', 'POST', 'DELETE']) {
+      expect(
+        (await send('irgendwas.json', method: method, body: method == 'GET' ? null : '{}')).$1,
+        403,
+        reason: method,
+      );
+      expect(
+        (await send('fremd/', method: method, body: method == 'GET' ? null : '{}')).$1,
+        403,
+        reason: method,
+      );
+    }
+    expect(File('${data.path}/irgendwas.json').existsSync(), isFalse);
+    // What the app does store keeps working.
+    expect((await send('hunts/h1/hits.ndjson', method: 'PUT', body: '{}\n')).$1, 204);
+    expect((await send('hunts/h1/hits.ndjson')).$1, 200);
   });
 }

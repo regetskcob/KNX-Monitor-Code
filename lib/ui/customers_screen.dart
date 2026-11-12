@@ -18,7 +18,11 @@ import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'company_screen.dart';
+import 'customer_transfer_screen.dart';
+import 'fault_reply_screen.dart';
 import 'figure_box.dart';
+import 'form_columns.dart';
+import 'handover_screen.dart' show pickPackageFile;
 import 'service_report_screen.dart';
 import 'telegram_row.dart' show formatDate;
 
@@ -41,6 +45,15 @@ class _CustomersScreenState extends State<CustomersScreen> {
   final _search = TextEditingController();
   CustomerSort _sort = CustomerSort.name;
 
+  /// Installation shown on the right (wide layout); `null` until one is chosen.
+  String? _selected;
+
+  /// From this width on, list and file side by side.
+  static const _detailFrom = Breakpoints.expanded;
+
+  /// Width of the list column next to the file.
+  static const _listWidth = Widths.column - HzSpace.s32;
+
   @override
   void dispose() {
     _search.dispose();
@@ -52,6 +65,75 @@ class _CustomersScreenState extends State<CustomersScreen> {
     CustomerSort.lastVisit => s.customerSortVisit,
     CustomerSort.maintenance => s.customerSortMaintenance,
   };
+
+  Future<void> _export() async {
+    if (!await unlock(context, Feature.customerRecords) || !mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const CustomerExportScreen()));
+  }
+
+  String _meta(CustomerEntry e) => [
+    if (e.record.customer.isNotEmpty && e.installation.name != e.record.customer) e.installation.name,
+    if (e.record.site.isNotEmpty) e.record.site.split('\n').first,
+    if (e.lastVisit != null) s.customerLastVisit(formatDate(e.lastVisit!)),
+  ].join(metaSeparator);
+
+  /// Search, sorting and the list. [selected]: wide layout, rows choose the file on the right.
+  List<Widget> _listChildren(BuildContext context, List<CustomerEntry> list, {required bool wide, String? selected}) {
+    final now = DateTime.now();
+    return [
+      TextField(
+        controller: _search,
+        style: context.hzTheme.field,
+        decoration: InputDecoration(prefixIcon: const Icon(AppIcons.search), hintText: s.customerSearch),
+        onChanged: (_) => setState(() {}),
+      ),
+      const SizedBox(height: Gap.item),
+      FilterBar<CustomerSort>(
+        segments: [for (final v in CustomerSort.values) ButtonSegment(value: v, label: Text(_sortLabel(v)))],
+        selected: _sort,
+        onChanged: (v) => setState(() => _sort = v),
+      ),
+      const SizedBox(height: Gap.section),
+      if (list.isEmpty)
+        HorizontEmptyHint(text: s.customerNone, icon: AppIcons.customers)
+      else if (wide)
+        Semantics(
+          container: true,
+          label: s.customerListLabel,
+          child: RowCard(
+            flat: true,
+            children: [
+              for (final e in list)
+                _CustomerRow(
+                  key: ValueKey('customer-${e.installation.id}'),
+                  title: e.title,
+                  meta: _meta(e),
+                  due: e.maintenanceDue(now),
+                  selected: e.installation.id == selected,
+                  onTap: () => setState(() => _selected = e.installation.id),
+                ),
+            ],
+          ),
+        )
+      else
+        RowCard(
+          children: [
+            for (final e in list)
+              CardRow(
+                title: e.title,
+                meta: _meta(e),
+                chevron: true,
+                trailing: e.maintenanceDue(now) ? HorizontBadge(HorizontStatus.warning, label: s.customerDue) : null,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => CustomerDetailScreen(installation: e.installation, onOpen: widget.onOpen),
+                  ),
+                ),
+              ),
+          ],
+        ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,65 +148,73 @@ class _CustomersScreenState extends State<CustomersScreen> {
             icon: const Icon(AppIcons.company),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const CompanyScreen())),
           ),
+          PopupMenuButton<VoidCallback>(
+            icon: Icon(AppIcons.more),
+            tooltip: s.chartsMore,
+            onSelected: (action) => action(),
+            itemBuilder: (_) => [
+              PopupMenuItem(value: () => unawaited(_export()), child: Text(s.customerExportAll)),
+              PopupMenuItem(value: () => unawaited(pickPackageFile(context)), child: Text(s.customerOpenFile)),
+            ],
+          ),
         ],
       ),
-      body: ListenableBuilder(
-        listenable: Listenable.merge([store, InstallationStore.instance]),
-        builder: (context, _) {
-          final now = DateTime.now();
-          final list = filterCustomers(store.entries, query: _search.text, sort: _sort);
-          return Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: Widths.reading),
-              child: ListView(
-                padding: Gap.page,
-                children: [
-                  TextField(
-                    controller: _search,
-                    style: context.hzTheme.field,
-                    decoration: InputDecoration(prefixIcon: const Icon(AppIcons.search), hintText: s.customerSearch),
-                    onChanged: (_) => setState(() {}),
+      body: LayoutBuilder(
+        builder: (context, box) {
+          final wide = box.maxWidth >= _detailFrom;
+          return ListenableBuilder(
+            listenable: Listenable.merge([store, InstallationStore.instance]),
+            builder: (context, _) {
+              final list = filterCustomers(store.entries, query: _search.text, sort: _sort);
+              if (!wide) {
+                // Phone and narrow windows: one column in reading width, the file opens as a page.
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: Widths.reading),
+                    child: ListView(padding: Gap.page, children: _listChildren(context, list, wide: false)),
                   ),
-                  const SizedBox(height: Gap.item),
-                  FilterBar<CustomerSort>(
-                    segments: [
-                      for (final v in CustomerSort.values) ButtonSegment(value: v, label: Text(_sortLabel(v))),
-                    ],
-                    selected: _sort,
-                    onChanged: (v) => setState(() => _sort = v),
-                  ),
-                  const SizedBox(height: Gap.section),
-                  if (list.isEmpty)
-                    HorizontEmptyHint(text: s.customerNone, icon: AppIcons.customers)
-                  else
-                    RowCard(
-                      children: [
-                        for (final e in list)
-                          CardRow(
-                            title: e.title,
-                            meta: [
-                              if (e.record.customer.isNotEmpty && e.installation.name != e.record.customer)
-                                e.installation.name,
-                              if (e.record.site.isNotEmpty) e.record.site.split('\n').first,
-                              if (e.lastVisit != null) s.customerLastVisit(formatDate(e.lastVisit!)),
-                            ].join(metaSeparator),
-                            chevron: true,
-                            trailing: e.maintenanceDue(now)
-                                ? HorizontBadge(HorizontStatus.warning, label: s.customerDue)
-                                : null,
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) =>
-                                    CustomerDetailScreen(installation: e.installation, onOpen: widget.onOpen),
+                );
+              }
+              // The chosen one while it is in the list; otherwise the active installation, then
+              // the first: the right side is never empty while there is a file to show.
+              final active = InstallationStore.instance.active.id;
+              final shown =
+                  list.where((e) => e.installation.id == _selected).firstOrNull ??
+                  list.where((e) => e.installation.id == active).firstOrNull ??
+                  list.firstOrNull;
+              return Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: Widths.wide),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: _listWidth,
+                        child: ListView(
+                          padding: Gap.page,
+                          children: _listChildren(context, list, wide: true, selected: shown?.installation.id),
+                        ),
+                      ),
+                      const VerticalDivider(width: Lines.hairline),
+                      Expanded(
+                        child: shown == null
+                            ? Center(
+                                child: HorizontEmptyHint(text: s.customerSelectHint, icon: AppIcons.customers),
+                              )
+                            : CustomerDetailView(
+                                key: ValueKey('file-${shown.installation.id}'),
+                                installation: shown.installation,
+                                onOpen: widget.onOpen,
+                                embedded: true,
                               ),
-                            ),
-                          ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
@@ -132,12 +222,71 @@ class _CustomersScreenState extends State<CustomersScreen> {
   }
 }
 
-/// Akte einer Anlage: Kundendaten, Anrufen/Mailen/Karte, Besuchsverlauf.
+/// Row of the list in the wide layout: chooses the file shown on the right. The chosen one is
+/// tinted and announced as selected; Enter or Space on the focused row chooses it.
+class _CustomerRow extends StatelessWidget {
+  const _CustomerRow({
+    super.key,
+    required this.title,
+    required this.meta,
+    required this.due,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String meta;
+  final bool due;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return HorizontSelectable(
+      selected: selected,
+      onTap: onTap,
+      padding: const EdgeInsetsDirectional.symmetric(horizontal: HzSpace.s12, vertical: HzSpace.s8),
+      child: Row(
+        spacing: HzSpace.s8,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: theme.textTheme.bodyLarge),
+                if (meta.isNotEmpty)
+                  Text(meta, style: theme.textTheme.bodySmall?.copyWith(color: context.hz.textFaint)),
+              ],
+            ),
+          ),
+          if (due) HorizontBadge(HorizontStatus.warning, label: s.customerDue),
+        ],
+      ),
+    );
+  }
+}
+
+/// Customer file of an installation as a page (phone, or opened from elsewhere).
 class CustomerDetailScreen extends StatelessWidget {
   const CustomerDetailScreen({super.key, required this.installation, this.onOpen});
 
   final Installation installation;
   final ValueChanged<Installation>? onOpen;
+
+  @override
+  Widget build(BuildContext context) => CustomerDetailView(installation: installation, onOpen: onOpen);
+}
+
+/// Customer file of an installation: customer data, call/mail/map, visit history, documents.
+/// [embedded]: the right column of the wide list, without a page frame of its own; its menu
+/// then sits next to the name.
+class CustomerDetailView extends StatelessWidget {
+  const CustomerDetailView({super.key, required this.installation, this.onOpen, this.embedded = false});
+
+  final Installation installation;
+  final ValueChanged<Installation>? onOpen;
+  final bool embedded;
 
   Future<void> _launch(BuildContext context, Uri? uri) async {
     if (uri == null) return;
@@ -160,6 +309,7 @@ class CustomerDetailScreen extends StatelessWidget {
     VisitKind.faultReport => s.visitFaultReport,
     VisitKind.handover => s.visitHandover,
     VisitKind.report => s.visitReport,
+    VisitKind.faultReply => s.replyTitle,
     VisitKind.manual => s.visitManual,
   };
 
@@ -192,148 +342,178 @@ class CustomerDetailScreen extends StatelessWidget {
           await saveBytes(context, bytes, pdfName(s.customerTitle), mimeType: 'application/pdf');
         }
 
+        Future<void> export() async {
+          if (!await unlock(context, Feature.customerRecords) || !context.mounted) return;
+          await Navigator.of(context)
+              .push(MaterialPageRoute<void>(builder: (_) => CustomerExportScreen(installation: installation)));
+        }
+
         void copy(String value) => unawaited(Clipboard.setData(ClipboardData(text: value)));
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(s.customerTitle),
-            actions: [
-              PopupMenuButton<VoidCallback>(
-                icon: Icon(AppIcons.more),
-                tooltip: s.chartsMore,
-                onSelected: (action) => action(),
-                itemBuilder: (_) => [
-                  PopupMenuItem(value: () => unawaited(edit()), child: Text(s.customerEdit)),
-                  PopupMenuItem(value: () => unawaited(pdf()), child: Text(s.customerPdf)),
-                ],
-              ),
-            ],
-          ),
-          body: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: Widths.reading),
-              child: ListView(
-                padding: Gap.page,
-                children: [
-                  RowCard(
+        final menu = PopupMenuButton<VoidCallback>(
+          icon: Icon(AppIcons.more),
+          tooltip: s.chartsMore,
+          onSelected: (action) => action(),
+          itemBuilder: (_) => [
+            PopupMenuItem(value: () => unawaited(edit()), child: Text(s.customerEdit)),
+            PopupMenuItem(value: () => unawaited(pdf()), child: Text(s.customerPdf)),
+            PopupMenuItem(value: () => unawaited(export()), child: Text(s.customerExport)),
+          ],
+        );
+        final title = r.customer.isNotEmpty ? r.customer : installation.name;
+        final content = Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: Widths.reading),
+            child: ListView(
+              padding: Gap.page,
+              children: [
+                if (embedded) ...[
+                  Row(
                     children: [
-                      CardRow(
-                        title: r.customer.isNotEmpty ? r.customer : installation.name,
-                        meta: r.site.isNotEmpty ? r.site : (r.isEmpty ? s.customerEmpty : null),
-                        onTap: () => unawaited(edit()),
-                        onLongPress: r.site.isEmpty ? null : () => copy(r.site),
+                      Expanded(
+                        child: Semantics(header: true, child: Text(title, style: theme.textTheme.titleLarge)),
                       ),
-                      if (r.phone.isNotEmpty)
-                        CardRow(
-                          title: s.customerPhone,
-                          value: r.phone,
-                          chevron: false,
-                          onTap: phone == null ? null : () => _launch(context, phone),
-                          onLongPress: () => copy(r.phone),
-                        ),
-                      if (r.email.isNotEmpty)
-                        CardRow(
-                          title: s.customerEmail,
-                          value: r.email,
-                          chevron: false,
-                          onTap: mail == null ? null : () => _launch(context, mail),
-                          onLongPress: () => copy(r.email),
-                        ),
-                      if (r.contact.isNotEmpty)
-                        CardRow(title: s.customerContact, value: r.contact, onLongPress: () => copy(r.contact)),
-                      if (r.orderNumber.isNotEmpty)
-                        CardRow(title: s.customerOrder, value: r.orderNumber, onLongPress: () => copy(r.orderNumber)),
-                      if (r.notes.isNotEmpty)
-                        CardRow(title: s.customerNotes, meta: r.notes, onLongPress: () => copy(r.notes)),
-                      if (maps != null) CardRow(title: s.customerMap, onTap: () => _launch(context, maps)),
-                      if (next != null)
-                        CardRow(
-                          title: s.customerMaintenance,
-                          meta: r.maintenanceMonths == null
-                              ? formatDate(next)
-                              : '${s.customerMaintEvery(r.maintenanceMonths!)}$metaSeparator${formatDate(next)}',
-                          trailing: due
-                              ? HorizontBadge(HorizontStatus.warning, label: s.customerDue)
-                              : HorizontBadge(
-                                  HorizontStatus.positive,
-                                  label: s.customerMaintIn(_monthsUntil(DateTime.now(), next)),
-                                ),
-                        ),
+                      menu,
                     ],
                   ),
                   const SizedBox(height: Gap.item),
-                  FilledButton(onPressed: () => editVisit(context, id), child: Text(s.customerVisitAdd)),
-                  if (onOpen != null && !active) ...[
-                    const SizedBox(height: Gap.item),
-                    OutlinedButton(
-                      onPressed: () {
-                        onOpen!(installation);
-                        Navigator.of(context).popUntil((route) => route.isFirst);
-                      },
-                      child: Text(s.customerSwitch),
+                ],
+                RowCard(
+                  children: [
+                    CardRow(
+                      title: title,
+                      meta: r.site.isNotEmpty ? r.site : (r.isEmpty ? s.customerEmpty : null),
+                      onTap: () => unawaited(edit()),
+                      onLongPress: r.site.isEmpty ? null : () => copy(r.site),
                     ),
+                    if (r.phone.isNotEmpty)
+                      CardRow(
+                        title: s.customerPhone,
+                        value: r.phone,
+                        chevron: false,
+                        onTap: phone == null ? null : () => _launch(context, phone),
+                        onLongPress: () => copy(r.phone),
+                      ),
+                    if (r.email.isNotEmpty)
+                      CardRow(
+                        title: s.customerEmail,
+                        value: r.email,
+                        chevron: false,
+                        onTap: mail == null ? null : () => _launch(context, mail),
+                        onLongPress: () => copy(r.email),
+                      ),
+                    if (r.contact.isNotEmpty)
+                      CardRow(title: s.customerContact, value: r.contact, onLongPress: () => copy(r.contact)),
+                    if (r.orderNumber.isNotEmpty)
+                      CardRow(title: s.customerOrder, value: r.orderNumber, onLongPress: () => copy(r.orderNumber)),
+                    if (r.notes.isNotEmpty)
+                      CardRow(title: s.customerNotes, meta: r.notes, onLongPress: () => copy(r.notes)),
+                    if (maps != null) CardRow(title: s.customerMap, onTap: () => _launch(context, maps)),
+                    if (next != null)
+                      CardRow(
+                        title: s.customerMaintenance,
+                        meta: r.maintenanceMonths == null
+                            ? formatDate(next)
+                            : '${s.customerMaintEvery(r.maintenanceMonths!)}$metaSeparator${formatDate(next)}',
+                        trailing: due
+                            ? HorizontBadge(HorizontStatus.warning, label: s.customerDue)
+                            : HorizontBadge(
+                                HorizontStatus.positive,
+                                label: s.customerMaintIn(_monthsUntil(DateTime.now(), next)),
+                              ),
+                      ),
                   ],
-                  SectionHead(s.customerVisits, count: visits.length),
-                  if (visits.isEmpty)
-                    Text(s.visitNone, style: theme.textTheme.bodySmall?.copyWith(color: hz.textFaint))
-                  else
-                    RowCard(
-                      flat: true,
-                      children: [
-                        for (final v in visits)
-                          CardRow(
-                            title: formatDate(v.time),
-                            meta: [
-                              if (v.minutes != null) s.visitMinutes(v.minutes!),
-                              if (v.text.isNotEmpty) v.text else _kindText(v.kind),
-                              // Custom entries speak through their text;
-                              // everything else names its kind.
-                              if (v.text.isNotEmpty && v.kind != VisitKind.manual) _kindText(v.kind),
-                            ].join(metaSeparator),
-                            onTap: switch (v.kind) {
-                              VisitKind.manual => () => editVisit(context, id, visit: v),
-                              // Ready for the service report as soon as the
-                              // installation is active.
-                              VisitKind.faultReport when active && v.ref != null => () => Navigator.of(
-                                context,
-                              ).push(MaterialPageRoute<void>(builder: (_) => ServiceReportScreen(recordingId: v.ref))),
-                              _ => null,
-                            },
-                          ),
-                      ],
-                    ),
-                  SectionHead(s.customerDocuments),
+                ),
+                const SizedBox(height: Gap.item),
+                FilledButton(onPressed: () => editVisit(context, id), child: Text(s.customerVisitAdd)),
+                if (onOpen != null && !active) ...[
+                  const SizedBox(height: Gap.item),
+                  OutlinedButton(
+                    onPressed: () {
+                      onOpen!(installation);
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    },
+                    child: Text(s.customerSwitch),
+                  ),
+                ],
+                SectionHead(s.customerVisits, count: visits.length),
+                if (visits.isEmpty)
+                  Text(s.visitNone, style: theme.textTheme.bodySmall?.copyWith(color: hz.textFaint))
+                else
                   RowCard(
+                    flat: true,
                     children: [
-                      CardRow(title: s.customerPdf, value: 'PDF', onTap: () => unawaited(pdf())),
-                      // Reports belong to the active installation.
-                      if (active)
+                      for (final v in visits)
                         CardRow(
-                          title: s.srTitle,
-                          value: 'PDF',
-                          onTap: () =>
-                              Navigator.of(context)
-                                  .push(MaterialPageRoute<void>(builder: (_) => const ServiceReportScreen())),
+                          title: formatDate(v.time),
+                          meta: [
+                            if (v.minutes != null) s.visitMinutes(v.minutes!),
+                            if (v.text.isNotEmpty) v.text else _kindText(v.kind),
+                            // Custom entries speak through their text;
+                            // everything else names its kind.
+                            if (v.text.isNotEmpty && v.kind != VisitKind.manual) _kindText(v.kind),
+                          ].join(metaSeparator),
+                          onTap: switch (v.kind) {
+                            VisitKind.manual => () => editVisit(context, id, visit: v),
+                            // Ready for the service report as soon as the
+                            // installation is active.
+                            VisitKind.faultReport when active && v.ref != null => () => Navigator.of(
+                              context,
+                            ).push(MaterialPageRoute<void>(builder: (_) => ServiceReportScreen(recordingId: v.ref))),
+                            VisitKind.faultReply when active && v.ref != null => () => unawaited(
+                              shareFaultReply(context, v),
+                            ),
+                            _ => null,
+                          },
+                          // Short status for the customer, from the report itself.
+                          trailing: v.kind == VisitKind.faultReport && active
+                              ? IconButton(
+                                  tooltip: s.replyTitle,
+                                  icon: const Icon(AppIcons.reply),
+                                  onPressed: () =>
+                                      Navigator.of(context)
+                                          .push(MaterialPageRoute<void>(builder: (_) => FaultReplyScreen(report: v))),
+                                )
+                              : null,
                         ),
                     ],
                   ),
-                ],
-              ),
+                SectionHead(s.customerDocuments),
+                RowCard(
+                  children: [
+                    CardRow(title: s.customerPdf, value: 'PDF', onTap: () => unawaited(pdf())),
+                    // Reports belong to the active installation.
+                    if (active)
+                      CardRow(
+                        title: s.srTitle,
+                        value: 'PDF',
+                        onTap: () =>
+                            Navigator.of(context)
+                                .push(MaterialPageRoute<void>(builder: (_) => const ServiceReportScreen())),
+                      ),
+                  ],
+                ),
+              ],
             ),
           ),
+        );
+        if (embedded) return content;
+        return Scaffold(
+          appBar: AppBar(title: Text(s.customerTitle), actions: [menu]),
+          body: content,
         );
       },
     );
   }
 
-  /// Ganze Monate bis [date], mindestens 0.
+  /// Whole months until [date], at least 0.
   static int _monthsUntil(DateTime now, DateTime date) {
     final months = (date.year - now.year) * 12 + date.month - now.month;
     return months < 0 ? 0 : months;
   }
 }
 
-/// Kundendaten bearbeiten.
+/// Edits the customer data.
 class CustomerEditScreen extends StatefulWidget {
   const CustomerEditScreen({super.key, required this.installationId});
 
@@ -386,8 +566,14 @@ class _CustomerEditScreenState extends State<CustomerEditScreen> {
 
   @override
   Widget build(BuildContext context) {
-    Widget field(String label, TextEditingController c, {int maxLines = 1, TextInputType? keyboard}) => Padding(
-      padding: const EdgeInsets.only(bottom: Gap.inner),
+    Widget field(
+      String label,
+      TextEditingController c, {
+      int maxLines = 1,
+      TextInputType? keyboard,
+      bool last = false,
+    }) => Padding(
+      padding: EdgeInsets.only(bottom: last ? 0 : Gap.inner),
       child: HorizontField(
         label: label,
         child: TextField(
@@ -404,28 +590,56 @@ class _CustomerEditScreenState extends State<CustomerEditScreen> {
         title: Text(s.customerEdit),
         actions: [TextButton(onPressed: _save, child: Text(s.commonSave))],
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Widths.reading),
-          child: ListView(
-            padding: Gap.page,
-            children: [
-              field(s.customerName, _customer),
-              field(s.customerAddress, _site, maxLines: 3, keyboard: TextInputType.multiline),
-              field(s.customerContact, _contact),
-              field(s.customerPhone, _phone, keyboard: TextInputType.phone),
-              field(s.customerEmail, _email, keyboard: TextInputType.emailAddress),
-              field(s.customerOrder, _order),
-              field(s.customerInterval, _months, keyboard: TextInputType.number),
-              field(s.customerNotes, _notes, maxLines: 5, keyboard: TextInputType.multiline),
-              Text(
-                s.customerPrivate,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.hz.textMuted),
+      // Phone and narrow windows: one column in reading width. From the expanded width on, the
+      // customer and the site stand on the left, maintenance and notes on the right. Every field
+      // carries its own label.
+      body: FormColumns(
+        columns: [
+          [
+            SectionHead(s.acceptCustomerSection),
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  field(s.customerName, _customer),
+                  field(s.customerAddress, _site, maxLines: 3, keyboard: TextInputType.multiline),
+                  field(s.customerContact, _contact),
+                  field(s.customerPhone, _phone, keyboard: TextInputType.phone),
+                  field(s.customerEmail, _email, keyboard: TextInputType.emailAddress),
+                  field(s.customerOrder, _order, last: true),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          ],
+          [
+            SectionHead(s.customerMaintenanceNotes),
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  field(s.customerInterval, _months, keyboard: TextInputType.number),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: Gap.inner),
+                    child: HorizontField(
+                      label: s.customerNotes,
+                      child: TextField(
+                        controller: _notes,
+                        style: context.hzTheme.field,
+                        minLines: 3,
+                        maxLines: 8,
+                        keyboardType: TextInputType.multiline,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    s.customerPrivate,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.hz.textMuted),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

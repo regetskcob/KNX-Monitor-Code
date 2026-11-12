@@ -15,6 +15,7 @@ import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'common.dart';
 import 'figure_box.dart';
+import 'form_columns.dart';
 
 /// Puts the lock over the whole app. Whatever runs underneath keeps its state
 /// but takes neither focus nor input and is not read out.
@@ -462,62 +463,84 @@ class AppLockSettingsScreen extends StatelessWidget {
       ),
       body: ListenableBuilder(
         listenable: lock,
-        builder: (context, _) => ListView(
-          padding: Gap.page,
-          children: [
-            if (!lock.enabled)
-              SectionCard(child: const _LockSetup())
-            else ...[
-              RowCard(
-                children: [
+        builder: (context, _) => LayoutBuilder(
+          builder: (context, box) {
+            final settings = RowCard(
+              children: [
+                SwitchRow(
+                  title: s.appLockSettings,
+                  meta: lock.mode == AppLockMode.system ? s.appLockMethodSystem : s.appLockMethodPassword,
+                  value: true,
+                  // Turn off only after confirmation; if the company requires
+                  // the lock, it stays on.
+                  onChanged: lock.required
+                      ? null
+                      : (_) async {
+                          if (await _confirm(context)) await lock.disable();
+                        },
+                ),
+                CardRow(
+                  title: s.appLockTimeout,
+                  value: _timeoutLabel(lock.timeoutMinutes),
+                  onTap: () => unawaited(_pickTimeout(context)),
+                ),
+                if (Theme.of(context).platform == TargetPlatform.android)
                   SwitchRow(
-                    title: s.appLockSettings,
-                    meta: lock.mode == AppLockMode.system ? s.appLockMethodSystem : s.appLockMethodPassword,
-                    value: true,
-                    // Turn off only after confirmation; if the company requires
-                    // the lock, it stays on.
-                    onChanged: lock.required
-                        ? null
-                        : (_) async {
-                            if (await _confirm(context)) await lock.disable();
-                          },
+                    title: s.appLockHideTitle,
+                    meta: s.appLockHideHint,
+                    value: lock.hideScreen,
+                    onChanged: (v) => unawaited(lock.setHideScreen(v)),
                   ),
-                  CardRow(
-                    title: s.appLockTimeout,
-                    value: _timeoutLabel(lock.timeoutMinutes),
-                    onTap: () => unawaited(_pickTimeout(context)),
-                  ),
-                  if (Theme.of(context).platform == TargetPlatform.android)
-                    SwitchRow(
-                      title: s.appLockHideTitle,
-                      meta: s.appLockHideHint,
-                      value: lock.hideScreen,
-                      onChanged: (v) => unawaited(lock.setHideScreen(v)),
-                    ),
-                ],
-              ),
-              if (lock.mode == AppLockMode.password) ...[
-                const SizedBox(height: Gap.item),
-                RowCard(
-                  children: [
-                    CardRow(
-                      title: s.recoveryTitle,
-                      meta: s.recoveryRenew,
-                      onTap: () async {
-                        if (!await _confirm(context) || !context.mounted) return;
-                        final code = AppLock.newRecoveryCode();
-                        if (await showRecoveryKey(context, code)) await lock.setRecovery(code);
-                      },
-                    ),
-                  ],
+              ],
+            );
+            final recovery = RowCard(
+              children: [
+                CardRow(
+                  title: s.recoveryTitle,
+                  meta: s.recoveryRenew,
+                  onTap: () async {
+                    if (!await _confirm(context) || !context.mounted) return;
+                    final code = AppLock.newRecoveryCode();
+                    if (await showRecoveryKey(context, code)) await lock.setRecovery(code);
+                  },
                 ),
               ],
-              if (lock.required) ...[
-                const SizedBox(height: Gap.item),
-                Text(s.appLockRequiredNote, style: theme.textTheme.bodySmall?.copyWith(color: context.hz.textFaint)),
+            );
+            final note = Text(
+              s.appLockRequiredNote,
+              style: theme.textTheme.bodySmall?.copyWith(color: context.hz.textFaint),
+            );
+            if (box.maxWidth >= Breakpoints.expanded) {
+              // Little content, so no more than two columns of cards: the lock (or its setup) on
+              // the left; on the right what it is for (otherwise behind the info symbol) and the
+              // emergency key.
+              return FormColumns(
+                columns: [
+                  [if (!lock.enabled) SectionCard(child: const _LockSetup()) else settings],
+                  [
+                    SectionCard(child: Text(s.appLockExplain)),
+                    if (lock.enabled && lock.mode == AppLockMode.password) ...[
+                      const SizedBox(height: Gap.section),
+                      recovery,
+                    ],
+                    if (lock.enabled && lock.required) ...[const SizedBox(height: Gap.item), note],
+                  ],
+                ],
+              );
+            }
+            return ListView(
+              padding: Gap.page,
+              children: [
+                if (!lock.enabled)
+                  SectionCard(child: const _LockSetup())
+                else ...[
+                  settings,
+                  if (lock.mode == AppLockMode.password) ...[const SizedBox(height: Gap.item), recovery],
+                  if (lock.required) ...[const SizedBox(height: Gap.item), note],
+                ],
               ],
-            ],
-          ],
+            );
+          },
         ),
       ),
     );

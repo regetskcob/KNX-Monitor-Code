@@ -189,8 +189,7 @@ class ChartCard extends StatelessWidget {
                       Text(store.value(t), style: data.copyWith(color: hz.text)),
                   ],
                 ),
-              if (series.length > _legend)
-                Text('+ ${series.length - _legend}', style: data.copyWith(color: hz.textMuted)),
+              if (series.length > _legend) Text('+ ${series.length - _legend}', style: context.hzTheme.count),
               if (footer case final f?) ...[const Spacer(), f],
             ],
           ),

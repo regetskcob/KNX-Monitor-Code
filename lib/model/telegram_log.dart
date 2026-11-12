@@ -201,7 +201,7 @@ class TelegramLog extends ChangeNotifier {
     if (t.repeated) repeatedCount++;
     if (t.type != TelegramType.read) {
       latest[t.destination] = t;
-      final v = numericValue(CatalogStore.instance.dptOf(t.destination), t);
+      final v = numericValue(CatalogStore.instance.dptFor(t), t);
       if (v != null) {
         final h = history.putIfAbsent(t.destination, () => []);
         final times = historyTimes.putIfAbsent(t.destination, () => []);

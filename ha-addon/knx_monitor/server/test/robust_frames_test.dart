@@ -159,11 +159,14 @@ void main() {
 
     // After the restart the keyring still says 0, but the recorded telegram stays a replay.
     bus = await run();
+    // "Today" starts with the day's history (the telegram recorded before the restart).
+    await bus.todayCounted;
+    final before = bus.today;
     link.receive(recorded);
     await Future<void>.delayed(const Duration(milliseconds: 200));
-    expect(bus.today, 0);
+    expect(bus.today, before);
     link.receive(secured());
-    await _until(() => bus.today == 1);
+    await _until(() => bus.today == before + 1);
     await bus.shutdown();
   });
 

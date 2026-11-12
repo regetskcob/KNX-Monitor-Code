@@ -82,6 +82,19 @@ final class AckGroup extends AckTarget {
   String describe() => [formatGroup(address), ?CatalogStore.instance.info(address)?.name].join(' ');
 }
 
+/// Several group addresses as destinations under one label, e.g. the devices of a room.
+final class AckGroups extends AckTarget {
+  const AckGroups(this.addresses, this.label);
+  final Set<int> addresses;
+  final String label;
+
+  @override
+  bool matches(Telegram t) => addresses.contains(t.destination);
+
+  @override
+  String describe() => label;
+}
+
 /// Which tone: write, response, or a sender that according to the project does
 /// not send there (or is not in the project at all).
 enum AckSound { write, response, foreign }

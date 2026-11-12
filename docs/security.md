@@ -163,6 +163,17 @@ Hardening on restore, all before anything is written:
 Limits: the decrypted ZIP holds the project and the KNX Secure keys in plain
 text. The backup is only as strong as its password; there is no recovery.
 
+The Busclear Box, the Docker container and the add-on have a backup of their own
+data folder, the [box backup](backup-format.md#box-backup): a plain zip whose
+KNX Secure keyring, IP Secure passwords and third-party credentials are in an
+encrypted part with the same construction (PBKDF2-HMAC-SHA256 with 600,000
+rounds, AES-256-GCM), only if the user sets a password. The box password, paired
+devices, TLS key and integration tokens are never in it, so a stolen file opens
+no box. Backup and restore are admin only; restoring asks for the current box
+password, is locked in read-only mode, checks the zip against path traversal,
+zip bombs and unknown paths before anything is moved, and keeps the previous
+state.
+
 ## 3. App lock
 
 Code: `lib/model/app_lock.dart`, `lib/platform/key_vault.dart`,
@@ -310,6 +321,39 @@ keyring count; the file is never served or accepted over `/api/files/`. Test:
 Neustart"). Up to 30 seconds of numbers can be lost in a power cut; a replay
 of telegrams from exactly that window would pass once.
 
+With several tap points ([tap-points.md](tap-points.md)) a forwarded secured
+telegram arrives more than once with the same sequence number. The replay check
+stays as it is; `SecureTapCache` (app: `lib/knx/secure/secure_tap_cache.dart`,
+server: `server/lib/src/secure_taps.dart`, kept identical by
+`server/test/tap_copies_test.dart`) lets exactly one case through before it,
+and only as a further sighting of the entry the first copy opened in the
+merger:
+
+- the frame is byte-identical in everything the MAC covers, MAC included
+  (sender, destination, address type, secured APDU with sequence number). Only
+  the repeat flag and the hop count may differ; neither is protected, and the
+  copy is given the repeat flag of the first one so both merge under one key;
+- it comes from a tap point that has not delivered this telegram yet;
+- the entry of the first copy is still waiting in the merger. Once it has left
+  (seen by every listening tap point, window over, a silent tap point that is
+  not waited for), any copy is a replay;
+- it arrives within the merge window of that pair of tap points, counting only
+  windows set by hand (default 100 ms, at most 5 s). Windows the meter widened
+  on its own never count: lag can be faked with unsecured telegrams.
+
+Everything else goes to `DataSecure.receive` and is rejected and counted as
+before. As a last line, a copy that the merger releases on its own after all is
+dropped by the caller (`SecureTapCache.released`). A copy therefore never
+becomes an entry: nothing passes history, MQTT, alarms or watchers a second
+time, and no value can differ from the first copy's. With a single tap point
+the cache is not used at all. Residual risk: someone who can inject the
+identical frame on another line while the entry is still open, within that
+window, makes the telegram show as "also seen there" (a wrong sighting in the
+path and in the live filter table check). Tests:
+`test/secure_tap_cache_test.dart`, `server/test/tap_points_test.dart`
+(variants 1 to 3: wide window of a third tap point, flipped repeat flag, silent
+tap point).
+
 `DataSecure.send` (app only) encrypts group telegrams to addresses that have a
 key, with the tunnel address as source. The sending sequence number starts at
 the milliseconds since 2018-01-05 UTC and counts up, so it increases across
@@ -318,6 +362,47 @@ restarts without a stored counter.
 Limit: the sending sequence number depends on the device clock. A clock that is
 far behind produces numbers that receivers reject as replays (a functional
 failure, not a security one).
+
+### DALI reports and the emergency lighting log
+
+Busclear reads the DALI side of an installation from the telegrams a KNX-DALI
+gateway sends ([dali.md](dali.md)). Any device on the bus can send any
+telegram with any sender address, so these reports are input from outside:
+
+- **Who reported:** a fault report counts only for a gateway in the project or
+  one the user took over; a sender heard while listening is a suggestion (at
+  most 16, kept in memory, never saved). On the server, with `dali.json` only
+  the gateways it names count; without it at most 16 senders are followed. A
+  converter status or 1-bit fault object counts only from the gateway the
+  project names for it.
+- **Emergency lighting log:** every entry keeps the sender (`src`). A result
+  from another sender than the gateway is marked (`fx`), shown in the view, PDF
+  and CSV, and never counts as a current or failed test. Whether the telegram
+  arrived KNX Data Secure is noted (`sec`) wherever the log is written: on the
+  add-on and the box by the server, in the apps by their tunnel, which marks a
+  telegram it decrypted and checked with the keyring (`markDataSecure` in
+  `lib/knx/telegram.dart`, keyed to the frame, so the mark survives merging at
+  tap points). A rebuild from the daily history knows no `sec`: the history
+  keeps the decrypted frame only. Without Data Secure the
+  results are not forgery-proof; the view and the PDF say so. A result seen for
+  the first time may be older than its time: it is marked and has an unknown
+  age, never "current".
+- **Bounded:** at most one entry per object, test kind and origin per hour
+  (further changes are only counted), at most 4 MB per year's file with one
+  overflow line and a notification, files read up to that limit (never thrown
+  away as a whole, the cut is shown). `dali_tests/` is append only through the
+  file API: no rewrite, no delete (it goes with the installation).
+- **Notifications:** a state counts once it held for 30 seconds; per gateway at
+  most five notifications a minute, then one summary; at most 60 events a minute
+  for Home Assistant automations; at most 4096 luminaires remembered.
+- **Writes:** `dali.json` (names, rooms, what the objects mean) changes only
+  with edits and the project; the runtime state lives in `dali_state.json`, a
+  fault change is saved within seconds, mere liveness at most every ten minutes.
+  Only `dali.json` goes to the box.
+- **Reading:** periodic reading of the diagnostic addresses is off by default,
+  never runs in read-only mode, starts after a random delay and is left out
+  while every gateway reported within the interval, so several views on one
+  server do not all read.
 
 ## 5. Writing to the bus
 
@@ -412,8 +497,13 @@ Rules in `ha-addon/knx_monitor/server/lib/src/relay_policy.dart`, tests in
 - Read-only mode filters services as described above.
 - On the box, role `device` gets no access to `/ws` at all
   (`BoxAccess.guard`), because the raw relay could carry any telegram.
-- When access is revoked or the box password changes, open relays and bus
-  WebSockets are closed (`onAccessChanged`).
+- When access is revoked or the box password changes, open relays, bus
+  WebSockets and event channels are closed (`onAccessChanged`).
+- The event channel `/ws/events` ([event-channel.md](event-channel.md)) takes
+  nothing from the client (a message over 1 KiB closes it with 1009), holds at
+  most 256 KiB per connection and cuts off a client that stops reading, and
+  accepts at most 8 connections, 2 per device or address, the last one only
+  with admin rights.
 - When the browser tab closes, the server sends `DISCONNECT_REQUEST` for tunnels
   that are still open.
 - `/ws` and `/ws/bus` ping every 20 seconds (`webSocketPing`); a client that
@@ -484,7 +574,8 @@ Without Supervisor (Busclear Box, Docker; `BOX=1`) there is no discovery and no 
 token: the server does not create one (`HaIntegration.tokenAccess`), and one left
 from an earlier start in the add-on is removed. Instead `/api/ha/*` takes a paired
 device with admin rights, sent as `Authorization: Bearer` (the token from a
-pairing link created on `/pair` with "Verwalten", or from `POST /api/box/pair`).
+link created on `/pair` with "Verwalten" and "Schlüssel direkt anzeigen", or
+from `POST /api/box/pair`).
 The request first passes `BoxAccess.guard` like any other (network access, rate
 limit, constant-time hash comparison), then `bin/server.dart` lets only that
 role and kind of credential through: the box password, a browser session and
@@ -503,15 +594,51 @@ Tests: `server/test/box_access_test.dart`, `server/test/box_security_test.dart`.
 | Credential | Used by | Stored as | Role |
 |---|---|---|---|
 | Box password | Browser on the login page `/login` (password only), then a session cookie; tools also as HTTP Basic (any user name) | PBKDF2-HMAC-SHA256, 40,000 rounds, 16-byte salt, in `access.json` | `admin` |
-| Device token (32 random bytes) from `/pair` in the browser | App, `Authorization: Bearer` | SHA-256 in `access.json` | `device` |
+| One-time pairing code (32 random bytes) from `/pair` in the browser, in the QR code and link | App, once, in the body of `POST /api/box/claim` | SHA-256, in memory only, 10 minutes | none; exchanged for a device token |
+| Device token (32 random bytes), from exchanging a pairing code | App, `Authorization: Bearer` | SHA-256 in `access.json` | `device` |
 | Device token from `POST /api/box/pair` (requires the box password itself as HTTP Basic, not a session or token) | App paired with the box password | SHA-256 | `admin` |
-| Device token from `/pair` with "Nur ansehen" | App or browser that only looks | SHA-256, `viewOnly` | `viewer` |
-| Device token from `/pair` with "Verwalten" | Home Assistant integration, ioBroker | SHA-256, `admin` | `admin` |
+| Device token from a code created with "Nur ansehen" | App or browser that only looks | SHA-256, `viewOnly` | `viewer` |
+| Device token from `/pair` with "Verwalten" (as a code, or shown directly with "Schlüssel direkt anzeigen") | Home Assistant integration, ioBroker | SHA-256, `admin` | `admin` |
+
+Pairing a device on `/pair` (`BoxAccess.createPairingCode`, `claimPairing`,
+tests in `server/test/box_access_test.dart`, group "Kopplungscode"):
+
+- The page creates no device. It shows a QR code and a link
+  `knxmonitor://box?url=…&code=…&name=…&fp=…` with a one-time pairing code:
+  32 random bytes, valid for 10 minutes, usable once. The box keeps only its
+  SHA-256, and only in memory: a restart ends open codes, and so do changing
+  the password and "Alle sperren". At most 8 codes are open at a time.
+- The app exchanges the code with one request, `POST /api/box/claim`
+  `{code, name, app}`, and gets what `POST /api/box/pair` returns: `{key, id,
+  name}`. The request needs no other credentials; it runs over the same
+  connection as everything else (HTTPS with the pinned certificate when the
+  link has `fp`) and is subject to the same network check (box Wi-Fi, or LAN
+  access enabled). The code travels in the body, never in a URL or a header.
+- The device is created at that moment, with the rights chosen on the page
+  ("Nur ansehen", "Verwalten") and the name entered there (without one: the
+  name the app gives). Nothing in the request can change the rights.
+- A wrong, used or expired code counts as a failed attempt of the sender, like
+  a wrong password, and during a lockout no code is checked. A code that was
+  exchanged does not clear the counter.
+- The page lists codes that wait ("wartet auf die App", with "Verwerfen" to
+  withdraw one) and those exchanged during this run ("eingelöst", with the
+  time), so a code someone else used does not go unnoticed: the device it
+  created is in the list below and can be revoked there.
+- **Key shown directly.** Ticking "Schlüssel direkt anzeigen" creates the
+  device at once and shows its token, as text and as a link with `key=`, as
+  the page did up to 1.11.2. That is for what cannot exchange a code: the Home
+  Assistant integration and ioBroker (which take the key), and apps up to
+  1.11.2. Such an app treats a code link as a link without access and reports
+  that the box refused it; nothing is paired and nothing leaks. The app keeps
+  reading links with `key=`.
+- The setup link on the sticker (`pw=`) and pairing with the box password
+  (`POST /api/box/pair`) are unchanged.
 
 - The password hash is computed in a separate isolate. Hashes stored by older
   boxes with more rounds are re-hashed after the next successful login.
 - Comparisons of hashes and tokens run in constant time (`_equal`).
-- Failed logins per peer address: four are free, from the fifth on 30 seconds,
+- Failed attempts per peer address (wrong password, wrong device token, wrong
+  pairing code): four are free, from the fifth on 30 seconds,
   doubling up to 15 minutes. A valid device token is checked before the
   lockout, so paired apps keep working while one sender is locked out (behind
   a reverse proxy or NAT that is everyone); a wrong token is refused during
@@ -521,6 +648,24 @@ Tests: `server/test/box_access_test.dart`, `server/test/box_security_test.dart`.
   counter; only the correct password does. A flood of new peer addresses does
   not lift a running lockout: expired entries go first, running ones only
   beyond 8,192 peers.
+- Counters and running lockouts survive a restart
+  (`access-strikes.json` next to `access.json`, written atomically, tests in
+  `server/test/box_strikes_test.dart`): pulling the plug or provoking a crash
+  buys no fresh attempts. The file is written only when a counter changes (a
+  failed attempt, or the correct password after failed ones), never for a
+  request refused during a lockout; changes during a write are collected into
+  one more write. It holds at most 1,024 senders, those that wait longest
+  first. It is not served by `/api/files/` and is not part of a box backup.
+- The lockout can never shut the owner out for good. No wait is longer than
+  15 minutes. The box often has no clock: a stored lockout that ends later
+  than its counter allows (clock set back since) is shortened to that wait,
+  counted from now, on start and while running. Counters whose wait ended more
+  than 24 hours ago are dropped on start, and an unreadable file is discarded.
+  A password reset on the device (`password-reset`, see "Reset" below) clears
+  all counters and lockouts. In Docker, deleting `access-strikes.json` from
+  the data folder while the container is stopped does the same; whoever can do
+  that can read `access.json` as well. Moving the clock forward ends lockouts
+  early; setting the clock needs admin rights.
 - Connections: at most 64 live views (`/ws/bus`) and 16 UDP relays (`/ws`) at
   once; beyond that the server answers 503 before the WebSocket upgrade.
 - Requests: only `GET`, `HEAD`, `POST`, `PUT`, `PATCH` and `DELETE` (405
@@ -570,7 +715,7 @@ the connection to an own tunnel and writes no files at all. The server reports
 
 | | `admin` | `device` | `viewer` |
 |---|---|---|---|
-| Live view `/ws/bus`, history, statistics, ETS export, reports (read) | yes | yes | yes |
+| Live view `/ws/bus`, event channel `/ws/events`, history, statistics, ETS export, reports (read) | yes | yes | yes |
 | Send to the bus | any `L_Data.req` | group values only (section 5) | no |
 | Raw relay `/ws`, `/pair`, `/api/box/*` (devices, password, Wi-Fi, LAN access) | yes | no | no |
 | Change the bus connection (`/api/bus`), report, export and maintenance date (`/api/report/maintenance`), force the box clock, check the KNX HAT | yes | no | no |
@@ -653,7 +798,8 @@ Limits against overload, for all roles:
   making the change), and the host removes the passwords from the boot partition
   (`box/files/secrets.sh`).
 - **Reset:** a new password can be placed on the SD card (`password-reset`);
-  whoever holds the card can regain access. Paired devices stay.
+  whoever holds the card can regain access. Paired devices stay. Failed
+  attempts and lockouts are cleared with it.
 - **TLS:** `box/files/tls-cert.sh` creates a self-signed ECDSA P-256 certificate
   on first boot (one key per box, never in the image). The server serves HTTPS on
   port 443 next to HTTP (`server/lib/src/box_tls.dart`, `server/bin/server.dart`).
@@ -662,6 +808,23 @@ Limits against overload, for all roles:
   certificates (`lib/platform/addon_io.dart`, `pinnedHttpClient`), so a
   certificate from a public CA cannot replace it. Expiry and host name are not
   checked; the fingerprint is.
+- **No secret over plain HTTP to the internet:** without a fingerprint the app
+  speaks plain HTTP, which is how a box without a certificate in the home
+  network and the box's own Wi-Fi (`10.42.0.1`) work. To an address that is
+  not local (`BoxLink.isLocalHost`: private, link-local and loopback
+  addresses, `localhost`, `.local`) the app then sends nothing secret: every
+  request with the device token (`Authorization: Bearer`, including the
+  WebSocket, downloads and uploads), pairing with the box password
+  (`Authorization: Basic`) and exchanging a pairing code are refused before a
+  connection is opened, with a message that names the address
+  (`addonRefusal` in `lib/platform/addon_io.dart`, tests in
+  `test/box_plain_http_test.dart`). Pairing says so before the box is stored.
+  Names only the home network answers are allowed as well
+  (`BoxLink.isHomeName`): a single label such as `nas`, and names under
+  `.home.arpa` or `.internal`. Other names count as not local even if they
+  resolve to a private address, `nas.fritz.box` for instance (`.box` is a
+  public top-level domain): use the IP address, the `.local` name or a
+  certificate (`TLS_CERT`) there.
 - **Plain HTTP:** a browser in the box's Wi-Fi uses HTTP, so the Wi-Fi password
   (WPA2) is the protection there. The `/pair` page warns when it is opened over
   plain HTTP from outside the box's Wi-Fi.
@@ -730,13 +893,14 @@ Follow-ups of the review of 7 November:
 - **MQTT `recording/set`**: only `ON` and `OFF` are accepted (anything else
   used to switch the recording off), and every change is logged. Making it
   opt-in would break the existing Home Assistant switch.
-- **`/api/files` allowlist** (`knownAppFiles` in `files.dart`): in report
-  mode for now. A first path segment outside the list is logged once and
-  still served; once a release shows no unexpected names in the logs, the
-  list replaces the blocklist. `test/known_app_files_test.dart` checks every
-  file name in the app's code against the list; it found
-  `secure_sequence.json` missing (the Data Secure sequence counters), which
-  an enforced list would have refused.
+- **`/api/files` allowlist** (`knownAppFiles` in `files.dart`): enforced
+  from the release after 1.11.2 (the logs of 1.11 stayed quiet). A first path segment
+  outside the list is refused with 403 and logged once; the blocklist of the
+  server's own files stays as a second line. `test/known_app_files_test.dart`
+  checks every file name and every folder in the app's code against the
+  list; it found `secure_sequence.json` (the Data Secure sequence counters)
+  and `hunts/` (the fault hunt's windows, written by the server and read by
+  the app) missing, which the enforced list would have refused.
 - **Without root in Docker** (PUID/PGID, see above). Tested with Podman: data
   folder of a root-run container handed over, server as `1000:1000` with no
   effective capabilities, and exit 78 without `SETUID`/`SETGID`.
@@ -890,13 +1054,28 @@ Collected from the sections above, and in `tool/public-repo/SECURITY.md`:
   Secure routing is not implemented.
 - Diagnostics packages are scrubbed, not anonymous.
 - Pairing and setup links use the custom scheme `knxmonitor://`, which any app
-  on the phone can register too. A link that another app catches gives it the
-  device key (`key=`) or, on the sticker, the first box password (`pw=`). The
-  app confirms every link from outside with the address before it pairs, the
-  sticker password must be changed on first use (which revokes devices paired
-  with it), and a paired device can be removed on `/pair`. Verified app links
-  would need a public web domain for each box, which a box in its own Wi-Fi
-  does not have.
+  on the phone can register too, and links end up in histories, logs and
+  screenshots. The pairing link from `/pair` therefore carries a one-time
+  code (`code=`, 10 minutes, usable once) instead of the device key. Whoever
+  catches or photographs it and reaches the box first, within that time, gets
+  the device in place of the owner; the owner's app is then refused, and the
+  page lists the code as used and the device, which can be revoked there.
+  Three kinds of links still carry a lasting secret: the setup link on the
+  sticker (the first box password, `pw=`; printed, so it cannot change), a
+  link created with "Schlüssel direkt anzeigen" for Home Assistant, ioBroker
+  or an app up to 1.11.2 (`key=`), and links created by boxes up to 1.11.2.
+  The app confirms every link from outside with the address before it pairs,
+  the sticker password must be changed on first use (which revokes devices
+  paired with it), and a paired device can be removed on `/pair`. Verified app
+  links would need a public web domain for each box, which a box in its own
+  Wi-Fi does not have.
+- If the answer to exchanging a pairing code is lost on the way, the code is
+  spent and the device exists without an app that holds its key: create a new
+  code and revoke that device on `/pair`.
+- The lockout after failed attempts is kept across restarts, but it counts
+  per sender address: an attacker who changes addresses gets four free
+  attempts per address. The box password should therefore not be guessable;
+  pairing codes and device keys (256 random bits) are not.
 - The app pins the box certificate by its fingerprint and ignores its validity
   period and name (the box often has no clock). A pin stays valid until the
   box gets a new certificate: then pair again with the new link. Revoking a

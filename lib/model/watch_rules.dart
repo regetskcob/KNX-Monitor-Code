@@ -5,10 +5,12 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../catalog_store.dart';
+import '../knx/dali.dart';
 import '../knx/telegram.dart';
 import '../platform/addon.dart';
 import 'installation.dart';
 import 'plan.dart';
+import 'server_features.dart';
 import 'telegram_log.dart';
 import 'box_keyring_consent.dart';
 import 'trigger.dart';
@@ -25,16 +27,50 @@ class WatchRule {
     this.compare = ValueCompare.contains,
     this.sound = true,
     this.enabled = true,
+    this.bits,
+    this.title,
   });
 
-  factory WatchRule.fromJson(Map<String, Object?> j) => WatchRule(
-    id: j['id']! as String,
-    address: j['address']! as int,
-    value: j['value'] as String?,
-    compare: ValueCompare.values.asNameMap()[j['compare']] ?? ValueCompare.contains,
-    sound: j['sound'] as bool? ?? true,
-    enabled: j['enabled'] as bool? ?? true,
-  );
+  /// Watcher on the flags of a datapoint (see [bits]), e.g. "DALI fault" on a diagnostic address.
+  /// [value] is set to a text no decoded value contains: an older app that does not know [bits]
+  /// then never fires instead of firing on every telegram.
+  const WatchRule.flags({
+    required this.id,
+    required this.address,
+    required Map<String, Object?> this.bits,
+    required String this.title,
+    this.sound = true,
+    this.enabled = true,
+  }) : value = 'bits',
+       compare = ValueCompare.contains;
+
+  factory WatchRule.fromJson(Map<String, Object?> j) => tryParse(j) ?? (throw FormatException('watch rule: $j'));
+
+  /// A rule from stored JSON; `null` for an entry that is no rule (wrong types, missing id or
+  /// address). Every field is checked: the file may come from another device or an older app.
+  static WatchRule? tryParse(Object? json) {
+    if (json is! Map) return null;
+    final id = json['id'];
+    final address = json['address'];
+    if (id is! String || id.isEmpty || address is! int || address < 0 || address > 0xFFFF) return null;
+    final value = json['value'];
+    final title = json['title'];
+    final sound = json['sound'];
+    final enabled = json['enabled'];
+    return WatchRule(
+      id: id,
+      address: address,
+      value: value is String ? value : null,
+      compare: ValueCompare.values.asNameMap()[json['compare']] ?? ValueCompare.contains,
+      sound: sound is bool ? sound : true,
+      enabled: enabled is bool ? enabled : true,
+      bits: switch (json['bits']) {
+        final Map<Object?, Object?> m when m.keys.every((k) => k is String) => m.cast<String, Object?>(),
+        _ => null,
+      },
+      title: title is String ? title : null,
+    );
+  }
 
   final String id;
   final int address;
@@ -49,12 +85,24 @@ class WatchRule {
   final bool sound;
   final bool enabled;
 
+  /// Check on the flags of the payload instead of a value ([bitsCheckMatches]): which flags, and
+  /// optionally which DALI address. The add-on server checks the same form (check kind `bits`).
+  final Map<String, Object?>? bits;
+
+  /// Description of a [bits] rule ("DALI-Fehler · EVG 12"), in the language it was created in.
+  final String? title;
+
   TriggerConfig get condition =>
       TriggerConfig(kind: TriggerKind.address, address: address, value: value, compare: compare);
 
-  bool matches(Telegram t, TelegramLog log) => enabled && condition.matches(t, log);
+  bool matches(Telegram t, TelegramLog log) {
+    if (!enabled) return false;
+    final bits = this.bits;
+    if (bits == null) return condition.matches(t, log);
+    return t.destination == address && t.type != TelegramType.read && !t.isSmall && bitsCheckMatches(bits, t.data);
+  }
 
-  String describe() => condition.describe();
+  String describe() => title ?? condition.describe();
 
   /// Datapoint types whose numeric value the server reads itself (like [numericValue]).
   static const _serverNumeric = {5, 6, 7, 8, 9, 12, 13, 14};
@@ -70,6 +118,8 @@ class WatchRule {
   /// otherwise the matching raw values (determined with the same check as in the
   /// app). `null` if that is not possible; then the app checks it.
   Map<String, Object?>? serverCheck() {
+    // Flags: only a server that knows the check kind gets it; otherwise the app checks.
+    if (bits != null) return ServerFeatures.instance.bitsCheck ? {'bits': bits} : null;
     final want = value?.trim() ?? '';
     if (want.isEmpty) return const {'any': true};
     final dpt = CatalogStore.instance.dptOf(address);
@@ -117,6 +167,8 @@ class WatchRule {
     compare: compare,
     sound: sound ?? this.sound,
     enabled: enabled ?? this.enabled,
+    bits: bits,
+    title: title,
   );
 
   Map<String, Object?> toJson() => {
@@ -126,6 +178,8 @@ class WatchRule {
     if (value != null && value!.isNotEmpty && compare != ValueCompare.contains) 'compare': compare.name,
     'sound': sound,
     'enabled': enabled,
+    'bits': ?bits,
+    'title': ?title,
   };
 }
 
@@ -181,7 +235,8 @@ class WatchRules extends ValueNotifier<List<WatchRule>> {
         final shared = await InstallationStore.instance.storage.read(serverPath);
         if (shared != null) {
           final rules = (jsonDecode(shared) as Map<String, Object?>)['rules'] as List? ?? const [];
-          value = [for (final j in rules) WatchRule.fromJson((j as Map).cast<String, Object?>())];
+          // One broken entry (another device may store its own) does not take the others along.
+          value = [for (final j in rules) ?WatchRule.tryParse(j)];
           return;
         }
       } on Object catch (e) {
@@ -192,7 +247,7 @@ class WatchRules extends ValueNotifier<List<WatchRule>> {
     final raw = prefs.getString(_key);
     if (raw == null) return;
     try {
-      value = [for (final j in jsonDecode(raw) as List) WatchRule.fromJson((j as Map).cast<String, Object?>())];
+      value = [for (final j in jsonDecode(raw) as List) ?WatchRule.tryParse(j)];
     } on Object catch (e) {
       debugPrint('Wächter nicht lesbar: $e');
     }
@@ -211,6 +266,8 @@ class WatchRules extends ValueNotifier<List<WatchRule>> {
     void again() => unawaited(share().catchError((Object e) => debugPrint('Wächter: $e')));
     CatalogStore.instance.addListener(again);
     Plan.instance.addListener(again);
+    // A server that learns (or loses) a check kind: hand the rules over again.
+    ServerFeatures.instance.addListener(again);
   }
 
   /// Rule with a description for the notification and a checkable form; without

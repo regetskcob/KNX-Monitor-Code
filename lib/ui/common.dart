@@ -66,6 +66,7 @@ class SectionCard extends StatelessWidget {
     required this.child,
     this.soft = false,
     this.flat = false,
+    this.fill = false,
     this.padding,
   });
 
@@ -82,6 +83,10 @@ class SectionCard extends StatelessWidget {
   /// Without fill, frame or padding, for sidebars whose sections are separated
   /// only by label and hairlines.
   final bool flat;
+
+  /// The card has a given height (a row of a [CardGrid]) and [child] takes what is left of it, to
+  /// keep an action at the bottom or to make the whole card tappable.
+  final bool fill;
   final EdgeInsetsGeometry? padding;
 
   @override
@@ -111,7 +116,7 @@ class SectionCard extends StatelessWidget {
               ),
               const SizedBox(height: Gap.inner),
             ],
-            child,
+            if (fill) Expanded(child: child) else child,
           ],
         ),
       ),
@@ -334,6 +339,35 @@ class CardColumns extends StatelessWidget {
         ],
       );
     },
+  );
+}
+
+/// Cards in a grid of [columns], filled row by row; the cards of a row are equally high (build them
+/// with [SectionCard.fill]) and a last row that is not full keeps the card width. For galleries and
+/// rankings, where [CardColumns] would let the bottoms run ragged.
+class CardGrid extends StatelessWidget {
+  const CardGrid({super.key, required this.columns, required this.children, this.gap = Gap.section});
+
+  final int columns;
+  final List<Widget> children;
+  final double gap;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    spacing: gap,
+    children: [
+      for (var i = 0; i < children.length; i += columns)
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: gap,
+            children: [
+              for (var k = i; k < i + columns; k++)
+                Expanded(child: k < children.length ? children[k] : const SizedBox()),
+            ],
+          ),
+        ),
+    ],
   );
 }
 
@@ -647,7 +681,7 @@ class _VersionLineState extends State<VersionLine> {
     if (Addon.available) {
       try {
         final server = (await Addon.status())['version'] as String?;
-        if (server != null) parts.add(Addon.box != null ? s.versionBox(server) : s.versionAddon(server));
+        if (server != null) parts.add(Addon.onBox ? s.versionBox(server) : s.versionAddon(server));
       } on Object {
         // Server unreachable: only the app.
       }

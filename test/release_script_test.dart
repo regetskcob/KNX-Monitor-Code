@@ -144,7 +144,9 @@ touch build/ios/ipa/app.ipa build/ios/archive/Runner.xcarchive/Info.plist
         .listSync(recursive: true)
         .whereType<File>()
         .map((f) => f.path);
-    expect(archives.single, endsWith('.xcarchive/Info.plist'));
+    // The archive's own Info.plist, whatever else lies in it: in a checkout that has built a
+    // real release, build/ios/archive holds the whole archive and all of it is copied.
+    expect(archives.where((p) => p.endsWith('.xcarchive/Info.plist')), hasLength(1));
   });
 
   group('Desktop-Release', () {

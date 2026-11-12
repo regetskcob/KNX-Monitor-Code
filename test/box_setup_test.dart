@@ -17,6 +17,9 @@ void main() {
   Map<String, Object?>? configured;
   var gateways = <Map<String, Object?>>[];
   String? pairBody;
+  String? claimBody;
+  String? claimAuth;
+  var claimStatus = HttpStatus.ok;
   Map<String, Object?>? boxInfo;
   var boxInfoStatus = HttpStatus.ok;
 
@@ -24,6 +27,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     FlutterSecureStorage.setMockInitialValues({});
     requests.clear();
+    claimBody = null;
+    claimAuth = null;
+    claimStatus = HttpStatus.ok;
     configured = null;
     boxInfo = null;
     boxInfoStatus = HttpStatus.ok;
@@ -45,6 +51,15 @@ void main() {
         }
         pairBody = body;
         answer = {'key': 'geraetezugang', 'id': 'a1', 'name': 'KNX-Box-1A2B'};
+      } else if (path == '/api/box/claim') {
+        // Einmal-Code von der Kopplungsseite: im Rumpf, ohne Anmeldung, nur einmal gültig.
+        claimAuth = auth;
+        claimBody = body;
+        if (claimStatus != HttpStatus.ok || (jsonDecode(body) as Map)['code'] != 'einmal-code') {
+          request.response.statusCode = claimStatus == HttpStatus.ok ? HttpStatus.forbidden : claimStatus;
+          return request.response.close();
+        }
+        answer = {'key': 'geraetezugang', 'id': 'b2', 'name': 'KNX-Box-1A2B'};
       } else if (auth != 'Bearer geraetezugang') {
         request.response.statusCode = HttpStatus.unauthorized;
         return request.response.close();
@@ -85,6 +100,98 @@ void main() {
     'knxmonitor://box?url=http%3A%2F%2F127.0.0.1%3A${server.port}%2F&name=KNX-Box-1A2B'
     '&ssid=KNX-Box-1A2B&wifi=wlanpass12&pw=box%23pass',
   )!;
+
+  group('Kopplungslink mit Einmal-Code', () {
+    BoxLink codeLink([String code = 'einmal-code']) =>
+        BoxLink.parse('knxmonitor://box?url=http%3A%2F%2F127.0.0.1%3A${server.port}%2F&code=$code&name=KNX-Box-1A2B')!;
+
+    test('die App tauscht den Code gegen den Gerätezugang und speichert nur den', () async {
+      final setup = BoxSetup(
+        codeLink(),
+        deviceName: 'iPhone',
+        joinWifi: (_, _) async => fail('kein WLAN im Link'),
+        reachable: (_) async => true,
+        choosePassword: () async => fail('nicht mit dem Aufkleber gekoppelt'),
+      );
+      await setup.run();
+      expect(setup.error, isNull, reason: '$requests');
+      expect(setup.states[BoxSetupStep.wifi], BoxStepState.skipped);
+      expect(setup.states[BoxSetupStep.pair], BoxStepState.done);
+      expect(jsonDecode(claimBody!), {
+        'code': 'einmal-code',
+        'name': 'iPhone',
+        'app': matches(RegExp(r'^[0-9a-f]{32}$')),
+      });
+      // Der Code steht nur im Rumpf: kein Authorization-Kopf, nichts in der Adresse.
+      expect(claimAuth, isEmpty);
+      expect(requests.where((r) => r.contains('claim')), ['POST /api/box/claim']);
+      expect(requests, isNot(contains('POST /api/box/pair')));
+      expect(Addon.box?.key, 'geraetezugang');
+      expect(Addon.box?.code, isEmpty);
+      expect('${BoxConnection.instance.saved?.toUri()}', isNot(contains('einmal-code')));
+      expect(requests, contains('POST /api/box/time'));
+    });
+
+    test('abgelaufener oder benutzter Code: verständlicher Fehler, nichts gekoppelt', () async {
+      final setup = BoxSetup(codeLink('schon-benutzt'), deviceName: 'iPhone', reachable: (_) async => true);
+      await setup.run();
+      expect(setup.states[BoxSetupStep.pair], BoxStepState.failed);
+      expect(setup.error, contains('Kopplungscode'));
+      expect(setup.states[BoxSetupStep.time], BoxStepState.waiting);
+      expect(Addon.box, isNull);
+    });
+
+    test('Sperre der Box nach Fehlversuchen wird als solche gemeldet', () async {
+      claimStatus = HttpStatus.tooManyRequests;
+      final setup = BoxSetup(codeLink(), deviceName: 'iPhone', reachable: (_) async => true);
+      await setup.run();
+      expect(setup.states[BoxSetupStep.pair], BoxStepState.failed);
+      expect(setup.error, contains('Fehlversuche'));
+      expect(Addon.box, isNull);
+    });
+
+    test('ältere Box ohne Tausch (401/404): derselbe Fehler, nichts gekoppelt', () async {
+      for (final status in [HttpStatus.unauthorized, HttpStatus.notFound]) {
+        claimStatus = status;
+        final setup = BoxSetup(codeLink(), deviceName: 'iPhone', reachable: (_) async => true);
+        await setup.run();
+        expect(setup.states[BoxSetupStep.pair], BoxStepState.failed, reason: '$status');
+        expect(Addon.box, isNull);
+      }
+    });
+
+    test('Link mit Schlüssel (Box bis 1.11.2) koppelt wie bisher, ohne Tausch', () async {
+      final link = BoxLink.parse(
+        'knxmonitor://box?url=http%3A%2F%2F127.0.0.1%3A${server.port}%2F&key=geraetezugang&name=KNX-Box-1A2B',
+      )!;
+      final setup = BoxSetup(link, deviceName: 'iPhone', reachable: (_) async => true);
+      await setup.run();
+      expect(setup.error, isNull);
+      expect(setup.states[BoxSetupStep.pair], BoxStepState.skipped);
+      expect(requests, isNot(contains('POST /api/box/claim')));
+      expect(Addon.box?.key, 'geraetezugang');
+    });
+  });
+
+  group('unverschlüsselt zu einer Adresse im Internet', () {
+    for (final (what, query) in [
+      ('Schlüssel', 'key=geraetezugang'),
+      ('Einmal-Code', 'code=einmal-code'),
+      ('Box-Passwort', 'pw=box%23pass'),
+    ]) {
+      test('$what geht nicht hinaus: Kopplung scheitert mit Erklärung, nichts gespeichert', () async {
+        final link = BoxLink.parse('knxmonitor://box?url=http%3A%2F%2Fbox.example.com%2F&$query')!;
+        await BoxConnection.instance.forget();
+        final setup = BoxSetup(link, deviceName: 'iPhone', reachable: (_) async => true);
+        await setup.run();
+        expect(setup.states[BoxSetupStep.pair], BoxStepState.failed);
+        expect(setup.error, allOf(contains('box.example.com'), contains('unverschlüsselt')));
+        expect(Addon.box, isNull);
+        expect(BoxConnection.instance.saved, isNull);
+        expect(requests, isEmpty);
+      });
+    }
+  });
 
   test('Fehler beim Abfragen der Pflicht koppelt nicht einfach weiter', () async {
     boxInfoStatus = HttpStatus.internalServerError;

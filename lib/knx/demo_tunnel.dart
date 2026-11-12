@@ -3,7 +3,9 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import '../l10n/locale_controller.dart';
+import 'dali.dart';
 import 'group_catalog.dart';
+import '../model/tap_points.dart';
 import 'knx_tunnel.dart';
 import 'telegram.dart';
 
@@ -13,7 +15,11 @@ import 'telegram.dart';
 /// Behaves like a [KnxTunnel] from the outside: telegrams arrive via [telegrams], reads are
 /// answered, writes switch and report back.
 class DemoTunnel extends KnxTunnel {
-  DemoTunnel() : super('demo');
+  /// [withTapPoints]: the sample house with a second tap point on line 1.2 (issue #8), see
+  /// [_atTaps]. Off by default, so the first look at the app stays as simple as it is.
+  DemoTunnel({this.withTapPoints = false}) : super('demo');
+
+  final bool withTapPoints;
 
   /// Whether a demo is running. If so, history, health and commissioning persist nothing.
   static bool active = false;
@@ -39,7 +45,7 @@ class DemoTunnel extends KnxTunnel {
     _prepare();
     final out = <Telegram>[];
     _sink = out.add;
-    for (final ga in _values.keys.toList()..shuffle(_rng)) {
+    for (final ga in _initial()) {
       _emit(ga);
     }
     for (var i = 0; i < steps; i++) {
@@ -75,9 +81,10 @@ class DemoTunnel extends KnxTunnel {
     state.value = TunnelState.connected;
     deviceName.value = s.demoGateway;
     _prepare();
+    if (withTapPoints) _publishTaps();
     // Initial state step by step, then ongoing traffic.
     var i = 0;
-    final initial = _values.keys.toList()..shuffle(_rng);
+    final initial = _initial();
     _timer = Timer.periodic(const Duration(milliseconds: 160), (t) {
       if (i < initial.length) {
         _emit(initial[i++]);
@@ -86,12 +93,92 @@ class DemoTunnel extends KnxTunnel {
         _timer = Timer.periodic(const Duration(milliseconds: 900), (_) => _step());
       }
     });
+    _daliTimer = Timer.periodic(const Duration(milliseconds: 700), (_) => _daliStep());
+  }
+
+  // --- DALI gateway ---------------------------------------------------------------
+
+  Timer? _daliTimer;
+  int _daliTick = 0;
+
+  /// Faults the demo gateway reports per short address ([DaliFault] bits).
+  final _daliFaults = <int, int>{3: DaliFault.gear};
+
+  /// The gateway reports like a real one: first the state of every control gear and converter,
+  /// after a while a lamp fails at short address 12, then it repeats that now and then.
+  void _daliStep() {
+    if (frozen) return;
+    final i = _daliTick++;
+    if (i < DemoDali.gearCount) return _daliEmit(DemoDali.diagnostic, _daliDiagnostic(i));
+    final converter = i - DemoDali.gearCount;
+    if (converter < DemoDali.converters.length * 2) {
+      final address = DemoDali.converters[converter ~/ 2];
+      return converter.isEven
+          ? _daliEmit(DemoDali.status(address), DemoDali.statusNormal)
+          : _daliEmit(DemoDali.result(address), DemoDali.resultOf(address));
+    }
+    if (i == 45) {
+      _daliFaults[12] = DaliFault.lamp;
+      return _daliEmit(DemoDali.diagnostic, _daliDiagnostic(12));
+    }
+    if (i > 45 && i % 60 == 0) _daliEmit(DemoDali.diagnostic, _daliDiagnostic(12));
+  }
+
+  /// DPT 237.600 for [address]: lamp failure bit 8, ballast failure bit 9.
+  List<int> _daliDiagnostic(int address) {
+    final faults = _daliFaults[address] ?? 0;
+    return [(faults & DaliFault.lamp != 0 ? 0x01 : 0) | (faults & DaliFault.gear != 0 ? 0x02 : 0), address & 0x3F];
+  }
+
+  void _daliEmit(int ga, List<int> data, {TelegramType type = TelegramType.write}) => (_sink ?? inject)(
+    Telegram(
+      time: clock(),
+      source: DemoDali.gateway,
+      destination: ga,
+      type: type,
+      data: Uint8List.fromList(data),
+      isSmall: data.length == 1 && _dpts[ga]?.main == 1,
+    ),
+  );
+
+  /// Reads of the gateway's objects are answered with their current state.
+  bool _daliRead(int ga) {
+    if (!DemoDali.owns(ga)) return false;
+    final address = ga & 0xFF;
+    final data = ga == DemoDali.diagnostic
+        ? _daliDiagnostic(12)
+        : switch (_dpts[ga]?.main) {
+            244 => DemoDali.statusNormal,
+            245 => DemoDali.resultOf(address),
+            1 => [(_daliSwitched[address] ?? false) ? 1 : 0],
+            _ => null,
+          };
+    if (data != null) _daliEmit(ga, data, type: TelegramType.response);
+    return true;
+  }
+
+  final _daliSwitched = <int, bool>{};
+
+  /// Switching a DALI group: the gateway reports the new state on the group's status address. For
+  /// group 2 it reports on group 3's address: the demo of a wrong group assignment.
+  bool _daliWrite(int ga, int? small) {
+    final group = DemoDali.groupOfSwitch(ga);
+    if (group == null || small == null) return DemoDali.owns(ga);
+    final on = small & 1 == 1;
+    final answering = group == 2 ? 3 : group;
+    _daliSwitched[answering] = on;
+    Timer(const Duration(milliseconds: 180), () {
+      if (state.value == TunnelState.connected) _daliEmit(DemoDali.groupStatus(answering), [on ? 1 : 0]);
+    });
+    return true;
   }
 
   @override
   Future<void> disconnect() async {
     _timer?.cancel();
     _timer = null;
+    _daliTimer?.cancel();
+    _daliTimer = null;
     active = false;
     state.value = TunnelState.disconnected;
   }
@@ -101,6 +188,11 @@ class DemoTunnel extends KnxTunnel {
     inject(_telegram(destination, TelegramType.read, outgoing: true));
     // Finding for the health check: this object has no read flag.
     if (destination == _silent) return true;
+    if (DemoDali.owns(destination)) {
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      _daliRead(destination);
+      return true;
+    }
     if (_values.containsKey(destination)) {
       await Future<void>.delayed(Duration(milliseconds: 60 + _rng.nextInt(80)));
       inject(_telegram(destination, TelegramType.response));
@@ -110,16 +202,26 @@ class DemoTunnel extends KnxTunnel {
 
   @override
   Future<bool?> write(int destination, {int? small, List<int> data = const []}) async {
+    if (DemoDali.owns(destination)) {
+      inject(
+        Telegram(
+          time: clock(),
+          source: tunnelAddress!,
+          destination: destination,
+          type: TelegramType.write,
+          data: Uint8List.fromList(small != null ? [small] : data),
+          isSmall: small != null,
+          outgoing: true,
+        ),
+      );
+      _daliWrite(destination, small);
+      return true;
+    }
     final value = small?.toDouble() ?? _decode(destination, data);
     if (value != null) _values[destination] = value;
     inject(_telegram(destination, TelegramType.write, outgoing: true));
-    // Switching: the actuator reports back via the feedback address.
-    final feedback = _feedbackOf[destination];
-    if (feedback != null && value != null) {
-      await Future<void>.delayed(const Duration(milliseconds: 180));
-      _values[feedback] = value;
-      _emit(feedback);
-    }
+    // The actuator behind the command reports back on its status address.
+    if (value != null) _answer(destination);
     return true;
   }
 
@@ -221,6 +323,9 @@ class DemoTunnel extends KnxTunnel {
 
   void _seed() {
     for (final MapEntry(key: ga, value: d) in _dpts.entries) {
+      // The DALI gateway has its own script ([_daliStep]): its addresses stay out of the random
+      // traffic, so the rest of the demo (and its images) runs as before.
+      if (DemoDali.owns(ga)) continue;
       _values[ga] = switch ((d.main, d.sub)) {
         (9, 1) => ga == _ga('4/0/0') ? 11.5 : 20.5 + _rng.nextDouble() * 2,
         (9, 4) => ga == _ga('4/0/2') ? 8000 + _rng.nextDouble() * 4000 : 120 + _rng.nextDouble() * 400,
@@ -242,7 +347,32 @@ class DemoTunnel extends KnxTunnel {
   void _step() {
     if (frozen) return;
     _tick++;
+    if (withTapPoints) {
+      final down = _tick % tapCycle >= tapDownFrom && _tick % tapCycle < tapDownTo;
+      if (down != _tapDown) {
+        _tapDown = down;
+        _publishTaps();
+      }
+    }
     final now = clock();
+    if (withTapPoints) {
+      // A push button on line 1.3, where no tap point is and which the project does not know:
+      // seen through the couplers only, so the topology shows that line as "only indirectly
+      // visible".
+      if (_tick % 20 == 7) {
+        (_sink ?? inject)(
+          Telegram(
+            time: now,
+            source: _pa('1.3.7'),
+            destination: _ga('3/7/1'),
+            type: TelegramType.write,
+            data: Uint8List.fromList([(_tick ~/ 20) & 1]),
+            isSmall: true,
+            hopCount: 5,
+          ),
+        );
+      }
+    }
     // Time/date every minute like a real time source.
     if (now.second < 1 || _tick == 1) {
       _emit(_ga('7/0/0'));
@@ -294,15 +424,135 @@ class DemoTunnel extends KnxTunnel {
     final on = _values[cmd] == 1 ? 0.0 : 1.0;
     _values[cmd] = on;
     _emit(cmd);
-    void feedback() {
-      _values[_ga('1/1/$n')] = on;
-      _emit(_ga('1/1/$n'));
-    }
-
-    _sink != null ? feedback() : Timer(const Duration(milliseconds: 150), feedback);
+    _answer(cmd);
   }
 
-  void _emit(int ga) => (_sink ?? inject)(_telegram(ga, TelegramType.write));
+  /// Initial state: every address once, in random order, but each channel in one piece: its
+  /// commands first, then the status addresses that answer them ([_reactions]). Otherwise the
+  /// commands of the initial state would stand there without status feedback.
+  List<int> _initial() {
+    final out = <int>[];
+    final done = <int>{};
+    for (final ga in _values.keys.toList()..shuffle(_rng)) {
+      final status = _reactions[ga]?.status;
+      if (status == null) {
+        // A status of a command comes with its command.
+        if (!_statusOfCommands.contains(ga)) out.add(ga);
+      } else if (done.add(ga)) {
+        // Commands answered on the same address (up/down and stop) belong to one channel.
+        final channel = [
+          for (final MapEntry(key: command, value: r) in _reactions.entries)
+            if (r.status.any(status.contains)) command,
+        ];
+        done.addAll(channel);
+        out
+          ..addAll(channel)
+          ..addAll({for (final command in channel) ..._reactions[command]!.status});
+      }
+    }
+    return out;
+  }
+
+  /// The device behind the command [ga] reports its new state after its usual delay, so every
+  /// command of the demo house has its status feedback (Reaktionszeiten, cause chain).
+  void _answer(int ga) {
+    final reaction = _reactions[ga];
+    if (reaction == null) return;
+    final command = _values[ga] ?? 0;
+    void report() {
+      for (final status in reaction.status) {
+        final value = reaction.value?.call(command);
+        if (value != null) _values[status] = value;
+        _emit(status);
+      }
+    }
+
+    if (_sink != null) return report();
+    Timer(reaction.delay, () {
+      if (state.value == TunnelState.connected) report();
+    });
+  }
+
+  void _emit(int ga) {
+    final t = _telegram(ga, TelegramType.write);
+    final seen = withTapPoints ? _atTaps(t) : t;
+    if (seen != null) (_sink ?? inject)(seen);
+  }
+
+  // --- Tap points (issue #8) -----------------------------------------------------------------
+
+  /// Steps of one round of the second tap point: it is away from [tapDownFrom] to [tapDownTo]
+  /// (about 13 seconds every 108), so the gap and its marks can be seen without waiting long.
+  static const tapCycle = 120;
+  static const tapDownFrom = 45;
+  static const tapDownTo = 60;
+
+  /// Has receivers on line 1.1 according to the project, but the demo coupler does not pass it:
+  /// the live filter table check reports it as blocked.
+  static final _blocked = _ga('4/0/1');
+
+  /// Passed to line 1.2 although nobody listens there ("leaked", needless bus load).
+  static final _leaked = _ga('5/0/0');
+
+  @override
+  DateTime get tapNow => clock();
+
+  bool _tapDown = false;
+  final _tapRng = Random(8);
+
+  void _publishTaps() {
+    tapPoints.value = [
+      TapStatus(index: 0, name: s.demoGateway, label: '1.1', state: TunnelState.connected),
+      TapStatus(
+        index: 1,
+        name: s.tapDemoName,
+        label: '1.2',
+        state: _tapDown ? TunnelState.disconnected : TunnelState.connected,
+        error: _tapDown ? s.tapDemoDown : null,
+        lag: const Duration(milliseconds: 41),
+      ),
+    ];
+    tapLabels.value = const ['1.1', '1.2'];
+  }
+
+  /// [t] as two tap points see it: the gateway on line 1.1 (tap point 0) and an interface on
+  /// line 1.2 behind the line coupler (tap point 1), which reports about 40 ms later.
+  ///
+  /// - Forwarded: the address has a receiver on the other line: one entry with a sighting, one
+  ///   hop less there.
+  /// - Filtered or line-local: seen at the sender's tap point only.
+  /// - Two findings for the live filter table check: [_blocked] and [_leaked].
+  /// - While the second tap point is away, what stays on line 1.2 is not seen at all (`null`),
+  ///   and nothing gets a sighting there.
+  Telegram? _atTaps(Telegram t) {
+    if (t.outgoing) return t;
+    final on12 = t.source >> 8 == 0x12;
+    final group = demoCatalog().groups[t.destination];
+    bool listens(int line) => group?.links.any((l) => !l.sends && l.device >> 8 == line) ?? false;
+    final crosses = on12 ? listens(0x11) && t.destination != _blocked : listens(0x12) || t.destination == _leaked;
+    final lag = Duration(microseconds: 36000 + _tapRng.nextInt(9000));
+    if (on12) {
+      if (_tapDown) return crosses ? t : null;
+      return crosses ? _seenAt(t, tap: 1, hop: 6, sightings: [Sighting(0, lag, 5)]) : _seenAt(t, tap: 1, hop: 6);
+    }
+    if (!crosses || _tapDown) return _seenAt(t, tap: 0, hop: 6);
+    return _seenAt(t, tap: 0, hop: 6, sightings: [Sighting(1, lag, 5)]);
+  }
+
+  static Telegram _seenAt(Telegram t, {required int tap, required int hop, List<Sighting> sightings = const []}) =>
+      Telegram(
+        time: t.time,
+        source: t.source,
+        destination: t.destination,
+        type: t.type,
+        data: t.data,
+        isSmall: t.isSmall,
+        priority: t.priority,
+        repeated: t.repeated,
+        hopCount: hop,
+        tap: tap,
+        sightings: sightings,
+      );
 
   Telegram _telegram(int ga, TelegramType type, {bool outgoing = false}) {
     final dpt = _dpts[ga];
@@ -349,6 +599,42 @@ class DemoTunnel extends KnxTunnel {
 
 int _ga(String s) => parseGroup(s)!;
 
+/// The DALI gateway of the demo house (1.1.40): a diagnostic object (DPT 237.600), four groups
+/// with switch and status, three emergency converters with status (DPT 244.600) and test result
+/// (DPT 245.600). All in main group 10.
+abstract final class DemoDali {
+  static final gateway = _pa('1.1.40');
+  static final diagnostic = _ga('10/0/0');
+
+  /// Control gear the gateway reports (short addresses 0 to 15).
+  static const gearCount = 16;
+
+  /// Short addresses of the emergency converters.
+  static const converters = [16, 17, 18];
+  static const groups = 4;
+
+  static int groupSwitch(int group) => _ga('10/1/$group');
+  static int groupStatus(int group) => _ga('10/2/$group');
+  static int status(int address) => _ga('10/3/$address');
+  static int result(int address) => _ga('10/4/$address');
+
+  /// Whether [ga] belongs to the gateway (main group 10).
+  static bool owns(int ga) => (ga >> 11) & 0x1F == 10;
+
+  static int? groupOfSwitch(int ga) => owns(ga) && (ga >> 8) & 0x07 == 1 && ga & 0xFF < groups ? ga & 0xFF : null;
+
+  /// DPT 244.600: normal mode, no test pending, no failure.
+  static const statusNormal = [0x10, 0x55];
+
+  /// DPT 245.600 per converter: function and duration test passed, started automatically, with
+  /// the discharge time; the converter at 18 failed its last duration test.
+  static List<int> resultOf(int address) => switch (address) {
+    18 => const [0x13, 0x00, 0x50, 0x00, 0x00, 0xFF],
+    16 => const [0x11, 0x00, 0x50, 0x00, 0x5F, 0xFF],
+    _ => const [0x11, 0x00, 0x50, 0x00, 0x5C, 0xFF],
+  };
+}
+
 /// Demo findings: valve state without read flag, humidity with wrong length.
 final _silent = _ga('2/3/3');
 final _humidity = _ga('2/4/2');
@@ -369,8 +655,33 @@ const _rooms = [
 /// Rooms with a glass push button instead of a push button in a 55 frame.
 const _glass = {0, 1, 4};
 
-/// Switch command → feedback address.
-final _feedbackOf = {for (final r in _rooms) _ga('1/0/${r.$1}'): _ga('1/1/${r.$1}')};
+/// How a device answers a command: after [delay] on the addresses [status]; [value] turns the
+/// commanded value into the reported one, `null` = it reports the state it has.
+typedef _Reaction = ({Duration delay, List<int> status, double Function(double command)? value});
+
+double _same(double v) => v;
+
+/// Command → status feedback per room, with delays as real actuators have them.
+final _reactions = <int, _Reaction>{
+  for (final (n, _, _) in _rooms) ...{
+    // Switch actuator.
+    _ga('1/0/$n'): (delay: const Duration(milliseconds: 150), status: [_ga('1/1/$n')], value: _same),
+    // Dimming actuator: reports the value once it is reached.
+    _ga('1/2/$n'): (delay: const Duration(milliseconds: 320), status: [_ga('1/3/$n')], value: _same),
+    // Blind actuator: up = 0 %, down = 100 %; stop reports where it stands. Real ones report
+    // after the travel, the demo right away, so the channel does not count as slow.
+    _ga('3/1/$n'): (
+      delay: const Duration(milliseconds: 800),
+      status: [_ga('3/0/$n')],
+      value: (v) => v == 1 ? 100.0 : 0.0,
+    ),
+    _ga('3/2/$n'): (delay: const Duration(milliseconds: 200), status: [_ga('3/0/$n')], value: null),
+    // New setpoint: the heating actuator reports actuating value and valve state.
+    _ga('2/1/$n'): (delay: const Duration(milliseconds: 450), status: [_ga('2/2/$n'), _ga('2/3/$n')], value: null),
+  },
+};
+
+final _statusOfCommands = {for (final r in _reactions.values) ...r.status};
 
 final _dpts = {for (final g in demoCatalog().groups.values) g.address: ?g.dpt};
 
@@ -535,6 +846,46 @@ GroupCatalog demoCatalog() {
     const Dpt(1, 5),
     [send('1.1.50')],
   );
+  // DALI gateway: diagnostics for all control gear on one address, groups, emergency converters.
+  const dali = '1.1.40';
+  final daliPath = t('Beleuchtung DALI', 'Lighting DALI');
+  ga('10/0/0', t('DALI Diagnose Flur/Büro', 'DALI diagnostics hall/office'), daliPath, const Dpt(237, 600), [
+    GroupLink(device: _pa(dali), text: t('Diagnose', 'Diagnostics'), sends: true),
+  ]);
+  for (var g = 0; g < DemoDali.groups; g++) {
+    ga(
+      '10/1/$g',
+      t('DALI Gruppe $g Schalten', 'DALI group $g switch'),
+      '$daliPath › ${t('Schalten', 'Switch')}',
+      const Dpt(1, 1),
+      [GroupLink(device: _pa(dali), text: t('Gruppe $g Schalten', 'Group $g switch'))],
+    );
+    ga('10/2/$g', t('DALI Gruppe $g Status', 'DALI group $g status'), '$daliPath › Status', const Dpt(1, 1), [
+      GroupLink(device: _pa(dali), text: t('Gruppe $g Status', 'Group $g status'), sends: true),
+    ]);
+  }
+  for (final a in DemoDali.converters) {
+    ga(
+      '10/3/$a',
+      t('Notleuchte $a Status', 'Emergency luminaire $a status'),
+      '$daliPath › ${t('Notlicht', 'Emergency')}',
+      const Dpt(244, 600),
+      [GroupLink(device: _pa(dali), text: t('Notleuchte $a Status', 'Emergency luminaire $a status'), sends: true)],
+    );
+    ga(
+      '10/4/$a',
+      t('Notleuchte $a Testergebnis', 'Emergency luminaire $a test result'),
+      '$daliPath › ${t('Notlicht', 'Emergency')}',
+      const Dpt(245, 600),
+      [
+        GroupLink(
+          device: _pa(dali),
+          text: t('Notleuchte $a Testergebnis', 'Emergency luminaire $a test result'),
+          sends: true,
+        ),
+      ],
+    );
+  }
   ga('7/0/0', t('Uhrzeit', 'Time'), t('Zeit', 'Time'), const Dpt(10, 1), [send('1.1.20')]);
   ga('7/0/1', t('Datum', 'Date'), t('Zeit', 'Time'), const Dpt(11, 1), [send('1.1.20')]);
 
@@ -566,6 +917,7 @@ GroupCatalog demoCatalog() {
       for (final (n, rde, ren) in _rooms)
         if (n.isEven) dev('1.1.${60 + n}', '${t(rde, ren)} ${t('Präsenzmelder', 'presence detector')}', 'PM 360'),
       dev('1.1.50', t('Rauchmelder Flur', 'Smoke detector hallway'), 'RM 1'),
+      dev(dali, t('DALI-Gateway Flur/Büro', 'DALI gateway hall/office'), 'DG 64'),
       dev('1.2.0', t('Linienkoppler', 'Line coupler'), 'LK 1'),
       dev('1.2.20', t('Wetterstation', 'Weather station'), 'WS 1'),
     ])

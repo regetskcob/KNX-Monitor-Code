@@ -27,6 +27,10 @@ LAN_ACCESS=no
 # yes = nur lesen: Die Box sendet nichts auf den Bus, auch keine Leseanfragen.
 # Aufzeichnung und Auswertung laufen weiter. no = Schreiben aus der App möglich.
 READ_ONLY=no
+# yes = Gesundheitsprüfung für Home Assistant: Die Box prüft den aufgezeichneten
+# Verkehr einmal täglich und auf Wunsch der Busclear-Integration. Sie liest nur
+# den Verlauf und sendet nichts auf den Bus.
+HEALTH_CHECK=no
 # Öffentlicher SSH-Schlüssel für die Wartung als knxadmin, mit sudo
 # (leer = SSH bleibt aus)
 SSH_PUBKEY=

@@ -66,7 +66,12 @@ class _TopologyScreenState extends State<TopologyScreen> {
   late TapCoverage? _coverage = _coverageOf();
 
   /// With tap points in several lines: coverage and the couplers' filter tables, live (#8).
-  TapCoverage? _coverageOf() => TapCoverage.build(CatalogStore.instance.catalog, widget.log.log, tapLabels.value);
+  /// Lines with a tap point, empty with a single tap point (then nothing changes here).
+  Set<int> get _tapLines =>
+      TapScope.labels.length < 2 ? const {} : {for (final label in TapScope.labels) ?lineOfTapLabel(label)};
+
+  TapCoverage? _coverageOf() =>
+      TapCoverage.build(CatalogStore.instance.catalog, widget.log.log, TapScope.labels, gaps: TapScope.gaps);
   Timer? _refresh;
   CouplerCheckRun? _check;
   int _checked = 0;
@@ -401,8 +406,10 @@ class _TopologyScreenState extends State<TopologyScreen> {
           line: line,
           bins: _live.lineBins[line.line] ?? const [],
           gateway: line.line == _topo.gatewayLine,
-          tapPoint: _coverage?.lines.contains(line.line) ?? false,
+          tapPoint: _tapLines.contains(line.line),
+          indirect: _tapLines.isNotEmpty && !_tapLines.contains(line.line) && line.line != _topo.gatewayLine,
           showTitle: false,
+          onFilter: widget.onFilter,
         ),
         // Couplers of the line above the long device list, reachable without scrolling.
         if (i > 0) _couplerLink(lines, i),
@@ -534,6 +541,7 @@ class _TopologyScreenState extends State<TopologyScreen> {
         embedded: true,
         onMap: () => openDeviceMap(context, address: address, log: widget.log),
         onFilter: widget.onFilter == null ? null : () => widget.onFilter!(senderQuery(formatIndividual(address))),
+        onLineFilter: widget.onFilter,
         onClose: () => setState(() => _device = null),
       );
     } else if (_group case final ga?) {
@@ -576,9 +584,10 @@ class _TopologyScreenState extends State<TopologyScreen> {
           topo: topo,
           log: widget.log,
           bins: _live.lineBins,
-          tapLines: _coverage?.lines ?? const {},
+          tapLines: _tapLines,
           selected: _coupler?.$1,
           onCoupler: _selectCoupler,
+          onFilter: widget.onFilter,
         ),
         const SizedBox(height: Gap.section),
         below,
@@ -602,6 +611,7 @@ class _TopologyScreenState extends State<TopologyScreen> {
               }),
               onDevice: _selectDevice,
               onCoupler: _selectCoupler,
+              onFilter: widget.onFilter,
             ),
           ),
         Expanded(child: detail),
@@ -716,6 +726,7 @@ class _DeviceTree extends StatefulWidget {
     required this.onOverview,
     required this.onDevice,
     required this.onCoupler,
+    this.onFilter,
   });
 
   final Topology topo;
@@ -723,6 +734,9 @@ class _DeviceTree extends StatefulWidget {
   /// [_Live.deviceTelegrams].
   final Map<int, int> telegrams;
   final int? device;
+
+  /// Filter in the monitor: the line headers show their line in the live list.
+  final ValueChanged<String>? onFilter;
 
   /// Line of the coupler in the detail area.
   final int? coupler;
@@ -834,6 +848,7 @@ class _DeviceTreeState extends State<_DeviceTree> {
           ),
           if (gateway) HorizontBadge(HorizontStatus.info, label: s.topoGatewayHere),
           if (_rfLine(line.line)) HorizontBadge(HorizontStatus.neutral, label: s.topoRf),
+          if (widget.onFilter case final filter?) LineFilterButton(line: line.line, onFilter: filter),
           SoundAckButton(target: AckLine((line.line >> 4) & 0x0F, line.line & 0x0F)),
         ],
       ),
@@ -911,7 +926,11 @@ class _Lines extends StatelessWidget {
     required this.onCoupler,
     this.tapLines = const {},
     this.selected,
+    this.onFilter,
   });
+
+  /// Filter in the monitor: the line cards show their line in the live list.
+  final ValueChanged<String>? onFilter;
 
   final Topology topo;
 
@@ -946,6 +965,8 @@ class _Lines extends StatelessWidget {
               bins: bins[l.line] ?? const [],
               gateway: l.line == topo.gatewayLine,
               tapPoint: tapLines.contains(l.line),
+              indirect: tapLines.isNotEmpty && !tapLines.contains(l.line) && l.line != topo.gatewayLine,
+              onFilter: onFilter,
             ),
         ];
         // Noch keine Linie (kein Projekt, kein Verkehr): Hinweis statt Reihe.
@@ -1208,8 +1229,17 @@ class _LineCard extends StatelessWidget {
     required this.bins,
     required this.gateway,
     this.tapPoint = false,
+    this.indirect = false,
     this.showTitle = true,
+    this.onFilter,
   });
+
+  /// Filter in the monitor: shows the line in the live list.
+  final ValueChanged<String>? onFilter;
+
+  /// Other lines have a tap point, this one has none (issue #8): only what the couplers forward
+  /// is seen of it.
+  final bool indirect;
 
   /// A tap point measures in this line (issue #8): what stays in it is seen.
   final bool tapPoint;
@@ -1227,28 +1257,57 @@ class _LineCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final unknown = _unknownOf(line);
     final active = line.devices.where((d) => line.activeSources.containsKey(d.address)).length;
+    final figures = FigureRow(
+      figures: [
+        // Project and observed devices together, like the list below; active
+        // are all that have sent (without a project only those).
+        (s.topoDevices, formatInt(line.devices.length + unknown.length)),
+        (s.topoActive, formatInt(active + unknown.length)),
+        if (line.tunnels.isNotEmpty) (s.topoTunnels, formatInt(line.tunnels.length)),
+        (s.topoTelegrams, formatInt(line.telegrams)),
+        (s.topoCouplers, line.couplersToGateway?.toString() ?? '—'),
+      ],
+      trailing: _LineActivity(line: line.line, values: bins),
+    );
+    final badge = gateway
+        ? HorizontBadge(HorizontStatus.info, label: s.topoGatewayHere)
+        : tapPoint
+        ? HorizontBadge(HorizontStatus.positive, label: s.topoTapPoint)
+        : indirect
+        ? HorizontBadge(HorizontStatus.neutral, label: s.tapLineIndirect)
+        : _rfLine(line.line)
+        ? HorizontBadge(HorizontStatus.neutral, label: s.topoRf)
+        : null;
     return SectionCard(
       soft: true,
       title: showTitle ? s.topoLine(formatLine(line.line)) : null,
-      trailing: gateway
-          ? HorizontBadge(HorizontStatus.info, label: s.topoGatewayHere)
-          : tapPoint
-          ? HorizontBadge(HorizontStatus.positive, label: s.topoTapPoint)
-          : _rfLine(line.line)
-          ? HorizontBadge(HorizontStatus.neutral, label: s.topoRf)
-          : null,
-      child: FigureRow(
-        figures: [
-          // Project and observed devices together, like the list below; active
-          // are all that have sent (without a project only those).
-          (s.topoDevices, formatInt(line.devices.length + unknown.length)),
-          (s.topoActive, formatInt(active + unknown.length)),
-          if (line.tunnels.isNotEmpty) (s.topoTunnels, formatInt(line.tunnels.length)),
-          (s.topoTelegrams, formatInt(line.telegrams)),
-          (s.topoCouplers, line.couplersToGateway?.toString() ?? '—'),
-        ],
-        trailing: _LineActivity(line: line.line, values: bins),
-      ),
+      trailing: badge,
+      child: !indirect && onFilter == null
+          ? figures
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                figures,
+                if (indirect) ...[
+                  const SizedBox(height: HzSpace.s8),
+                  Text(
+                    s.tapLineIndirectHint,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.hz.textMuted),
+                  ),
+                ],
+                // Below the figures: next to the badges the card title would have no room left.
+                if (onFilter case final filter?)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton.icon(
+                      onPressed: () => filter(lineQuery(line.line)),
+                      icon: const Icon(AppIcons.filter),
+                      label: Text(s.devLineShow(formatLine(line.line))),
+                    ),
+                  ),
+              ],
+            ),
     );
   }
 }

@@ -11,6 +11,7 @@ import '../knx/group_catalog.dart';
 import '../l10n/locale_controller.dart';
 import 'acceptance.dart';
 import 'annotation.dart';
+import 'dali_service.dart';
 import 'findings.dart';
 import 'health.dart';
 import 'installation.dart';
@@ -81,6 +82,162 @@ class ServicePhoto {
       ServicePhoto(j['i'] as String? ?? '', j['c'] as String? ?? '');
 }
 
+/// What a report is. Stored only when it is not a plain [visit], so older
+/// reports keep their bytes and checksum; an older app reads the other two as
+/// an ordinary report with the same four texts.
+enum ServiceKind {
+  /// Service call: something was wrong, the business came.
+  visit,
+
+  /// Recurring maintenance visit: fixed checklist, compared with the last one.
+  maintenance,
+
+  /// Short status reply to the customer after a fault report: what was
+  /// reported ([ServiceReport.occasion]), what was found
+  /// ([ServiceReport.observed]) and what happens next
+  /// ([ServiceReport.recommendation]). No evidence, no technical values.
+  reply,
+}
+
+/// Result of a checklist item of a maintenance visit.
+enum CheckResult { unchecked, ok, attention }
+
+/// A checklist item of a maintenance visit. [key] identifies the item across
+/// reports (and languages), [label] is the text at the time of the report.
+@immutable
+class ServiceCheck {
+  const ServiceCheck(this.key, this.label, [this.result = CheckResult.unchecked]);
+
+  final String key;
+  final String label;
+  final CheckResult result;
+
+  Map<String, Object?> toJson() => {'k': key, 't': label, 'r': result.name};
+
+  factory ServiceCheck.fromJson(Map<String, Object?> j) => ServiceCheck(
+    j['k'] as String? ?? '',
+    j['t'] as String? ?? '',
+    CheckResult.values.asNameMap()[j['r']] ?? CheckResult.unchecked,
+  );
+}
+
+/// The fixed outline of a maintenance visit, in this order.
+const maintenanceCheckKeys = ['visual', 'supply', 'health', 'functions', 'backup'];
+
+/// Text of a checklist item in the language of [l]; `null` for a key this
+/// version does not know (then the stored label of the report stays).
+String? maintenanceCheckLabel(String key, AppLocalizations l) => switch (key) {
+  'visual' => l.srMaintCheckVisual,
+  'supply' => l.srMaintCheckSupply,
+  'health' => l.srMaintCheckHealth,
+  'functions' => l.srMaintCheckFunctions,
+  'backup' => l.srMaintCheckBackup,
+  _ => null,
+};
+
+/// Checklist for a new maintenance report in [language]: the same outline as
+/// [previous] (the last maintenance report of the installation) if there is
+/// one, otherwise the fixed one; results always start as "not checked".
+List<ServiceCheck> maintenanceChecklist(String language, {ServiceReport? previous}) {
+  final l = lookupAppLocalizations(Locale(language));
+  final outline = previous == null || previous.checklist.isEmpty
+      ? [for (final key in maintenanceCheckKeys) ServiceCheck(key, '')]
+      : previous.checklist;
+  return [for (final c in outline) ServiceCheck(c.key, maintenanceCheckLabel(c.key, l) ?? c.label)];
+}
+
+/// What a later maintenance report keeps of the one before, so the comparison
+/// in its PDF never changes: only the comparable parts. [findings] and [health]
+/// are `null` when that report had no recording or no health check, which is
+/// different from "had one and it found nothing".
+@immutable
+class ServiceBaseline {
+  const ServiceBaseline({
+    required this.created,
+    required this.language,
+    this.findings,
+    this.health,
+    this.healthTime,
+    this.checklist = const [],
+  });
+
+  factory ServiceBaseline.of(ServiceReport r) => ServiceBaseline(
+    created: r.created,
+    language: r.language,
+    findings: r.recordingStart == null ? null : r.findings,
+    health: r.healthTime == null ? null : r.health,
+    healthTime: r.healthTime,
+    checklist: r.checklist,
+  );
+
+  final DateTime created;
+  final String language;
+  final List<ServiceLine>? findings;
+  final List<ServiceLine>? health;
+  final DateTime? healthTime;
+  final List<ServiceCheck> checklist;
+
+  Map<String, Object?> toJson() => {
+    'created': created.millisecondsSinceEpoch,
+    'language': language,
+    if (findings != null) 'findings': [for (final f in findings!) f.toJson()],
+    if (health != null) 'health': [for (final h in health!) h.toJson()],
+    'healthTime': ?healthTime?.millisecondsSinceEpoch,
+    if (checklist.isNotEmpty) 'checklist': [for (final c in checklist) c.toJson()],
+  };
+
+  factory ServiceBaseline.fromJson(Map<String, Object?> j) {
+    List<ServiceLine>? lines(String key) =>
+        j[key] == null ? null : [for (final l in j[key]! as List) ServiceLine.fromJson((l as Map).cast())];
+    return ServiceBaseline(
+      created: DateTime.fromMillisecondsSinceEpoch(j['created'] as int? ?? 0),
+      language: j['language'] as String? ?? 'de',
+      findings: lines('findings'),
+      health: lines('health'),
+      healthTime: j['healthTime'] == null ? null : DateTime.fromMillisecondsSinceEpoch(j['healthTime']! as int),
+      checklist: [for (final c in (j['checklist'] as List?) ?? const []) ServiceCheck.fromJson((c as Map).cast())],
+    );
+  }
+}
+
+/// A maintenance report compared with the one before. Only what both reports
+/// really contain: notices are compared per source (recording, health check)
+/// that both have, and only when both are in the same language, because the
+/// notices are stored as text.
+@immutable
+class ServiceComparison {
+  const ServiceComparison({
+    required this.previous,
+    required this.linesCompared,
+    this.added = const [],
+    this.gone = const [],
+    this.remaining = const [],
+    this.healthBefore,
+    this.healthNow,
+    this.healthTimeBefore,
+    this.checks = const [],
+  });
+
+  /// When the previous report was created.
+  final DateTime previous;
+
+  /// Whether any notices could be compared at all. If not, [added], [gone]
+  /// and [remaining] are empty and say nothing.
+  final bool linesCompared;
+  final List<ServiceLine> added;
+  final List<ServiceLine> gone;
+  final List<ServiceLine> remaining;
+
+  /// Points of the health check to fix and to watch, then and now; `null`
+  /// unless both reports include a health check.
+  final ({int fix, int watch})? healthBefore;
+  final ({int fix, int watch})? healthNow;
+  final DateTime? healthTimeBefore;
+
+  /// Checklist items both reports have, with the result then and now.
+  final List<({String label, CheckResult before, CheckResult now})> checks;
+}
+
 /// Service report for the customer: reason, observation, work done,
 /// recommendation, plus what the recording, the comments and the health check
 /// provide. Immutable once created, like the acceptance protocol: all texts are
@@ -110,6 +267,10 @@ class ServiceReport {
     this.signer = '',
     this.signature = Signature.empty,
     this.gateway,
+    this.kind = ServiceKind.visit,
+    this.checklist = const [],
+    this.previous,
+    this.reportedAt,
   });
 
   final DateTime created;
@@ -149,8 +310,78 @@ class ServiceReport {
   final Signature signature;
   final String? gateway;
 
+  final ServiceKind kind;
+
+  /// Maintenance visit: what was looked at, with the result.
+  final List<ServiceCheck> checklist;
+
+  /// Maintenance visit: the comparable parts of the maintenance report before
+  /// this one; `null` for the first.
+  final ServiceBaseline? previous;
+
+  /// Reply to a fault report: when the customer reported it.
+  final DateTime? reportedAt;
+
   /// The items the customer should pay attention to.
-  int get attention => [...findings, ...health].where((l) => l.level != ServiceLevel.info).length;
+  int get attention =>
+      [...findings, ...health].where((l) => l.level != ServiceLevel.info).length +
+      checklist.where((c) => c.result == CheckResult.attention).length;
+
+  /// Comparison with the previous maintenance report; `null` without one.
+  ServiceComparison? get comparison {
+    final before = previous;
+    if (before == null) return null;
+    final sameLanguage = before.language == language;
+    final then = <ServiceLine>[];
+    final now = <ServiceLine>[];
+    var compared = false;
+    if (sameLanguage && before.findings != null && recordingStart != null) {
+      compared = true;
+      then.addAll(before.findings!);
+      now.addAll(findings);
+    }
+    if (sameLanguage && before.health != null && healthTime != null) {
+      compared = true;
+      then.addAll(before.health!);
+      now.addAll(health);
+    }
+    // "For information" is no finding; the title identifies a notice (the
+    // detail may carry numbers that change from visit to visit).
+    then.removeWhere((l) => l.level == ServiceLevel.info);
+    now.removeWhere((l) => l.level == ServiceLevel.info);
+    final titlesThen = {for (final l in then) l.title};
+    final titlesNow = {for (final l in now) l.title};
+    ({int fix, int watch}) counts(List<ServiceLine> lines) => (
+      fix: lines.where((l) => l.level == ServiceLevel.fix).length,
+      watch: lines.where((l) => l.level == ServiceLevel.watch).length,
+    );
+    // Counts, not texts: they compare across languages, unlike the notices above.
+    final bothHealth = before.health != null && healthTime != null;
+    final results = {for (final c in before.checklist) c.key: c.result};
+    return ServiceComparison(
+      previous: before.created,
+      linesCompared: compared,
+      added: [
+        for (final l in now)
+          if (!titlesThen.contains(l.title)) l,
+      ],
+      gone: [
+        for (final l in then)
+          if (!titlesNow.contains(l.title)) l,
+      ],
+      remaining: [
+        for (final l in now)
+          if (titlesThen.contains(l.title)) l,
+      ],
+      healthBefore: bothHealth ? counts(before.health!) : null,
+      healthNow: bothHealth ? counts(health) : null,
+      healthTimeBefore: bothHealth ? before.healthTime : null,
+      checks: [
+        for (final c in checklist)
+          if (results[c.key] case final then?) (label: c.label, before: then, now: c.result),
+      ],
+    );
+  }
 
   Map<String, Object?> toJson() => {
     'format': 'knx-monitor-service-report',
@@ -178,6 +409,11 @@ class ServiceReport {
     'signer': signer,
     'signature': signature.toJson(),
     'gateway': gateway,
+    // Only when used: checksums of older and of plain reports remain valid.
+    if (kind != ServiceKind.visit) 'kind': kind.name,
+    if (checklist.isNotEmpty) 'checklist': [for (final c in checklist) c.toJson()],
+    'previous': ?previous?.toJson(),
+    'reportedAt': ?reportedAt?.millisecondsSinceEpoch,
   };
 
   factory ServiceReport.fromJson(Map<String, Object?> j) {
@@ -208,6 +444,11 @@ class ServiceReport {
       signer: j['signer'] as String? ?? '',
       signature: Signature.fromJson(j['signature']),
       gateway: j['gateway'] as String?,
+      // A kind from a newer version reads as a plain report.
+      kind: ServiceKind.values.asNameMap()[j['kind']] ?? ServiceKind.visit,
+      checklist: [for (final c in (j['checklist'] as List?) ?? const []) ServiceCheck.fromJson((c as Map).cast())],
+      previous: j['previous'] == null ? null : ServiceBaseline.fromJson((j['previous']! as Map).cast()),
+      reportedAt: time('reportedAt'),
     );
   }
 
@@ -219,7 +460,10 @@ class ServiceReport {
 typedef ServiceEvidence = ({List<ServiceLine> findings, List<ServiceLine> health});
 
 /// Pure, for tests and the background isolate: translates without app state.
-ServiceEvidence buildServiceEvidence(Recording? recording, HealthRun? run) => (
+///
+/// [dali]: what is open on the DALI side right now, one item per luminaire. They stand in for
+/// the lighting findings of the health check, which only count per gateway and may be older.
+ServiceEvidence buildServiceEvidence(Recording? recording, HealthRun? run, [List<DaliIssue> dali = const []]) => (
   // Only what concerns the customer; app version and log are a matter for support.
   findings: [
     if (recording != null)
@@ -230,15 +474,17 @@ ServiceEvidence buildServiceEvidence(Recording? recording, HealthRun? run) => (
   health: [
     if (run != null)
       for (final f in run.findings)
-        ServiceLine(
-          switch (f.kind.severity) {
-            Severity.error => ServiceLevel.fix,
-            Severity.warning => ServiceLevel.watch,
-            Severity.info || Severity.ok => ServiceLevel.info,
-          },
-          findingTitle(f),
-          findingDetail(f),
-        ),
+        if (f.kind.area != HealthArea.lighting || f.kind == FindingKind.gatewaySilent)
+          ServiceLine(
+            switch (f.kind.severity) {
+              Severity.error => ServiceLevel.fix,
+              Severity.warning => ServiceLevel.watch,
+              Severity.info || Severity.ok => ServiceLevel.info,
+            },
+            findingTitle(f),
+            findingDetail(f),
+          ),
+    ...daliServiceLines(dali),
   ],
 );
 
@@ -246,9 +492,10 @@ ServiceEvidence buildServiceEvidence(Recording? recording, HealthRun? run) => (
 /// because the app keeps its own language. In the browser (no isolates) in the
 /// app's language.
 Future<ServiceEvidence> collectServiceEvidence({required String language, Recording? recording, HealthRun? run}) async {
-  if (kIsWeb) return buildServiceEvidence(recording, run);
+  final dali = collectDaliIssues(DateTime.now());
+  if (kIsWeb) return buildServiceEvidence(recording, run, dali);
   final store = CatalogStore.instance;
-  return Isolate.run(_evidenceTask(language, recording, run, store.catalog, Map.of(store.overrides)));
+  return Isolate.run(_evidenceTask(language, recording, run, store.catalog, Map.of(store.overrides), dali));
 }
 
 /// Separate function so the task only captures its arguments.
@@ -258,12 +505,13 @@ ServiceEvidence Function() _evidenceTask(
   HealthRun? run,
   GroupCatalog catalog,
   Map<int, Dpt> overrides,
+  List<DaliIssue> dali,
 ) => () {
   LocaleController.instance.debugSetLocale(Locale(language));
   CatalogStore.instance
     ..catalog = catalog
     ..overrides = overrides;
-  return buildServiceEvidence(recording, run);
+  return buildServiceEvidence(recording, run, dali);
 };
 
 /// Comments for the report: those of the recording and those of the installation
@@ -311,6 +559,15 @@ class ServiceReportStore extends ChangeNotifier {
     }
     return result..sort((a, b) => b.created.compareTo(a.created));
   }
+
+  /// The newest maintenance report of the installation, the baseline of the
+  /// next one.
+  Future<ServiceReport?> lastMaintenance() async =>
+      (await list()).where((r) => r.kind == ServiceKind.maintenance).firstOrNull;
+
+  /// The report created at [created] (as in the file name); `null` if it is gone.
+  Future<ServiceReport?> byCreated(int created) async =>
+      (await list()).where((r) => r.created.millisecondsSinceEpoch == created).firstOrNull;
 
   Future<void> save(ServiceReport r) async {
     if (DemoTunnel.active) {

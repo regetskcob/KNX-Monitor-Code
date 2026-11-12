@@ -243,8 +243,13 @@ class _ValueBoardState extends State<ValueBoard> {
             onSelectAll: widget.onSelectGroup == null ? null : () => widget.onSelectGroup!(group),
           );
 
+          // Keyed by the section: when a new section appears above the others (an alarm), the
+          // existing ones move as a whole instead of each taking over the content of its
+          // predecessor. Without keys the Mac's accessibility layer reported two nodes for one
+          // tooltip in that frame ("traversalParentIdentifier must be unique").
           List<Widget> section(String id, List<Telegram> group, {required bool first}) => [
             SliverPadding(
+              key: ValueKey('section-head-$id'),
               // The first section connects directly to the activity bar.
               padding: EdgeInsets.fromLTRB(
                 gutter - HzSpace.s8,
@@ -256,6 +261,7 @@ class _ValueBoardState extends State<ValueBoard> {
             ),
             if (!_collapsed.contains(id))
               SliverPadding(
+                key: ValueKey('section-body-$id'),
                 padding: EdgeInsets.symmetric(horizontal: gutter),
                 sliver: SliverLayoutBuilder(
                   builder: (context, constraints) {
@@ -315,12 +321,15 @@ class _ValueBoardState extends State<ValueBoard> {
                 out.addAll(section(id, sections[id]!, first: first && i == 0));
               } else {
                 out.add(
-                  _packedRow(
-                    [for (final k in ids.sublist(i, j)) (id: k, group: sections[k]!)],
-                    header,
-                    columns,
-                    gutter: gutter,
-                    top: first && i == 0 ? 0 : HzSpace.s16,
+                  KeyedSubtree(
+                    key: ValueKey('section-row-${ids.sublist(i, j).join('|')}'),
+                    child: _packedRow(
+                      [for (final k in ids.sublist(i, j)) (id: k, group: sections[k]!)],
+                      header,
+                      columns,
+                      gutter: gutter,
+                      top: first && i == 0 ? 0 : HzSpace.s16,
+                    ),
                   ),
                 );
               }
@@ -757,7 +766,11 @@ class _ValueCardState extends State<ValueCard> with SingleTickerProviderStateMix
             : DecoratedBox(
                 decoration: BoxDecoration(
                   border: Border(
-                    left: BorderSide(color: line, width: Lines.selection),
+                    // The soft style marks the choice by the tint alone; the alarm line stays.
+                    left: BorderSide(
+                      color: !alarm && highlighted && context.hzTheme.soft ? Colors.transparent : line,
+                      width: Lines.selection,
+                    ),
                     bottom: BorderSide(color: hz.line, width: Lines.hairline),
                   ),
                 ),

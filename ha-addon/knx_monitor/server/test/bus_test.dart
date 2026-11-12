@@ -429,6 +429,33 @@ void main() {
     });
   });
 
+  test('Telegramme heute: nach dem Neustart aus der Aufzeichnung des Tages vorbelegt', () async {
+    final data = await Directory.systemTemp.createTemp('knx_today');
+    addTearDown(() => data.delete(recursive: true));
+    final now = DateTime.now();
+    final dir = Directory('${data.path}/history')..createSync();
+    final earlier = now.subtract(const Duration(seconds: 5)).microsecondsSinceEpoch;
+    final later = now.add(const Duration(hours: 1)).microsecondsSinceEpoch;
+    File('${dir.path}/${Recorder.dayName(now)}.ndjson').writeAsStringSync(
+      [
+        for (var i = 0; i < 3; i++) jsonEncode({'t': earlier + i, 'd': 0x0A03, 's': 0x1105}),
+        // After the start: counted by the running server itself, not twice.
+        jsonEncode({'t': later, 'd': 0x0A03, 's': 0x1105}),
+        '',
+      ].join('\n'),
+    );
+    final bus = BusService(
+      data,
+      notify: ({required id, required title, required message}) async {},
+      describe: (_, _) async => null,
+    );
+    await bus.start();
+    addTearDown(bus.shutdown);
+    await bus.todayCounted;
+    expect(bus.today, 3);
+    expect(bus.status()['today'], 3);
+  });
+
   group('Recorder', () {
     late Directory data;
     setUp(() async => data = await Directory.systemTemp.createTemp('knx_rec'));

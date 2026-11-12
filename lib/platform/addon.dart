@@ -21,6 +21,32 @@ abstract final class Addon {
   /// Whether the app talks to an add-on or box server.
   static bool get available => embedded || box != null;
 
+  /// In the browser: whether the page comes from a Busclear Box or Busclear in Docker
+  /// (`/api/box` answers) rather than from the Home Assistant add-on. Set once at start by
+  /// [detectServer].
+  static bool servedByBox = false;
+
+  /// Whether the server is a Busclear Box or Docker: natively the paired [box], in the browser
+  /// [servedByBox]. Chooses the box texts over the add-on texts.
+  static bool get onBox => box != null || servedByBox;
+
+  /// Whether the app runs inside Home Assistant (add-on behind Ingress): Home Assistant's
+  /// colours and the functions that need Home Assistant.
+  static bool get inHomeAssistant => embedded && !servedByBox;
+
+  /// Asks the server that delivered the page whether it is a box ([servedByBox]). The add-on has
+  /// no `/api/box`; without an answer within [timeout] the add-on is assumed, as before.
+  static Future<void> detectServer({
+    Future<Map<String, Object?>> Function()? info,
+    Duration timeout = const Duration(seconds: 3),
+  }) async {
+    try {
+      servedByBox = (await (info ?? boxInfo)().timeout(timeout))['box'] == true;
+    } on Object {
+      servedByBox = false;
+    }
+  }
+
   /// WebSocket "ws/bus" to the shared tunnel.
   static Future<AddonSocket> openBus() => impl.openAddonBus();
 
@@ -53,6 +79,9 @@ abstract final class Addon {
     }
     return null;
   }
+
+  /// Bus view on the floor plan: when each linked group address was last in the history.
+  static Future<Map<String, Object?>> floorView() => impl.addonGet('api/floor-view');
 
   /// Long-term analysis of the history over the last [days] days.
   static Future<Map<String, Object?>> stats(int days) => impl.addonGet('api/bus/stats?days=$days');
@@ -114,6 +143,10 @@ abstract final class Addon {
   static Future<Map<String, Object?>> exportStatus() => impl.addonGet('api/export');
   static Future<Map<String, Object?>> configureExport(Map<String, Object?> changes) =>
       impl.addonPut('api/export', changes);
+
+  /// MQTT telegram stream (issue #11): settings or `{"reset": true}`; answers like [exportStatus].
+  static Future<Map<String, Object?>> configureMqttStream(Map<String, Object?> changes) =>
+      impl.addonPut('api/export/mqtt', changes);
 
   /// Probe InfluxDB: `{ok, error}`.
   static Future<Map<String, Object?>> testExport() async =>
@@ -203,6 +236,66 @@ abstract final class Addon {
   /// Allow or block access over the cable (otherwise only on the box Wi-Fi).
   static Future<void> setBoxLanAccess(bool enabled) => impl.addonPost('api/box/lan', {'enabled': enabled});
 
+  // --- Backup of the whole box (server box_backup.dart, docs/backup-format.md) ---------
+
+  /// Whether restoring is possible (`readOnly`, `needsCurrent`), the uploaded backup (`staged`)
+  /// and the states a restore set aside (`previous`). Admin only.
+  static Future<Map<String, Object?>> backupStatus() => impl.addonGet('api/backup');
+
+  /// Prepares a download: `{ticket, fileName, secrets, withheld}`. With [password] the KNX Secure
+  /// keys and credentials go in encrypted; the box derives the key first, which takes a while on
+  /// a Pi. [previous] backs up a state set aside instead of the current one.
+  static Future<Map<String, Object?>> prepareBackup({String? password, String? previous}) async =>
+      (await impl.addonPost('api/backup', {
+        'password': ?password,
+        'previous': ?previous,
+      }, timeout: const Duration(minutes: 3))) as Map<String, Object?>;
+
+  /// Downloads the prepared backup to the file [path], streamed; [onProgress] gets the bytes so far.
+  /// [cancelled] is asked after every piece; once it says yes, the download stops and the file is
+  /// removed. The file is removed on any failure, since it would hold the history in plain text.
+  static Future<void> downloadBackup(
+    String ticket,
+    String path, {
+    void Function(int bytes)? onProgress,
+    bool Function()? cancelled,
+  }) => impl.addonDownloadToFile(
+    'api/backup/download?ticket=${Uri.encodeQueryComponent(ticket)}',
+    path,
+    onProgress,
+    cancelled,
+  );
+
+  /// Uploads a backup ([data], [length] bytes) to the box, streamed. The box only unpacks and
+  /// checks it and answers with a summary (`stage`, `installations`, `secrets` …); nothing
+  /// changes before [applyBackup].
+  static Future<Map<String, Object?>> uploadBackup(
+    Stream<List<int>> data,
+    int? length, {
+    void Function(int bytes)? onProgress,
+  }) => impl.addonUpload('api/backup/restore', data, length, onProgress);
+
+  /// Replaces all installations of the box with the uploaded backup [stage]. [password] opens the
+  /// encrypted keys; [withoutSecrets] restores without them. [current]: the box password.
+  static Future<Map<String, Object?>> applyBackup({
+    required String stage,
+    String? password,
+    bool withoutSecrets = false,
+    String? current,
+  }) async => (await impl.addonPost('api/backup/restore/apply', {
+    'stage': stage,
+    'password': ?password,
+    if (withoutSecrets) 'withoutSecrets': true,
+    'current': ?current,
+  }, timeout: const Duration(minutes: 5))) as Map<String, Object?>;
+
+  /// Discards the uploaded backup.
+  static Future<void> discardBackup() => impl.addonDelete('api/backup/restore');
+
+  /// Deletes a state a restore set aside.
+  static Future<void> deletePreviousState(String name) =>
+      impl.addonDelete('api/backup/previous/${Uri.encodeComponent(name)}');
+
   /// KNX HAT (kBerry): system check, current step and last report.
   static Future<Map<String, Object?>> hatStatus() => impl.addonGet('api/box/hat');
 
@@ -252,6 +345,17 @@ abstract final class Addon {
   /// which app a device access belongs to. An older box ignores it.
   static Future<String> pairBox(BoxLink link, String password, String deviceName, {String? app}) =>
       impl.addonPairBox(link, password, deviceName, app: app);
+
+  /// Exchanges the one-time pairing code of [link] ([BoxLink.code], from the box's page `/pair`)
+  /// for the device access. The code works once and for a few minutes; the box creates the
+  /// device with the rights chosen on its page at this moment. [app] as in [pairBox].
+  static Future<String> claimBox(BoxLink link, String deviceName, {String? app}) =>
+      impl.addonClaimBox(link, deviceName, app: app);
+
+  /// Why nothing secret may go to [link] (plain HTTP to a host outside the local network), as a
+  /// text for the user; `null` if it may. Every request with the device access, the box password
+  /// or a pairing code is refused with this text before anything is sent.
+  static String? refusal(BoxLink link) => impl.addonRefusal(link);
 }
 
 /// Binary messages with the add-on server (see BusService in the server).

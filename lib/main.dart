@@ -32,6 +32,7 @@ import 'platform/incoming_files.dart';
 import 'platform/prefs_repair.dart';
 import 'platform/storage.dart';
 import 'platform/store_plan.dart';
+import 'platform/title_bar_inset.dart';
 import 'model/plan_source.dart';
 import 'theme/app_theme.dart';
 import 'theme/tokens.dart';
@@ -48,7 +49,7 @@ import 'model/account.dart';
 import 'model/app_lock.dart';
 import 'model/betrieb/team.dart';
 
-void main([List<String> args = const []]) {
+Future<void> main([List<String> args = const []]) async {
   WidgetsFlutterBinding.ensureInitialized();
   // Record the latest log messages and errors for the diagnostics package.
   AppLog.instance.install();
@@ -63,7 +64,9 @@ void main([List<String> args = const []]) {
   // Maintenance date from the customer file to box or add-on (date only).
   MaintenanceSync.instance.start();
   // Android: draw under the system bars – the tab bar colours the area below.
-  if (!kIsWeb) SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  if (!kIsWeb) unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
+  // In the browser: box or Docker instead of the add-on? Decides texts and colours.
+  if (Addon.embedded) await Addon.detectServer();
   runApp(const KnxMonitorApp());
 }
 
@@ -95,6 +98,7 @@ class _KnxMonitorAppState extends State<KnxMonitorApp> {
   void initState() {
     super.initState();
     _loading; // start immediately, in parallel with the splash animation
+    unawaited(TitleBarInset.load());
   }
 
   /// The app always starts: every loader gets a deadline and may fail. Whatever is missing then
@@ -202,9 +206,10 @@ class _KnxMonitorAppState extends State<KnxMonitorApp> {
         title: 'Busclear',
         debugShowCheckedModeBanner: false,
         scrollBehavior: const AppScrollBehavior(),
-        // In the add-on (Ingress) with Home Assistant's neutral colours.
-        theme: AppTheme.light(homeAssistant: Addon.embedded),
-        darkTheme: AppTheme.dark(homeAssistant: Addon.embedded),
+        // In the add-on (Ingress) with Home Assistant's neutral colours; box and Docker in the
+        // browser look like the app.
+        theme: AppTheme.light(homeAssistant: Addon.inHomeAssistant),
+        darkTheme: AppTheme.dark(homeAssistant: Addon.inHomeAssistant),
         themeAnimationStyle: AnimationStyle.noAnimation,
         locale: LocaleController.instance.locale,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -222,8 +227,10 @@ class _KnxMonitorAppState extends State<KnxMonitorApp> {
                 ? Brightness.light
                 : Brightness.dark,
           ),
-          child: AppLockGate(
-            child: CrashBannerHost(routes: _routes, onReport: _reportCrash, child: child!),
+          child: TitleBarPadding(
+            child: AppLockGate(
+              child: CrashBannerHost(routes: _routes, onReport: _reportCrash, child: child!),
+            ),
           ),
         ),
         home: Builder(

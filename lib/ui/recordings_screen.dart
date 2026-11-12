@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/cupertino.dart';
@@ -16,6 +14,9 @@ import '../model/send_scheduler.dart';
 import '../model/history_store.dart';
 import '../platform/addon.dart';
 import '../model/recording.dart';
+import '../model/recording_import.dart';
+import '../catalog_store.dart';
+import '../model/tap_points.dart';
 import '../theme/palette.dart';
 import '../l10n/locale_controller.dart';
 import '../theme/tokens.dart';
@@ -110,24 +111,32 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
     if (file == null) return;
     try {
       final bytes = await file.readAsBytes();
-      // Diagnostics package (ZIP): open project and recording together.
-      if (DiagnosticsPackage.looksLikeZip(bytes)) {
+      // Diagnostics package (ZIP): open project and recording together. A zip of ETS files
+      // (the whole history of an add-on or box) is a recording to import.
+      if (DiagnosticsPackage.looksLikeZip(bytes) && !looksLikeEtsZip(bytes)) {
         if (mounted && await openPackageFile(context, bytes)) return;
         if (mounted) await openSupportPackage(context, bytes);
         return;
       }
       // A month of a busy bus as ETS file is several hundred MB: as a recording in
       // memory that would freeze or end the app (iPad, A14).
-      if (bytes.length > _importMaxBytes) {
+      if (bytes.length > const RecordingImportLimits().maxBytes) {
         if (mounted) {
           final mb = (bytes.length / (1024 * 1024)).round();
           showHorizontMessage(context, s.recordingsImportTooLarge(mb), status: HorizontStatus.critical);
         }
         return;
       }
-      final name = file.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
-      // Parsing in the background, the UI keeps running.
-      final recording = await compute(_parseRecording, (bytes: bytes, name: name));
+      // Reading in the background, the UI keeps running.
+      final found = await compute(_readImport, (bytes: bytes, name: file.name));
+      if (!mounted) return;
+      // What was found first; nothing is saved before the electrician says so.
+      final name = await showAdaptiveDialog<String>(
+        context: context,
+        builder: (_) => RecordingImportDialog(found: found),
+      );
+      if (name == null) return;
+      final recording = found.toRecording(name: name, installation: InstallationStore.instance.active.id);
       await _store.save(recording);
       if (!mounted) return;
       showHorizontMessage(
@@ -135,16 +144,13 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
         s.recordingsImported(recording.name, recording.telegrams.length),
         status: HorizontStatus.positive,
       );
-    } on FormatException catch (e) {
-      if (mounted) showHorizontMessage(context, s.recordingsImportFailed(e.message), status: HorizontStatus.critical);
+    } on RecordingImportException catch (e) {
+      if (mounted) showHorizontMessage(context, recordingImportError(e), status: HorizontStatus.critical);
     } on Object catch (e) {
       debugPrint('Import: $e');
       if (mounted) showHorizontMessage(context, s.actionFailed, status: HorizontStatus.critical);
     }
   }
-
-  /// Largest ETS file to import as a recording (about 400,000 telegrams).
-  static const _importMaxBytes = 100 * 1024 * 1024;
 
   @override
   Widget build(BuildContext context) {
@@ -268,6 +274,8 @@ class _RecordingRow extends StatelessWidget {
       '${formatDate(r.started)}  ${formatTime(r.started, seconds: false)}',
       formatDuration(r.duration),
       s.telegramCount(r.count),
+      // Not recorded here: said in the list already.
+      if (r.imported != null) s.recImportedMark,
       ?place,
       ?r.gateway,
     ].join(metaSeparator);
@@ -334,6 +342,8 @@ class _RecordingScreenState extends State<RecordingScreen> {
   void initState() {
     super.initState();
     AnnotationScope.open(_r);
+    // Its own tap points and gaps, if it saved them (issue #8).
+    TapScope.open(_r.taps);
     if (widget.showFindings && _r.diagnostics != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _findings();
@@ -344,6 +354,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
   @override
   void dispose() {
     AnnotationScope.close(_r);
+    TapScope.close(_r.taps);
     _player.dispose();
     _log.dispose();
     super.dispose();
@@ -428,6 +439,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
       gateway: _r.gateway,
       floatingStart: _r.telegrams.isEmpty ? null : PlayerBar(player: _player),
       title: _RecordingTitle(recording: _r),
+      banner: RecordingOriginNote(recording: _r),
       actions: [
         if (_r.diagnostics != null)
           IconButton(tooltip: s.findingsTitle, onPressed: _findings, icon: const Icon(AppIcons.report)),
@@ -1055,5 +1067,190 @@ class _HistoryCardState extends State<_HistoryCard> {
   }
 }
 
-Recording _parseRecording(({Uint8List bytes, String name}) input) =>
-    parseEtsXml(utf8.decode(input.bytes, allowMalformed: true), name: input.name);
+RecordingImport _readImport(({Uint8List bytes, String name}) input) =>
+    readRecordingFile(input.bytes, fileName: input.name);
+
+/// The sentence for a file that was not imported.
+String recordingImportError(RecordingImportException e) => switch (e.error) {
+  RecordingImportError.tooLarge => s.recordingsImportTooLarge(e.limit ?? 0),
+  RecordingImportError.tooMany => s.recImportErrorTooMany(e.limit ?? 0),
+  RecordingImportError.unknownFormat => s.recImportErrorUnknown,
+  RecordingImportError.doctype => s.recImportErrorDoctype,
+  RecordingImportError.damaged => [
+    s.recImportErrorDamaged,
+    if (e.detail case final d? when d.length < 160) d,
+  ].join(' '),
+  RecordingImportError.empty => s.recImportErrorEmpty,
+  RecordingImportError.archive => s.recImportErrorArchive,
+};
+
+/// Name of a source format, also for one a newer version wrote into a recording.
+String recordingFormatLabel(String format) => switch (RecordingFormat.values.asNameMap()[format]) {
+  RecordingFormat.recording => s.recImportFormatRecording,
+  RecordingFormat.history => s.recImportFormatHistory,
+  RecordingFormat.csv => s.recImportFormatCsv,
+  RecordingFormat.etsXml => s.recImportFormatEtsXml,
+  RecordingFormat.etsZip => s.recImportFormatEtsZip,
+  null => format,
+};
+
+/// What an import found (issue #5): source, period, telegrams, what could not be read and why.
+/// Returns the name to save it under, `null` when cancelled.
+class RecordingImportDialog extends StatefulWidget {
+  const RecordingImportDialog({super.key, required this.found});
+
+  final RecordingImport found;
+
+  @override
+  State<RecordingImportDialog> createState() => _RecordingImportDialogState();
+}
+
+class _RecordingImportDialogState extends State<RecordingImportDialog> {
+  late final _initial = widget.found.original?.name ?? widget.found.fileName.replaceFirst(RegExp(r'\.[^.]+$'), '');
+  late final _name = TextEditingController(text: _initial);
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final name = _name.text.trim();
+    Navigator.pop(context, name.isEmpty ? _initial : name);
+  }
+
+  static String _moment(DateTime t) => '${formatDate(t)}  ${formatTime(t, millis: false)}';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hz = context.hz;
+    final found = widget.found;
+    final skipped = found.skipped;
+    final muted = theme.textTheme.bodySmall?.copyWith(color: hz.textMuted);
+    // Label above the value: side by side they would not fit a phone at large type.
+    Widget fact(String label, String value, {String? below}) => Padding(
+      padding: const EdgeInsets.only(bottom: HzSpace.s12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: muted),
+          Text(value, style: context.figures(theme.textTheme.bodyMedium)),
+          if (below != null) Text(below, style: muted),
+        ],
+      ),
+    );
+    final before = CatalogStore.instance.currentStateFrom;
+    final older = before != null && found.first.isBefore(before);
+    final until = older
+        ? CatalogStore.instance.projectStates[CatalogStore.instance.projectStateAt(found.first) + 1].from!
+        : null;
+    return AlertDialog.adaptive(
+      title: Text(s.recImportTitle),
+      // Material ancestor for the text field, also in the Cupertino dialog.
+      content: Material(
+        type: MaterialType.transparency,
+        child: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                fact(s.recImportSource, recordingFormatLabel(found.format.name), below: found.fileName),
+                fact(s.recImportPeriod, '${_moment(found.first)} – ${_moment(found.last)}'),
+                fact(s.recImportTelegrams, formatInt(found.telegrams.length)),
+                fact(
+                  s.recImportSkipped,
+                  skipped.isEmpty ? s.recImportSkippedNone : formatInt(found.skippedCount),
+                  below: skipped.isEmpty
+                      ? null
+                      : [
+                          for (final MapEntry(:key, :value) in skipped.entries)
+                            switch (key) {
+                              TelegramSkip.noData => s.recImportSkipNoData(value),
+                              TelegramSkip.time => s.recImportSkipTime(value),
+                              TelegramSkip.frame => s.recImportSkipFrame(value),
+                              TelegramSkip.line => s.recImportSkipLine(value),
+                            },
+                        ].join(metaSeparator),
+                ),
+                HorizontField(
+                  label: s.recImportName,
+                  child: TextField(
+                    style: context.hzTheme.field,
+                    controller: _name,
+                    decoration: const InputDecoration(),
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _submit(),
+                  ),
+                ),
+                const SizedBox(height: HzSpace.s12),
+                if (until != null) ...[
+                  Text(s.recImportState(formatDate(until)), style: muted),
+                  const SizedBox(height: HzSpace.s4),
+                ],
+                Text(s.recImportHint, style: muted),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        horizontDialogAction(context, label: s.commonCancel, onPressed: () => Navigator.pop(context)),
+        horizontDialogAction(context, label: s.recImportConfirm, primary: true, onPressed: _submit),
+      ],
+    );
+  }
+}
+
+/// Quiet lines above a recording that is not what one would assume (issue #5): imported from a
+/// file, or from before the current project state, so its names are those of then. Nothing for
+/// every other recording.
+class RecordingOriginNote extends StatelessWidget {
+  const RecordingOriginNote({super.key, required this.recording});
+
+  final Recording recording;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = CatalogStore.instance;
+    return ListenableBuilder(
+      listenable: store,
+      builder: (context, _) {
+        final r = recording;
+        final from = store.currentStateFrom;
+        final first = r.telegrams.isEmpty ? r.started : r.telegrams.first.time;
+        final lines = [
+          if (r.imported case final origin?)
+            '${s.recImportedFrom(origin.file)}$metaSeparator${recordingFormatLabel(origin.format)}',
+          if (from != null && first.isBefore(from)) s.projectStateRecordingNote(formatDate(from)),
+        ];
+        if (lines.isEmpty) return const SizedBox.shrink();
+        final hz = context.hz;
+        final width = MediaQuery.sizeOf(context).width;
+        final gutter = Gap.gutterFor(width);
+        return Padding(
+          padding: EdgeInsets.fromLTRB(gutter, HzSpace.s4, gutter, HzSpace.s4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: HzSpace.s2),
+                child: Icon(AppIcons.history, size: HzIconSize.badge, color: hz.textFaint),
+              ),
+              const SizedBox(width: HzSpace.s4),
+              Expanded(
+                child: Text(
+                  lines.join('\n'),
+                  style: context.figures(Theme.of(context).textTheme.bodySmall).copyWith(color: hz.textMuted),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}

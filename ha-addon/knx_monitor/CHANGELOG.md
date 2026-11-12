@@ -1,5 +1,72 @@
 # Changelog
 
+## 1.12.0
+
+- DALI through KNX ([#6](https://github.com/regetskcob/KNX-Monitor/issues/6)):
+  Busclear shows what a KNX-DALI gateway reports on the bus: faults per
+  luminaire, the state of emergency converters and their test results, with
+  profiles for ABB and MDT gateways. Faults raise alarms, and the test log of
+  the emergency lighting is available as a PDF. Busclear only listens; it never
+  addresses or commissions DALI devices.
+- Health check for Home Assistant
+  ([#12](https://github.com/regetskcob/KNX-Monitor/issues/12)): with the new
+  option "Health check for Home Assistant" (`health_check`; Docker and box
+  `HEALTH_CHECK=true`) the server runs the rules that need only the recording
+  and the project, once a day and on request. It never sends on the bus. The
+  Busclear integration 1.3.0 brings the service `knx_monitor.run_health_check`
+  and the sensors "Health" and "Health findings". Off by default.
+- Events without the Supervisor: the integration now gets watcher events and
+  triggers from a Busclear Box or a Docker container too, over a channel of its
+  own.
+- Every telegram to MQTT
+  ([#11](https://github.com/regetskcob/KNX-Monitor/issues/11)): the stream can
+  be set in the app (Exports › Continuous › Data export) without restarting
+  the add-on:
+  filter, raw data, last value per address. The MQTT device in Home Assistant
+  has a switch to pause the stream and sensors for sent and dropped telegrams.
+- Pairing is safer: the pairing page shows a one-time code instead of the key
+  itself (valid ten minutes), a device is no longer paired over plain HTTP to
+  an address on the internet, and the lock after wrong attempts survives a
+  restart. Apps up to 1.11.2 cannot use the code link; for them tick
+  "Schlüssel direkt anzeigen" (show the key directly) on the pairing page. A name such as `nas.fritz.box` over HTTP
+  is refused: use the IP address, a `.local` name or HTTPS.
+- Busclear Box and Docker: one backup of the whole server (all installations
+  with history, projects, settings) as a ZIP file, and restoring it; in the
+  box settings of the app or in the browser on the pairing page. Keys and
+  passwords are encrypted with a backup password; history and projects are
+  readable, so keep the file safe.
+- Tap points
+  ([#8](https://github.com/regetskcob/KNX-Monitor/issues/8)): cards with the
+  bus load per tap point, a column "Seen at" in the wide telegram table,
+  search with multiple selection, and recordings keep the names of the
+  tap points and their gaps.
+- Bus on the floor plan: telegrams light up points on your floor plan, silent
+  devices stand out; in the app, in the add-on and as a dashboard card.
+- For electricians
+  ([#5](https://github.com/regetskcob/KNX-Monitor/issues/5)): acceptance protocol
+  with standard, project number, warranty start and photos of defects; a
+  maintenance report whose health item runs the check and takes over its
+  result; a reply to the customer's fault report; follow-up handover packages
+  that update an installation instead of duplicating it; customer records for
+  a second device as a password-protected file; project states with the period
+  they were valid; import of older recordings and ETS telegram files.
+- Wide windows: more than twenty pages (data export, customer records, company,
+  handover package, watchers, Home Assistant export, teach-in, installation report,
+  backup and others) use the width on tablets, Mac and desktop with columns and
+  cards instead of a narrow list. The phone layout stays.
+- Mac: the window has no title bar of its own any more.
+- "Telegrams today" starts with the day's recording after a restart instead of
+  zero.
+- Senders in bus monitor, diagnosis and commissioning open the device sheet;
+  lines can be tapped to show the line in the monitor. A single byte without a
+  known type is shown as a raw value only.
+- Fixed: on large phones the hint "No group addresses" above the overview
+  squeezed its text into one letter per line and pushed the overview off the
+  screen. A long value in the live column beside the overview ran out of its
+  row. The customer records failed to open when an installation was listed
+  twice.
+- Demo house: every command gets its status feedback.
+
 ## 1.11.2
 
 - "Stopped sending" only after a long silence: the repair in the Busclear

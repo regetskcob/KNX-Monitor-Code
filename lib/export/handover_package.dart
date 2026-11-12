@@ -48,7 +48,16 @@ class PackageException implements Exception {
 }
 
 /// What a file is, without reading all of it.
-enum PackageKind { handover, faultReport }
+enum PackageKind {
+  handover,
+  faultReport,
+
+  /// The electrician's own customer files for a second device (`lib/export/customer_file.dart`).
+  customerFile,
+}
+
+/// Head of a customer file; here so [packageKindOf] can tell the three apart.
+const customerFileHeadName = 'customers.json';
 
 /// Own contact details in a package: what the customer sees.
 @immutable
@@ -224,7 +233,7 @@ class HandoverPackage {
 
   /// Reads only the header. Throws [PackageException].
   static HandoverManifest readManifest(Uint8List bytes) {
-    final (:map, raw: _) = _head(_archive(bytes));
+    final (:map, raw: _) = _head(openPackageArchive(bytes));
     try {
       return _parseManifest(map);
     } on Object {
@@ -249,7 +258,7 @@ class HandoverPackage {
   /// Opens the package. [key] comes from [keyFor] (a separate step, because derivation takes time
   /// and can use Web Crypto in the browser). Throws [PackageException].
   static HandoverPackage open(Uint8List bytes, {Uint8List? key}) {
-    final archive = _archive(bytes);
+    final archive = openPackageArchive(bytes);
     final (:map, :raw) = _head(archive);
     try {
       final manifest = _parseManifest(map);
@@ -257,13 +266,13 @@ class HandoverPackage {
       if (manifest.encrypted) {
         if (key == null) throw const PackageException(PackageProblem.wrongPassword);
         final (salt: _, :nonce, iterations: _) = _sealParams(map);
-        final sealed = _content(archive, _sealedName);
+        final sealed = packageEntry(archive, _sealedName);
         if (sealed == null) throw const PackageException(PackageProblem.corrupt);
         final plain = unseal(sealed, key: key, nonce: nonce, aad: raw);
         final json = utf8.decode(const GZipDecoder().decodeBytes(plain, maxOutputSize: packageMaxEntry));
         payload = (jsonDecode(json) as Map).cast();
       } else {
-        final plain = _content(archive, _plainName);
+        final plain = packageEntry(archive, _plainName);
         if (plain == null) throw const PackageException(PackageProblem.corrupt);
         payload = (jsonDecode(utf8.decode(plain)) as Map).cast();
       }
@@ -320,7 +329,7 @@ class HandoverPackage {
   /// Key parameters of a package, without decrypting it.
   static ({Uint8List salt, int iterations}) keyParams(Uint8List bytes) {
     try {
-      final (:map, raw: _) = _head(_archive(bytes));
+      final (:map, raw: _) = _head(openPackageArchive(bytes));
       final (:salt, nonce: _, :iterations) = _sealParams(map);
       return (salt: salt, iterations: iterations);
     } on PackageException {
@@ -331,7 +340,7 @@ class HandoverPackage {
   }
 
   static ({Map<String, Object?> map, Uint8List raw}) _head(Archive archive) {
-    final raw = _content(archive, _manifestName);
+    final raw = packageEntry(archive, _manifestName);
     if (raw == null) throw const PackageException(PackageProblem.corrupt);
     final Map<String, Object?> map;
     try {
@@ -345,7 +354,9 @@ class HandoverPackage {
   }
 }
 
-Archive _archive(Uint8List bytes) {
+/// The ZIP of a package file within the limits ([packageMaxBytes], `decodeZipLimited`). Throws
+/// [PackageException].
+Archive openPackageArchive(Uint8List bytes) {
   if (bytes.length > packageMaxBytes) throw const PackageException(PackageProblem.corrupt);
   try {
     return decodeZipLimited(bytes);
@@ -356,7 +367,9 @@ Archive _archive(Uint8List bytes) {
   }
 }
 
-Uint8List? _content(Archive archive, String name) {
+/// Content of one entry, `null` if it is missing. Throws [PackageException] above
+/// [packageMaxEntry].
+Uint8List? packageEntry(Archive archive, String name) {
   final file = archive.findFile(name);
   if (file == null) return null;
   if (file.size > packageMaxEntry) throw const PackageException(PackageProblem.corrupt);
@@ -372,8 +385,9 @@ Uint8List? _content(Archive archive, String name) {
 PackageKind? packageKindOf(Uint8List bytes) {
   if (!DiagnosticsPackage.looksLikeZip(bytes)) return null;
   try {
-    final archive = _archive(bytes);
+    final archive = openPackageArchive(bytes);
     if (archive.findFile('handover.json') != null) return PackageKind.handover;
+    if (archive.findFile(customerFileHeadName) != null) return PackageKind.customerFile;
     if (archive.findFile(FaultReport.fileName) != null) return PackageKind.faultReport;
   } on Object catch (e) {
     debugPrint('Keine Paketdatei: $e');
@@ -456,8 +470,8 @@ class FaultReport {
 
   /// Throws [PackageException].
   factory FaultReport.fromFile(Uint8List bytes) {
-    final archive = _archive(bytes);
-    final raw = _content(archive, fileName);
+    final archive = openPackageArchive(bytes);
+    final raw = packageEntry(archive, fileName);
     if (raw == null) throw const PackageException(PackageProblem.corrupt);
     try {
       final m = (jsonDecode(utf8.decode(raw)) as Map).cast<String, Object?>();

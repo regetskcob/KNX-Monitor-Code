@@ -38,7 +38,7 @@ class SharedTunnel extends KnxTunnel {
   Completer<void>? _released;
 
   /// "Connecting to the bus", depending on whether the server runs in the add-on or on the box.
-  static String get _connecting => Addon.box != null ? s.boxConnecting : s.addonConnecting;
+  static String get _connecting => Addon.onBox ? s.boxConnecting : s.addonConnecting;
 
   /// Whether the connection to the add-on server is up (the bus itself may not be yet).
   bool get attached => _socket != null;
@@ -61,7 +61,7 @@ class SharedTunnel extends KnxTunnel {
 
   @override
   String get kind {
-    final via = Addon.box == null ? 'Add-on' : 'Box';
+    final via = Addon.onBox ? 'Box' : 'Add-on';
     return switch (_config['mode']) {
       'tcp' => '$via · TCP',
       'routing' => '$via · Routing',
@@ -111,7 +111,7 @@ class SharedTunnel extends KnxTunnel {
       case 0x01:
         receiveCemi(Uint8List.sublistView(m, 1));
       // Frame from a further tap point of the server (issue #8): tap number, then cEMI.
-      case 0x04 when m.length > 2:
+      case 0x04 when m.length > 2 && m[1] > 0 && m[1] < TapPoint.max:
         receiveCemiAt(m[1], Uint8List.sublistView(m, 2));
       case 0x02:
         _onStatus(jsonDecode(utf8.decode(m.sublist(1))) as Map<String, Object?>);
@@ -194,12 +194,10 @@ class SharedTunnel extends KnxTunnel {
         label: tapLabel(j['address'] as int?, '1'),
         state: mainState,
         error: j['error'] as String?,
-        autoWindow: switch (j['autoWindowMs']) {
-          final int ms => Duration(milliseconds: ms),
-          _ => null,
-        },
+        autoWindow: _window(j['autoWindowMs']),
+        lag: _lag(j['lagUs']),
       ),
-      for (final (i, raw) in taps.indexed)
+      for (final (i, raw) in taps.take(TapPoint.max - 1).indexed)
         if (raw is Map)
           TapStatus(
             index: i + 1,
@@ -209,27 +207,36 @@ class SharedTunnel extends KnxTunnel {
             error: raw['error'] as String?,
             paused: raw['paused'] == true,
             silent: raw['silent'] == true,
-            autoWindow: switch (raw['autoWindowMs']) {
-              final int ms => Duration(milliseconds: ms),
-              _ => null,
-            },
+            autoWindow: _window(raw['autoWindowMs']),
+            lag: _lag(raw['lagUs']),
           ),
     ];
     tapPoints.value = list;
     tapLabels.value = [for (final p in list) p.label];
     useTaps(
       list.where((p) => p.connected).length,
+      // The window set by hand, else the one the server measured: the view merges the same way.
       windows: {
-        for (final (i, raw) in taps.indexed)
-          if (raw is Map && raw['windowMs'] is int) i + 1: Duration(milliseconds: raw['windowMs']! as int),
+        0: ?_window(j['autoWindowMs']),
+        for (final (i, raw) in taps.take(TapPoint.max - 1).indexed)
+          if (raw is Map) i + 1: ?(_window(raw['windowMs']) ?? _window(raw['autoWindowMs'])),
+      },
+      hand: {
+        for (final (i, raw) in taps.take(TapPoint.max - 1).indexed)
+          if (raw is Map) i + 1: ?_window(raw['windowMs']),
       },
     );
   }
 
+  /// A merge window from the status, within the limits the server itself keeps.
+  static Duration? _window(Object? ms) => ms is int && ms > 0 ? Duration(milliseconds: ms.clamp(10, 5000)) : null;
+
+  static Duration? _lag(Object? us) => us is int && us >= 0 ? Duration(microseconds: us.clamp(0, 5000000)) : null;
+
   void _closed(String? reason) {
     _drop();
     if (state.value != TunnelState.disconnected) {
-      error.value = Addon.box != null ? s.boxConnectionLost : s.addonConnectionLost;
+      error.value = Addon.onBox ? s.boxConnectionLost : s.addonConnectionLost;
       state.value = TunnelState.disconnected;
     }
   }

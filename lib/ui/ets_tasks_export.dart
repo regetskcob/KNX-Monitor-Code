@@ -89,7 +89,7 @@ Future<EtsTasks> currentEtsTasks({TelegramLog? log}) async {
 /// values. If one is missing, the page has no image.
 Future<Map<int, Uint8List>> _drawings(BuildContext context, EtsTasks tasks) async {
   await DeviceArtCatalog.instance.load();
-  final light = AppTheme.light(homeAssistant: Addon.embedded);
+  final light = AppTheme.light(homeAssistant: Addon.inHomeAssistant);
   final log = TelegramLog();
   final drawings = <int, Uint8List>{};
   for (final device in tasks.devices.keys) {

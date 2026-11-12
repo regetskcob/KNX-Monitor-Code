@@ -14,7 +14,10 @@ import 'package:knx_monitor_server/files.dart';
 /// - stores catalog, recordings and history under "/api/files/…" in the folder
 ///   of the active installation (`installations/<id>/`, "/api/installations"),
 /// - in continuous mode, keeps its own bus connection, records, and distributes
-///   the frames to all open views ("/ws/bus", "/api/bus").
+///   the frames to all open views ("/ws/bus", "/api/bus"),
+/// - sends the events for automations (watchers, alarms, bus connection) to
+///   Home Assistant through the Supervisor, to the MQTT device and to the
+///   event channel "/ws/events" (docs/event-channel.md).
 ///
 /// Environment: PORT (8765), WEB_DIR (/app/web), DATA_DIR (/data/app),
 /// ALLOW_ALL=1 allows access outside of Ingress (development only; listens on
@@ -184,6 +187,12 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
   MqttBridge? mqtt;
   // Access for the Busclear integration (created below).
   HaIntegration? ha;
+  // Event channel /ws/events (event_channel.dart): the same events as Home
+  // Assistant's event bus, for the integration without Supervisor and others.
+  final events = EventChannel(server: env['ADDON_VERSION'] ?? BusService.version ?? 'dev');
+  _events = events;
+  // A restore cut off by a power failure: put the previous state back first (box_backup.dart).
+  await BoxBackupService.recover(data);
   final installations = InstallationService(
     await Installations.open(data),
     (root, installation) {
@@ -191,10 +200,12 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
       return bus = BusService(
         root,
         notify: _busNotify,
-        event: (type, data) async {
-          mqtt?.onEvent(type, data);
-          await HomeAssistant.instance.fire(type, data);
-        },
+        // One sink for all ways out: event channel, MQTT device, Supervisor.
+        event: serverEventSink(
+          channel: events,
+          homeAssistant: HomeAssistant.instance,
+          others: (type, data) => mqtt?.onEvent(type, data),
+        ),
         clock: clock,
         installation: installation,
         hatDevice: box == null ? null : BusConfig.defaultHatDevice,
@@ -202,9 +213,18 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
         restarts: (from, to) async => crash.between(from, to),
         restartSummary: crash.summary,
         readOnly: _readOnly,
-        mqttTelegrams: () => mqtt?.telegramStatus(),
+        // With whether the Busclear integration provides the entities (issue #12).
+        mqttTelegrams: () => switch (mqtt?.telegramStatus()) {
+          final status? => {...status, 'integration': ha?.claimed ?? false},
+          null => null,
+        },
+        mqttConfigure: (changes) async =>
+            await mqtt?.configure(changes) ?? (throw const FormatException('Kein MQTT-Broker eingerichtet.')),
+        // The server's health check (issue #12): one line on the app's data export page.
+        healthCheck: () => ha?.health.summary(),
         telegram: (line, {required secure, required decrypted}) {
           ha?.cycles.observe(bus, line);
+          _floorView.observe(line, root: root.path);
           mqtt?.onTelegram(line, bus.exporter.source, secure: secure, decrypted: decrypted);
         },
       );
@@ -222,8 +242,23 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
     // Key of this box (docs/keys.md): the app tells boxes apart by it, not by their address.
     'key': installations.installations.boxKey,
     'restarts': ?crash.summary(),
+    // The app shows the box backup only to a server that has it (box_backup.dart).
+    'backup': true,
   };
   await installations.start();
+  // Backup of the whole box and the way back (box_backup.dart, docs/backup-format.md).
+  _backup = BoxBackupService(
+    data,
+    installations,
+    serverVersion: env['ADDON_VERSION'] ?? BusService.version ?? 'dev',
+    describe: () => box == null
+        ? {'addon': HomeAssistant.instance.available}
+        : {'name': box.name, 'lanAccess': box.lanAccess, if (box.container) 'container': true},
+    readOnly: _readOnly,
+    confirmPassword: box?.confirmPassword,
+    onReplaced: _summaries.clear,
+  );
+  await _backup!.start();
   // In the add-on: is the KNX integration set up? Then the app suggests the
   // mode without its own tunnel (status "haKnx").
   if (HomeAssistant.instance.available) {
@@ -247,6 +282,11 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
           minSilence: CycleWatch.parseMinSilence(
             env['SILENT_AFTER_HOURS'] ??
                 (HomeAssistant.instance.available ? await _optionValue('silent_after_hours') : null),
+          ),
+          // Health check without the app (health_check.dart), off unless switched on. It only
+          // reads the history and the project, so it is the same in read-only mode.
+          healthCheck: ServerHealthCheck.parseEnabled(
+            HomeAssistant.instance.available ? await _optionValue('health_check') : env['HEALTH_CHECK'],
           ),
         )
       : null;
@@ -303,22 +343,24 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
       version: env['ADDON_VERSION'] ?? 'dev',
       broker: envBroker != null ? () async => envBroker : null,
       discovery: mqttDiscovery && !(ha?.claimed ?? false),
-      telegrams: telegrams
-          ? TelegramStream(
-              repeats: env['MQTT_REPEATS'] == 'true',
-              // KNX Data Secure telegrams only on request: the broker gets them in plain text.
-              secure:
-                  env['MQTT_SECURE_TELEGRAMS'] == 'true' ||
-                  (HomeAssistant.instance.available && await _on('mqtt_secure_telegrams')),
-              raw: raw,
-              rawOnly: rawOnly,
-              filter: filter,
-              // Last value per address, retained (`knx_monitor/value/…`).
-              retainValues: await option('MQTT_RETAIN_VALUES', 'mqtt_retain_values'),
-            )
-          : null,
+      // The default; the app can change it while running (kept in mqtt_stream.json).
+      defaults: TelegramStreamSettings(
+        enabled: telegrams,
+        repeats: env['MQTT_REPEATS'] == 'true',
+        // KNX Data Secure telegrams only on request: the broker gets them in plain text.
+        secure:
+            env['MQTT_SECURE_TELEGRAMS'] == 'true' ||
+            (HomeAssistant.instance.available && await _on('mqtt_secure_telegrams')),
+        raw: raw,
+        rawOnly: rawOnly,
+        filter: filter.text,
+        // Last value per address, retained (`knx_monitor/value/…`).
+        retainValues: await option('MQTT_RETAIN_VALUES', 'mqtt_retain_values'),
+      ),
+      settingsFile: File('${data.path}/mqtt_stream.json'),
       installation: installationId == null || installationId.isEmpty ? null : installationId,
     );
+    await mqtt.loadSettings();
     if (telegrams) {
       stdout.writeln(
         'MQTT: jedes Telegramm an knx_monitor/telegram/…'
@@ -347,6 +389,7 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
         // the process after 20 s, and that counted as an unexpected restart.
         await () async {
           await mqtt?.stop();
+          await events.close();
           await installations.shutdown();
         }().timeout(const Duration(seconds: 8));
       } on TimeoutException {
@@ -396,6 +439,8 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
   if (box != null) {
     box.onAccessChanged = () {
       unawaited(installations.bus.closeClients());
+      // A revoked device must not keep listening; the others reconnect.
+      unawaited(events.closeClients());
       for (final ws in _relays.toList()) {
         unawaited(ws.close(WebSocketStatus.policyViolation));
       }
@@ -495,11 +540,14 @@ Future<void> _handle(
     var admin = true;
     var maySend = true;
     String? owner;
+    // Event channel: places per device, or per address for the password.
+    String? channelOwner;
     if (box != null) {
       final role = await box.guard(request);
       if (role == null || await box.handle(request, role)) return;
       admin = role == BoxRole.admin;
       maySend = role.maySend;
+      channelOwner = box.deviceIdOf(request) ?? 'peer:$peer';
       // The integration without Supervisor: only a paired device with admin
       // rights (bearer token), not the password or a browser session, and
       // never a device without admin rights.
@@ -523,6 +571,14 @@ Future<void> _handle(
     final path = request.uri.path;
     final bus = installations.bus;
     if (ha != null && await ha.serve(request)) return;
+    if (_backup != null && await _backup!.serve(request, admin: admin)) return;
+    // While a restore swaps the folders, nothing may write into them.
+    if ((_backup?.swapping ?? false) && (path.startsWith('/api/files/') || path.startsWith('/api/installations'))) {
+      response
+        ..statusCode = HttpStatus.serviceUnavailable
+        ..headers.set(HttpHeaders.retryAfterHeader, '10');
+      return await response.close();
+    }
     if (await serveInstallations(request, installations, admin: admin)) return;
     if (await serveReports(request, bus.report, admin: admin)) return;
     // Read access like the history below, therefore before the export settings (admin).
@@ -531,6 +587,9 @@ Future<void> _handle(
       return await _boxTime(request, bus.clock!, admin: admin, maySend: maySend);
     }
     if (path == '/ws') return await _relay(request);
+    // Events for automations (docs/event-channel.md): every role that may log
+    // in, viewers too; they see the same telegrams live on /ws/bus anyway.
+    if (path == eventsPath && _events != null) return await _events!.serve(request, owner: channelOwner, admin: admin);
     if (path == '/ws/bus') {
       if (!bus.acceptsClient) {
         response
@@ -584,6 +643,10 @@ Future<void> _handle(
     if (path == '/api/restarts' && crash != null) return await sendJson(response, crash.recent(withError: admin));
     if (path == '/api/charts') return await sendJson(response, await _charts.list(installations.installations.root));
     if (path == '/api/charts/series') return await _chartSeries(request, installations);
+    // Bus view on the floor plan: read-only, behind the same access check as the charts above.
+    if (path == '/api/floor-view' || path == '/api/floor-view/image') {
+      return await _floorView.serve(request, installations.installations.root, installations.bus.recorder);
+    }
     if (path.startsWith('/api/files/')) {
       return await serveFile(
         request,
@@ -667,6 +730,12 @@ var _readOnly = false;
 
 /// MCP server for AI tools (set in [_serve]).
 McpService? mcp;
+
+/// Event channel `/ws/events` (set in [_serve]).
+EventChannel? _events;
+
+/// Box backup and restore (set in [_serve]).
+BoxBackupService? _backup;
 
 /// Each relay holds a UDP socket; a gateway has only a few tunnels anyway.
 const _maxRelays = 16;
@@ -911,6 +980,9 @@ Future<String?> _panelPath(String token) => _panel ??= () async {
 /// Saved charts for the card in Home Assistant (values from the history).
 final _charts = ChartService();
 
+/// Bus view on the floor plan for the app in the browser and the floor plan card.
+final _floorView = FloorViewService();
+
 /// `?name=<chart>&hours=<period>`: history of a saved chart.
 Future<void> _chartSeries(HttpRequest request, InstallationService installations) async {
   final q = request.uri.queryParameters;
@@ -933,6 +1005,12 @@ Future<void> _installCard(String version, Directory dir) async {
   final card = LovelaceCard(template: File('${dir.path}/${LovelaceCard.fileName}'));
   final result = await card.install(version: version);
   stdout.writeln('Dashboard-Karte: ${result.message}');
+  // The floor plan card rides along; its absence or failure never affects the chart card.
+  final floor = File('${dir.path}/${LovelaceCard.floorFileName}');
+  if (await floor.exists()) {
+    final placed = await LovelaceCard(template: floor, cardFile: LovelaceCard.floorFileName).install(version: version);
+    stdout.writeln('Grundriss-Karte: ${placed.message}');
+  }
   if (result.freshWww) {
     await _sendNotification(
       id: 'knx_monitor_card',

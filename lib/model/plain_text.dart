@@ -26,12 +26,12 @@ String plainSentence(Telegram t, {String? sender, String? target, Dpt? dpt, bool
 /// Sentence for [t] with names and type from the loaded project or learned data.
 String telegramSentence(Telegram t, {CatalogStore? store}) {
   final c = store ?? CatalogStore.instance;
-  final info = c.info(t.destination);
+  final info = c.infoOf(t);
   return plainSentence(
     t,
     sender: plainSender(t.source, store: c),
     target: info?.name,
-    dpt: c.dptOf(t.destination),
+    dpt: c.dptFor(t),
     status: info != null && isStatusGroup(info),
   );
 }

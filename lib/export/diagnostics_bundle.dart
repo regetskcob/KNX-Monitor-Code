@@ -563,8 +563,8 @@ Future<Map<String, Object?>> collectTechnical({KnxTunnel? tunnel, TelegramLog? l
     },
     'platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
     'os': os,
-    'homeAssistantAddon': Addon.embedded,
-    'viaBox': Addon.box != null,
+    'homeAssistantAddon': Addon.inHomeAssistant,
+    'viaBox': Addon.onBox,
     'server': server,
     'display': view == null
         ? null

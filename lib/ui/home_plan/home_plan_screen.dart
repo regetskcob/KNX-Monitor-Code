@@ -4,11 +4,20 @@
 
 import 'package:flutter/widgets.dart';
 
+import '../../knx/knx_tunnel.dart';
+import '../../model/telegram_log.dart';
+
 /// Ohne Bauherren-Paket entfällt der Einstieg auf dem Startbildschirm.
 const homePlanAvailable = false;
 
 class HomePlanScreen extends StatelessWidget {
-  const HomePlanScreen({super.key});
+  const HomePlanScreen({super.key, this.log, this.tunnel, this.initialTab = 0});
+
+  final TelegramLog? log;
+  final KnxTunnel? tunnel;
+  final int initialTab;
+
+  static const afterMoveInTab = 6;
 
   @override
   Widget build(BuildContext context) => const SizedBox.shrink();

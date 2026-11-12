@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -6,18 +7,30 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:horizont/horizont.dart';
+import 'package:image/image.dart' as img;
 import 'package:knx_monitor/catalog_store.dart';
 import 'package:knx_monitor/knx/demo_tunnel.dart';
 import 'package:knx_monitor/knx/knx_tunnel.dart';
 import 'package:knx_monitor/knx/telegram.dart';
 import 'package:knx_monitor/l10n/locale_controller.dart';
+import 'package:knx_monitor/model/commissioning.dart';
+import 'package:knx_monitor/model/customer.dart';
 import 'package:knx_monitor/model/expert_mode.dart';
+import 'package:knx_monitor/model/installation.dart';
+import 'package:knx_monitor/model/service_report.dart';
 import 'package:knx_monitor/monitor_model.dart';
+import 'package:knx_monitor/platform/storage.dart';
+import 'package:knx_monitor/platform/storage_io.dart';
+import 'package:knx_monitor/theme/app_icons.dart';
 import 'package:knx_monitor/theme/app_theme.dart';
+import 'package:knx_monitor/ui/acceptance_screen.dart';
 import 'package:knx_monitor/ui/commissioning_screen.dart';
 import 'package:knx_monitor/ui/connect_screen.dart';
+import 'package:knx_monitor/ui/fault_reply_screen.dart';
 import 'package:knx_monitor/ui/inventory_view.dart';
 import 'package:knx_monitor/ui/log_view.dart';
+import 'package:knx_monitor/ui/photo_pick.dart';
+import 'package:knx_monitor/ui/service_report_screen.dart';
 import 'package:knx_monitor/ui/sound_ack_screen.dart';
 import 'package:knx_monitor/ui/teach_in_screen.dart';
 import 'package:knx_monitor/ui/weekly_report_screen.dart';
@@ -137,7 +150,11 @@ void main() {
       ),
     );
     await tester.pump(const Duration(seconds: 2));
-    await then?.call();
+    try {
+      await then?.call();
+    } on Object catch (e, st) {
+      errors.add('then: $e\n$st');
+    }
     await tester.pump(const Duration(milliseconds: 500));
     final broken = _brokenWords(tester);
     FlutterError.onError = previous;
@@ -247,5 +264,120 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tunnel.controller.close();
     expect(problems, isEmpty);
+  });
+
+  // Protocols of the Pro tools (acceptance with defect photos, maintenance visit, reply to a fault
+  // report): forms the electrician fills in on site, in both languages.
+  group('Protokolle', () {
+    Future<void> storage(WidgetTester tester) => tester.runAsync(() async {
+      final dir = await Directory.systemTemp.createTemp('large_text');
+      AppStorage.instance = IoStorage(dir);
+      InstallationStore.instance.debugReset();
+      await InstallationStore.instance.load();
+      addTearDown(() => dir.delete(recursive: true));
+    });
+
+    /// Scrolls down until [target] is built (the pages are lazily built lists); whether it showed up.
+    Future<bool> scrollTo(WidgetTester tester, Finder target) async {
+      for (var i = 0; i < 40 && target.evaluate().isEmpty; i++) {
+        await tester.drag(find.byType(Scrollable).first, const Offset(0, -200));
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+      return target.evaluate().isNotEmpty;
+    }
+
+    /// Scrolls the page to its end in steps and collects what breaks on the way.
+    Future<void> scrollThrough(WidgetTester tester) async {
+      for (var i = 0; i < 12; i++) {
+        await tester.drag(find.byType(Scrollable).first, const Offset(0, -500));
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+    }
+
+    for (final locale in const [Locale('de'), Locale('en')]) {
+      testWidgets('Abnahme mit Mangel und Foto (${locale.languageCode})', (tester) async {
+        await storage(tester);
+        CatalogStore.instance.catalog = demoCatalog();
+        final c = Commissioning.instance..debugReset();
+        final addresses = CatalogStore.instance.catalog.groups.keys.take(3).toList();
+        // Marks are saved in the background with real file access: start and finish them outside
+        // the test's fake clock.
+        await tester.runAsync(() async {
+          c.prepare(addresses);
+          for (final a in addresses.take(2)) {
+            c
+              ..mark(a, CheckState.issue)
+              ..setNote(a, 'Rückmeldung fehlt, Aktor prüfen');
+          }
+          await c.flush();
+        });
+        final jpeg = Uint8List.fromList(img.encodeJpg(img.Image(width: 400, height: 300)));
+        debugPhotoSource = () async => jpeg;
+        addTearDown(() => debugPhotoSource = null);
+        var photoShown = false;
+        final problems = await shoot(
+          tester,
+          const AcceptanceScreen(),
+          locale: locale,
+          then: () async {
+            // No expect in here: shoot() has FlutterError.onError replaced until it returns.
+            // The defects are further down the (lazily built) list.
+            if (!await scrollTo(tester, find.byIcon(AppIcons.image))) return;
+            final add = find.byIcon(AppIcons.image).first;
+            await tester.ensureVisible(add);
+            await tester.pump();
+            await tester.tap(add);
+            for (var i = 0; i < 200 && find.byType(Image).evaluate().isEmpty; i++) {
+              await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+              await tester.pump();
+            }
+            photoShown = find.byType(Image).evaluate().isNotEmpty;
+            await scrollThrough(tester);
+          },
+        );
+        expect(problems, isEmpty);
+        expect(photoShown, isTrue, reason: 'the defect photo was added');
+      });
+
+      testWidgets('Wartungsbesuch (${locale.languageCode})', (tester) async {
+        await storage(tester);
+        var checklistShown = false;
+        final problems = await shoot(
+          tester,
+          const ServiceReportScreen(maintenance: true),
+          locale: locale,
+          then: () async {
+            // Let the page look for the last maintenance report (real file access).
+            for (var i = 0; i < 20; i++) {
+              await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+              await tester.pump();
+            }
+            // The checklist is below the fold of the (lazily built) list.
+            checklistShown = await scrollTo(tester, find.byType(SegmentedButton<CheckResult>));
+            await scrollThrough(tester);
+          },
+        );
+        expect(problems, isEmpty);
+        expect(checklistShown, isTrue, reason: 'the maintenance checklist is on the page');
+      });
+
+      testWidgets('Rückmeldung nach Störungsmeldung (${locale.languageCode})', (tester) async {
+        await storage(tester);
+        final problems = await shoot(
+          tester,
+          FaultReplyScreen(
+            report: Visit(
+              id: 'fault:1',
+              time: DateTime(2026, 11, 9, 20),
+              kind: VisitKind.faultReport,
+              text: 'Das Licht im Flur geht nachts von selbst an, obwohl niemand da ist.',
+            ),
+          ),
+          locale: locale,
+          then: () => scrollThrough(tester),
+        );
+        expect(problems, isEmpty);
+      });
+    }
   });
 }

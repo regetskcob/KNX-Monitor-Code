@@ -28,6 +28,10 @@
     "secondary" (dict "label" $a.hero.secondary "url" "#grundriss")
     "aside" $aside
     "asideCenter" true) }}
+{{- /* Once /hausbau/ is released (no longer a draft): the way to the explaining page. */}}
+{{- with site.GetPage "/hausbau" }}
+<p class="hb-note">{{ partial "horizont/symbol.html" "info" }}<span>{{ (index site.Data.hausbau site.Language.Lang).link_from_bauherren | markdownify }}</span></p>
+{{- end }}
 
 <section class="hz-feld-section tz-section tz-section--read" id="momente">
   {{ partial "horizont/kennung.html" (printf "02 — %s" $a.moments.label) }}

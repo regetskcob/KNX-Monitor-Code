@@ -14,6 +14,7 @@ import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'common.dart';
+import 'figure_box.dart' show RowColumns;
 
 /// Home Assistant configuration from the ETS project: preview with selection by
 /// rooms and types, uncertain mappings marked, device suggestions to accept,
@@ -112,143 +113,239 @@ class _HaConfigScreenState extends State<HaConfigScreen> {
           ),
         ],
       ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Widths.dashboard),
-          child: _entities.isEmpty
-              ? Padding(
-                  padding: Gap.page,
-                  child: Text(s.haEmpty, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
-                )
-              : ListView(
-                  padding: Gap.page,
-                  children: [
-                    Text(s.haExplain, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
-                    const SizedBox(height: Gap.inner),
-                    _WhereItGoes(addon: Addon.available),
-                    const SizedBox(height: Gap.section),
-                    // Key figures in the green box; the total is the main
-                    // value.
-                    SectionCard(
-                      soft: true,
-                      child: Wrap(
-                        spacing: HzSpace.s24,
-                        runSpacing: HzSpace.s12,
-                        children: [
-                          _Figure(label: s.haEntities, value: formatInt(chosen.length), main: true),
-                          _Figure(label: s.haUncertain, value: formatInt(uncertain)),
-                          for (final p in HaPlatform.values)
-                            if (chosen.any((e) => e.platform == p))
-                              _Figure(label: p.title, value: formatInt(chosen.where((e) => e.platform == p).length)),
-                        ],
-                      ),
+      // Below expanded one list; from there on up to [Widths.wide]: explanation and key figures
+      // beside the filters, device suggestions in columns, the rooms as blocks side by side.
+      body: LayoutBuilder(
+        builder: (context, box) {
+          final wide = box.maxWidth >= Breakpoints.expanded;
+          final intro = [
+            Text(s.haExplain, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
+            const SizedBox(height: Gap.inner),
+            _WhereItGoes(addon: Addon.available),
+            const SizedBox(height: Gap.section),
+            // Key figures in the green box; the total is the main
+            // value.
+            SectionCard(
+              soft: true,
+              child: Wrap(
+                spacing: HzSpace.s24,
+                runSpacing: HzSpace.s12,
+                children: [
+                  _Figure(label: s.haEntities, value: formatInt(chosen.length), main: true),
+                  _Figure(label: s.haUncertain, value: formatInt(uncertain)),
+                  for (final p in HaPlatform.values)
+                    if (chosen.any((e) => e.platform == p))
+                      _Figure(label: p.title, value: formatInt(chosen.where((e) => e.platform == p).length)),
+                ],
+              ),
+            ),
+          ];
+          final filters = [
+            SectionTitle(s.haTypes),
+            const SizedBox(height: Gap.item),
+            Wrap(
+              spacing: HzSpace.s8,
+              runSpacing: HzSpace.s8,
+              children: [
+                for (final p in HaPlatform.values)
+                  if (_entities.any((e) => e.platform == p))
+                    FilterChip(
+                      label: Text(p.title),
+                      selected: _platforms.contains(p),
+                      onSelected: (on) => setState(() => on ? _platforms.add(p) : _platforms.remove(p)),
                     ),
-                    const SizedBox(height: Gap.section),
-                    SectionTitle(s.haTypes),
-                    const SizedBox(height: Gap.item),
-                    Wrap(
-                      spacing: HzSpace.s8,
-                      runSpacing: HzSpace.s8,
-                      children: [
-                        for (final p in HaPlatform.values)
-                          if (_entities.any((e) => e.platform == p))
-                            FilterChip(
-                              label: Text(p.title),
-                              selected: _platforms.contains(p),
-                              onSelected: (on) => setState(() => on ? _platforms.add(p) : _platforms.remove(p)),
-                            ),
-                        FilterChip(
-                          avatar: Icon(HorizontStatus.warning.icon, size: 16, color: hz.warning),
-                          label: Text(s.haOnlyUncertain),
-                          selected: _onlyUncertain,
-                          onSelected: (on) => setState(() => _onlyUncertain = on),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: Gap.inner),
-                    SectionTitle(s.haRooms),
-                    const SizedBox(height: Gap.item),
-                    Wrap(
-                      spacing: HzSpace.s8,
-                      runSpacing: HzSpace.s8,
-                      children: [
-                        FilterChip(
-                          label: Text(s.haAllRooms),
-                          selected: _rooms == null,
-                          onSelected: (_) => setState(() => _rooms = null),
-                        ),
-                        for (final r in _allRooms)
-                          FilterChip(
-                            label: Text(r),
-                            selected: _rooms?.contains(r) ?? false,
-                            onSelected: (on) => setState(() {
-                              final rooms = _rooms ?? <String>{};
-                              on ? rooms.add(r) : rooms.remove(r);
-                              _rooms = rooms.isEmpty ? null : rooms;
-                            }),
-                          ),
-                      ],
-                    ),
-                    if (proposals.isNotEmpty) ...[
-                      const SizedBox(height: Gap.section),
-                      Row(
-                        children: [
-                          Expanded(child: SectionTitle(s.haDevices, count: proposals.length)),
-                          // Both apply to the visible suggestions, like the
-                          // filters above.
-                          TextButton(
-                            onPressed: () => setState(() => _devices.addAll(proposals.map((d) => d.id))),
-                            child: Text(s.haDevicesAll),
-                          ),
-                          TextButton(
-                            onPressed: proposals.any((d) => _devices.contains(d.id))
-                                ? () => setState(() => _devices.removeAll(proposals.map((d) => d.id)))
-                                : null,
-                            child: Text(s.haDevicesNone),
-                          ),
-                        ],
-                      ),
-                      Text(s.haDevicesExplain, style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted)),
-                      const SizedBox(height: Gap.item),
-                      for (final d in proposals)
-                        _DeviceRow(
-                          device: d,
-                          members: [for (final id in d.entities) names[id] ?? id],
-                          accepted: _devices.contains(d.id),
-                          onChanged: (on) => setState(() => on ? _devices.add(d.id) : _devices.remove(d.id)),
-                        ),
-                    ],
-                    const SizedBox(height: Gap.section),
-                    for (final MapEntry(key: room, value: list) in byRoom.entries) ...[
-                      SectionTitle(room, count: list.length),
-                      const SizedBox(height: Gap.item),
-                      for (final e in list)
-                        _EntityRow(
-                          entity: e,
-                          device: deviceOf[e.id],
-                          selected: _selected.contains(e.id),
-                          onChanged: (on) => setState(() => on ? _selected.add(e.id) : _selected.remove(e.id)),
-                        ),
-                      const SizedBox(height: Gap.section),
-                    ],
-                    // Preview of the file as it will be shared.
-                    Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: TextButton.icon(
-                        onPressed: () => setState(() => _preview = !_preview),
-                        icon: Icon(_preview ? AppIcons.collapse : AppIcons.expand, size: 18),
-                        label: Text(s.haPreview),
-                      ),
-                    ),
-                    if (_preview)
-                      SectionCard(child: SelectableText(_yaml(), style: context.hzTheme.data.copyWith(fontSize: 12))),
-                  ],
+                FilterChip(
+                  avatar: Icon(HorizontStatus.warning.icon, size: 16, color: hz.warning),
+                  label: Text(s.haOnlyUncertain),
+                  selected: _onlyUncertain,
+                  onSelected: (on) => setState(() => _onlyUncertain = on),
                 ),
-        ),
+              ],
+            ),
+            const SizedBox(height: Gap.inner),
+            SectionTitle(s.haRooms),
+            const SizedBox(height: Gap.item),
+            Wrap(
+              spacing: HzSpace.s8,
+              runSpacing: HzSpace.s8,
+              children: [
+                FilterChip(
+                  label: Text(s.haAllRooms),
+                  selected: _rooms == null,
+                  onSelected: (_) => setState(() => _rooms = null),
+                ),
+                for (final r in _allRooms)
+                  FilterChip(
+                    label: Text(r),
+                    selected: _rooms?.contains(r) ?? false,
+                    onSelected: (on) => setState(() {
+                      final rooms = _rooms ?? <String>{};
+                      on ? rooms.add(r) : rooms.remove(r);
+                      _rooms = rooms.isEmpty ? null : rooms;
+                    }),
+                  ),
+              ],
+            ),
+          ];
+          final deviceRows = [
+            for (final d in proposals)
+              _DeviceRow(
+                device: d,
+                members: [for (final id in d.entities) names[id] ?? id],
+                accepted: _devices.contains(d.id),
+                onChanged: (on) => setState(() => on ? _devices.add(d.id) : _devices.remove(d.id)),
+              ),
+          ];
+          List<Widget> room(String name, List<HaEntity> list) => [
+            SectionTitle(name, count: list.length),
+            const SizedBox(height: Gap.item),
+            for (final e in list)
+              _EntityRow(
+                entity: e,
+                device: deviceOf[e.id],
+                selected: _selected.contains(e.id),
+                onChanged: (on) => setState(() => on ? _selected.add(e.id) : _selected.remove(e.id)),
+              ),
+          ];
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: wide ? Widths.wide : Widths.dashboard),
+              child: _entities.isEmpty
+                  ? Padding(
+                      padding: Gap.page,
+                      child: Text(s.haEmpty, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
+                    )
+                  : ListView(
+                      padding: Gap.page,
+                      children: [
+                        if (wide)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            spacing: Gap.section,
+                            children: [
+                              Expanded(
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: intro),
+                              ),
+                              Expanded(
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: filters),
+                              ),
+                            ],
+                          )
+                        else ...[
+                          ...intro,
+                          const SizedBox(height: Gap.section),
+                          ...filters,
+                        ],
+                        if (proposals.isNotEmpty) ...[
+                          const SizedBox(height: Gap.section),
+                          // Title left, both actions right; on a narrow phone or with large text the
+                          // actions move below the title.
+                          Wrap(
+                            alignment: WrapAlignment.spaceBetween,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              SectionTitle(s.haDevices, count: proposals.length),
+                              Wrap(
+                                children: [
+                                  // Both apply to the visible suggestions, like the filters above.
+                                  TextButton(
+                                    onPressed: () => setState(() => _devices.addAll(proposals.map((d) => d.id))),
+                                    child: Text(s.haDevicesAll),
+                                  ),
+                                  TextButton(
+                                    onPressed: proposals.any((d) => _devices.contains(d.id))
+                                        ? () => setState(() => _devices.removeAll(proposals.map((d) => d.id)))
+                                        : null,
+                                    child: Text(s.haDevicesNone),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          // The explanation does not run across a wide window.
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: Widths.dashboard),
+                              child: Text(
+                                s.haDevicesExplain,
+                                style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: Gap.item),
+                          if (wide) _Lanes(children: deviceRows) else ...deviceRows,
+                        ],
+                        const SizedBox(height: Gap.section),
+                        if (wide) ...[
+                          CardColumns(
+                            // A row is roughly as high as the heading with its gap; a doubt adds a line.
+                            heights: [
+                              for (final list in byRoom.values)
+                                1 + list.fold(0, (sum, e) => sum + (e.uncertain ? 1.5 : 1)),
+                            ],
+                            children: [
+                              for (final MapEntry(key: name, value: list) in byRoom.entries)
+                                Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: room(name, list)),
+                            ],
+                          ),
+                          const SizedBox(height: Gap.section),
+                        ] else
+                          for (final MapEntry(key: name, value: list) in byRoom.entries) ...[
+                            ...room(name, list),
+                            const SizedBox(height: Gap.section),
+                          ],
+                        // Preview of the file as it will be shared.
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: TextButton.icon(
+                            onPressed: () => setState(() => _preview = !_preview),
+                            icon: Icon(_preview ? AppIcons.collapse : AppIcons.expand, size: 18),
+                            label: Text(s.haPreview),
+                          ),
+                        ),
+                        if (_preview)
+                          SectionCard(
+                            child: SelectableText(_yaml(), style: context.hzTheme.data.copyWith(fontSize: 12)),
+                          ),
+                      ],
+                    ),
+            ),
+          );
+        },
       ),
     );
   }
+}
+
+/// Rows that draw their own hairline, in newspaper columns (down the first, then the next) as
+/// soon as each is at least [Widths.column] wide.
+class _Lanes extends StatelessWidget {
+  const _Lanes({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final columns = RowColumns.columnsFor(context, box.maxWidth, Widths.column).clamp(1, children.length);
+      final perColumn = (children.length / columns).ceil();
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: RowColumns.gap,
+        children: [
+          for (var i = 0; i < columns; i++)
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: children.skip(i * perColumn).take(perColumn).toList(),
+              ),
+            ),
+        ],
+      );
+    },
+  );
 }
 
 /// Where the file belongs; in the add-on with the path in the Home Assistant

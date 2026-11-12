@@ -6,7 +6,10 @@ import 'knx/telegram.dart';
 import 'l10n/locale_controller.dart';
 import 'model/alarms.dart';
 import 'model/customer.dart';
+import 'model/dali.dart';
+import 'model/server_features.dart';
 import 'model/recording.dart';
+import 'model/tap_points.dart';
 import 'model/trigger.dart';
 import 'model/telegram_log.dart';
 
@@ -40,8 +43,12 @@ class MonitorModel extends TelegramLog {
       _watchSub = shared.watchHits.listen((h) {
         if (Plan.instance.allows(Feature.watcher)) WatchRules.instance.report(h.ids, h.telegram);
       });
+      // What this server can do beyond the basics (check kinds, DALI); without a server: nothing.
+      shared.status.addListener(_followServerFeatures);
     }
+    _followServerFeatures();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    _daliPoller;
     // Listening time for the weekly report (not in the demo).
     if (tunnel is! DemoTunnel) unawaited(ListeningLog.instance.load());
     _seedFromHistory();
@@ -49,6 +56,12 @@ class MonitorModel extends TelegramLog {
     tunnel.gatewayInfo.addListener(_rememberGateway);
     _rememberGateway();
   }
+
+  void _followServerFeatures() =>
+      ServerFeatures.instance.update(tunnel is SharedTunnel ? (tunnel as SharedTunnel).status.value : null);
+
+  /// Reads the DALI diagnostic addresses periodically, if the installation asks for it.
+  late final _daliPoller = DaliPoller(tunnel);
 
   /// Remember the gateway in the active installation: address when connecting, name, serial number
   /// and MAC once it has described itself. Not for demo, routing (no specific device) and
@@ -316,6 +329,7 @@ class MonitorModel extends TelegramLog {
     if (Plan.instance.allows(Feature.watcher)) WatchRules.instance.check(t, this, server: tunnel is SharedTunnel);
     if (Plan.instance.allows(Feature.commissioning)) Commissioning.instance.observe(t);
     if (Plan.instance.allows(Feature.soundAck)) SoundAck.instance.check(t);
+    DaliStore.instance.observe(t);
   }
 
   void _checkTrigger(Telegram t) {
@@ -406,7 +420,16 @@ class MonitorModel extends TelegramLog {
 
   /// Stops the recording and returns it (not yet saved).
   Recording? stopRecording({required String name, String? note}) {
-    final r = recorder?.stop(name: name, note: note);
+    final rec = recorder;
+    // With several tap points their labels, names and gaps go along (issue #8); the pre-roll of a
+    // trigger may reach before the start.
+    final from = rec == null || rec.telegrams.isEmpty || rec.started.isBefore(rec.telegrams.first.time)
+        ? rec?.started
+        : rec.telegrams.first.time;
+    final taps = from == null
+        ? null
+        : TapRecord.capture(tapLabels.value, tunnel.tapPoints.value, tapGaps, from: from, to: DateTime.now());
+    final r = rec?.stop(name: name, note: note, taps: taps);
     recorder = null;
     notifyListeners();
     return r;
@@ -444,6 +467,9 @@ class MonitorModel extends TelegramLog {
     _sub.cancel();
     _watchSub?.cancel();
     _ticker.cancel();
+    _daliPoller.dispose();
+    if (tunnel case final SharedTunnel shared) shared.status.removeListener(_followServerFeatures);
+    ServerFeatures.instance.update(null);
     super.dispose();
   }
 }

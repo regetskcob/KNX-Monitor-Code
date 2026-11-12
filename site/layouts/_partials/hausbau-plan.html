@@ -1,0 +1,41 @@
+{{- /*
+  The demo floor plan of /bauherren/ as a still drawing for /hausbau/, with
+  its devices as symbols on top.
+
+    partial "hausbau-plan.html" (dict "mode" "plan" "alt" … "rooms" … "kinds" …)
+
+  mode  plan  devices as planned, the push button behind the door carries the hint
+        bus   the same plan after moving in, with the app's states: some
+              devices are active now, the others heard, one silent (nothing
+              heard yet: a hollow ring, neutral, not a warning)
+*/ -}}
+{{- $bus := eq .mode "bus" -}}
+{{- $devices := slice
+  (dict "k" "light" "i" "lightbulb" "x" 425 "y" 175 "bus" "a1")
+  (dict "k" "light" "i" "lightbulb" "x" 190 "y" 200)
+  (dict "k" "light" "i" "lightbulb" "x" 760 "y" 130 "bus" "a2")
+  (dict "k" "socket" "i" "socket_schuko" "x" 190 "y" 420)
+  (dict "k" "socket" "i" "socket_schuko" "x" 40 "y" 340)
+  (dict "k" "socket" "i" "socket_schuko" "x" 960 "y" 200 "bus" "silent")
+  (dict "k" "blind" "i" "blinds" "x" 230 "y" 40 "bus" "a3")
+  (dict "k" "blind" "i" "blinds" "x" 40 "y" 150)
+  (dict "k" "blind" "i" "blinds" "x" 760 "y" 40)
+  (dict "k" "button" "i" "touch_app" "x" (cond $bus 545 505) "y" 420 "warn" (not $bus)) -}}
+<div class="hb-plan{{ if $bus }} hb-plan--bus{{ end }}" role="img" aria-label="{{ .alt }}">
+  <svg viewBox="0 0 1000 640" aria-hidden="true">
+    <rect class="bh-furn" x="80" y="250" width="230" height="90" rx="6"/><rect class="bh-furn" x="360" y="90" width="130" height="170" rx="4"/><rect class="bh-furn" x="780" y="48" width="172" height="62"/>
+    <path class="bh-wall bh-wall--out" d="M530 600H40V40H960V600H590"/>
+    <path class="bh-wall" d="M560 40V420M40 420H200M260 420H470M530 420H560M300 420V600M420 420V500M420 550V600M560 300H590M650 300H960M700 300V440M700 490V600"/>
+    <path class="bh-door" d="M530 420V360A60 60 0 0 0 470 420M200 420V480A60 60 0 0 0 260 420M420 500H370A50 50 0 0 0 420 550M700 440H750A50 50 0 0 1 700 490M590 300V240A60 60 0 0 1 650 300M530 600V540A60 60 0 0 1 590 600"/>
+  </svg>
+  <div class="bh-rooms" aria-hidden="true">
+    {{- range slice (slice "living" 250 120) (slice "kitchen" 760 220) (slice "hall" 560 520) (slice "office" 170 520) }}
+    <span style="left:{{ div (float (index . 1)) 10 }}%;top:{{ div (float (index . 2)) 6.4 }}%">{{ index $.rooms (index . 0) }}</span>
+    {{- end }}
+  </div>
+  <div aria-hidden="true">
+    {{- range $devices }}
+    <span class="hb-device{{ if .warn }} is-warn{{ end }}{{ if $bus }}{{ with .bus }} is-{{ . }}{{ end }}{{ end }}" style="left:{{ div (float .x) 10 }}%;top:{{ div (float .y) 6.4 }}%" title="{{ index $.kinds .k }}">{{ partial "horizont/symbol.html" .i }}</span>
+    {{- end }}
+  </div>
+</div>

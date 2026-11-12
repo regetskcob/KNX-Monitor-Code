@@ -1,0 +1,277 @@
+# /hausbau/: KNX im Hausbau, die erklärende Einstiegsseite zum Thema. Der
+# klickbare Prototyp bleibt /bauherren/. Was verfügbar, im Test oder in Arbeit
+# ist, steht nur in stand.yaml: Einträge mit „feature“ bekommen von dort ihr
+# Kennzeichen. Braucht ein Eintrag je Zustand andere Worte, bekommt er statt
+# „text“ bzw. „value“ die Schlüssel soon / test / live.
+states:
+  live: Verfügbar
+  test: Im Test
+  soon: In Arbeit
+plus: Plus
+demo: Demo-Haus, alle Angaben sind ausgedacht.
+# Verweise von anderen Seiten, sobald /hausbau/ freigegeben ist.
+link_from_bauherren: 'Neu beim Thema? [KNX im Hausbau](/hausbau/) erklärt den Weg von Anfang an.'
+hero:
+  kennung: KNX im Hausbau
+  title: Entscheide früh, solange die Wände noch offen sind.
+  lead: Du baust oder sanierst und denkst über KNX nach? Die wichtigsten Fragen stellen sich lange vor dem ersten Taster. Was soll das Haus im Alltag können, was davon muss in die Wand, und bis wann muss es feststehen? „Haus planen“ in Busclear führt dich vom Alltagswunsch bis zu den Unterlagen für deinen Elektriker.
+  primary: Den Weg ansehen
+  secondary: Prototyp ausprobieren
+  alt: Zeichnung eines Hauses im Schnitt. Die grüne Busleitung führt vom Verteiler zu Tastern und Meldern in allen vier Räumen, an den Fenstern sitzen Rollläden.
+  labels:
+    board: Verteiler
+    button: Taster
+    sensor: Melder
+    blind: Rollladen
+note: '**Gut zu wissen:** Funktionskatalog und Fristen sind nach bestem Wissen entstanden und noch nicht fachlich geprüft. Der Plan ist eine Gesprächsgrundlage, das letzte Wort hat dein Fachbetrieb.'
+early:
+  label: Früh entscheiden
+  title: Drei Arten von Wünschen, und nur eine davon eilt.
+  text: Eine Szene programmierst du auch noch im zweiten Winter. Die Leitung zum Rollladen gehört dagegen in den Rohbau, weil sie später nur mit Schlitzen und Staub nachkommt. Darum stuft der Plan jeden Wunsch ein.
+  cards:
+  - tag: Rohbau
+    title: Muss in die Rohinstallation
+    text: Leitungen, Dosen und Rohre. Das sollte feststehen, bevor betoniert, verlegt und verputzt wird.
+    examples: [Rollläden mit Motor, Taster im Raum, Präsenzmelder, Heizung je Raum]
+    urgent: true
+  - tag: Später
+    title: Lässt sich nachrüsten
+    text: Kommt auch nach dem Einzug noch dazu, ohne dass eine Wand aufgeht.
+    examples: [Rauchmelder am Bus, Wassermelder]
+  - tag: Jederzeit
+    title: Reine Programmierung
+    text: Entsteht aus dem, was schon verbaut ist. Das entscheidest du in Ruhe, wenn du im Haus wohnst.
+    examples: [Szene Guten Morgen, Automatische Beschattung, Anwesenheit simulieren]
+  caption: Beispiele aus dem Funktionskatalog von „Haus planen“. Er startet mit 27 Einträgen und wächst mit Rückmeldungen.
+path:
+  label: Der Weg
+  title: Sieben Schritte vom Alltagswunsch bis zur Prüfung nach dem Einzug.
+  text: Du brauchst dafür weder einen Bus noch die ETS, und Aktorkanäle musst du auch nicht kennen. Jeder Schritt baut auf dem vorigen auf, überspringen darfst du trotzdem.
+  legend_title: So liest du die Kennzeichen
+  legend:
+  - state: live
+    value: Im Home-Assistant-Add-on, auf der Busclear Box und in der Linux-App
+  - state: test
+    value: In den Apps für iPhone, iPad, Mac und Android, noch nicht öffentlich
+  - state: soon
+    value: Wird gerade gebaut und kommt mit einem der nächsten Releases
+  steps:
+  - title: Wünsche
+    feature: plan
+    text: Du spielst Alltagsmomente durch, etwa aufwachen, das Haus verlassen oder Sommerhitze. Zu jedem Moment siehst du, welche Wünsche dahinterstecken.
+  - title: Raumbuch
+    feature: plan
+    text: Je Raum hältst du fest, was er können soll, mit Priorität „Muss“, „Wäre schön“ oder „Nur vorbereiten“.
+  - title: Grundriss
+    feature: plan
+    text: Plan hochladen und Geräte setzen. Der Plan fragt nach, wenn ein Taster hinter der geöffneten Tür landet oder eine sonnige Fassade keine Beschattung hat.
+    plus: Prüfungen und weitere Ebenen
+  - title: Kanalbedarf
+    feature: plan
+    text: Aus dem Plan gezählt, was geschaltet, gedimmt, gefahren und geheizt wird, mit der Reserve, die du wählst. Damit vergleichst du Angebote auf derselben Grundlage.
+  - title: Fristen
+    feature: plan
+    text: Was vor dem Betonieren, der Rohinstallation und dem Verputzen feststehen sollte, passend zur Bauart und mit deinen Terminen.
+    plus: Fristen je Bauart
+  - title: Mit dem Elektriker
+    feature: plan
+    text: Plan und Geräteliste nimmst du als PDF und CSV mit ins Gespräch.
+    plus: Maße im PDF und DXF
+    extra:
+      feature: exchange
+      text: Weitergeben. Du gibst den Stand frei, der gilt, und teilst den Plan als Hausplan-Paket. Nutzt dein Elektriker Busclear, schickt er Fragen und Vorschläge zurück.
+  - title: Nach dem Einzug
+    feature: walk
+    text: Die Geräte im Plan bekommen ihre Gruppenadressen, dann gehst du sie beim Rundgang Raum für Raum durch.
+    plus: Zuordnen und Rundgang
+    extra:
+      feature: busview
+      text: Der Bus auf dem Grundriss, auch im Add-on und als Dashboard-Karte.
+  try:
+    title: Lieber erst anfassen?
+    text: Der Prototyp zeigt Alltagsmomente und einen Grundriss zum Antippen, direkt im Browser.
+    link: Zum Prototyp
+plan:
+  label: Raumbuch und Grundriss
+  title: Auf dem Plan fällt auf, was im Alltag stören würde.
+  text: Im Raumbuch steht, was jeder Raum können soll. Auf dem Grundriss bekommt jeder Wunsch seinen Platz, und dort zeigt sich, ob es passt. Der Plan stellt dabei Fragen und verbietet nichts.
+  checks_title: Fragen an den Plan
+  checks:
+  - term: Taster
+    value: Liegt er hinter der geöffneten Tür oder hinter einem Möbel?
+  - term: Melder
+    value: Reicht der Präsenzmelder für den ganzen Raum?
+  - term: Fassade
+    value: Hat die sonnige Seite eine Beschattung, und die Markise eine Windregel?
+  - term: Lücken
+    value: Gibt es Wünsche ohne Gerät, und ist der Verteiler eingezeichnet?
+  - term: Maße
+    value: Ist ein Maßstab gesetzt, damit Höhen und Abstände stimmen?
+  rooms:
+    living: Wohnen & Essen
+    kitchen: Küche
+    hall: Diele
+    office: Büro
+  kinds:
+    light: Leuchte
+    socket: Steckdose
+    button: Taster
+    blind: Rollladen
+  plan_alt: Grundriss eines Erdgeschosses mit vier Räumen. Leuchten, Steckdosen, Rollläden und ein Taster sind eingezeichnet, der Taster neben der Wohnzimmertür ist als Hinweis markiert.
+  hint_label: Prüfung
+  hint: Der Taster liegt hinter der geöffneten Tür. Vorschlag des Plans, ihn auf die Griffseite zu setzen.
+  book_title: Raumbuch
+  book_head: [Raum, Wunsch, Priorität]
+  book:
+  - [Wohnen & Essen, Dimmbares Licht, Muss]
+  - [Wohnen & Essen, Rollläden mit Motor, Muss]
+  - [Küche, Schaltbare Steckdosen, Wäre schön]
+  - [Diele, Alles-aus-Taster an der Tür, Muss]
+  - [Büro, Steckdose mit Strommessung, Nur vorbereiten]
+channels:
+  label: Kanäle und Fristen
+  title: Eine Zahl fürs Angebot, ein Zeitpunkt für jede Entscheidung.
+  text: Der Kanalbedarf entsteht aus dem Plan, du rechnest nichts selbst. Die Reserve wählst du mit 0, 20, 30 oder 50 %, aufgerundet je Kanalart. Welche Aktoren passen, legt dein Fachbetrieb fest, und die Preise kommen aus seinem Angebot.
+  table_title: Kanalbedarf
+  table_head: [Art, Kanäle, Mit 30 % Reserve]
+  table:
+  - [Schaltkanäle, 14, 19]
+  - [Dimmkanäle, 6, 8]
+  - [Jalousiekanäle, 9, 12]
+  - [Heizkreise, 7, 10]
+  - [Taster und Melder, 16, 16]
+  table_note: Eingänge wie Taster und Melder bekommen keinen Aufschlag.
+  deadlines_title: Was bis wann feststehen sollte
+  deadlines_text: Am Beispiel Massivbau. Im Holzbau und beim Fertighaus liegt vieles schon vor der Werkplanung, der Plan richtet die Fristen nach deiner Bauart.
+  deadlines:
+  - title: Grundriss festlegen
+    text: Türanschläge, Möbel grob gestellt, Platz für den Verteiler
+  - title: Bevor die Decke betoniert wird
+    text: Dosen und Rohre für Präsenzmelder, Deckenauslässe und Spots
+  - title: Rohinstallation
+    text: Busleitung zu jedem Taster, Leitungen zu den Rollläden, Reservedosen
+  - title: Vor Dämmung und Fassade
+    text: Außenleuchten, Rohr aufs Dach für die Wetterstation
+  - title: Vor dem Verputzen
+    text: Jede Wand fotografieren, am besten mit Zollstock
+  - title: Vor dem Estrich
+    text: Fühler im Leerrohr, Leerrohre zur Terrasse
+  - title: Inbetriebnahme und Abnahme
+    text: Funktionen je Raum prüfen, Projektdatei übergeben lassen
+electrician:
+  label: Mit dem Elektriker
+  title: Unterlagen, mit denen dein Elektriker weiterarbeiten kann.
+  text: Statt Wünschen auf Zuruf bringst du eine Aufstellung mit, die ihr gemeinsam durchgeht. Alles entsteht auf deinem Gerät, und weitergegeben wird nur, was du selbst verschickst.
+  points:
+  - term: PDF
+    feature: plan
+    value: Plan und Aufstellung zum Ausdrucken. Mit Plus stehen Höhe über Boden und Abstand zur Wand je Gerät dabei
+  - term: CSV
+    feature: plan
+    value: Die Geräteliste für Excel und die Kalkulation
+  - term: DXF
+    feature: plan
+    value: Je Ebene eine Zeichnung für das CAD deines Planers. Gehört zu Plus
+  - term: Hausplan
+    feature: plan
+    value: Die Plandatei selbst, damit nichts abgetippt werden muss
+  - term: Weitergeben
+    feature: exchange
+    value: Du teilst den Plan als Hausplan-Paket (`.knxplan`), ohne Cloud und ohne Konto. Nutzt dein Elektriker Busclear, trägt er eine Frage oder einen Vorschlag ein und schickt seine Antwort zurück; du nimmst an oder lehnst ab. Mit „Stand freigeben“ haltet ihr fest, was gilt, samt „Freigegeben am …“. Ein fremdes Paket ersetzt deinen Plan nur nach Rückfrage, und mit „Vorherigen Plan zurückholen“ ist der alte Stand samt Bildern wieder da
+moved:
+  label: Nach dem Einzug
+  title: Wurde gebaut, was geplant war?
+  text: Wenn die Anlage läuft, bekommt der Plan eine zweite Aufgabe. Die Geräte im Plan erhalten ihre Gruppenadressen, du gehst sie beim Rundgang Raum für Raum durch, und der Grundriss zeigt den Bus dort, wo er im Haus verläuft. Für die tägliche Bedienung bleibt Home Assistant oder deine Visualisierung zuständig.
+  points:
+  - term: Zuordnen
+    feature: walk
+    value: Unter Menü › Nach dem Einzug bekommen die Geräte im Plan ihre Gruppenadressen, aus dem ETS-Projekt, aus angelernten Namen oder per Tastendruck. Gehört zu Plus
+  - term: Rundgang
+    feature: walk
+    value: Raum für Raum durch die Geräte. Auslösen oder am Gerät drücken, Rückmeldung sehen und als „in Ordnung“ oder „Mangel“ festhalten, mit Notiz zum Mangel. Gehört zu Plus
+  - term: Bus
+    feature: busview
+    value: Unter Menü › Bus auf dem Grundriss lassen Telegramme das Gerät aufleuchten, und lange stille Geräte fallen auf. Das geht auch ohne das Paket, mit jedem eigenen Grundriss. Die erste Ebene ist in jeder Stufe enthalten, weitere gehören zu Plus
+  - term: Dashboard
+    feature: busview
+    value: Dieselbe Ansicht im Home-Assistant-Add-on im Browser und als Dashboard-Karte „Busclear Grundriss“
+  bus_title: Bus auf dem Grundriss
+  bus_alt: Derselbe Grundriss mit dem Bus. Zwei Leuchten und ein Rollladen sind als gerade aktiv hervorgehoben, die übrigen Geräte wurden schon gehört, eine Steckdose in der Küche ist als „noch nichts gehört“ mit einem hohlen Ring gezeichnet.
+  bus_legend:
+    active: gerade aktiv
+    heard: gehört
+    silent: noch nichts gehört
+  bus_note: „Noch nichts gehört“ ist kein Fehler, manche Geräte senden erst, wenn man sie bedient. Erst nach zwölf Stunden beobachteter Zeit zeigt die App ein Gerät als „lange still“, mit Warnzeichen.
+  walk_title: Rundgang
+  walk_progress: 2 von 4 geprüft, 1 Mangel
+  walk_head: [Raum, Gerät, Ergebnis]
+  walk:
+  - room: Wohnen & Essen
+    device: Leuchte, dimmbar
+    result: in Ordnung
+    ok: true
+  - room: Wohnen & Essen
+    device: Rollladen
+    result: in Ordnung
+    ok: true
+  - room: Küche
+    device: Steckdose, schaltbar
+    result: Mangel
+    note: keine Rückmeldung
+    ok: false
+  - room: Diele
+    device: Taster
+    result: offen
+state:
+  label: Stand
+  title: Was es heute gibt und was noch kommt.
+  text: „Haus planen“ ist die erste Stufe und seit Version 1.9.2 draußen. Einen Termin für die übrigen Teile nennen wir nicht, sie kommen, wenn sie fertig und getestet sind.
+  head: [Teil, Wo, Stand]
+  rows:
+  - feature: plan
+    part: '**Haus planen:** Wünsche, Raumbuch, Grundriss, Kanalbedarf, Prüfungen, Fristen, PDF, CSV und DXF'
+    where: '[Home-Assistant-Add-on](/addon/), [Busclear Box](/box/) und Linux-App'
+  - feature: apps
+    part: '**Haus planen** in den Apps'
+    where: iPhone, iPad, Mac und Android
+  - feature: exchange
+    part: '**Weitergeben an den Elektriker:** Hausplan-Paket, Fragen und Vorschläge, freigegebene Stände'
+    where: Mit einem der nächsten Releases
+  - feature: walk
+    part: '**Nach dem Einzug:** Gruppenadressen zuordnen und Rundgang durch die Geräte je Raum'
+    where: Mit einem der nächsten Releases
+  - feature: busview
+    part: '**Bus auf dem Grundriss**'
+    where: App, Add-on und Karte für Dashboards
+  tiers: '**Frei und Plus:** Frei sind Wünsche, Raumbuch, eine Ebene mit Grundriss, Kanalbedarf, PDF ohne Maße, CSV, die Hausplan-Datei und das Weitergeben. Zu Plus gehören Prüfungen, Fristen, weitere Ebenen, Maße im PDF, DXF sowie Zuordnen und Rundgang nach dem Einzug. Beim Bus auf dem Grundriss ist die erste Ebene in jeder Stufe enthalten. In der Beta ist noch alles frei, kaufen kann man noch nichts. [Die Stufen im Überblick](/#roadmap)'
+talk:
+  label: Mitreden
+  title: Du baust gerade? Erzähl, was dir bei der Planung fehlt.
+  text: Was zuerst kommt, entscheiden die Rückmeldungen. Auf GitHub stimmst du mit 👍 ab und schreibst, wie du deine Planung angegangen bist. Auch Elektriker und Planer sind gefragt, etwa mit dem Format, das sie am liebsten entgegennehmen.
+  primary: Zum Thema auf GitHub
+  secondary: Prototyp ausprobieren
+  questions_title: Das würde ich gern von dir hören
+  questions:
+  - Was war bei deiner Planung am schwierigsten?
+  - Was hättest du gern früher gewusst?
+  - Welche Geräte oder Funktionen fehlen in der Liste?
+faq:
+  label: Fragen
+  title: Häufige Fragen
+  items:
+  - q: Ersetzt das meinen Elektriker oder Planer?
+    a: Der Plan hilft dir, deine Wünsche zu klären und sauber zu übergeben. Elektroinstallation, Aktoren, Verteiler und Absicherung bleiben Sache deines Fachbetriebs, die Lichtplanung die eines Lichtplaners.
+  - q: Brauche ich dafür schon eine KNX-Anlage oder die ETS?
+    a: Nein. Die Planung läuft ohne Bus, ohne Gateway und ohne ETS-Projekt. Erst für die Prüfung nach dem Einzug braucht es die laufende Anlage.
+  - q: Geht das auch bei einer Sanierung?
+    a: Ja. Beim Einstieg fragt der Plan, wo du stehst und wie gebaut wird, und richtet die Fristen danach aus.
+  - q: Wie verlässlich sind Funktionskatalog und Fristen?
+    a: Sie sind nach bestem Wissen entstanden und noch nicht fachlich geprüft. Nimm sie als Gesprächsgrundlage. Was bei dir gilt, entscheidet dein Fachbetrieb.
+  - q: Sagt mir die App, was KNX kostet?
+    a: 'Sie zeigt, was sich aus dem Plan berechnen lässt: Kanäle, Geräte und Reserve. Damit vergleichst du Angebote auf derselben Grundlage. Die Preise kommen aus dem Angebot deines Betriebs.'
+  - q: Was ist frei, und wofür brauche ich Plus?
+    a: 'Frei sind Wünsche, Raumbuch, eine Ebene mit Grundriss, Kanalbedarf, PDF ohne Maße, CSV, die Hausplan-Datei und das Weitergeben. Zu Plus gehören Prüfungen, Fristen, weitere Ebenen, Maße im PDF, DXF sowie Zuordnen und Rundgang nach dem Einzug. Beim Bus auf dem Grundriss ist die erste Ebene in jeder Stufe enthalten. In der Beta ist noch alles frei, kaufen kann man noch nichts. Die Stufen stehen im [Fahrplan auf der Startseite](/#roadmap).'
+  - q: Wo liegen mein Grundriss und meine Wünsche?
+    a: Auf deinem Gerät. Weitergeben kannst du sie als Datei, selbst und nur, wenn du willst.
+  - q: Was ist der Unterschied zur Seite „Bauherren-Paket“?
+    a: Diese Seite erklärt den Weg. Das [Bauherren-Paket](/bauherren/) ist der klickbare Prototyp dazu, mit Alltagsmomenten und einem Grundriss zum Ausprobieren.

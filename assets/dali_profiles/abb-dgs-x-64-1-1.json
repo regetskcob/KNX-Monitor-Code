@@ -1,0 +1,87 @@
+{
+  "id": "abb-dgs-x-64-1-1",
+  "name": "ABB DG/S x.64.1.1 (DALI Gateway Basic)",
+  "status": "documented",
+  "statusNote": "from documentation, not yet verified against real telegrams",
+  "source": {
+    "de": "ABB i-bus KNX DG/S x.64.1.1 DALI-Gateway Basic, Produkthandbuch 2CDC507164D0211 Rev B (11.2021), Gruppenobjekt-Tabellen S. 171–173 und 199–211",
+    "en": "ABB i-bus KNX DG/S x.64.1.1 DALI-Gateway Basic, Product Manual 2CDC507164D0211 Rev B (11.2021), group object tables p. 171-173 and 199-211"
+  },
+  "note": {
+    "de": "Nur Ausgang A: Beim zweikanaligen DG/S 2.64.1.1 werden die Objekte von Ausgang B (Nummern +1114) nicht zugeordnet, weil sich beide Ausgänge die Kurzadressen 0 bis 63 eines Geräts teilen würden. Das Handbuch nennt die ersten beiden Objektnummern jeder Reihe; der Abstand von 11 Objekten je Gruppe und EVG und 3 je Notlicht-Konverter ist daraus abgeleitet. Objekt 21 „Fault addressed“ (DPT 237.600) wird über seinen Datenpunkttyp dekodiert.",
+    "en": "Output A only: on the two-channel DG/S 2.64.1.1 the objects of output B (numbers +1114) are not mapped, because both outputs would share the short addresses 0 to 63 of one device. The manual prints the first two object numbers of each series; the step of 11 objects per group and ballast and of 3 per emergency converter follows from them. Object 21 'Fault addressed' (DPT 237.600) is decoded by its datapoint type."
+  },
+  "match": {
+    "manufacturer": [
+      "abb"
+    ],
+    "product": [
+      "dg/s 1.64.1.1",
+      "dg/s 2.64.1.1",
+      "dg/s1.64.1.1",
+      "dg/s2.64.1.1"
+    ]
+  },
+  "gearBase": 1,
+  "groupBase": 1,
+  "rules": [
+    {
+      "role": "faultCount",
+      "first": 23
+    },
+    {
+      "role": "groupSwitch",
+      "first": 49,
+      "step": 11,
+      "count": 16
+    },
+    {
+      "role": "groupStatus",
+      "first": 50,
+      "step": 11,
+      "count": 16
+    },
+    {
+      "role": "groupDim",
+      "first": 51,
+      "step": 11,
+      "count": 16
+    },
+    {
+      "role": "groupValue",
+      "first": 52,
+      "step": 11,
+      "count": 16
+    },
+    {
+      "role": "groupValueStatus",
+      "first": 53,
+      "step": 11,
+      "count": 16
+    },
+    {
+      "role": "groupFault",
+      "first": 54,
+      "step": 11,
+      "count": 16
+    },
+    {
+      "role": "gearFault",
+      "first": 230,
+      "step": 11,
+      "count": 64
+    },
+    {
+      "role": "emergencyResult",
+      "first": 929,
+      "step": 3,
+      "count": 64
+    },
+    {
+      "role": "emergencyStatus",
+      "first": 930,
+      "step": 3,
+      "count": 64
+    }
+  ]
+}

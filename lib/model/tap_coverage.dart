@@ -1,5 +1,6 @@
 import '../knx/group_catalog.dart';
 import '../knx/telegram.dart';
+import 'tap_points.dart';
 import 'topology.dart';
 
 /// What the tap points of several lines show about the couplers' filter tables (issue #8).
@@ -31,10 +32,13 @@ class TapCoverage {
 
   /// From the [log] and the tap point [labels] (the line "1.2" from the tunnel address, see
   /// `tapLabel`). `null` with fewer than two tap points in different lines.
-  static TapCoverage? build(GroupCatalog catalog, Iterable<Telegram> log, List<String> labels) {
+  ///
+  /// [gaps] knows when a tap point was away: a telegram from such a time is not counted against
+  /// the coupler of that line, whatever the tap point delivered before and after.
+  static TapCoverage? build(GroupCatalog catalog, Iterable<Telegram> log, List<String> labels, {TapGaps? gaps}) {
     final lineOfTap = <int, int>{};
     for (final (i, label) in labels.indexed) {
-      if (_parseLine(label) case final line?) lineOfTap[i] = line;
+      if (lineOfTapLabel(label) case final line?) lineOfTap[i] = line;
     }
     final lines = lineOfTap.values.toSet();
     if (lines.length < 2) return null;
@@ -65,6 +69,7 @@ class TapCoverage {
         if (to == from) continue;
         final pass = seen.contains(to);
         if (!pass && !_upAt(heard[to]!, t.time)) continue;
+        if (!pass && gaps != null && _awayAt(gaps, lineOfTap, to, t.time)) continue;
         final key = (t.destination, from, to);
         final (p, b) = counts[key] ?? (0, 0);
         counts[key] = pass ? (p + 1, b) : (p, b + 1);
@@ -108,13 +113,12 @@ class TapCoverage {
     return a < times.length && !times[a].isAfter(hi);
   }
 
-  /// "1.2" → line number as in [lineOf], else `null` (a tap point named by hand).
-  static int? _parseLine(String label) {
-    final m = RegExp(r'^(\d{1,2})\.(\d{1,2})$').firstMatch(label);
-    if (m == null) return null;
-    final area = int.parse(m[1]!), line = int.parse(m[2]!);
-    if (area > 15 || line > 15) return null;
-    return area << 4 | line;
+  /// Whether every tap point of line [line] was away at [time].
+  static bool _awayAt(TapGaps gaps, Map<int, int> lineOfTap, int line, DateTime time) {
+    for (final MapEntry(key: tap, value: l) in lineOfTap.entries) {
+      if (l == line && gaps.at(tap, time) == null) return false;
+    }
+    return true;
   }
 }
 

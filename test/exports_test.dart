@@ -67,6 +67,40 @@ void main() {
     expect(ExportHistory.instance.entries, isEmpty);
   });
 
+  testWidgets('Prüfknopf: am Telefon unter dem Titel, breit daneben', (tester) async {
+    CatalogStore.instance.catalog = GroupCatalog.empty;
+    Future<(Rect, Rect)> rects(Size size) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          key: ValueKey(size),
+          theme: AppTheme.light(),
+          locale: const Locale('de'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: ExportsScreen(log: TelegramLog(), title: 'KNX-Telegramme'),
+        ),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull, reason: '$size');
+      return (
+        tester.getRect(find.text(s.healthPdfTitle).first),
+        tester.getRect(find.widgetWithText(OutlinedButton, s.exportsCheck)),
+      );
+    }
+
+    // Telefon: Der Titel bekommt die ganze Zeile (eine Textzeile), der Knopf steht darunter.
+    final (title, button) = await rects(const Size(375, 1600));
+    expect(button.top, greaterThan(title.bottom));
+    expect(title.height, lessThan(30), reason: 'der Titel bricht nicht um');
+    // Breit: wie bisher daneben.
+    final (wideTitle, wideButton) = await rects(const Size(1400, 2000));
+    expect(wideButton.left, greaterThan(wideTitle.right));
+    expect(wideButton.center.dy, closeTo(wideTitle.center.dy, 24));
+  });
+
   testWidgets('Seite zeigt Telegramme, Berichte, Gesamtexport und letzte Exporte', (tester) async {
     tester.view.physicalSize = const Size(1400, 2000);
     tester.view.devicePixelRatio = 1;

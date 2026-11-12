@@ -64,6 +64,8 @@ grep -q '^LAN_ACCESS="no"$' "$tmp/root/etc/knx-box/env" || fail "Kabel standardm
 [ "$(value LAN_ACCESS)" = no ] || fail "LAN_ACCESS zurückgeschrieben"
 ! grep -q READ_ONLY "$tmp/root/etc/knx-box/env" || fail "Nur-Lesen standardmäßig an"
 [ "$(value READ_ONLY)" = no ] || fail "READ_ONLY zurückgeschrieben"
+! grep -q HEALTH_CHECK "$tmp/root/etc/knx-box/env" || fail "Gesundheitsprüfung standardmäßig an"
+[ "$(value HEALTH_CHECK)" = no ] || fail "HEALTH_CHECK zurückgeschrieben"
 ap=$tmp/root/etc/NetworkManager/system-connections/knx-box-ap.nmconnection
 grep -q "^psk=$(value WLAN_PASSWORD)$" "$ap" || fail "Hotspot-Passwort"
 grep -q '^ssid=KNX-Box-1A2B$' "$ap" || fail "Hotspot-SSID"
@@ -83,6 +85,7 @@ COUNTRY=AT
 INTERNET_SHARING=yes
 LAN_ACCESS=yes
 READ_ONLY=yes
+HEALTH_CHECK=yes
 CONF
 # shellcheck disable=SC2016 # darf gerade nicht ausgeführt werden
 printf 'NAME=$(touch /tmp/knx-box-pwned)\r\n' >>"$tmp/root/boot/firmware/knx-box.txt"
@@ -95,6 +98,7 @@ run
 grep -q 'disable --now knx-box-firewall.service' "$tmp/calls" || fail "Internet-Freigabe"
 grep -q '^LAN_ACCESS="yes"$' "$tmp/root/etc/knx-box/env" || fail "Kabel freigegeben"
 grep -q '^READ_ONLY="1"$' "$tmp/root/etc/knx-box/env" || fail "Nur-Lesen"
+grep -q '^HEALTH_CHECK="true"$' "$tmp/root/etc/knx-box/env" || fail "Gesundheitsprüfung"
 grep -qF 'P:Geheim\;Wlan\:1;;' "$tmp/root/boot/firmware/knx-box-wlan.png" || fail "QR-Maskierung"
 
 # 2a. Clear passwords from the card when the server asks for it.
