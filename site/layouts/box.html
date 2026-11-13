@@ -50,7 +50,7 @@
 {{ partial "horizont/feld/hero.html" (dict
     "kennung" (printf "01 — %s" $b.hero.kennung)
     "title" $b.hero.title
-    "text" (printf "%s %s" (partial "horizont/badge.html" (dict "status" "info" "label" (index site.Data.home site.Language.Lang).box.tag)) $b.hero.lead)
+    "text" $b.hero.lead
     "primary" (dict "label" $b.hero.primary "url" site.Params.boxUrl)
     "secondary" (dict "label" $b.hero.secondary "url" "#setup")
     "aside" (partial "knx-pi.html" .)) }}
@@ -73,11 +73,11 @@
   <div>
     <h2>{{ $b.setup.title }}</h2><p>{{ $b.setup.text | markdownify }}</p>
     {{- /* The setup in the app on a phone, the top of its screen (the rest is
-           empty): a preview, today only the Linux app pairs. */}}
+           empty). */}}
     {{- with resources.Get (printf "images/box-setup-%s.png" site.Language.Lang) }}
     <figure class="tz-box-setup">
       {{ partial "horizont/device.html" (dict "device" "iphone" "width" 240 "cropped" true "height" 300 "image" . "alt" $b.setup.preview_alt) }}
-      <figcaption class="t-caption">{{ partial "horizont/badge.html" (dict "status" "info" "label" (index site.Data.home site.Language.Lang).box.tag) }} {{ $b.setup.preview }}</figcaption>
+      <figcaption class="t-caption">{{ $b.setup.preview }}</figcaption>
     </figure>
     {{- end }}
   </div>

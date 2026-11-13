@@ -2,6 +2,8 @@ import 'package:knx/knx.dart';
 
 import '../knx/group_catalog.dart';
 import '../knx/telegram.dart';
+import 'analysis.dart' show expectedSize;
+import 'project_check.dart' show isDefaultGroupName;
 
 /// An event on the bus: a device's command (e.g. a button press) and the
 /// telegrams that follow shortly after (status feedback from the actuators).
@@ -337,26 +339,99 @@ class TeachInEntry {
   return (groups: groups, devices: devices);
 }
 
+/// A group address heard on the bus and what its traffic reveals: who sends it and
+/// the last values. The basis for naming addresses nobody can trigger by hand
+/// (sensors, status, timers) and for spotting where an old project no longer fits.
+class HeardAddress {
+  HeardAddress(this.address);
+
+  final int address;
+
+  /// Write and response telegrams heard.
+  int count = 0;
+
+  /// Individual addresses that sent it.
+  final senders = <int>{};
+
+  /// The last value telegrams, oldest first (at most [maxSamples]).
+  final samples = <Telegram>[];
+  static const maxSamples = 8;
+
+  Telegram get last => samples.last;
+
+  /// The samples as an event, so naming works like for a caught button press.
+  BusEvent get event => BusEvent(List.of(samples));
+
+  /// Whether the length on the bus contradicts [dpt]: in an old project the
+  /// address was probably reassigned since.
+  bool contradicts(Dpt? dpt) {
+    final expected = dpt == null ? null : expectedSize(dpt);
+    return expected != null && expected != (last.isSmall ? 0 : last.data.length);
+  }
+}
+
+/// All group addresses heard in a session. Our own telegrams and read requests
+/// do not count: they say nothing about what the installation sends.
+class HeardAddresses {
+  final _byAddress = <int, HeardAddress>{};
+
+  int get length => _byAddress.length;
+
+  HeardAddress? operator [](int address) => _byAddress[address];
+
+  /// Takes [t] in; `true` if its address is new.
+  bool observe(Telegram t) {
+    if (t.outgoing || t.type == TelegramType.read) return false;
+    final fresh = !_byAddress.containsKey(t.destination);
+    final h = _byAddress.putIfAbsent(t.destination, () => HeardAddress(t.destination));
+    h.count++;
+    h.senders.add(t.source);
+    h.samples.add(t);
+    if (h.samples.length > HeardAddress.maxSamples) h.samples.removeAt(0);
+    return fresh;
+  }
+
+  /// Addresses for which [open] holds, by address.
+  List<HeardAddress> where(bool Function(HeardAddress heard) open) =>
+      _byAddress.values.where(open).toList()..sort((a, b) => a.address.compareTo(b.address));
+}
+
+/// Named addresses that probably belong to [address]: same main group and same
+/// number in another middle group (common scheme "1/0/4 switch, 1/1/4 status").
+/// Only a hint for name suggestions.
+List<GroupInfo> relatedGroups(int address, GroupCatalog catalog) => [
+  for (final g in catalog.groups.values)
+    if (g.address != address &&
+        g.address >> 11 == address >> 11 &&
+        g.address & 0xFF == address & 0xFF &&
+        !isDefaultGroupName(g))
+      g,
+]..sort((a, b) => a.address.compareTo(b.address));
+
 /// Project and learned data combined: the project takes precedence; learned
-/// names remain for addresses missing from the project. If the project only
-/// lacks the type, the learned one applies.
+/// names remain for addresses missing from the project or left without a name
+/// there (ETS default). If the project only lacks the type, the learned one applies.
 GroupCatalog mergeLearned(GroupCatalog project, GroupCatalog learned) {
   if (learned.isEmpty && learned.devices.isEmpty) return project;
   if (project.isEmpty && project.devices.isEmpty) return learned;
+  // In the project's own style: the global one still belongs to the previous catalog while a new
+  // project is being merged.
+  bool unnamed(GroupInfo g) => isDefaultGroupName(g, style: project.style);
   return GroupCatalog(
     {
       ...learned.groups,
       for (final MapEntry(key: a, value: g) in project.groups.entries)
-        a: g.dpt == null && learned[a]?.dpt != null
-            ? GroupInfo(
-                address: a,
-                name: g.name,
-                path: g.path,
-                dpt: learned[a]!.dpt,
-                description: g.description,
-                links: g.links,
-              )
-            : g,
+        a: switch (learned[a]) {
+          final l? when (g.dpt == null && l.dpt != null) || unnamed(g) => GroupInfo(
+            address: a,
+            name: unnamed(g) ? l.name : g.name,
+            path: g.path,
+            dpt: g.dpt ?? l.dpt,
+            description: g.description,
+            links: g.links,
+          ),
+          _ => g,
+        },
     },
     devices: {...learned.devices, ...project.devices},
     projectName: project.projectName,

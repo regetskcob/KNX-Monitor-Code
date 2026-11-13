@@ -1,0 +1,29 @@
+# Fahrplan und Änderungen (/changelog/, layouts/roadmap.html): eine Leitung von
+# oben (was kommt) nach unten (was kam). Hier steht nur die Zukunft; die
+# Versionen darunter kommen aus content/changelog.de.md. Erscheint ein Eintrag,
+# wandert er von hier in den Abschnitt seiner Version dort.
+# stage: next (als Nächstes) oder later (später, nach Stimmen); issue: Nummer
+# im öffentlichen Repository (github.com/regetskcob/KNX-Monitor). Ein Bild
+# (nur in breiten Fenstern): image: Datei aus static/images/screens/, mit
+# device: iphone | android | ipad; oder art: pi (die Box, gezeichnet).
+kennung: "Fahrplan & Änderungen"
+title: "Was kommt, und was schon da ist."
+lead: "Eine Leitung, von oben nach unten: oben, woran wir arbeiten und was danach kommen kann, darunter jede Version mit dem, was sie gebracht hat. Termine nennen wir für Kommendes nicht; die Reihenfolge bestimmst du mit deiner Stimme."
+vote: "Auf GitHub abstimmen"
+prices_link: "Preise"
+stages:
+  later: { label: "Später", note: "nach Stimmen" }
+  next: { label: "Als Nächstes", note: "in Arbeit" }
+now: { label: "Heute", title: "Wo Busclear steht" }
+past: { label: "Erschienen", open: "Version öffnen" }
+issue: "Issue"
+items:
+  - { stage: later, issue: 3, title: "ioBroker-Adapter", text: "Busmonitor und Diagnose als Reiter im ioBroker-Admin, die Werte als Datenpunkte. Die Schnittstellen dafür gibt es schon auf Box und Docker; gebaut wird, wenn genug ioBroker-Nutzer es wollen." }
+  - { stage: later, issue: 13, title: "KNX RF: Funkstrecken sichtbar machen", text: "Funklinien aus dem ETS-Projekt erkennt Busclear schon. Geplant sind Signalstärke je Funkgerät aus dem Medienkoppler und das direkte Mithören mit einem RF-USB-Stick, mit Batteriezustand und verlorenen Telegrammen." }
+  - { stage: later, issue: 10, title: "Busclear Box: Gehäusedeckel mit Lüfter", text: "Ein Entwurf für den Dauerbetrieb im Verteiler, zum Diskutieren, noch nicht gedruckt und nicht getestet." }
+  - { stage: later, issue: 7, title: "Bauherren-Paket", text: "Vom Alltagswunsch über Raumbuch und Grundriss bis zu den Unterlagen für den Elektriker. Die erste Stufe „Haus planen“ ist schon da.", link: "bauherren/", link_label: "Ausblick ansehen" }
+  - { stage: later, issue: 12, title: "Home-Assistant-Integration: in den Kern oder HACS?", text: "Ereignisse ohne Supervisor und die Gesundheitsprüfung als Dienst sind seit 1.12.0 da. Offen ist, ob die Integration für den Home-Assistant-Kern vorgeschlagen wird oder bei HACS bleibt." }
+  - { stage: next, title: "Apps in App Store und Google Play", text: "iPhone, iPad, Mac und Android laufen als offene Beta mit allen Werkzeugen. Als Nächstes kommen die Store-Versionen.", link: "beta/", link_label: "Beta testen", image: "overview-phone.png" }
+  - { stage: next, title: "Windows", text: "Die Windows-App als Download, Käufe dort ohne Konto mit einer Lizenz per Mail." }
+  - { stage: next, issue: 6, title: "DALI über KNX ausbauen", text: "Seit 1.12.0 gibt es von allen Schritten eine erste Fassung. Jetzt zählen Rückmeldungen und Telegramme aus echten Anlagen mit KNX-DALI-Gateway." }
+  - { stage: next, issue: 1, title: "Box direkt an der Linie", text: "Seit 1.8.4 hört die Box mit dem Aufsteckmodul kBerry ohne IP-Gateway mit. Offen sind der Test auf Pi 5 und Pi 3, ein Test mit abgeschalteter Busspannung bei laufendem Pi, der kBerry im Home-Assistant-Add-on und eine USB-Busankopplung für Rechner ohne Stiftleiste.", art: pi }

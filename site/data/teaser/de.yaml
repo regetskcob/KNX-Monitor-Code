@@ -59,16 +59,12 @@ addon:
     - { term: "Telegramme", value: "Live mit Absender, Ziel und Wert; Suche, Filter, Werte lesen und schreiben. Schreiben ist ein Eingriff in die Anlage und geschieht auf deine Verantwortung" }
     - { term: "ETS-Projekt", value: "`.knxproj` bis ETS6, auch mit Passwort: Namen, Datentypen, Geräte und Räume" }
     - { term: "Übersicht", value: "Jede Gruppenadresse mit Wert und Mini-Verlauf, nach Räumen und Funktionen" }
-    - { term: "Objekte", value: "Aktoren als Hutschienengeräte mit Kanal-LEDs, wie oben" }
     - { term: "Gesundheit", value: "Verstummte Geräte, Zyklen, Datentypen und Busqualität, mit PDF-Bericht" }
     - { term: "Verlauf", value: "Daueraufzeichnung Tag für Tag, Aufnahmen mit Zeitleiste je Gruppenadresse" }
-    - { term: "Kommentare", value: "An Telegrammen, Diagrammen und Aufnahmen, mit Bildschirmfotos; „Problem melden“ hält fest, wann der Fehler auftrat" }
-    - { term: "Exporte", value: "Eine Seite für PDF, CSV, ETS-Datei, Berichte und ein ZIP mit allem" }
-    - { term: "Experten", value: "Busmonitor mit Rohframes, Topologie, Abgleich mit dem ETS-Projekt, Inbetriebnahme-Checkliste" }
     - { term: "Verbindung", value: "Tunneling, Routing und KNX IP Secure" }
     - { term: "Home Assistant", value: "Von Haus aus nur lesend; [Integration](https://github.com/regetskcob/KNX-Monitor-HA) mit Sensoren, Auslösern und Reparaturhinweisen, Ereignisse, Blueprints und MQTT" }
 apps:
-  kennung: "03 — Bald als App"
+  label: "Als App"
   title: "Bald auch ohne Home Assistant, direkt am Gateway."
   text: "Für die Baustelle, den Schaltschrank und das Büro neben der ETS: dieselben Werkzeuge als App auf dem Gerät, das du gerade in der Hand hast."
   facts:
@@ -77,14 +73,15 @@ apps:
     - { term: "Verbindung", value: "Direkt an deiner IP-Schnittstelle oder deinem IP-Router" }
     - { term: "Vor Ort", value: "ETS-Projekt und Aufnahmen liegen auf dem Gerät, auch ohne Internet" }
 roadmap:
-  kennung: "04 — Fahrplan"
+  kennung: "06 — Fahrplan"
   title: "Erst zu Hause in Home Assistant, dann auch unterwegs auf der Baustelle."
   text:
     none: "Das Add-on ist fertig und bleibt kostenlos, für Linux gibt es die App schon heute. Die übrigen Apps sind gebaut und folgen in den nächsten Wochen."
     ios: "Das Add-on ist fertig und bleibt kostenlos, für Linux gibt es die App schon heute, für iPhone, iPad und Mac als Beta. Die übrigen Apps sind gebaut und folgen in den nächsten Wochen."
     android: "Das Add-on ist fertig und bleibt kostenlos, für Linux gibt es die App schon heute, für Android als Beta. Die übrigen Apps sind gebaut und folgen in den nächsten Wochen."
     both: "Das Add-on ist fertig und bleibt kostenlos, für Linux gibt es die App schon heute, für iPhone, iPad, Mac und Android als Beta. Die übrigen Apps sind gebaut und folgen in den nächsten Wochen."
-  # Öffentlich als Vorschau, links unter dem Text.
+  more: "Fahrplan und Änderungen ansehen"
+  # Öffentlich als Vorschau, auf der Seite Fahrplan (layouts/roadmap.html).
   prices_preview: "**In der Beta ist noch alles frei:** Du nutzt alle Funktionen kostenlos, auch die von Plus und Pro. Als Dankeschön bekommst du beim ersten Start der Store-Version 90 Tage Pro auf dem Gerät, auf dem du die Beta genutzt hast. [So machst du mit](/beta/)"
   prices:
     - { name: "Free", price: "Kostenlos", sub: "Für den Blick auf die eigene Anlage" }
@@ -93,7 +90,7 @@ roadmap:
   prices_note: "Preisempfehlung als unverbindliche Vorschau, kaufen kann man noch nichts. Es gelten die Endpreise im App Store und bei Google Play; auf iPhone, iPad und Mac gilt ein Kauf überall."
   # commerce: false nur ohne Preise (params.commerce).
   facts:
-    - { term: "Offen", value: "**Quellcode unter GPLv3** [auf GitHub](https://github.com/regetskcob/KNX-Monitor-Code): alles für Einsteiger und Fortgeschrittene in App, Add-on und Busclear Box, nachprüfbar und frei veränderbar" }
+    - { term: "Offen", value: "**Quellcode unter GPLv3** [auf GitHub](https://github.com/regetskcob/KNX-Monitor-Code): alles für Einsteiger und Fortgeschrittene in App, Add-on und Busclear Box, nachprüfbar und frei veränderbar", home: false }
     - { term: "Jetzt", value: "**Home-Assistant-Add-on** und **Linux** ([Download](https://github.com/regetskcob/KNX-Monitor/releases/latest)), beide kostenlos für eine Installation, auch künftig" }
     - { term: "Beta", value: "**iPhone, iPad und Mac** über [TestFlight](https://testflight.apple.com/join/fsM3ufJK), offen für alle, mit allen Werkzeugen", when: [ios, both] }
     - { term: "Beta", value: "**Android** über Google Play: erst der [Google-Gruppe beitreten](https://groups.google.com/g/knx-monitor-beta), dann [am Test teilnehmen](https://play.google.com/apps/testing/de.kalkar_it.knxmonitor). Offen für alle, mit allen Werkzeugen", when: [android, both] }
@@ -103,24 +100,34 @@ roadmap:
     - { term: "Bald", value: "**Windows** als Download", when: [both] }
     - { term: "Hausbau", page: "hausbau", value: "**[KNX im Hausbau](/hausbau/)**: was du früh entscheiden solltest, bevor die Wände zu sind, und wie „Haus planen“ dabei hilft" }
     - { term: "Ausblick", value: "**Bauherren-Paket**: vom Alltagswunsch über Raumbuch und Grundriss bis zu den Unterlagen für den Elektriker. [Mehr dazu](/bauherren/)" }
-    - { term: "Vorschau", value: "**[Busclear Box](/box/)**: ein Raspberry Pi als Telegramm-Schreiber vor Ort, zeichnet auf der Baustelle tagelang auf, ohne Home Assistant und ohne Internet. Bis die übrigen Apps erscheinen, richtest du sie mit der Linux-App ein" }
+    - { term: "Box", value: "**[Busclear Box](/box/)**: ein Raspberry Pi als Telegramm-Schreiber vor Ort, zeichnet auf der Baustelle tagelang auf, ohne Home Assistant und ohne Internet. Image und Anleitung sind da, eingerichtet wird sie mit der App" }
     - { term: "Apps", value: "Kostenlos nutzbar, mehr Werkzeuge mit Plus und Pro. In der Beta ist alles frei.", commerce: false }
-# Ab Abschnitt 05 die Landingpage: Funktionen, Expertenmodus, ETS-Projekt,
-# Verbindung, Busclear Box, Datenschutz und FAQ aus site/data/home und
-# site/data/screens.yaml; hier nur der Name der Funktionen.
-features_label: "Funktionen im Detail"
+# Die Startseite bleibt kurz: 03 Funktionen (Bilder und wenige Fakten), 04
+# Anschluss, 05 Datenschutz, 06 Fahrplan, 07 FAQ. Alles im Detail steht auf
+# /funktionen/ (layouts/funktionen.html, Texte aus site/data/home), Fahrplan,
+# Preise und Mitreden auf /changelog/ (layouts/roadmap.html).
+features_label: "Funktionen"
+features:
+  more: "Alle Funktionen im Detail"
+  facts:
+    - { term: "Einstieg", value: "**Ohne ETS-Projekt anlernen:** Taster drücken, benennen, fertig. Die Live-Liste zeigt jedes Telegramm als Satz" }
+    - { term: "Aufnahmen", value: "Aufnehmen, bearbeiten und mit Zeitleiste je Gruppenadresse abspielen" }
+    - { term: "Fehler", value: "**Problem melden:** Fehler nachstellen, das Diagnosepaket geht an den Elektriker" }
+    - { term: "Experten", value: "Ein Schalter bringt Busmonitor, Topologie, Diagnose und Inbetriebnahme" }
+    - { term: "Demo", value: "Demo-Haus zum Ausprobieren ohne Anlage" }
+connect:
+  label: "Anschluss"
+  title: "Direkt an deine IP-Schnittstelle, lesbar mit deinem ETS-Projekt."
+  text: "Busclear verbindet sich per KNXnet/IP mit deiner IP-Schnittstelle oder deinem IP-Router, auch mit KNX Secure. Dein ETS-Projekt (.knxproj, auch mit Passwort) macht aus Gruppenadressen Namen, Räume und Werte."
+  more: "Verbindung und ETS-Projekt im Detail"
+privacy_more: "Verschlüsselung, App-Sperre und Sicherung im Detail"
 # Kapitel auf dem Horizont (Navigation oben): Anker und Name, in der Reihenfolge der Seite.
 marks:
   - { id: "add-on", label: "Add-on" }
-  - { id: "apps", label: "Apps" }
-  - { id: "roadmap", label: "Fahrplan" }
   - { id: "features", label: "Funktionen" }
-  - { id: "expert", label: "Experten" }
-  - { id: "ets", label: "ETS-Projekt" }
-  - { id: "connection", label: "Verbindung" }
-  - { id: "box", label: "Busclear Box" }
+  - { id: "connection", label: "Anschluss" }
   - { id: "privacy", label: "Datenschutz" }
-  - { id: "mitreden", label: "Mitreden" }
+  - { id: "roadmap", label: "Fahrplan" }
   - { id: "faq", label: "FAQ" }
 switch_on: "Ein"
 switch_off: "Aus"
@@ -137,9 +144,9 @@ sensors:
   - addr: "1.1.31"
     name: "Taster 2-fach"
     kind: "push"
-    # In the gap under the expert list (section 06), else above the thread.
+    # In the gap under the feature list (section 03), else above the thread.
     slot: "gap top"
-    section: "expert"
+    section: "features"
     note: "Drück ihn ruhig: Genauso drückst du in der Topologie der App die Taster deiner Anlage und siehst, welcher Aktor schaltet. So prüfst du ihre Zuordnungen."
     # Its blind beside it, moved by the status "Position Wohnen" (2/4/1).
     window: { status: "2/4/1", pos: 40, label: "Wohnen" }

@@ -1,0 +1,162 @@
+{{- /*
+  Roadmap and changelog on one line (/changelog/, also reached as /roadmap/):
+  the green bus cable of the home page runs down the page, the future on
+  top (framed entries from data/roadmap/<lang>.yaml), a "today" mark, then
+  every released version from this page's Markdown, one section per "## ".
+  In wide windows the cable winds: entries hang right of it, then left, then
+  right again (roadmap.js sends the pulse along it and glides to "today").
+  Minor versions (x.y.0) are large nodes, patch versions small ones; each
+  opens its notes. Below the line the prices (a preview) and how to have a
+  say, both moved here from the home page.
+*/ -}}
+{{- $r := index site.Data.roadmap site.Language.Lang -}}
+{{- $d := index site.Data.teaser site.Language.Lang -}}
+{{- $h := index site.Data.home site.Language.Lang -}}
+{{- $beta := partial "beta.html" . -}}
+{{- $issues := printf "%s/issues" site.Params.githubUrl -}}
+{{- $votes := printf "%s?q=is%%3Aissue+is%%3Aopen+label%%3Aenhancement+sort%%3Areactions-%%2B1-desc" $issues -}}
+{{- $target := "" }}{{ range .Translations }}{{ $target = . }}{{ end -}}
+{{- $lang := dict -}}
+{{- with $target }}{{ $lang = dict "current" (upper site.Language.Lang) "name" (upper .Language.Lang) "url" .RelPermalink "hreflang" .Language.Lang }}{{ end -}}
+{{- /* The released versions, cut from the Markdown at its h2 headings
+       ("1.12.0 – 12.11.2026"); the text before the first is the intro. The
+       minor versions (x.y.0) are the marks on the horizon, after the future
+       and "today". */}}
+{{- $parts := split .Content "<h2" -}}
+{{- $marks := slice (dict "id" "later" "label" $r.stages.later.label "short" "++" "title" $r.stages.later.label) (dict "id" "next" "label" $r.stages.next.label "short" "+" "title" $r.stages.next.label) (dict "id" "today" "label" $r.now.label "short" "●" "title" $r.now.label) -}}
+{{- range after 1 $parts }}
+{{- $head := index (split . "</h2>") 0 }}
+{{- $name := replaceRE `^[^>]*>` "" $head | plainify | htmlUnescape }}
+{{- $version := index (split $name " – ") 0 }}
+{{- if strings.HasSuffix $version ".0" }}
+{{- $marks = $marks | append (dict "id" (index (index (findRESubmatch `id="([^"]+)"` $head 1) 0) 1) "label" $version "short" (strings.TrimSuffix ".0" $version) "title" $name) }}
+{{- end }}
+{{- end -}}
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode }}" data-product="knx">
+{{ partial "head.html" (dict "page" . "title" (printf "%s · %s" .Title site.Title) "description" .Description) }}
+<body class="hz tz">
+{{ partial "horizont/nav/horizon.html" (dict
+    "product" "knx"
+    "place" (printf "%s / %s" site.Title .Title)
+    "marks" $marks
+    "lang" $lang
+    "karte" (dict "home" "knx" "here" "knx" "map" "knx" "projects" false "field" "changelog" "url" ("karte/" | relLangURL))) }}
+<div class="hz-feld tz-feld">
+<main id="main" class="tz-main">
+{{ partial "horizont/feld/hero.html" (dict
+    "kennung" (printf "01 — %s" $r.kennung)
+    "title" $r.title
+    "text" $r.lead
+    "primary" (dict "label" $r.vote "url" $votes)
+    "secondary" (dict "label" $r.prices_link "url" "#prices")) }}
+<section class="rm" id="line" aria-label="{{ .Title }}">
+  <ol class="rm-line">
+    {{- /* The future, furthest first. */}}
+    {{- range $stage := slice "later" "next" }}
+    {{- $s := index $r.stages $stage }}
+    {{- /* Wide windows: "next" hangs left of the cable, which crosses over
+           before it and back before "today" (teaser.css, .rm-cross). */}}
+    {{- $b := eq $stage "next" }}
+    {{- if $b }}<li class="rm-cross rm-cross--ab" aria-hidden="true"></li>{{ end }}
+    <li class="rm-stage rm-stage--future{{ if $b }} rm-b{{ end }}" id="{{ $stage }}">
+      <span class="rm-when"></span><span class="rm-node" aria-hidden="true"></span>
+      <h2 class="rm-stage-name">{{ $s.label }} <small>{{ $s.note }}</small></h2>
+    </li>
+    {{- range $item := where $r.items "stage" $stage }}
+    <li class="rm-item rm-item--future{{ if $b }} rm-b{{ end }}">
+      <span class="rm-when">{{ with .issue }}<a href="{{ $issues }}/{{ . }}" rel="noopener">{{ $r.issue }} #{{ . }}</a>{{ end }}</span>
+      <span class="rm-node" aria-hidden="true"></span>
+      {{- /* Only an entry with a picture is framed. Its picture (wide windows only): image, a screen from
+             static/images/screens in its device, or art: "pi", the box drawn. */}}
+      {{- $art := "" }}
+      {{- with .image }}{{ with resources.Get (printf "images/screens/%s" .) }}{{ $art = partial "horizont/device.html" (dict "device" ($item.device | default "iphone") "width" 150 "image" (.Resize "450x webp q88") "alt" $item.title) }}{{ end }}{{ end }}
+      {{- if eq .art "pi" }}{{ $art = partial "knx-pi.html" . }}{{ end }}
+      <div class="rm-body{{ with $art }} rm-card rm-card--art{{ end }}">
+        <div>
+          <h3>{{ .title }}</h3>
+          <p>{{ .text | markdownify }}{{ with .link }} <a href="{{ . | relLangURL }}">{{ $item.link_label }}</a>{{ end }}{{ with .issue }} <a class="rm-issue" href="{{ $issues }}/{{ . }}" rel="noopener">{{ $r.issue }} #{{ . }}</a>{{ end }}</p>
+        </div>
+        {{- with $art }}<div class="rm-art" aria-hidden="true">{{ . }}</div>{{ end }}
+      </div>
+    </li>
+    {{- end }}
+    {{- end }}
+    {{- /* Today: what there is, by open betas. */}}
+    {{- $facts := slice }}
+    {{- range $d.roadmap.facts }}{{ if and (not (isset . "commerce")) (not (isset . "page")) (or (not (isset . "when")) (in .when $beta)) (in (slice "Jetzt" "Beta" "Now" "Box") .term) }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}{{ end }}
+    <li class="rm-cross rm-cross--ba" aria-hidden="true"></li>
+    <li class="rm-stage rm-now" id="today">
+      <span class="rm-when">{{ $r.now.label }}</span><span class="rm-node" aria-hidden="true"></span>
+      <div class="rm-body rm-card">
+        <h2 class="rm-stage-name">{{ $r.now.title }}</h2>
+        <p>{{ index $d.roadmap.text $beta }}</p>
+        {{ partial "horizont/facts.html" (dict "items" $facts) }}
+      </div>
+    </li>
+    {{- /* The past, newest first. */}}
+    <li class="rm-stage rm-stage--past" id="released">
+      <span class="rm-when"></span><span class="rm-node" aria-hidden="true"></span>
+      <div class="rm-body">
+        <h2 class="rm-stage-name">{{ $r.past.label }}</h2>
+        {{ index $parts 0 | safeHTML }}
+      </div>
+    </li>
+    {{- range $i, $part := after 1 $parts }}
+    {{- $cut := split $part "</h2>" }}
+    {{- $head := index $cut 0 }}
+    {{- $id := index (index (findRESubmatch `id="([^"]+)"` $head 1) 0) 1 }}
+    {{- $name := replaceRE `^[^>]*>` "" $head | plainify | htmlUnescape }}
+    {{- $bits := split $name " – " }}
+    {{- $version := index $bits 0 }}
+    {{- $minor := strings.HasSuffix $version ".0" }}
+    <li class="rm-item rm-item--release{{ if $minor }} rm-item--minor{{ end }}" id="{{ $id }}">
+      <span class="rm-when">{{ with index $bits 1 }}<time>{{ . }}</time>{{ end }}</span>
+      <span class="rm-node" aria-hidden="true"></span>
+      <details class="rm-body"{{ if eq $i 0 }} open{{ end }}>
+        <summary><b class="hz-mono">{{ $version }}</b>{{ with index $bits 1 }}<time>{{ . }}</time>{{ end }}{{ partial "horizont/symbol.html" "expand_more" }}</summary>
+        <div class="rm-notes">{{ delimit (after 1 $cut) "</h2>" | safeHTML }}</div>
+      </details>
+    </li>
+    {{- end }}
+  </ol>
+</section>
+{{- /* Prices as a preview: nothing can be bought yet. */}}
+<section class="hz-feld-section tz-section tz-section--plan" id="prices">
+  {{ partial "horizont/kennung.html" (printf "02 — %s" $h.pricing.label) }}
+  <div>
+    <h2>{{ $h.pricing.title }}</h2>
+    {{- with $d.roadmap.prices_preview }}<p class="tz-prices-beta">{{ . | markdownify }}</p>{{ end }}
+    <dl class="tz-prices">
+      {{- range $d.roadmap.prices }}
+      <div class="tz-price{{ if eq .name "Pro" }} tz-price--pro{{ end }}"><dt>{{ .name }}</dt><dd><b>{{ .price }}{{ with .per }} <small>{{ . }}</small>{{ end }}</b><span>{{ .sub }}</span></dd></div>
+      {{- end }}
+    </dl>
+    <p class="tz-prices-note">{{ $d.roadmap.prices_note }}</p>
+  </div>
+  {{- $others := slice }}
+  {{- range $h.pricing.others }}{{ $others = $others | append (dict "term" .term "value" .value) }}{{ end }}
+  {{ partial "horizont/facts.html" (dict "items" $others) }}
+</section>
+{{- /* Have your say: votes and comments on the public issues. */}}
+{{- $mitreden := slice }}
+{{- range $h.mitreden.points }}{{ $mitreden = $mitreden | append (dict "term" .term "value" .value) }}{{ end }}
+<section class="hz-feld-section tz-section tz-section--read" id="mitreden">
+  {{ partial "horizont/kennung.html" (printf "03 — %s" $h.mitreden.label) }}
+  <div>
+    <h2>{{ $h.mitreden.title }}</h2>
+    <p>{{ printf "%s [%s](%s)" $h.mitreden.text $h.mitreden.more $issues | markdownify }}</p>
+  </div>
+  {{ partial "horizont/facts.html" (dict "items" $mitreden) }}
+</section>
+</main>
+{{- $links := slice (dict "name" site.Title "url" ("" | relLangURL)) (dict "name" (i18n "beta") "url" ("beta/" | relLangURL)) (dict "name" (i18n "feedback") "url" ("feedback/" | relLangURL)) (dict "name" (i18n "imprint") "url" site.Params.legalUrl) (dict "name" (i18n "privacy") "url" site.Params.privacyUrl) (dict "name" (i18n "github") "url" site.Params.githubUrl) (dict "name" (i18n "instagram") "url" site.Params.instagramUrl) }}
+{{- with site.GetPage "/nutzungsbedingungen" }}{{ $links = $links | append (dict "name" (i18n "terms") "url" .RelPermalink) }}{{ end }}
+{{ partial "horizont/feld/foot.html" (dict "links" $links "sender" (i18n "footer_sender")) }}
+<p class="tz-mark t-caption">{{ i18n "footer_note" }}</p>
+</div>
+{{- $js := resources.Get "js/roadmap.js" | minify | fingerprint }}
+<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>
+{{ partial "horizont/nav/script.html" . }}
+</body>
+</html>

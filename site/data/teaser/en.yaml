@@ -58,16 +58,12 @@ addon:
     - { term: "Telegrams", value: "Live with source, destination and value; search, filter, read and write values. Writing is an intervention in the installation and is your responsibility" }
     - { term: "ETS project", value: "`.knxproj` up to ETS6, password-protected too: names, datapoint types, devices and rooms" }
     - { term: "Overview", value: "Every group address with its value and a mini history, by rooms and functions" }
-    - { term: "Objects", value: "Actuators as DIN rail devices with channel LEDs, like above" }
     - { term: "Health", value: "Silent devices, cycles, datapoint types and bus quality, with a PDF report" }
     - { term: "History", value: "Continuous recording day by day, recordings with a timeline per group address" }
-    - { term: "Comments", value: "On telegrams, charts and recordings, with screenshots; \"Report a problem\" records when the fault happened" }
-    - { term: "Exports", value: "One page for PDF, CSV, ETS file, reports and a ZIP with everything" }
-    - { term: "Experts", value: "Bus monitor with raw frames, topology, comparison with the ETS project, commissioning checklist" }
     - { term: "Connection", value: "Tunneling, routing and KNX IP Secure" }
     - { term: "Home Assistant", value: "Read-only by default; [integration](https://github.com/regetskcob/KNX-Monitor-HA) with sensors, triggers and repair hints, events, blueprints and MQTT" }
 apps:
-  kennung: "03 — Coming as an app"
+  label: "As an app"
   title: "Soon without Home Assistant too, right at the gateway."
   text: "For the building site, the distribution board and the office next to ETS: the same tools as an app on whatever device is in your hand."
   facts:
@@ -76,14 +72,15 @@ apps:
     - { term: "Connection", value: "Directly to your IP interface or IP router" }
     - { term: "On site", value: "ETS project and recordings live on the device, no internet needed" }
 roadmap:
-  kennung: "04 — Roadmap"
+  kennung: "06 — Roadmap"
   title: "At home in Home Assistant first, then out on the building site too."
   text:
     none: "The add-on is ready and stays free, and the Linux app is available today. The other apps are built and follow in the coming weeks."
     ios: "The add-on is ready and stays free, the Linux app is available today, and iPhone, iPad and Mac are in beta. The other apps are built and follow in the coming weeks."
     android: "The add-on is ready and stays free, the Linux app is available today, and Android is in beta. The other apps are built and follow in the coming weeks."
     both: "The add-on is ready and stays free, the Linux app is available today, and iPhone, iPad, Mac and Android are in beta. The other apps are built and follow in the coming weeks."
-  # Public as a preview, on the left below the text.
+  more: "See roadmap and changelog"
+  # Public as a preview, on the roadmap page (layouts/roadmap.html).
   prices_preview: "**Everything is still free in the beta:** you use all features at no cost, including those of Plus and Pro. As a thank-you, you get 90 days of Pro on first launch of the store version, on the device you used the beta on. [How to join](/en/beta/)"
   prices:
     - { name: "Free", price: "Free", sub: "For a look at your own installation" }
@@ -92,7 +89,7 @@ roadmap:
   prices_note: "Suggested prices as a non-binding preview, nothing can be bought yet. Final prices apply in the App Store and on Google Play; on iPhone, iPad and Mac one purchase works everywhere."
   # commerce: false only without prices (params.commerce).
   facts:
-    - { term: "Open", value: "**Source code under GPLv3** [on GitHub](https://github.com/regetskcob/KNX-Monitor-Code): everything for beginners and advanced users in the app, add-on and Busclear Box, open to check and to change" }
+    - { term: "Open", value: "**Source code under GPLv3** [on GitHub](https://github.com/regetskcob/KNX-Monitor-Code): everything for beginners and advanced users in the app, add-on and Busclear Box, open to check and to change", home: false }
     - { term: "Now", value: "**Home Assistant add-on** and **Linux** ([download](https://github.com/regetskcob/KNX-Monitor/releases/latest)), both free for one installation, for good" }
     - { term: "Beta", value: "**iPhone, iPad and Mac** through [TestFlight](https://testflight.apple.com/join/fsM3ufJK), open to everyone, with every tool", when: [ios, both] }
     - { term: "Beta", value: "**Android** on Google Play: first [join the Google group](https://groups.google.com/g/knx-monitor-beta), then [join the test](https://play.google.com/apps/testing/de.kalkar_it.knxmonitor). Open to everyone, with every tool", when: [android, both] }
@@ -102,24 +99,34 @@ roadmap:
     - { term: "Soon", value: "**Windows** as a download", when: [both] }
     - { term: "Building", page: "hausbau", value: "**[Building a house with KNX](/en/hausbau/)**: what to decide early, before the walls are closed, and how \"Plan a home\" helps with it" }
     - { term: "Preview", value: "**Home builder package**: from everyday wishes through room book and floor plan to documents for your electrician. [Learn more](/en/bauherren/)" }
-    - { term: "Preview", value: "**[KNX box](/en/box/)**: a Raspberry Pi as an on-site telegram recorder, recording for days on the building site, without Home Assistant and without internet. Until the other apps arrive, set it up with the Linux app" }
+    - { term: "Box", value: "**[KNX box](/en/box/)**: a Raspberry Pi as an on-site telegram recorder, recording for days on the building site, without Home Assistant and without internet. Image and guide are there, you set it up with the app" }
     - { term: "Apps", value: "Free to use, more tools with Plus and Pro. Everything is free in the beta.", commerce: false }
-# From section 05 the landing page: features, expert mode, ETS project,
-# connection, KNX box, privacy and FAQ from site/data/home and
-# site/data/screens.yaml; only the name of the features.
-features_label: "Features in detail"
+# The home page stays short: 03 features (screens and a few facts), 04
+# connection, 05 privacy, 06 roadmap, 07 FAQ. Everything in detail is on
+# /features/ (layouts/funktionen.html, texts from site/data/home), roadmap,
+# prices and "have your say" on /changelog/ (layouts/roadmap.html).
+features_label: "Features"
+features:
+  more: "All features in detail"
+  facts:
+    - { term: "Start", value: "**Teach in without an ETS project:** press a button, name it, done. The live list shows every telegram as a sentence" }
+    - { term: "Recordings", value: "Record, edit and replay with a timeline per group address" }
+    - { term: "Faults", value: "**Report a problem:** reproduce the fault, the diagnostics package goes to your electrician" }
+    - { term: "Experts", value: "One switch brings bus monitor, topology, diagnostics and commissioning" }
+    - { term: "Demo", value: "Demo home to try without an installation" }
+connect:
+  label: "Connection"
+  title: "Straight to your IP interface, readable with your ETS project."
+  text: "Busclear connects to your IP interface or IP router over KNXnet/IP, with KNX Secure too. Your ETS project (.knxproj, password-protected too) turns group addresses into names, rooms and values."
+  more: "Connection and ETS project in detail"
+privacy_more: "Encryption, app lock and backup in detail"
 # Chapters on the horizon (navigation on top): anchor and name, in the order of the page.
 marks:
   - { id: "add-on", label: "Add-on" }
-  - { id: "apps", label: "Apps" }
-  - { id: "roadmap", label: "Roadmap" }
   - { id: "features", label: "Features" }
-  - { id: "expert", label: "Expert" }
-  - { id: "ets", label: "ETS project" }
   - { id: "connection", label: "Connection" }
-  - { id: "box", label: "KNX box" }
   - { id: "privacy", label: "Privacy" }
-  - { id: "mitreden", label: "Have your say" }
+  - { id: "roadmap", label: "Roadmap" }
   - { id: "faq", label: "FAQ" }
 switch_on: "On"
 switch_off: "Off"
@@ -136,9 +143,9 @@ sensors:
   - addr: "1.1.31"
     name: "Push button, 2 keys"
     kind: "push"
-    # In the gap under the expert list (section 06), else above the thread.
+    # In the gap under the feature list (section 03), else above the thread.
     slot: "gap top"
-    section: "expert"
+    section: "features"
     note: "Go ahead and press it: in the app's topology you press the push buttons of your installation the same way and see which actuator switches, to check their assignments."
     # Its blind beside it, moved by the status "Position Wohnen" (2/4/1).
     window: { status: "2/4/1", pos: 40, label: "Living room" }

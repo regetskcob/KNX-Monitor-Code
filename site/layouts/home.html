@@ -2,10 +2,10 @@
   The teaser of busclear.de: one Feldseite that fits the screen. Left the
   app icon, the headline and the one way in that exists today (the add-on;
   the apps follow); right the small distribution board standing on the
-  horizon, telegrams running along its bus cable. Below the first screen four
-  numbered sections: what the add-on does today, what the apps will bring,
-  the roadmap, then the features and the expert mode in detail.
-  Texts from data/site/<lang>.yaml.
+  horizon, telegrams running along its bus cable. Below the first screen six
+  short numbered sections: the add-on today, the features, the connection,
+  privacy, the roadmap and four questions; the detail is on /funktionen/ and
+  /changelog/. Texts from data/teaser/<lang>.yaml and data/home/<lang>.yaml.
 */ -}}
 {{- $d := index site.Data.teaser site.Language.Lang -}}
 {{- /* Open betas: picks the texts keyed none/ios/android/both and the facts
@@ -108,37 +108,31 @@
   </div>
   <a class="tz-more" href="#add-on">{{ $d.more }}{{ partial "horizont/symbol.html" "expand_more" }}</a>
   </div>
-  {{- /* Below the first screen: what the add-on does today (with the app
-         in Home Assistant on an iPad), what the apps will bring, and when and
-         at what price (the roadmap). Markup of horizont/feld/section.html,
-         plus the iPad. The prices are public as a preview, nothing can be
-         bought yet; facts marked commerce: true only with
-         site.Params.commerce, commerce: false only without; facts with
-         page: "<path>" only once that page exists (a draft does not). */}}
-  {{- range $i, $sec := slice $d.addon $d.apps $d.roadmap }}
-  {{- $id := index (slice "add-on" "apps" "roadmap") $i }}
+  {{- /* Below the first screen the page stays short: 02 what the add-on does
+         today (with the app in Home Assistant on an iPad), 03 the features
+         as screens with a few facts, 04 the connection, 05 privacy, 06 the
+         roadmap, 07 four questions. Everything in detail is on /funktionen/
+         (layouts/funktionen.html); prices, what comes next and every version
+         on /changelog/ (layouts/roadmap.html). Markup of
+         horizont/feld/section.html. Facts marked commerce: true only with
+         site.Params.commerce, commerce: false only without; with
+         when: [...] only in those beta states; with page: "<path>" only once
+         that page exists (a draft does not); home: false not here. */}}
+  {{- $h := index site.Data.home site.Language.Lang }}
+  {{- $de := eq site.Language.Lang "de" }}
+  {{- $detail := "funktionen/" | relLangURL }}
+  {{- with site.GetPage "/funktionen" }}{{ $detail = .RelPermalink }}{{ end }}
   {{- $facts := slice }}
-  {{- range $sec.facts }}{{ if and (or (not (isset . "commerce")) (eq .commerce (site.Params.commerce | default false))) (or (not (isset . "when")) (in .when $beta)) (or (not (isset . "page")) (site.GetPage .page)) }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}{{ end }}
-  <section class="hz-feld-section tz-section{{ if eq $id "roadmap" }} tz-section--plan{{ end }}" id="{{ $id }}">
-    {{ partial "horizont/kennung.html" $sec.kennung }}
+  {{- range $d.addon.facts }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}
+  <section class="hz-feld-section tz-section" id="add-on">
+    {{ partial "horizont/kennung.html" $d.addon.kennung }}
     <div>
-      <h2>{{ $sec.title }}</h2>
-      {{- $text := $sec.text }}{{ if reflect.IsMap $text }}{{ $text = index $text $beta }}{{ end }}
-      <p>{{ $text | markdownify }}</p>
-      {{- /* The prices left of the line, where they don't drown in the facts. */}}
-      {{- with $sec.prices }}
-      {{- with $sec.prices_preview }}<p class="tz-prices-beta">{{ . | markdownify }}</p>{{ end }}
-      <dl class="tz-prices">
-        {{- range . }}
-        <div class="tz-price{{ if eq .name "Pro" }} tz-price--pro{{ end }}"><dt>{{ .name }}</dt><dd><b>{{ .price }}{{ with .per }} <small>{{ . }}</small>{{ end }}</b><span>{{ .sub }}</span></dd></div>
-        {{- end }}
-      </dl>
-      <p class="tz-prices-note">{{ $sec.prices_note }}</p>
-      {{- end }}
+      <h2>{{ $d.addon.title }}</h2>
+      <p>{{ $d.addon.text | markdownify }}</p>
       {{- /* The whole overview of the app: sidebar, cards and the detail
              pane with its history (store/raw/ipad/<lang>-land/02_details.png),
              sharp at twice its width. */}}
-      {{- if eq $i 0 }}{{ with resources.Get (printf "images/ipad-overview-%s.png" site.Language.Lang) }}
+      {{- with resources.Get (printf "images/ipad-overview-%s.png" site.Language.Lang) }}
       {{- $shot := .Resize "1600x webp q90" }}
       {{- /* Large in the lightbox, with its words as caption. */}}
       {{- $large := .Fit "2752x2752 webp q85" }}
@@ -149,78 +143,56 @@
           {{ partial "horizont/device.html" (dict "device" "ipad" "width" 560 "inner" (partial "ha-frame.html" (dict "src" $shot.RelPermalink "alt" $d.ipad_alt))) }}
         </a>
       </div>
-      {{- end }}{{ end }}
+      {{- end }}
     </div>
     {{ partial "horizont/facts.html" (dict "items" $facts) }}
   </section>
-  {{- end }}
-  {{- /* From 05 the landing page, read from its data (site/data/home,
-         site/data/screens.yaml): features and expert mode with their
-         screens, ETS project, connection, the KNX box drawn, privacy and the
-         FAQ. Sections read on phones (tz-section--read) keep their words;
-         the FAQ spans both columns, the cable ends above it. */}}
-  {{- $h := index site.Data.home site.Language.Lang }}
-  {{- $de := eq site.Language.Lang "de" }}
-  {{- $n := 4 }}
-  {{- $facts := slice }}
-  {{- range $h.features.items }}{{ $facts = $facts | append (dict "term" .term "value" (printf "**%s.** %s" .title (partial "live.html" (dict "ctx" . "key" "text")))) }}{{ end }}
-  {{- range $h.features.more.points }}{{ $facts = $facts | append (dict "term" .term "value" (partial "live.html" (dict "ctx" . "key" "value"))) }}{{ end }}
-  {{- $expert := slice }}
-  {{- range $h.expert.points }}{{ $expert = $expert | append (dict "term" .term "value" .value) }}{{ end }}
-  {{- range slice
-      (dict "id" "features" "label" $d.features_label "title" $h.features.title "text" $h.features.lead "facts" $facts "group" "everyday")
-      (dict "id" "expert" "label" $h.expert.label "title" $h.expert.title "text" (partial "live.html" (dict "ctx" $h.expert "key" "text")) "facts" $expert "group" "expert") }}
-  {{- $n = add $n 1 }}
-  <section class="hz-feld-section tz-section tz-section--shots" id="{{ .id }}">
-    {{ partial "horizont/kennung.html" (printf "%02d — %s" $n .label) }}
-    <div>
-      <h2>{{ .title }}</h2>
-      <p>{{ .text | markdownify }}</p>
-      {{ partial "shots.html" (dict "group" .group "title" .label) }}
-    </div>
-    {{ partial "horizont/facts.html" (dict "items" .facts) }}
-  </section>
-  {{- end }}
 
-  {{- /* The ETS project: group addresses become names. */}}
+  {{- /* 03 The features: the screens, a few facts, the rest on its page. */}}
+  {{- $facts = slice }}
+  {{- range $d.features.facts }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}
+  <section class="hz-feld-section tz-section tz-section--shots" id="features">
+    {{ partial "horizont/kennung.html" (printf "03 — %s" $d.features_label) }}
+    <div>
+      <h2>{{ $h.features.title }}</h2>
+      <p>{{ printf "%s [%s](%s)" $h.features.lead $d.features.more $detail | markdownify }}</p>
+      {{ partial "shots.html" (dict "group" "everyday" "title" $d.features_label) }}
+    </div>
+    {{ partial "horizont/facts.html" (dict "items" $facts) }}
+  </section>
+
+  {{- /* 04 Connection and ETS project in one: how to get on the bus, and
+         two group addresses that became names. */}}
   {{- $rows := cond $de
-    (slice (slice "1/2/3" "Wohnzimmer Decke Licht – Ein" "Ein") (slice "1/2/4" "Wohnzimmer Decke Licht – Status" "Ein") (slice "3/1/10" "Küche Temperatur Ist" "21,4 °C") (slice "2/0/7" "Bad Rollladen Position" "35 %") (slice "4/0/1" "Zähler Wirkleistung" "1,82 kW"))
-    (slice (slice "1/2/3" "Living room ceiling light – On" "On") (slice "1/2/4" "Living room ceiling light – Status" "On") (slice "3/1/10" "Kitchen temperature actual" "21.4 °C") (slice "2/0/7" "Bathroom blind position" "35 %") (slice "4/0/1" "Meter active power" "1.82 kW")) }}
-  {{- $ets := slice }}
-  {{- range $rows }}{{ $ets = $ets | append (dict "term" (index . 0) "value" (printf "%s <span class=\"hz-mono tz-value\">%s</span>" (index . 1) (index . 2))) }}{{ end }}
+    (slice (slice "1/2/3" "Wohnzimmer Decke Licht – Ein" "Ein") (slice "3/1/10" "Küche Temperatur Ist" "21,4 °C"))
+    (slice (slice "1/2/3" "Living room ceiling light – On" "On") (slice "3/1/10" "Kitchen temperature actual" "21.4 °C")) }}
   {{- $conn := slice }}
-  {{- range $h.facts }}{{ $conn = $conn | append (dict "term" .term "value" .value) }}{{ end }}
-  {{- $box := slice }}
-  {{- range $h.box.points }}{{ if or site.Params.commerce (not .commerce) }}{{ $box = $box | append (dict "term" .term "value" .value) }}{{ end }}{{ end }}
-  {{- $box = $box | append (dict "term" (cond $de "Stand" "Status") "value" (printf "%s [%s](%s)" (partial "horizont/badge.html" (dict "status" "info" "label" $h.box.tag)) $h.box.link site.Params.boxUrl)) }}
+  {{- range first 2 $h.facts }}{{ $conn = $conn | append (dict "term" .term "value" .value) }}{{ end }}
+  {{- range $rows }}{{ $conn = $conn | append (dict "term" (index . 0) "value" (printf "%s <span class=\"hz-mono tz-value\">%s</span>" (index . 1) (index . 2))) }}{{ end }}
+  {{- /* 05 Privacy: the three points that matter first. */}}
   {{- $privacy := slice }}
-  {{- range $h.privacy.points }}{{ if or site.Params.commerce (not .commerce) }}{{ $privacy = $privacy | append (dict "term" .term "value" (partial "live.html" (dict "ctx" . "key" "value"))) }}{{ end }}{{ end }}
-  {{- $mitreden := slice }}
-  {{- range $h.mitreden.points }}{{ $mitreden = $mitreden | append (dict "term" .term "value" .value) }}{{ end }}
+  {{- range where $h.privacy.points "home" true }}{{ $privacy = $privacy | append (dict "term" .term "value" (partial "live.html" (dict "ctx" . "key" "value"))) }}{{ end }}
+  {{- /* 06 The roadmap: what there is today and where it goes on. */}}
+  {{- $plan := slice }}
+  {{- range $d.roadmap.facts }}{{ if and (ne .home false) (or (not (isset . "commerce")) (eq .commerce (site.Params.commerce | default false))) (or (not (isset . "when")) (in .when $beta)) (or (not (isset . "page")) (site.GetPage .page)) }}{{ $plan = $plan | append (dict "term" .term "value" .value) }}{{ end }}{{ end }}
   {{- range slice
-      (dict "id" "ets" "label" $h.etsproject.label "title" $h.etsproject.title "text" $h.etsproject.text "facts" $ets)
-      (dict "id" "connection" "label" $h.connection.label "title" $h.connection.title "text" $h.hero.note "facts" $conn)
-      (dict "id" "box" "label" $h.box.label "title" $h.box.title "text" (printf "%s [%s](%s)" $h.box.text $h.box.more ("box/" | relLangURL)) "facts" $box "pi" true)
-      (dict "id" "privacy" "label" $h.privacy.label "title" $h.privacy.title "text" (printf "%s [%s](%s)" (partial "live.html" (dict "ctx" $h.privacy "key" "text")) $h.privacy.more site.Params.privacyUrl) "facts" $privacy)
-      (dict "id" "mitreden" "label" $h.mitreden.label "title" $h.mitreden.title "text" (printf "%s [%s](%s/issues)" $h.mitreden.text $h.mitreden.more site.Params.githubUrl) "facts" $mitreden) }}
-  {{- $n = add $n 1 }}
+      (dict "id" "connection" "label" $d.connect.label "title" $d.connect.title "text" (printf "%s [%s](%s#ets)" $d.connect.text $d.connect.more $detail) "facts" $conn)
+      (dict "id" "privacy" "label" $h.privacy.label "title" $h.privacy.title "text" (printf "%s [%s](%s) · [%s](%s#privacy)" (partial "live.html" (dict "ctx" $h.privacy "key" "text")) $h.privacy.more site.Params.privacyUrl $d.privacy_more $detail) "facts" $privacy)
+      (dict "id" "roadmap" "kennung" $d.roadmap.kennung "title" $d.roadmap.title "text" (printf "%s [%s](%s)" (index $d.roadmap.text $beta) $d.roadmap.more ("changelog/" | relLangURL)) "facts" $plan) }}
   <section class="hz-feld-section tz-section tz-section--read" id="{{ .id }}">
-    {{ partial "horizont/kennung.html" (printf "%02d — %s" $n .label) }}
+    {{ partial "horizont/kennung.html" (.kennung | default (printf "%02d — %s" (cond (eq .id "connection") 4 5) .label)) }}
     <div>
       <h2>{{ .title }}</h2>
       <p>{{ .text | markdownify }}</p>
-      {{- if .pi }}{{ partial "knx-pi.html" . }}{{ end }}
     </div>
     {{ partial "horizont/facts.html" (dict "items" .facts) }}
   </section>
   {{- end }}
 
   {{- /* FAQ. */}}
-  {{- $n = add $n 1 }}
-  {{- $faq := slice }}
-  {{- range $h.faq.items }}{{ if or site.Params.commerce (not .commerce) }}{{ $faq = $faq | append . }}{{ end }}{{ end }}
+  {{- $faq := where $h.faq.items "home" true }}
   <section class="hz-feld-section tz-section tz-section--read tz-section--faq" id="faq">
-    {{ partial "horizont/kennung.html" (printf "%02d — %s" $n $h.faq.label) }}
+    {{ partial "horizont/kennung.html" (printf "07 — %s" $h.faq.label) }}
     <div>
       <h2>{{ $h.faq.title }}</h2>
       <p><a href="{{ site.Params.supportUrl }}">{{ i18n "faq_more" }}</a></p>

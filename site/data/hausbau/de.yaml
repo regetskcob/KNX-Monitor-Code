@@ -225,7 +225,7 @@ moved:
 state:
   label: Stand
   title: Was es heute gibt und was noch kommt.
-  text: „Haus planen“ ist die erste Stufe und seit Version 1.9.2 draußen. Einen Termin für die übrigen Teile nennen wir nicht, sie kommen, wenn sie fertig und getestet sind.
+  text: „Haus planen“ gibt es seit Version 1.9.2. Mit 1.12.0 sind das Weitergeben an den Elektriker, das Zuordnen mit Rundgang und der Bus auf dem Grundriss dazugekommen. In den Apps aus den Stores ist all das noch im Test; einen Termin dafür nennen wir nicht.
   head: [Teil, Wo, Stand]
   rows:
   - feature: plan
@@ -236,10 +236,10 @@ state:
     where: iPhone, iPad, Mac und Android
   - feature: exchange
     part: '**Weitergeben an den Elektriker:** Hausplan-Paket, Fragen und Vorschläge, freigegebene Stände'
-    where: Mit einem der nächsten Releases
+    where: '[Home-Assistant-Add-on](/addon/), [Busclear Box](/box/) und Linux-App, seit Version 1.12.0'
   - feature: walk
     part: '**Nach dem Einzug:** Gruppenadressen zuordnen und Rundgang durch die Geräte je Raum'
-    where: Mit einem der nächsten Releases
+    where: '[Home-Assistant-Add-on](/addon/), [Busclear Box](/box/) und Linux-App, seit Version 1.12.0'
   - feature: busview
     part: '**Bus auf dem Grundriss**'
     where: App, Add-on und Karte für Dashboards

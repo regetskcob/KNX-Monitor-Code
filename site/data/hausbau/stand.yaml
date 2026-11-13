@@ -11,9 +11,9 @@
 plan: live
 # Dasselbe in den Store-Apps (iPhone, iPad, Mac, Android).
 apps: test
-# Austausch mit dem Elektriker als Datei mit freigegebenen Ständen und Rückfragen.
-exchange: soon
-# Geräte im Plan mit Gruppenadressen verbinden, Soll-Ist-Rundgang durchs Raumbuch.
-walk: soon
+# Austausch mit dem Elektriker als Datei mit freigegebenen Ständen und Rückfragen. Seit 1.12.0.
+exchange: live
+# Geräte im Plan mit Gruppenadressen verbinden, Soll-Ist-Rundgang durchs Raumbuch. Seit 1.12.0.
+walk: live
 # Busansicht auf dem Grundriss in App und Add-on, Karte für Dashboards. Seit 1.12.0.
 busview: live

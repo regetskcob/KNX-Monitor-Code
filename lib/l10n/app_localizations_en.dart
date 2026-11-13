@@ -7081,7 +7081,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get learnExplain =>
-      'No ETS project at hand? Press a button or switch a light. The app listens, catches the group addresses including the status feedback and asks what it was. That becomes your own project – overview, objects and charts work right away. An ETS project imported later takes precedence; your names stay for addresses it lacks.';
+      'No ETS project at hand, or only an old one? Press a push button or switch a light. The app listens, catches the group addresses with their feedback and asks what it was. Whatever sends by itself (temperature, status, time) is listed under “Open”: tap and name it, the last value usually gives it away. This becomes your own project – overview, objects and charts work right away. An imported ETS project takes precedence; if you name one of its addresses differently here, your name counts as a correction and appears in the tasks for the ETS.';
 
   @override
   String get learnListening => 'Listening …';
@@ -12246,4 +12246,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String weekSumTapGaps(String taps, int minutes) {
     return 'Tap point $taps was unreachable at times, $minutes min in all.';
   }
+
+  @override
+  String learnProgress(int named, int total) {
+    return '$named of $total addresses heard have a name';
+  }
+
+  @override
+  String get learnOpenHint => 'Sends, but has no name yet. Tap what you recognize by its value.';
+
+  @override
+  String get learnOpenHintProject =>
+      'Sends on the bus, but is missing from the project or does not match the type there. Your project is probably older than the installation.';
+
+  @override
+  String learnOpenMore(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'and $count more', one: 'and 1 more');
+    return '$_temp0';
+  }
+
+  @override
+  String learnMismatch(String name) {
+    return 'does not match “$name”';
+  }
+
+  @override
+  String learnPicked(String address) {
+    return 'Heard: $address';
+  }
+
+  @override
+  String get learnQuestionHeard => 'What is it?';
+
+  @override
+  String get learnRoleHeard => 'Heard';
+
+  @override
+  String get learnNoRoom => 'No room';
 }

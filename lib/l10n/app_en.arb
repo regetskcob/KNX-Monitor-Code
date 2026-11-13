@@ -1938,7 +1938,7 @@
   "plainColumnEvent": "What happened",
   "learnTitle": "Teach your installation",
   "learnTool": "No ETS project: press a button, name it, done",
-  "learnExplain": "No ETS project at hand? Press a button or switch a light. The app listens, catches the group addresses including the status feedback and asks what it was. That becomes your own project – overview, objects and charts work right away. An ETS project imported later takes precedence; your names stay for addresses it lacks.",
+  "learnExplain": "No ETS project at hand, or only an old one? Press a push button or switch a light. The app listens, catches the group addresses with their feedback and asks what it was. Whatever sends by itself (temperature, status, time) is listed under “Open”: tap and name it, the last value usually gives it away. This becomes your own project – overview, objects and charts work right away. An imported ETS project takes precedence; if you name one of its addresses differently here, your name counts as a correction and appears in the tasks for the ETS.",
   "learnListening": "Listening …",
   "learnPressNow": "Now press a button or switch something – ideally one thing at a time.",
   "learnDemoPress": "Press a button in the demo house",
@@ -3402,5 +3402,14 @@
   "weekSumRepeats": "{count} repeats ({share}): acknowledgements are missing, check the line or device.",
   "weekSumLoadHigh": "Bus load high at times, up to {max} in a minute.",
   "weekSumDisconnected": "The bus connection dropped {count, plural, =1{once} other{{count} times}}, {minutes} min in all.",
-  "weekSumTapGaps": "Tap point {taps} was unreachable at times, {minutes} min in all."
+  "weekSumTapGaps": "Tap point {taps} was unreachable at times, {minutes} min in all.",
+  "learnProgress": "{named} of {total} addresses heard have a name",
+  "learnOpenHint": "Sends, but has no name yet. Tap what you recognize by its value.",
+  "learnOpenHintProject": "Sends on the bus, but is missing from the project or does not match the type there. Your project is probably older than the installation.",
+  "learnOpenMore": "{count, plural, =1{and 1 more} other{and {count} more}}",
+  "learnMismatch": "does not match “{name}”",
+  "learnPicked": "Heard: {address}",
+  "learnQuestionHeard": "What is it?",
+  "learnRoleHeard": "Heard",
+  "learnNoRoom": "No room"
 }

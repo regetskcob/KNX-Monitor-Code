@@ -7095,7 +7095,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get learnExplain =>
-      'Kein ETS-Projekt zur Hand? Drück einen Taster oder schalte ein Licht. Die App hört mit, fängt die Gruppenadressen samt Rückmeldung und fragt, was das war. Daraus entsteht dein eigenes Projekt – Übersicht, Objekte und Diagramme funktionieren sofort. Ein später importiertes ETS-Projekt hat Vorrang; deine Namen bleiben für Adressen, die dort fehlen.';
+      'Kein ETS-Projekt zur Hand, oder nur ein altes? Drück einen Taster oder schalte ein Licht. Die App hört mit, fängt die Gruppenadressen samt Rückmeldung und fragt, was das war. Was von selbst sendet (Temperatur, Status, Zeit), steht unter „Offen“: antippen und benennen, der letzte Wert verrät meist, was es ist. Daraus entsteht dein eigenes Projekt – Übersicht, Objekte und Diagramme funktionieren sofort. Ein importiertes ETS-Projekt hat Vorrang; benennst du hier eine Adresse daraus anders, gilt dein Name als Korrektur und steht in den Aufgaben für die ETS.';
 
   @override
   String get learnListening => 'Ich höre mit …';
@@ -12270,4 +12270,41 @@ class AppLocalizationsDe extends AppLocalizations {
   String weekSumTapGaps(String taps, int minutes) {
     return 'Messpunkt $taps war zeitweise nicht erreichbar, zusammen $minutes min.';
   }
+
+  @override
+  String learnProgress(int named, int total) {
+    return '$named von $total gehörten Adressen haben einen Namen';
+  }
+
+  @override
+  String get learnOpenHint => 'Sendet, hat aber noch keinen Namen. Tippe an, was du am Wert erkennst.';
+
+  @override
+  String get learnOpenHintProject =>
+      'Sendet auf dem Bus, fehlt aber im Projekt oder passt nicht zum Typ dort. Dein Projekt ist vermutlich älter als die Anlage.';
+
+  @override
+  String learnOpenMore(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'und $count weitere', one: 'und 1 weitere');
+    return '$_temp0';
+  }
+
+  @override
+  String learnMismatch(String name) {
+    return 'passt nicht zu „$name“';
+  }
+
+  @override
+  String learnPicked(String address) {
+    return 'Gehört: $address';
+  }
+
+  @override
+  String get learnQuestionHeard => 'Was ist das?';
+
+  @override
+  String get learnRoleHeard => 'Gehört';
+
+  @override
+  String get learnNoRoom => 'Ohne Raum';
 }

@@ -165,21 +165,6 @@ setup:
       title: "Home-Assistant-Add-on"
       text: "Läuft in der Seitenleiste und zeichnet rund um die Uhr auf, auch ohne offenen Browser. Alle Ansichten teilen sich einen Tunnel, Alarme kommen als Benachrichtigung. Von Haus aus sendet es nichts auf den Bus, und die Integration „Busclear“ macht daraus ein Gerät mit Sensoren und Auslösern."
 
-box:
-  label: "Busclear Box"
-  title: "Ein Raspberry Pi, der auf der Baustelle mithört."
-  text: "Die Busclear Box zeichnet tagelang auf, ohne Home Assistant und ohne Internet, und spannt ein eigenes WLAN auf. Eingerichtet wird sie mit der App: QR-Code vom Aufkleber scannen, den Rest erledigt die App."
-  tag: "Vorschau"
-  points:
-    - { term: "Einrichten", value: "Scannen, und die App tritt dem WLAN bei, koppelt sich, stellt die Uhr und findet das Gateway" }
-    - { term: "App", value: "Ohne App bleibt nur der Browser. Bis iPhone, iPad und Android erscheinen, koppelst du die Box mit der [Linux-App](https://github.com/regetskcob/KNX-Monitor/releases/latest)" }
-    - { term: "Anschluss", value: "Per Netzwerkkabel am IP-Gateway oder direkt an der Linie mit dem Aufsteckmodul kBerry, dann ohne Gateway" }
-    - { term: "Uhr", value: "Ohne Internet: vom iPhone oder iPad oder vom KNX-Zeitgeber auf der Linie" }
-    - { term: "Aufnahme", value: "Rund um die Uhr, auch über Tage; Projekt und Verlauf teilen sich App und Box" }
-    - { term: "Pro", value: "Die Box mit der App koppeln gehört zu Pro", commerce: true }
-  more: "Einrichten, Anschluss, Aufnahme: alles zur Busclear Box"
-  link: "Image für den Raspberry Pi"
-
 ha:
   title: "Add-on installieren"
   steps:
@@ -194,12 +179,12 @@ privacy:
   text: "Busclear arbeitet in deinem Netz und speichert auf deinen Geräten. Wir haben die Systeme deutlich gehärtet, die Kontrolle bleibt bei dir: Du brauchst kein Konto, und die App schickt Projekt, Telegramme und Schlüssel von sich aus an niemanden. In den Store-Versionen fragt sie RevenueCat nach deinem Kaufstand, auch wenn du nichts gekauft hast; das Konto gibt es für Käufe, nicht für deine Anlage."
   text_live: "Busclear arbeitet in deinem Netz und speichert auf deinen Geräten. Wir haben die Systeme deutlich gehärtet, die Kontrolle bleibt bei dir: Du brauchst kein Konto, und die App schickt Projekt, Telegramme und Schlüssel von sich aus an niemanden."
   points:
-    - { term: "Lokal", value: "Projekt, Telegramme, Aufnahmen und Schlüssel liegen auf deinem Gerät, deiner Box oder deinem Home Assistant, nicht bei uns. Das Passwort deines ETS-Projekts wird nicht gespeichert" }
-    - { term: "Tracking", value: "Keine Analyse- und Werbebibliotheken, kein Tracking" }
+    - { term: "Lokal", value: "Projekt, Telegramme, Aufnahmen und Schlüssel liegen auf deinem Gerät, deiner Box oder deinem Home Assistant, nicht bei uns. Das Passwort deines ETS-Projekts wird nicht gespeichert", home: true }
+    - { term: "Tracking", value: "Keine Analyse- und Werbebibliotheken, kein Tracking", home: true }
     - { term: "Verschlüsselt", value: "Ab Version 1.9.1 verschlüsseln die Apps ihre Dateien mit AES-256-GCM, der Schlüssel liegt im Schlüsselbund des Systems. Ohne nutzbaren Schlüsselbund (Linux ohne libsecret) und bei Einstellungen wie dem Gateway bleibt es unverschlüsselt; Add-on und Box verschlüsseln ihre Dateien nicht selbst" }
     - { term: "App-Sperre", value: "Auf Wunsch mit Face ID, Fingerabdruck, Windows Hello, Gerätecode oder App-Passwort samt Notfallschlüssel als PDF. Das hilft, wenn das Gerät in falsche Hände gerät, nicht gegen Schadsoftware unter deinem Benutzerkonto" }
     - { term: "Sicherung", value: "In den Apps in jeder Stufe: alles in eine Datei mit eigenem Passwort, das Format ist offen beschrieben. Das Passwort kann niemand zurücksetzen, auch wir nicht", value_live: "In den Apps: alles in eine Datei mit eigenem Passwort, das Format ist offen beschrieben. Das Passwort kann niemand zurücksetzen, auch wir nicht" }
-    - { term: "Ohne Internet", value: "Add-on und Box brauchen kein Internet. Daten gehen nur an Ziele, die du selbst einrichtest" }
+    - { term: "Ohne Internet", value: "Add-on und Box brauchen kein Internet. Daten gehen nur an Ziele, die du selbst einrichtest", home: true }
     - { term: "Netzwerk", value: "Die App spricht mit deinem Gateway und deiner Busclear Box. Ausnahmen: Käufe (App Store bzw. Google Play und RevenueCat, mit zufälliger Kennung) und der QR-Scanner unter Android (technische Daten an Google ML Kit)", value_live: "Die App spricht mit deinem Gateway und deiner Busclear Box. Ausnahme: Der QR-Scanner unter Android sendet technische Daten an Google ML Kit, nie das Kamerabild" }
   more: "Datenschutzerklärung lesen"
 
@@ -218,26 +203,31 @@ mitreden:
 faq:
   label: "FAQ"
   title: "Häufige Fragen"
+  # home: true also stands on the home page; all of them on /support/.
   items:
     - q: "Kann ich die App ohne KNX-Anlage ausprobieren?"
+      home: true
       a: "Ja. „Demo ohne Anlage ansehen“ auf dem Startbildschirm öffnet ein Musterhaus mit Projekt und Live-Werten. Dein eigenes Projekt bleibt unberührt."
     - commerce: true
       q: "Was kostet Busclear?"
       a: "Die App ist kostenlos und bleibt für den Alltag nützlich. Plus kostet 24,99 € im Jahr oder 79 € einmalig, Pro 149 € im Jahr oder 14,99 € im Monat, mit Probezeit. Das Home-Assistant-Add-on und die Linux-Version sind dauerhaft frei. Im Demo-Haus kannst du vorher alles ausprobieren, auch Pro. Ein Abo kündigst du jederzeit in deinem App-Store- bzw. Google-Play-Konto."
     - q: "Welche KNX-Schnittstellen werden unterstützt?"
+      home: true
       a: "Jede KNXnet/IP-Schnittstelle und jeder IP-Router, etwa ein Gira X1. Getunnelt wird über UDP oder TCP; mit einem IP-Router geht auch Routing, das keinen Tunnel belegt (auf iPhone und iPad noch nicht, dort braucht Multicast eine Freigabe von Apple). USB- und serielle Schnittstellen unterstützt die App nicht; die Busclear Box kann die Busleitung über das Aufsteckmodul kBerry direkt anschließen."
     - q: "Warum kann ich keine Verbindung aufbauen, obwohl die Schnittstelle erreichbar ist?"
       a: "IP-Schnittstellen haben nur wenige Tunnel, oft vier oder weniger. Sind alle von Visualisierung, ETS oder anderen Apps belegt, lehnt die Schnittstelle ab. Gib einen Tunnel frei, richte in der ETS einen zusätzlichen ein oder nutze Routing."
     - q: "Wird KNX Secure unterstützt?"
+      home: true
       a: "Ja: KNX IP Secure für den Tunnel und KNX Data Secure für verschlüsselte Gruppenadressen. Importiere dazu den Keyring (.knxkeys) aus der ETS. Die Schlüssel liegen im Schlüsselbund deines Geräts. Klappt etwas mit deiner Schnittstelle nicht, [melde es gern auf GitHub](https://github.com/regetskcob/KNX-Monitor/issues)."
     - q: "Wie sichere ich meine Daten, und wer kommt daran?"
       a: "Ab Version 1.9.1 speichert die App auf Wunsch alles von diesem Gerät in eine Datei mit eigenem Passwort (mindestens 12 Zeichen). Sie liegt, wo du sie ablegst, und niemand kann das Passwort zurücksetzen, auch wir nicht. Nicht enthalten sind die App-Sperre und der Verlauf auf einer Box. Einzelheiten stehen in der [Datenschutzerklärung](https://busclear.de/datenschutz/)."
     - q: "Brauche ich ein ETS-Projekt?"
+      home: true
       a: "Nein, der Busmonitor funktioniert auch ohne, und du kannst deine Anlage ohne ETS anlernen. Mit Projekt bekommst du Namen, Datentypen, Räume und bessere Prüfungen. Das Passwort eines geschützten Projekts wird nur beim Import verwendet und nicht gespeichert."
     - q: "Wie bekomme ich die Desktop-Version?"
       a: "Linux kann dasselbe wie die App auf dem iPad. Den Download findest du im [Release auf GitHub](https://github.com/regetskcob/KNX-Monitor/releases/latest). Windows folgt in den nächsten Wochen, für den Mac kommt Busclear über den App Store."
     - q: "Was brauche ich für die Busclear Box?"
-      a: "Einen Raspberry Pi 4 (getestet) oder 5, am besten mit USB-SSD und Echtzeituhr (Pi 5: Akku), dazu ein IP-Gateway oder das Aufsteckmodul kBerry und die App: auf iPhone, iPad und Android in den nächsten Wochen, für Linux schon heute. Die Uhr stellt die Box auch nach dem iPhone oder dem KNX-Zeitgeber. Das fertige Image findest du in den [Releases auf GitHub](https://github.com/regetskcob/KNX-Monitor/releases), alles Weitere auf der [Seite zur Busclear Box](https://busclear.de/box/); es ist eine erste Vorschau."
+      a: "Einen Raspberry Pi 4 (getestet) oder 5, am besten mit USB-SSD und Echtzeituhr (Pi 5: Akku), dazu ein IP-Gateway oder das Aufsteckmodul kBerry und die App: auf iPhone, iPad und Android derzeit als Beta, für Linux schon heute. Die Uhr stellt die Box auch nach dem iPhone oder dem KNX-Zeitgeber. Das fertige Image findest du in den [Releases auf GitHub](https://github.com/regetskcob/KNX-Monitor/releases), alles Weitere auf der [Seite zur Busclear Box](https://busclear.de/box/)."
 
 get:
   label: "Laden"

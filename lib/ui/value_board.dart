@@ -609,7 +609,7 @@ class _SectionHeaderState extends State<SectionHeader> with SingleTickerProvider
                     IconButton(
                       tooltip: s.chartNew,
                       visualDensity: VisualDensity.compact,
-                      style: IconButton.styleFrom(shape: const RoundedRectangleBorder(borderRadius: Radii.tile)),
+                      style: IconButton.styleFrom(shape: const RoundedRectangleBorder(borderRadius: Radii.control)),
                       onPressed: onAdd,
                       icon: Icon(AppIcons.add, size: 18, color: hz.textMuted),
                     ),
@@ -631,7 +631,7 @@ class _SectionHeaderState extends State<SectionHeader> with SingleTickerProvider
                       isSelected: widget.pinned,
                       visualDensity: VisualDensity.compact,
                       style: IconButton.styleFrom(
-                        shape: const RoundedRectangleBorder(borderRadius: Radii.tile),
+                        shape: const RoundedRectangleBorder(borderRadius: Radii.control),
                         backgroundColor: widget.pinned ? hz.accentTint : Colors.transparent,
                       ),
                       onPressed: onPin,

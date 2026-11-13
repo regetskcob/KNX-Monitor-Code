@@ -32,17 +32,21 @@ abstract final class Gap {
   static const page = EdgeInsets.fromLTRB(gutter, item, gutter, bottom);
 }
 
-/// Corner radii following Horizont's soft variant: green box 16, cards 14, buttons, fields and
-/// tiles 12, status and badges 2.
+/// Corner radii following Horizont's soft variant: green box 16, cards 14, tiles and notice boxes
+/// 12, status and badges 2. Buttons and fields take 8 from the theme (`HzSoft.control`); 12 would
+/// turn them into pills at pointer height.
 abstract final class Radii {
   static const xl = HzSoft.box;
   static const lg = HzSoft.card;
-  static const md = HzSoft.control;
+  static const md = HzSoft.tile;
   static const sm = HzRadius.r2;
 
   static const box = BorderRadius.all(Radius.circular(xl));
   static const card = BorderRadius.all(Radius.circular(lg));
   static const tile = BorderRadius.all(Radius.circular(md));
+
+  /// A control the app shapes itself (icon button with a ground), like the themed buttons.
+  static const control = BorderRadius.all(Radius.circular(HzSoft.control));
   static const row = BorderRadius.all(Radius.circular(sm));
 }
 

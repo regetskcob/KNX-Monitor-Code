@@ -10,7 +10,7 @@ dev_dependencies:
   test: ^1.25.0
 dependencies:
   # SHA-256 and PBKDF2 of the box backup: several times faster than pointycastle's when compiled.
-  crypto: ^3.0.7
+  crypto: ^3.0.8
   # KNX protocol core and bus connections, open source (github.com/regetskcob/dart-knx).
   knx: ^0.2.3
   knx_io: ^0.1.0

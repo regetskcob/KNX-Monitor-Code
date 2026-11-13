@@ -11,6 +11,7 @@ import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
 import '../model/object_groups.dart';
 import '../model/plain_text.dart';
+import '../model/project_check.dart' show isDefaultGroupName;
 import '../model/teach_in.dart';
 import '../theme/app_icons.dart';
 import '../theme/palette.dart';
@@ -72,11 +73,30 @@ class _TeachInScreenState extends State<TeachInScreen> {
 
   /// Caught event currently being named.
   BusEvent? _event;
+
+  /// Whether [_event] was picked from the open list instead of caught: a heard
+  /// address, without a triggering push button.
+  bool _picked = false;
+
+  /// Name the card started with (from the project or learned earlier); only a
+  /// different one counts as naming.
+  String _prefilled = '';
+  final _scroll = ScrollController();
   final _dpts = <int, Dpt>{};
   final _skip = <int>{};
 
-  /// All group addresses that have sent in this session.
-  final _seen = <int>{};
+  /// What has sent in this session.
+  final _heard = HeardAddresses();
+
+  /// At most this many open addresses are listed; the rest is only counted.
+  static const _openShown = 40;
+
+  /// Open: heard but without a name, or with a type in the project that the bus
+  /// contradicts (old project, address reassigned since).
+  bool _isOpen(HeardAddress h) {
+    final info = _store.info(h.address);
+    return info == null || isDefaultGroupName(info) || h.contradicts(_store.dptOf(h.address));
+  }
 
   /// Whether the device name follows the room until someone changes it.
   bool _deviceEdited = false;
@@ -89,19 +109,23 @@ class _TeachInScreenState extends State<TeachInScreen> {
     _capture.seed(widget.history);
     // In the demo house nobody presses a push button by themselves during teach-in.
     if (widget.tunnel case final DemoTunnel demo) demo.autoPress = false;
-    _seen.addAll(widget.history.map((t) => t.destination));
+    widget.history.forEach(_heard.observe);
     _sub = widget.tunnel.telegrams.listen((t) {
       _capture.add(t);
-      // New address: the "Offen" (open) count changes.
-      if (_seen.add(t.destination) && mounted) setState(() {});
+      // New address: the open list changes at once. Further values, counts and senders of a
+      // known one are drawn with the next tick, not per telegram.
+      final fresh = _heard.observe(t);
+      if (fresh && mounted) setState(() {});
+      _stale = !fresh && !t.outgoing && t.type != TelegramType.read;
     });
     _ticker = Timer.periodic(const Duration(milliseconds: 250), (_) {
       final now = TeachInScreen.clock();
       _capture.tick(now);
       // Learning phase: draw progress and show its end once.
       final learning = _capture.learningAt(now);
-      if ((learning || _wasLearning) && mounted) setState(() {});
+      if ((learning || _wasLearning || _stale) && mounted) setState(() {});
       _wasLearning = learning;
+      _stale = false;
     });
     _room.addListener(_followRoom);
     // The name refines the guessed type ("Rollladen" → 1.008).
@@ -109,6 +133,9 @@ class _TeachInScreenState extends State<TeachInScreen> {
       if (_event != null) setState(() {});
     });
   }
+
+  /// Whether a heard address got a new value since the last tick.
+  bool _stale = false;
 
   /// Whether the learning phase was still running at the last tick.
   bool _wasLearning = true;
@@ -121,6 +148,7 @@ class _TeachInScreenState extends State<TeachInScreen> {
     _room.dispose();
     _name.dispose();
     _device.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -144,7 +172,50 @@ class _TeachInScreenState extends State<TeachInScreen> {
 
   /// Whether the caught event is currently being named and stays.
   @visibleForTesting
-  bool get editing => _event != null && (_touched || _name.text.trim().isNotEmpty);
+  bool get editing => _event != null && (_picked || _touched || _name.text.trim() != _prefilled);
+
+  /// Shows [e] for naming and fills in what is already known, so a second rocker
+  /// of the same push button or a correction only needs the name.
+  void _show(BusEvent e, {required bool picked}) {
+    final address = e.commands.first;
+    final info = _store.info(address);
+    final learned = _store.learned[address];
+    final device = picked || e.own ? null : _store.device(e.initiator);
+    final related = picked ? relatedGroups(address, _store.learned).firstOrNull : null;
+    // Rooms only from learned data; project paths are mostly trades.
+    final room = learned?.path ?? _store.learned.devices[device?.address]?.location ?? related?.path;
+    _event = e;
+    _picked = picked;
+    _touched = false;
+    _dpts.clear();
+    _skip
+      ..clear()
+      // Only command and probable feedback ticked; the rest is "Auch gesehen" (also seen).
+      ..addAll(e.feedback.where((a) => !likelyFeedback(e).contains(a)));
+    _prefilled = info != null && !isDefaultGroupName(info) ? info.name : '';
+    _name.text = _prefilled;
+    if (room != null) {
+      _roomBefore = room;
+      _room.text = room;
+    }
+    if (device != null && !device.isTunnel) {
+      _deviceEdited = true;
+      _device.text = device.name;
+    } else {
+      _deviceEdited = false;
+      _device.text = _roomBefore.isEmpty ? '' : s.learnDeviceDefault(_roomBefore);
+    }
+  }
+
+  /// Names a heard address from the open list.
+  void _pick(HeardAddress heard) {
+    final current = _event;
+    if (current != null && !_picked) _capture.passed(current);
+    setState(() => _show(heard.event, picked: true));
+    if (_scroll.hasClients) {
+      unawaited(_scroll.animateTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeOut));
+    }
+  }
 
   void _onEvent(BusEvent e) {
     if (!mounted) return;
@@ -156,16 +227,7 @@ class _TeachInScreenState extends State<TeachInScreen> {
       if (editing || e.start.difference(current.start) < hold) return;
       _capture.passed(current);
     }
-    setState(() {
-      _event = e;
-      _touched = false;
-      _dpts.clear();
-      _skip
-        ..clear()
-        // Only command and probable feedback ticked; the rest is "Auch gesehen" (also seen).
-        ..addAll(e.feedback.where((a) => !likelyFeedback(e).contains(a)));
-      _name.clear();
-    });
+    setState(() => _show(e, picked: false));
   }
 
   /// For the rows of the card: change state and repaint.
@@ -175,7 +237,7 @@ class _TeachInScreenState extends State<TeachInScreen> {
   });
 
   void _discard() {
-    if (_event case final e?) _capture.passed(e);
+    if (_event case final e? when !_picked) _capture.passed(e);
     setState(() => _event = null);
   }
 
@@ -184,6 +246,13 @@ class _TeachInScreenState extends State<TeachInScreen> {
     if (e == null) return;
     _capture.ignore.addAll(e.commands);
     _discard();
+  }
+
+  /// Type already known for [address] (project, learned or set in the app), unless
+  /// the bus contradicts it; it is shown instead of a guess.
+  Dpt? _knownDpt(int address) {
+    final dpt = _store.dptOf(address);
+    return dpt == null || (_heard[address]?.contradicts(dpt) ?? false) ? null : dpt;
   }
 
   Future<void> _save() async {
@@ -195,13 +264,30 @@ class _TeachInScreenState extends State<TeachInScreen> {
       TeachInEntry(
         room: _room.text,
         name: name,
-        device: _device.text,
-        dpts: Map.of(_dpts),
+        device: _picked ? null : _device.text,
+        dpts: {
+          for (final a in [...e.commands, ...e.feedback]) a: ?_knownDpt(a),
+          ..._dpts,
+        },
         skip: Set.of(_skip),
         statusSuffix: s.learnStatusSuffix,
       ),
     );
     await _store.learn(learned.groups, devices: learned.devices);
+    // Old project: it takes precedence over learned data, so what was named here
+    // goes in as a correction – the name of what was pressed, and a type the
+    // user chose or the bus contradicts. Names of feedback stay the project's.
+    final renames = <int, String?>{};
+    for (final g in learned.groups) {
+      final known = _store.project[g.address];
+      if (known == null) continue;
+      if (e.commands.contains(g.address) && !isDefaultGroupName(known)) renames[g.address] = g.name;
+      final contradicted = _heard[g.address]?.contradicts(_store.dptOf(g.address)) ?? false;
+      if (g.dpt != null && g.dpt != _store.dptOf(g.address) && (_dpts.containsKey(g.address) || contradicted)) {
+        await _store.setDpt(g.address, g.dpt);
+      }
+    }
+    if (renames.isNotEmpty) await _store.setNames(renames);
     if (!mounted) return;
     setState(() => _event = null);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.learnSaved(name))));
@@ -258,6 +344,7 @@ class _TeachInScreenState extends State<TeachInScreen> {
         builder: (context, _) => LayoutBuilder(
           builder: (context, box) {
             final wide = box.maxWidth >= Breakpoints.expanded;
+            final open = _heard.where(_isOpen);
             final card = switch (_event) {
               final e? => _EventCard(state: this, event: e),
               null => _listening(context),
@@ -267,18 +354,28 @@ class _TeachInScreenState extends State<TeachInScreen> {
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: wide ? Widths.wide : Widths.reading),
                 child: ListView(
+                  controller: _scroll,
                   padding: Gap.page,
                   children: [
                     FigureBox(
                       figures: [
                         (label: s.learnNamed, value: formatInt(_store.learned.groups.length), status: null),
-                        (
-                          label: s.learnOpenCount,
-                          value: formatInt(_seen.where((a) => _store.info(a) == null).length),
-                          status: null,
-                        ),
+                        (label: s.learnOpenCount, value: formatInt(open.length), status: null),
                       ],
                     ),
+                    if (_heard.length > 0) ...[
+                      const SizedBox(height: Gap.item),
+                      LinearProgressIndicator(
+                        value: (_heard.length - open.length) / _heard.length,
+                        minHeight: HzSpace.s4,
+                        borderRadius: Radii.row,
+                      ),
+                      const SizedBox(height: HzSpace.s4),
+                      Text(
+                        s.learnProgress(_heard.length - open.length, _heard.length),
+                        style: theme.textTheme.bodySmall?.copyWith(color: hz.textFaint),
+                      ),
+                    ],
                     if (_demo) ...[
                       const SizedBox(height: Gap.item),
                       Text(s.learnDemoNote, style: theme.textTheme.bodySmall?.copyWith(color: hz.textFaint)),
@@ -293,7 +390,10 @@ class _TeachInScreenState extends State<TeachInScreen> {
                           Expanded(
                             child: Padding(
                               padding: const EdgeInsets.only(top: Gap.section),
-                              child: card,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [card, _openList(context, open)],
+                              ),
                             ),
                           ),
                           Expanded(child: _learnedList(context)),
@@ -302,6 +402,7 @@ class _TeachInScreenState extends State<TeachInScreen> {
                     else ...[
                       const SizedBox(height: Gap.item),
                       card,
+                      _openList(context, open),
                       _learnedList(context),
                     ],
                   ],
@@ -387,13 +488,20 @@ class _TeachInScreenState extends State<TeachInScreen> {
                   icon: const Icon(AppIcons.clear, size: HzIconSize.row),
                 ),
         ),
-        if (groups.isEmpty)
-          Text(s.learnNothingYet, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted))
-        else
+        if (groups.isEmpty) Text(s.learnNothingYet, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
+        // Room by room, as the house is walked through.
+        for (final room in {for (final g in groups) g.path}) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: Gap.item, bottom: HzSpace.s4),
+            child: Text(
+              '${room ?? s.learnNoRoom}$metaSeparator${groups.where((g) => g.path == room).length}',
+              style: theme.textTheme.labelLarge?.copyWith(color: hz.textMuted),
+            ),
+          ),
           RowCard(
             flat: true,
             children: [
-              for (final g in groups)
+              for (final g in groups.where((g) => g.path == room))
                 CardRow(
                   title: g.name,
                   meta: [formatGroup(g.address), ?g.path, ?g.dpt?.toString()].join(metaSeparator),
@@ -405,6 +513,51 @@ class _TeachInScreenState extends State<TeachInScreen> {
                   ),
                 ),
             ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Heard addresses without a name: tap one that the value gives away
+  /// ("21,5 °C" – the living room) and name it without pressing anything.
+  Widget _openList(BuildContext context, List<HeardAddress> open) {
+    if (open.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final hz = context.hz;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHead(s.learnOpenCount, count: open.length),
+        Text(
+          _store.project.isEmpty ? s.learnOpenHint : s.learnOpenHintProject,
+          style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted),
+        ),
+        const SizedBox(height: Gap.item),
+        RowCard(
+          flat: true,
+          children: [
+            for (final h in open.take(_openShown))
+              CardRow(
+                address: formatGroup(h.address),
+                title: plainValue(h.last, _store.info(h.address) == null ? null : _store.dptOf(h.address)),
+                meta: [
+                  if (_store.project[h.address] case final known? when !isDefaultGroupName(known))
+                    s.learnMismatch(known.name),
+                  h.senders.map((a) => plainSender(a) ?? formatIndividual(a)).take(2).join(', '),
+                  '${formatInt(h.count)}×',
+                ].join(metaSeparator),
+                onTap: () => _pick(h),
+              ),
+          ],
+        ),
+        if (open.length > _openShown)
+          Padding(
+            padding: const EdgeInsets.only(top: Gap.item),
+            child: Text(
+              s.learnOpenMore(open.length - _openShown),
+              style: theme.textTheme.bodySmall?.copyWith(color: hz.textFaint),
+            ),
           ),
       ],
     );
@@ -426,8 +579,18 @@ class _EventCard extends StatelessWidget {
     final likely = likelyFeedback(event);
     final first = event.commands.firstOrNull;
     final guess = first == null ? null : event.guess(first, name: state._name.text)?.dpt;
+    final picked = state._picked;
+    // Heard address next to a learned one ("1/0/4 Deckenlicht" → "Deckenlicht Status"); a project
+    // has its own scheme, there the neighbours would only be noise.
+    final related = [
+      if (picked && first != null)
+        for (final g in relatedGroups(first, CatalogStore.instance.learned))
+          ObjectIndex.isFeedbackName(g.name) ? g.name : '${g.name} ${s.learnStatusSuffix}',
+    ];
     return SectionCard(
-      title: s.learnCaught(formatTime(event.start, millis: false)),
+      title: picked
+          ? s.learnPicked(formatGroup(event.commands.first))
+          : s.learnCaught(formatTime(event.start, millis: false)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -438,18 +601,18 @@ class _EventCard extends StatelessWidget {
           ])
             _AddressRow(state: state, event: event, address: a, command: false, likely: likely.contains(a)),
           const SizedBox(height: Gap.section),
-          Text(s.learnQuestion, style: theme.textTheme.titleMedium),
+          Text(picked ? s.learnQuestionHeard : s.learnQuestion, style: theme.textTheme.titleMedium),
           const SizedBox(height: Gap.item),
           _SuggestedField(controller: state._room, label: s.learnRoom, suggestions: rooms),
           const SizedBox(height: Gap.item),
           _SuggestedField(
             controller: state._name,
             label: s.learnName,
-            suggestions: _split(_namesFor(guess)),
+            suggestions: [...related.take(2), ..._split(_namesFor(guess))],
             // No autofocus: on the phone the keyboard covered the event and the question.
             onSubmitted: state._save,
           ),
-          if (!event.own) ...[
+          if (!event.own && !picked) ...[
             const SizedBox(height: Gap.item),
             TextField(
               controller: state._device,
@@ -467,7 +630,11 @@ class _EventCard extends StatelessWidget {
           ),
           const SizedBox(height: HzSpace.s8),
           OutlinedButton(onPressed: state._discard, child: Text(s.learnSkip)),
-          TextButton(onPressed: state._ignore, child: Text(s.learnIgnore(event.commands.map(formatGroup).join(', ')))),
+          if (!picked)
+            TextButton(
+              onPressed: state._ignore,
+              child: Text(s.learnIgnore(event.commands.map(formatGroup).join(', '))),
+            ),
         ],
       ),
     );
@@ -512,9 +679,12 @@ class _AddressRow extends StatelessWidget {
     final samples = event.of(address);
     final last = samples.lastWhere((t) => t.type != TelegramType.read, orElse: () => samples.last);
     final guess = event.guess(address, name: state._name.text);
-    final candidates = [?guess?.dpt, ...dptCandidates(payloadLength(last)).where((d) => d != guess?.dpt)];
-    final chosen = state._dpts[address] ?? guess?.dpt;
+    final fixed = state._knownDpt(address);
+    final first = fixed ?? guess?.dpt;
+    final candidates = [?first, ...dptCandidates(payloadLength(last)).where((d) => d != first)];
+    final chosen = state._dpts[address] ?? first;
     final known = CatalogStore.instance.project[address];
+    final learned = known == null && CatalogStore.instance.learned[address] != null;
     final included = !state._skip.contains(address);
     return Padding(
       padding: const EdgeInsets.only(bottom: Gap.item),
@@ -543,7 +713,9 @@ class _AddressRow extends StatelessWidget {
                     const SizedBox(width: HzSpace.s4),
                     HorizontBadge(
                       command ? HorizontStatus.info : HorizontStatus.neutral,
-                      label: command
+                      label: state._picked
+                          ? s.learnRoleHeard
+                          : command
                           ? s.learnRoleCommand
                           : likely
                           ? s.learnRoleFeedback
@@ -556,6 +728,7 @@ class _AddressRow extends StatelessWidget {
                         child: HorizontBadge(HorizontStatus.neutral, label: s.learnKnown),
                       ),
                     ],
+                    if (learned) HorizontBadge(HorizontStatus.neutral, label: s.learnSource),
                   ],
                 ),
                 const SizedBox(height: HzSpace.s2),
@@ -565,7 +738,7 @@ class _AddressRow extends StatelessWidget {
                     sender: plainSender(last.source),
                     target: CatalogStore.instance.info(address)?.name,
                     dpt: chosen,
-                    status: !command,
+                    status: !command || state._picked,
                   ),
                   style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted),
                 ),
@@ -583,7 +756,9 @@ class _AddressRow extends StatelessWidget {
                         DropdownMenuItem(
                           value: d,
                           child: Text(
-                            d == guess?.dpt && state._dpts[address] == null ? '$d · ${s.learnGuessed}' : '$d',
+                            d == first && fixed == null && state._dpts[address] == null
+                                ? '$d · ${s.learnGuessed}'
+                                : '$d',
                           ),
                         ),
                     ],

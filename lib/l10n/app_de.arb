@@ -9970,7 +9970,7 @@
   "@learnTool": {
     "description": "Teach-in tool subtitle in the menu."
   },
-  "learnExplain": "Kein ETS-Projekt zur Hand? Drück einen Taster oder schalte ein Licht. Die App hört mit, fängt die Gruppenadressen samt Rückmeldung und fragt, was das war. Daraus entsteht dein eigenes Projekt – Übersicht, Objekte und Diagramme funktionieren sofort. Ein später importiertes ETS-Projekt hat Vorrang; deine Namen bleiben für Adressen, die dort fehlen.",
+  "learnExplain": "Kein ETS-Projekt zur Hand, oder nur ein altes? Drück einen Taster oder schalte ein Licht. Die App hört mit, fängt die Gruppenadressen samt Rückmeldung und fragt, was das war. Was von selbst sendet (Temperatur, Status, Zeit), steht unter „Offen“: antippen und benennen, der letzte Wert verrät meist, was es ist. Daraus entsteht dein eigenes Projekt – Übersicht, Objekte und Diagramme funktionieren sofort. Ein importiertes ETS-Projekt hat Vorrang; benennst du hier eine Adresse daraus anders, gilt dein Name als Korrektur und steht in den Aufgaben für die ETS.",
   "@learnExplain": {
     "description": "Teach-in explanation."
   },
@@ -16891,5 +16891,64 @@
         "type": "int"
       }
     }
+  },
+  "learnProgress": "{named} von {total} gehörten Adressen haben einen Namen",
+  "@learnProgress": {
+    "description": "Teach-in: text below the progress bar.",
+    "placeholders": {
+      "named": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "learnOpenHint": "Sendet, hat aber noch keinen Namen. Tippe an, was du am Wert erkennst.",
+  "@learnOpenHint": {
+    "description": "Teach-in: hint above the list of open addresses, no project loaded."
+  },
+  "learnOpenHintProject": "Sendet auf dem Bus, fehlt aber im Projekt oder passt nicht zum Typ dort. Dein Projekt ist vermutlich älter als die Anlage.",
+  "@learnOpenHintProject": {
+    "description": "Teach-in: hint above the list of open addresses with a project loaded."
+  },
+  "learnOpenMore": "{count, plural, =1{und 1 weitere} other{und {count} weitere}}",
+  "@learnOpenMore": {
+    "description": "Teach-in: open addresses not listed.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "learnMismatch": "passt nicht zu „{name}“",
+  "@learnMismatch": {
+    "description": "Teach-in: open address whose length contradicts the type in the project; name from the project.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "learnPicked": "Gehört: {address}",
+  "@learnPicked": {
+    "description": "Teach-in: card title for an address picked from the open list.",
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "learnQuestionHeard": "Was ist das?",
+  "@learnQuestionHeard": {
+    "description": "Teach-in: question for an address picked from the open list."
+  },
+  "learnRoleHeard": "Gehört",
+  "@learnRoleHeard": {
+    "description": "Teach-in: badge of an address picked from the open list."
+  },
+  "learnNoRoom": "Ohne Raum",
+  "@learnNoRoom": {
+    "description": "Teach-in: heading for named addresses without a room."
   }
 }

@@ -11723,7 +11723,7 @@ abstract class AppLocalizations {
   /// Teach-in explanation.
   ///
   /// In de, this message translates to:
-  /// **'Kein ETS-Projekt zur Hand? Drück einen Taster oder schalte ein Licht. Die App hört mit, fängt die Gruppenadressen samt Rückmeldung und fragt, was das war. Daraus entsteht dein eigenes Projekt – Übersicht, Objekte und Diagramme funktionieren sofort. Ein später importiertes ETS-Projekt hat Vorrang; deine Namen bleiben für Adressen, die dort fehlen.'**
+  /// **'Kein ETS-Projekt zur Hand, oder nur ein altes? Drück einen Taster oder schalte ein Licht. Die App hört mit, fängt die Gruppenadressen samt Rückmeldung und fragt, was das war. Was von selbst sendet (Temperatur, Status, Zeit), steht unter „Offen“: antippen und benennen, der letzte Wert verrät meist, was es ist. Daraus entsteht dein eigenes Projekt – Übersicht, Objekte und Diagramme funktionieren sofort. Ein importiertes ETS-Projekt hat Vorrang; benennst du hier eine Adresse daraus anders, gilt dein Name als Korrektur und steht in den Aufgaben für die ETS.'**
   String get learnExplain;
 
   /// Teach-in: waiting for an event.
@@ -20281,6 +20281,60 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Messpunkt {taps} war zeitweise nicht erreichbar, zusammen {minutes} min.'**
   String weekSumTapGaps(String taps, int minutes);
+
+  /// Teach-in: text below the progress bar.
+  ///
+  /// In de, this message translates to:
+  /// **'{named} von {total} gehörten Adressen haben einen Namen'**
+  String learnProgress(int named, int total);
+
+  /// Teach-in: hint above the list of open addresses, no project loaded.
+  ///
+  /// In de, this message translates to:
+  /// **'Sendet, hat aber noch keinen Namen. Tippe an, was du am Wert erkennst.'**
+  String get learnOpenHint;
+
+  /// Teach-in: hint above the list of open addresses with a project loaded.
+  ///
+  /// In de, this message translates to:
+  /// **'Sendet auf dem Bus, fehlt aber im Projekt oder passt nicht zum Typ dort. Dein Projekt ist vermutlich älter als die Anlage.'**
+  String get learnOpenHintProject;
+
+  /// Teach-in: open addresses not listed.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{und 1 weitere} other{und {count} weitere}}'**
+  String learnOpenMore(int count);
+
+  /// Teach-in: open address whose length contradicts the type in the project; name from the project.
+  ///
+  /// In de, this message translates to:
+  /// **'passt nicht zu „{name}“'**
+  String learnMismatch(String name);
+
+  /// Teach-in: card title for an address picked from the open list.
+  ///
+  /// In de, this message translates to:
+  /// **'Gehört: {address}'**
+  String learnPicked(String address);
+
+  /// Teach-in: question for an address picked from the open list.
+  ///
+  /// In de, this message translates to:
+  /// **'Was ist das?'**
+  String get learnQuestionHeard;
+
+  /// Teach-in: badge of an address picked from the open list.
+  ///
+  /// In de, this message translates to:
+  /// **'Gehört'**
+  String get learnRoleHeard;
+
+  /// Teach-in: heading for named addresses without a room.
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne Raum'**
+  String get learnNoRoom;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

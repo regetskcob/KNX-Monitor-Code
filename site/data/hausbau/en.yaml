@@ -225,7 +225,7 @@ moved:
 state:
   label: Status
   title: What exists today and what is still to come.
-  text: '"Plan a home" is the first stage and has been out since version 1.9.2. We don''t name a date for the other parts, they come when they are finished and tested.'
+  text: '"Plan a home" has been available since version 1.9.2. Version 1.12.0 added sharing the plan with your electrician, assigning group addresses with the walk-through, and the bus on the floor plan. In the store apps all of this is still in testing; we do not name a date for that.'
   head: [Part, Where, Status]
   rows:
   - feature: plan
@@ -236,10 +236,10 @@ state:
     where: iPhone, iPad, Mac and Android
   - feature: exchange
     part: '**Sharing with your electrician:** home plan package, questions and proposals, approved versions'
-    where: With one of the next releases
+    where: '[Home Assistant add-on](/en/addon/), [Busclear Box](/en/box/) and Linux app, since version 1.12.0'
   - feature: walk
     part: '**After moving in:** link group addresses and walk through the devices room by room'
-    where: With one of the next releases
+    where: '[Home Assistant add-on](/en/addon/), [Busclear Box](/en/box/) and Linux app, since version 1.12.0'
   - feature: busview
     part: '**Bus on the floor plan**'
     where: App, add-on and card for dashboards

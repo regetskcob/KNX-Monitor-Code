@@ -267,6 +267,58 @@ void main() {
     });
   });
 
+  group('HeardAddresses', () {
+    test('zählt Werte je Adresse, ohne Eigenes und Leseanfragen', () {
+      final heard = HeardAddresses();
+      expect(heard.observe(tg(0, '3/1/1', [0x0C, 0x1A], source: '1.1.5')), isTrue);
+      expect(heard.observe(tg(100, '3/1/1', [0x0C, 0x1B], source: '1.1.5')), isFalse);
+      expect(heard.observe(tg(200, '3/1/2', [], type: TelegramType.read)), isFalse);
+      expect(heard.observe(tg(300, '3/1/3', [1], small: true, outgoing: true)), isFalse);
+      expect(heard.length, 1);
+      final h = heard[ga('3/1/1')]!;
+      expect(h.count, 2);
+      expect(h.senders, {pa('1.1.5')});
+      expect(h.event.commands, [ga('3/1/1')]);
+      expect(h.event.feedback, isEmpty);
+    });
+
+    test('behält nur die letzten Werte', () {
+      final heard = HeardAddresses();
+      for (var i = 0; i < 20; i++) {
+        heard.observe(tg(i * 100, '3/1/1', [i]));
+      }
+      expect(heard[ga('3/1/1')]!.samples, hasLength(HeardAddress.maxSamples));
+      expect(heard[ga('3/1/1')]!.last.data, [19]);
+    });
+
+    test('Länge widerspricht dem Typ im Projekt', () {
+      final heard = HeardAddresses()..observe(tg(0, '3/1/1', [0x0C, 0x1A]));
+      final h = heard[ga('3/1/1')]!;
+      expect(h.contradicts(const Dpt(1, 1)), isTrue, reason: '2 Byte statt Schalten');
+      expect(h.contradicts(const Dpt(9, 1)), isFalse);
+      expect(h.contradicts(null), isFalse);
+    });
+
+    test('offene Adressen nach Adresse sortiert', () {
+      final heard = HeardAddresses()
+        ..observe(tg(0, '3/1/9', [1], small: true))
+        ..observe(tg(1, '1/0/4', [1], small: true))
+        ..observe(tg(2, '2/0/0', [1], small: true));
+      expect(heard.where((h) => h.address != ga('2/0/0')).map((h) => h.address), [ga('1/0/4'), ga('3/1/9')]);
+    });
+  });
+
+  test('relatedGroups: gleiche Hauptgruppe und Nummer in anderer Mittelgruppe', () {
+    final c = GroupCatalog({
+      ga('1/0/4'): GroupInfo(address: ga('1/0/4'), name: 'Deckenlicht', path: 'Küche'),
+      ga('1/0/5'): GroupInfo(address: ga('1/0/5'), name: 'Spots'),
+      ga('2/0/4'): GroupInfo(address: ga('2/0/4'), name: 'Rollladen'),
+      ga('1/2/4'): GroupInfo(address: ga('1/2/4'), name: '1/2/4'),
+    });
+    expect(relatedGroups(ga('1/1/4'), c).map((g) => g.name), ['Deckenlicht']);
+    expect(relatedGroups(ga('1/0/4'), c), isEmpty, reason: 'nicht sie selbst, keine ohne Namen');
+  });
+
   group('mergeLearned', () {
     final project = GroupCatalog({
       ga('1/0/1'): GroupInfo(address: ga('1/0/1'), name: 'Projekt Licht', dpt: const Dpt(1, 1)),
@@ -290,6 +342,29 @@ void main() {
       expect(m[ga('1/0/3')]!.name, 'Nur angelernt');
       expect(m.devices[pa('1.1.30')]!.name, 'Taster Bad');
       expect(knownRooms(m), ['Bad']);
+    });
+
+    test('Im Projekt ohne Namen (ETS-Vorgabe): der angelernte Name gilt', () {
+      final stale = GroupCatalog({
+        ga('1/0/1'): GroupInfo(address: ga('1/0/1'), name: 'Neue Gruppenadresse', path: 'Licht', dpt: const Dpt(1, 1)),
+        ga('1/0/2'): GroupInfo(address: ga('1/0/2'), name: '1/0/2'),
+      });
+      final m = mergeLearned(stale, learned);
+      expect(m[ga('1/0/1')]!.name, 'Mein Licht');
+      expect(m[ga('1/0/1')]!.path, 'Licht', reason: 'Pfad bleibt der des Projekts');
+      expect(m[ga('1/0/2')]!.name, 'Mein Rollladen');
+      expect(m[ga('1/0/2')]!.dpt, const Dpt(1, 8));
+    });
+
+    test('Vorgabe-Name im Stil des Projekts, nicht im zuletzt geladenen', () {
+      // Zweistufiges Projekt: 1/0/2 heißt dort „1/2“. Der globale Stil ist noch dreistufig.
+      final twoLevel = GroupCatalog({
+        ga('1/0/2'): GroupInfo(address: ga('1/0/2'), name: '1/2'),
+        ga('1/0/1'): GroupInfo(address: ga('1/0/1'), name: '1/0/1', dpt: const Dpt(1, 1)),
+      }, style: GroupStyle.twoLevel);
+      final m = mergeLearned(twoLevel, learned);
+      expect(m[ga('1/0/2')]!.name, 'Mein Rollladen');
+      expect(m[ga('1/0/1')]!.name, '1/0/1', reason: 'im zweistufigen Projekt ein gepflegter Name');
     });
 
     test('Ohne Angelerntes bleibt das Projekt dasselbe Objekt', () {

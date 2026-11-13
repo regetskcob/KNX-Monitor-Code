@@ -87,8 +87,15 @@ class AlarmWatch {
       final groups = <int, _Group>{..._groupsOf(learned)};
       for (final MapEntry(key: a, value: g) in _groupsOf(project).entries) {
         final fallback = groups[a];
-        groups[a] = g.main == null && fallback?.main != null
-            ? _Group(name: g.name, path: g.path, main: fallback!.main, sub: fallback.sub)
+        // Like the app: a learned name also fills in for an address the project left without one.
+        final unnamed = fallback != null && _isDefaultName(g.name, a);
+        groups[a] = fallback != null && (unnamed || (g.main == null && fallback.main != null))
+            ? _Group(
+                name: unnamed ? fallback.name : g.name,
+                path: g.path,
+                main: g.main ?? fallback.main,
+                sub: g.main == null ? fallback.sub : g.sub,
+              )
             : g;
       }
       _groups = {
@@ -105,6 +112,15 @@ class AlarmWatch {
       _learnedTime = null;
       _namesTime = null;
     }
+  }
+
+  /// Name the ETS or the import assigns when none is maintained (the app's `isDefaultGroupName`):
+  /// empty, the address itself in the project's style or "Neue Gruppenadresse".
+  bool _isDefaultName(String name, int address) {
+    final n = name.trim().toLowerCase();
+    return n.isEmpty ||
+        n == _formatGroup(address) ||
+        const {'gruppenadresse', 'group address', 'neue gruppenadresse', 'new group address'}.contains(n);
   }
 
   static Future<DateTime?> _modified(File file) async => await file.exists() ? await file.lastModified() : null;

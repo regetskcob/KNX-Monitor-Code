@@ -1,7 +1,8 @@
 ---
-title: "Changelog"
-description: "What the latest versions of Busclear brought to the app, the Home Assistant add-on and the Busclear Box, newest first."
-layout: "page"
+title: "Roadmap & changelog"
+description: "What comes next and what the latest versions of Busclear brought to the app, the Home Assistant add-on and the Busclear Box, newest first."
+layout: "roadmap"
+aliases: ["/roadmap/"]
 slug: "changelog"
 ---
 What the latest versions of Busclear brought, newest first. App, Home Assistant add-on and Busclear Box share one version number. Every version is on [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant the add-on shows the same notes before an update.

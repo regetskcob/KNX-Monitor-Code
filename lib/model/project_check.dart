@@ -288,10 +288,11 @@ bool unfilteredMainGroup(int address) => switch ((address >> 11) & 0x1F) {
   _ => false,
 };
 
-/// Name the ETS or the import assigns when none is maintained.
-bool isDefaultGroupName(GroupInfo g) {
+/// Name the ETS or the import assigns when none is maintained. [style] is the address style of
+/// the catalog [g] comes from; without it the loaded project's applies ([groupStyle]).
+bool isDefaultGroupName(GroupInfo g, {GroupStyle? style}) {
   final name = g.name.trim().toLowerCase();
   return name.isEmpty ||
-      name == formatGroup(g.address) ||
+      name == formatGroupAddress(g.address, style ?? groupStyle) ||
       const {'gruppenadresse', 'group address', 'neue gruppenadresse', 'new group address'}.contains(name);
 }

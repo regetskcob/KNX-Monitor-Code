@@ -247,6 +247,32 @@ void main() {
       await File('${data.path}/name_overrides.json').writeAsString(jsonEncode({'${0x0802}': 'Wassermelder Gäste-WC'}));
       await alarms.loadCatalog();
       expect(alarms.nameOf(0x0802), 'Wassermelder Gäste-WC');
+
+      // Old project that left the address without a name: the learned name applies.
+      await catalog.writeAsString(
+        jsonEncode({
+          'style': 'threeLevel',
+          'groups': [
+            {'a': 0x0801, 'n': 'Neue Gruppenadresse'},
+          ],
+        }),
+      );
+      await alarms.loadCatalog();
+      expect(alarms.nameOf(0x0801), 'Rauchmelder Keller');
+
+      // Its own address counts as unnamed, any other number is a maintained name.
+      for (final (name, expected) in [('1/0/1', 'Rauchmelder Keller'), ('123', '123'), ('1/2', '1/2')]) {
+        await catalog.writeAsString(
+          jsonEncode({
+            'style': 'threeLevel',
+            'groups': [
+              {'a': 0x0801, 'n': name},
+            ],
+          }),
+        );
+        await alarms.loadCatalog();
+        expect(alarms.nameOf(0x0801), expected, reason: name);
+      }
       await File('${data.path}/name_overrides.json').delete();
       await File('${data.path}/learned.json').delete();
       await catalog.delete();

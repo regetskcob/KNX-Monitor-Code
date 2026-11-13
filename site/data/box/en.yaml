@@ -1,7 +1,7 @@
 hero:
   kennung: "KNX box · Raspberry Pi"
   title: "The bus records itself while you are away."
-  lead: "The KNX box is a Raspberry Pi that writes down every telegram around the clock and opens its own Wi-Fi. You set it up with the app: today with the Linux app, soon by QR code with iPhone, iPad and Android. No Home Assistant and no internet."
+  lead: "The KNX box is a Raspberry Pi that writes down every telegram around the clock and opens its own Wi-Fi. You set it up with the app: by QR code with iPhone, iPad and Android (in beta for now) or with the Linux app. No Home Assistant and no internet."
   primary: "Get the image"
   secondary: "How to set it up"
 
@@ -15,7 +15,7 @@ need:
     - { term: "Computer", value: "Windows, Mac or Linux with the free [Raspberry Pi Imager](https://www.raspberrypi.com/software/)" }
     - { term: "Network cable", value: "From the Pi to the router or switch the KNX IP gateway is on; not needed for the bus with the kBerry" }
     - { term: "Gateway", value: "One free tunnel slot, Home Assistant or ETS often take one already. Or the kBerry plug-on module instead of a gateway" }
-    - { term: "App", value: "Today the [Linux app](https://github.com/regetskcob/KNX-Monitor/releases/latest), soon also iPhone, iPad and Android" }
+    - { term: "App", value: "iPhone, iPad and Android (in [beta](/en/beta/) for now) or the [Linux app](https://github.com/regetskcob/KNX-Monitor/releases/latest)" }
     - { term: "Printer", value: "Optional, for the sheet with the two labels and access details" }
 
 setup:
@@ -30,7 +30,7 @@ setup:
     - { term: "Connect", value: "**Network cable to the router or switch at the gateway, then power.** After about a minute the box is ready." }
     - { term: "Pair", value: "**In the app, \"Add KNX box\" and scan the label.** The app joins the box's Wi-Fi, pairs, sets the clock and looks for the gateway. If there is exactly one, it is set right away and the box records. Pairing with the app is part of Pro.", value_live: "**In the app, \"Add KNX box\" and scan the label.** The app joins the box's Wi-Fi, pairs, sets the clock and looks for the gateway. If there is exactly one, it is set right away and the box records." }
     - { term: "With Linux", value: "**[Get the Linux app](https://github.com/regetskcob/KNX-Monitor/releases/latest),** unpack it and run `./install.sh` in the `bundle` folder: it installs Busclear to the app menu, then the download can go. On the computer, switch to the Wi-Fi \"KNX-Box-…\" (Wi-Fi password from `knx-box.txt`). In the app, \"Add KNX box\" and paste the contents of `knx-box-link.txt`; the app does the rest as above." }
-  preview: "Scan the label, the app does the rest: Wi-Fi, pairing, clock and gateway. This is how it will look on iPhone, iPad and Android; today it works with the Linux app."
+  preview: "Scan the label, the app does the rest: Wi-Fi, pairing, clock and gateway. This is how it looks on iPhone, iPad and Android, in the beta for now. With the Linux app you join the Wi-Fi once yourself."
   preview_alt: "The app sets up the KNX box: join the Wi-Fi, reach the box, pair, set the clock, find the gateway, all checked"
   alt: "It works without the app too: the second QR code (`knx-box-wlan.png`) joins the box's Wi-Fi, then open `knx-box.local` in a browser and sign in with the box password."
 
@@ -67,7 +67,7 @@ connection:
     - { term: "Guide", value: "**Preview:** how the kBerry goes onto the Pi, how to prepare the Pi and how to assemble the matching case: [guide for tinkerers (PDF, German, preview)](/box/knx-box-kberry.pdf)." }
     - { term: "Bus monitor", value: "Over TP the box also sees what a tunnel never shows: acknowledgements (ACK, NAK, BUSY) and repeats. It cannot send in this mode." }
     - { term: "Address", value: "To listen, the box needs no individual address and no ETS programming." }
-    - { term: "Status", value: "Preview: tested on a Pi 4 on a real bus, not yet on the Pi 5 or in continuous use. More in the [issue on GitHub](https://github.com/regetskcob/KNX-Monitor/issues/1)." }
+    - { term: "Status", value: "On a Pi 4 in continuous use on a real bus since early November 2026. Not yet tested on the Pi 5 and the Pi 3. More in the [issue on GitHub](https://github.com/regetskcob/KNX-Monitor/issues/1)." }
 
 hardware:
   label: "Hardware"
@@ -83,10 +83,10 @@ hardware:
 
 status:
   label: "Status"
-  title: "A preview, to be honest."
-  text: "The image is built automatically and runs in the test setup and on a Raspberry Pi 4 on a real bus. Nobody has tried it in continuous use on a real site yet. Reports are very welcome."
+  title: "What to know beforehand."
+  text: "The image is built automatically and has been running on a Raspberry Pi 4 in continuous use on the real bus of a home since early November 2026; the box came through an overnight power cut along the way. Nobody has tried it on a building site yet. Reports are very welcome."
   points:
-    - { term: "App", value: "**The box works with the app:** setup, project and history go through it, the browser is only a stopgap (see Setup). iPhone, iPad, Android, Mac and Windows arrive in the coming weeks; until then use the [Linux app](https://github.com/regetskcob/KNX-Monitor/releases/latest)." }
+    - { term: "App", value: "**The box works with the app:** setup, project and history go through it, the browser is only a stopgap (see Setup). iPhone, iPad, Mac and Android are available as a [beta](/en/beta/), Linux as a [download](https://github.com/regetskcob/KNX-Monitor/releases/latest); Windows follows." }
     - { term: "Gateway", value: "A gateway with a fixed address straight on the box's cable does not work yet; that needs the switch." }
     - { term: "Wi-Fi", value: "The app joins by itself on iPhone, iPad and Android 10 or later; on Linux, Mac and Windows you join once yourself." }
     - { term: "Alarms", value: "Without internet there are no notifications to your phone." }

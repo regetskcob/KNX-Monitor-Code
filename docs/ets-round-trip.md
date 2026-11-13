@@ -107,6 +107,7 @@ passed).
 | Datapoint types set in the app | set datapoint type | import |
 | Names corrected in the app (`CatalogStore.names`, `name_overrides.json`) | change the name; wins over a learned name | import |
 | Learning without a project (`CatalogStore.learned`) | name for unnamed addresses, new addresses, datapoint types | import |
+| Learning with an old project (teach-in on an address the project knows) | a different name becomes a correction (`CatalogStore.names`), a type the bus contradicts becomes a set datapoint type | import |
 | Project check (`ProjectLint`) | no name, no datapoint type, no sender, no receiver (also unlinked), main group 14/15 | by hand, at the address |
 | Project check (`ProjectLint`) | feedback without T flag, read without R flag, R flag more than once, no C flag, several senders, device without links | by hand, per device |
 | Project check (`ProjectLint`) | crowded lines | by hand, in the project |

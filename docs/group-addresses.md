@@ -58,3 +58,25 @@ Sources of the schemes: KNX-User-Forum (group address structures by
 room/trade/function), KNX Association "Best practices for KNX group address
 structures", smart-home-feeling.de, dietechwerkstatt.de, ioBroker forum
 (status detection by name).
+
+## Without a project, or with an old one
+
+Teach-in (`lib/model/teach_in.dart`, `lib/ui/teach_in_screen.dart`) builds names
+from the bus when the ETS project is missing or older than the installation:
+
+- A button press is caught as an event (command plus feedback) and named. A
+  known sender (second rocker of the same push button) or an address learned
+  earlier fills in room, device and name.
+- Everything else that sends (sensors, status, timers) is listed as open with
+  its last value and sender and can be named by tapping it. An address next to
+  a named one in the same main group ("1/0/4" and "1/1/4") gets the suggestion
+  "… Status" and its room.
+- With a project loaded, open means: missing from the project, left without a
+  name there, or sent with a length that contradicts the project's datapoint
+  type (the address was probably reassigned since). The project still takes
+  precedence, so naming such an address stores a corrected name and, where the
+  length contradicts, a datapoint type; both return to the ETS with the group
+  address import (`docs/ets-round-trip.md`).
+
+Parameters and the links between objects are not on the bus and are not
+reconstructed.

@@ -1,0 +1,91 @@
+{{- /*
+  Everything in detail (/funktionen/, /en/features/): the sections the home
+  page had in full before it was shortened. The apps, the features and the
+  expert mode with their screens, the ETS project, the connection and
+  privacy, as numbered sections with their Kennungen as marks on the
+  horizon. Texts from data/home/<lang>.yaml and data/teaser/<lang>.yaml,
+  screens from data/screens.yaml.
+*/ -}}
+{{- $d := index site.Data.teaser site.Language.Lang -}}
+{{- $h := index site.Data.home site.Language.Lang -}}
+{{- $de := eq site.Language.Lang "de" -}}
+{{- $target := "" }}{{ range .Translations }}{{ $target = . }}{{ end -}}
+{{- $lang := dict -}}
+{{- with $target }}{{ $lang = dict "current" (upper site.Language.Lang) "name" (upper .Language.Lang) "url" .RelPermalink "hreflang" .Language.Lang }}{{ end -}}
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode }}" data-product="knx">
+{{ partial "head.html" (dict "page" . "title" (printf "%s · %s" .Title site.Title) "description" .Description "image" (printf "images/og-%s.png" site.Language.Lang)) }}
+<body class="hz tz">
+{{ partial "horizont/nav/horizon.html" (dict
+    "product" "knx"
+    "place" (printf "%s / %s" site.Title .Title)
+    "marks" "auto"
+    "lang" $lang
+    "karte" (dict "home" "knx" "here" "knx" "map" "knx" "projects" false "field" "funktionen" "url" ("karte/" | relLangURL))) }}
+<div class="hz-feld tz-feld">
+<main id="main" class="tz-main">
+{{ partial "horizont/feld/hero.html" (dict
+    "kennung" (printf "01 — %s" $h.header.kennung)
+    "title" $h.features.title
+    "text" $h.header.text
+    "primary" (dict "label" $d.primary "url" site.Params.haUrl)
+    "secondary" (dict "label" $h.expert.label "url" "#expert")) }}
+{{- $n := 1 }}
+{{- /* Features and expert mode with their screens. */}}
+{{- $facts := slice }}
+{{- range $h.features.items }}{{ $facts = $facts | append (dict "term" .term "value" (printf "**%s.** %s" .title (partial "live.html" (dict "ctx" . "key" "text")))) }}{{ end }}
+{{- range $h.features.more.points }}{{ $facts = $facts | append (dict "term" .term "value" (partial "live.html" (dict "ctx" . "key" "value"))) }}{{ end }}
+{{- $expert := slice }}
+{{- range $h.expert.points }}{{ $expert = $expert | append (dict "term" .term "value" .value) }}{{ end }}
+{{- range slice
+    (dict "id" "features" "label" $h.features.label "title" $h.highlights.title "text" $h.features.lead "facts" $facts "group" "everyday")
+    (dict "id" "expert" "label" $h.expert.label "title" $h.expert.title "text" (partial "live.html" (dict "ctx" $h.expert "key" "text")) "facts" $expert "group" "expert") }}
+{{- $n = add $n 1 }}
+<section class="hz-feld-section tz-section tz-section--shots" id="{{ .id }}">
+  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n .label) }}
+  <div>
+    <h2>{{ .title }}</h2>
+    <p>{{ .text | markdownify }}</p>
+    {{ partial "shots.html" (dict "group" .group "title" .label) }}
+  </div>
+  {{ partial "horizont/facts.html" (dict "items" .facts) }}
+</section>
+{{- end }}
+{{- /* The apps, the ETS project (group addresses become names), the
+       connection and privacy. */}}
+{{- $apps := slice }}
+{{- range $d.apps.facts }}{{ $apps = $apps | append (dict "term" .term "value" .value) }}{{ end }}
+{{- $rows := cond $de
+  (slice (slice "1/2/3" "Wohnzimmer Decke Licht – Ein" "Ein") (slice "1/2/4" "Wohnzimmer Decke Licht – Status" "Ein") (slice "3/1/10" "Küche Temperatur Ist" "21,4 °C") (slice "2/0/7" "Bad Rollladen Position" "35 %") (slice "4/0/1" "Zähler Wirkleistung" "1,82 kW"))
+  (slice (slice "1/2/3" "Living room ceiling light – On" "On") (slice "1/2/4" "Living room ceiling light – Status" "On") (slice "3/1/10" "Kitchen temperature actual" "21.4 °C") (slice "2/0/7" "Bathroom blind position" "35 %") (slice "4/0/1" "Meter active power" "1.82 kW")) }}
+{{- $ets := slice }}
+{{- range $rows }}{{ $ets = $ets | append (dict "term" (index . 0) "value" (printf "%s <span class=\"hz-mono tz-value\">%s</span>" (index . 1) (index . 2))) }}{{ end }}
+{{- $conn := slice }}
+{{- range $h.facts }}{{ $conn = $conn | append (dict "term" .term "value" .value) }}{{ end }}
+{{- $privacy := slice }}
+{{- range $h.privacy.points }}{{ if or site.Params.commerce (not .commerce) }}{{ $privacy = $privacy | append (dict "term" .term "value" (partial "live.html" (dict "ctx" . "key" "value"))) }}{{ end }}{{ end }}
+{{- range slice
+    (dict "id" "apps" "label" $d.apps.label "title" $d.apps.title "text" $d.apps.text "facts" $apps)
+    (dict "id" "ets" "label" $h.etsproject.label "title" $h.etsproject.title "text" $h.etsproject.text "facts" $ets)
+    (dict "id" "connection" "label" $h.connection.label "title" $h.connection.title "text" $h.hero.note "facts" $conn)
+    (dict "id" "privacy" "label" $h.privacy.label "title" $h.privacy.title "text" (printf "%s [%s](%s)" (partial "live.html" (dict "ctx" $h.privacy "key" "text")) $h.privacy.more site.Params.privacyUrl) "facts" $privacy) }}
+{{- $n = add $n 1 }}
+<section class="hz-feld-section tz-section tz-section--read" id="{{ .id }}">
+  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n .label) }}
+  <div>
+    <h2>{{ .title }}</h2>
+    <p>{{ .text | markdownify }}</p>
+  </div>
+  {{ partial "horizont/facts.html" (dict "items" .facts) }}
+</section>
+{{- end }}
+</main>
+{{- $links := slice (dict "name" site.Title "url" ("" | relLangURL)) (dict "name" (i18n "beta") "url" ("beta/" | relLangURL)) (dict "name" (i18n "feedback") "url" ("feedback/" | relLangURL)) (dict "name" (i18n "changelog") "url" ("changelog/" | relLangURL)) (dict "name" (i18n "imprint") "url" site.Params.legalUrl) (dict "name" (i18n "privacy") "url" site.Params.privacyUrl) (dict "name" (i18n "github") "url" site.Params.githubUrl) (dict "name" (i18n "instagram") "url" site.Params.instagramUrl) }}
+{{- with site.GetPage "/nutzungsbedingungen" }}{{ $links = $links | append (dict "name" (i18n "terms") "url" .RelPermalink) }}{{ end }}
+{{ partial "horizont/feld/foot.html" (dict "links" $links "sender" (i18n "footer_sender")) }}
+<p class="tz-mark t-caption">{{ i18n "footer_note" }}</p>
+</div>
+{{ partial "horizont/lightbox.html" (dict "lang" site.Language.Lang) }}
+{{ partial "horizont/nav/script.html" . }}
+</body>
+</html>

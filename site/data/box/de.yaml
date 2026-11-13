@@ -1,7 +1,7 @@
 hero:
   kennung: "Busclear Box · Raspberry Pi"
   title: "Der Bus zeichnet sich auf, während du weg bist."
-  lead: "Die Busclear Box ist ein Raspberry Pi, der rund um die Uhr jedes Telegramm mitschreibt und ein eigenes WLAN aufspannt. Eingerichtet wird sie mit der App: heute mit der Linux-App, bald per QR-Code mit iPhone, iPad und Android. Ohne Home Assistant und ohne Internet."
+  lead: "Die Busclear Box ist ein Raspberry Pi, der rund um die Uhr jedes Telegramm mitschreibt und ein eigenes WLAN aufspannt. Eingerichtet wird sie mit der App: per QR-Code mit iPhone, iPad und Android (derzeit als Beta) oder mit der Linux-App. Ohne Home Assistant und ohne Internet."
   primary: "Image laden"
   secondary: "So richtest du sie ein"
 
@@ -15,7 +15,7 @@ need:
     - { term: "Rechner", value: "Windows, Mac oder Linux mit dem kostenlosen [Raspberry Pi Imager](https://www.raspberrypi.com/software/)" }
     - { term: "Netzwerkkabel", value: "Vom Pi zum Router oder Switch, an dem das KNX-IP-Gateway hängt; entfällt für den Bus mit dem kBerry" }
     - { term: "Gateway", value: "Ein freier Tunnelplatz, Home Assistant oder die ETS belegen oft schon einen. Oder statt Gateway das Aufsteckmodul kBerry" }
-    - { term: "App", value: "Heute die [Linux-App](https://github.com/regetskcob/KNX-Monitor/releases/latest), bald auch iPhone, iPad und Android" }
+    - { term: "App", value: "iPhone, iPad und Android (derzeit als [Beta](/beta/)) oder die [Linux-App](https://github.com/regetskcob/KNX-Monitor/releases/latest)" }
     - { term: "Drucker", value: "Optional, für das Blatt mit den zwei Aufklebern und den Zugangsdaten" }
 
 setup:
@@ -30,7 +30,7 @@ setup:
     - { term: "Anschließen", value: "**Netzwerkkabel zum Router oder Switch am Gateway, dann Strom.** Nach etwa einer Minute ist die Box bereit." }
     - { term: "Koppeln", value: "**In der App „Busclear Box hinzufügen“ und den Aufkleber scannen.** Die App tritt dem WLAN der Box bei, koppelt sich, stellt die Uhr und sucht das Gateway. Gibt es genau eins, ist es gleich eingestellt, und die Box zeichnet auf. Die Kopplung mit der App gehört zu Pro.", value_live: "**In der App „Busclear Box hinzufügen“ und den Aufkleber scannen.** Die App tritt dem WLAN der Box bei, koppelt sich, stellt die Uhr und sucht das Gateway. Gibt es genau eins, ist es gleich eingestellt, und die Box zeichnet auf." }
     - { term: "Mit Linux", value: "**[Linux-App laden](https://github.com/regetskcob/KNX-Monitor/releases/latest),** entpacken und im Ordner `bundle` `./install.sh` ausführen: Es installiert Busclear ins App-Menü, der Download kann danach weg. Am Rechner ins WLAN „KNX-Box-…“ wechseln (WLAN-Passwort aus `knx-box.txt`). In der App „Busclear Box hinzufügen“ und den Inhalt von `knx-box-link.txt` einfügen; den Rest erledigt die App wie oben." }
-  preview: "Aufkleber scannen, den Rest erledigt die App: WLAN, Kopplung, Uhr und Gateway. So sieht es bald auf iPhone, iPad und Android aus; heute geht es mit der Linux-App."
+  preview: "Aufkleber scannen, den Rest erledigt die App: WLAN, Kopplung, Uhr und Gateway. So sieht es auf iPhone, iPad und Android aus, derzeit in der Beta. Mit der Linux-App trittst du dem WLAN einmal selbst bei."
   preview_alt: "Die App richtet die Busclear Box ein: WLAN beitreten, Box erreichen, koppeln, Uhr stellen, Gateway finden, alles abgehakt"
   alt: "Ohne App geht es auch: Der zweite QR-Code (`knx-box-wlan.png`) verbindet mit dem WLAN der Box, dann im Browser `knx-box.local` öffnen und mit dem Box-Passwort anmelden."
 
@@ -67,7 +67,7 @@ connection:
     - { term: "Anleitung", value: "**Vorschau:** Wie der kBerry auf den Pi kommt, wie der Pi vorbereitet wird und wie das passende Gehäuse zusammengebaut wird: [Anleitung für Bastler (PDF, Vorschau)](/box/knx-box-kberry.pdf)." }
     - { term: "Busmonitor", value: "Über TP sieht die Box auch, was ein Tunnel nie zeigt: Quittungen (ACK, NAK, BUSY) und Wiederholungen. In dieser Betriebsart kann sie nicht senden." }
     - { term: "Adresse", value: "Zum Mithören braucht die Box keine physikalische Adresse und keine ETS-Programmierung." }
-    - { term: "Stand", value: "Vorschau: auf einem Pi 4 am echten Bus geprüft, auf dem Pi 5 und im Dauerbetrieb noch nicht. Mehr im [Issue auf GitHub](https://github.com/regetskcob/KNX-Monitor/issues/1)." }
+    - { term: "Stand", value: "Auf einem Pi 4 seit Anfang November 2026 im Dauerbetrieb am echten Bus. Auf dem Pi 5 und dem Pi 3 noch nicht geprüft. Mehr im [Issue auf GitHub](https://github.com/regetskcob/KNX-Monitor/issues/1)." }
 
 hardware:
   label: "Hardware"
@@ -83,10 +83,10 @@ hardware:
 
 status:
   label: "Stand"
-  title: "Eine Vorschau, ehrlich gesagt."
-  text: "Das Image wird automatisch gebaut und läuft in der Testumgebung und auf einem Raspberry Pi 4 am echten Bus. Im Dauereinsatz auf einer Baustelle hat es noch niemand geprüft. Meldungen dazu sind sehr willkommen."
+  title: "Was du vorher wissen solltest."
+  text: "Das Image wird automatisch gebaut und läuft seit Anfang November 2026 auf einem Raspberry Pi 4 im Dauerbetrieb am echten Bus eines Wohnhauses; einen Stromausfall über Nacht hat die Box dabei überstanden. Auf einer Baustelle hat es noch niemand geprüft. Meldungen dazu sind sehr willkommen."
   points:
-    - { term: "App", value: "**Die Box arbeitet mit der App:** Einrichten, Projekt und Verlauf laufen über sie, der Browser ist nur ein Notbehelf (siehe Einrichten). iPhone, iPad, Android, Mac und Windows erscheinen in den nächsten Wochen; bis dahin nimm die [Linux-App](https://github.com/regetskcob/KNX-Monitor/releases/latest)." }
+    - { term: "App", value: "**Die Box arbeitet mit der App:** Einrichten, Projekt und Verlauf laufen über sie, der Browser ist nur ein Notbehelf (siehe Einrichten). iPhone, iPad, Mac und Android gibt es als [Beta](/beta/), Linux als [Download](https://github.com/regetskcob/KNX-Monitor/releases/latest); Windows folgt." }
     - { term: "Gateway", value: "Ein Gateway mit fester Adresse direkt am Kabel der Box geht noch nicht; dafür braucht es den Switch." }
     - { term: "WLAN", value: "Selbst beitreten kann die App auf iPhone, iPad und Android ab Version 10; unter Linux, Mac und Windows trittst du einmal selbst bei." }
     - { term: "Alarme", value: "Ohne Internet gibt es keine Mitteilungen aufs Handy." }

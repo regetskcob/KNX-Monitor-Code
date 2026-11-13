@@ -1,0 +1,29 @@
+# Roadmap and changelog (/en/changelog/, layouts/roadmap.html): one line from
+# the top (what is coming) to the bottom (what came). Only the future is here;
+# the versions below come from content/changelog.en.md. Once an entry ships,
+# it moves from here into the section of its version there.
+# stage: next or later (by votes); issue: number in the public repository
+# (github.com/regetskcob/KNX-Monitor). A picture (wide windows only):
+# image: a file from static/images/screens/, with device: iphone | android |
+# ipad; or art: pi (the box, drawn).
+kennung: "Roadmap & changelog"
+title: "What is coming, and what is already here."
+lead: "One line, top to bottom: at the top what we are working on and what may follow, below it every version with what it brought. We give no dates for what is coming; you set the order with your vote."
+vote: "Vote on GitHub"
+prices_link: "Prices"
+stages:
+  later: { label: "Later", note: "by votes" }
+  next: { label: "Next", note: "in progress" }
+now: { label: "Today", title: "Where Busclear stands" }
+past: { label: "Released", open: "Open version" }
+issue: "Issue"
+items:
+  - { stage: later, issue: 3, title: "ioBroker adapter", text: "Bus monitor and diagnostics as a tab in ioBroker admin, the values as states. The interfaces for it exist on the box and in Docker already; it gets built once enough ioBroker users want it." }
+  - { stage: later, issue: 13, title: "KNX RF: make radio links visible", text: "Busclear already recognises radio lines from the ETS project. Planned are signal strength per radio device from the media coupler and listening in directly with an RF USB stick, with battery state and lost telegrams." }
+  - { stage: later, issue: 10, title: "Busclear Box: case lid with a fan", text: "A draft for continuous operation in the distribution board, up for discussion, not printed and not tested yet." }
+  - { stage: later, issue: 7, title: "Home builder package", text: "From everyday wishes through room book and floor plan to documents for your electrician. The first stage, \"Plan a home\", is already here.", link: "bauherren/", link_label: "See the preview" }
+  - { stage: later, issue: 12, title: "Home Assistant integration: core or HACS?", text: "Events without the Supervisor and the health check as a service are here since 1.12.0. Open is whether the integration is proposed for Home Assistant core or stays with HACS." }
+  - { stage: next, title: "Apps in the App Store and on Google Play", text: "iPhone, iPad, Mac and Android run as an open beta with every tool. The store versions come next.", link: "beta/", link_label: "Join the beta", image: "overview-phone.png" }
+  - { stage: next, title: "Windows", text: "The Windows app as a download, purchases there without an account, with a license by email." }
+  - { stage: next, issue: 6, title: "DALI over KNX, continued", text: "Since 1.12.0 there is a first version of every step. Now feedback and telegrams from real installations with a KNX DALI gateway count." }
+  - { stage: next, issue: 1, title: "Box right on the line", text: "Since 1.8.4 the box listens with the kBerry add-on module, without an IP gateway. Open are the test on Pi 5 and Pi 3, a test with the bus voltage off while the Pi keeps running, the kBerry in the Home Assistant add-on and a USB bus coupler for computers without a pin header.", art: pi }
