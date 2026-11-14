@@ -18,6 +18,8 @@ enum QuickFilter { alarm, repeated, unanswered, unknown, outgoing, incoming }
 /// - `typ:w|r|a` (`type:`), `dpt:9` or `dpt:9.001`, `von:1.1.5` (`from:`)
 /// - `ist:alarm|wiederholt|antwort|projekt|eigen|fremd`
 ///   (`is:alarm|repeated|unanswered|unknown|own|received`)
+/// - `re:licht.*(kueche|bad)` (`regex:`) regular expression over address, name,
+///   range, device and value; without spaces and commas
 /// - `zeit:14:05` time of day by prefix (hour, minute or second),
 ///   `zeit:14:05-14:10` from–to excluding the end (`time:`)
 /// - otherwise: text in name, range, device or value (umlauts do not matter:
@@ -213,6 +215,23 @@ class _Term {
           return (t, log) => quick.any((q) => matchesQuick(q, t, log)) || (single && seenAtOneTapOnly(t));
         case 'zeit' || 'time':
           return _time(value);
+        // Regular expression over address, name, range, device and value. The query is split
+        // at spaces and commas first, so the pattern cannot contain either (use `\\s` and `.`).
+        case 're' || 'regex':
+          final RegExp regex;
+          try {
+            regex = RegExp(value, caseSensitive: false);
+          } on FormatException {
+            // Half-typed pattern: nothing matches until it is valid.
+            return (_, _) => false;
+          }
+          return (t, _) {
+            final store = CatalogStore.instance;
+            final info = store.infoOf(t);
+            return regex.hasMatch(
+              [t.destinationText, ?info?.name, ?info?.path, ?store.deviceOf(t)?.name, store.value(t)].join(' '),
+            );
+          };
         // Tap point by its chip label (the line, e.g. "1.2"), several with |: seen there (issue #8).
         case 'messpunkt' || 'tap':
           final wanted = value.split('|').where((v) => v.isNotEmpty).toSet();

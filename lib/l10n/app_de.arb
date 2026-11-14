@@ -1461,7 +1461,7 @@
   "@filterHelp": {
     "description": "Tooltip/Titel: Hilfe zur Filtersyntax"
   },
-  "filterHelpBody": "Leerzeichen = UND · Komma = ODER · -begriff = NICHT\n\n1/2/3 exakt · 1/2 Bereich · 1/*/3 oder 1/2/1* mit Platzhalter\n1.1.5 Absender · 1.1.* Linie · von:1.1.5\n\ntyp:w|r|a (Schreiben, Lesen, Antwort)\ndpt:9 oder dpt:9.001\nzeit:14:05 · zeit:14:05-14:10 (Uhrzeit, ohne das Ende)\nist:alarm · ist:wiederholt · ist:antwort · ist:projekt\nist:eigen · ist:fremd (selbst gesendet bzw. vom Bus)\nmesspunkt:1.2 oder messpunkt:1.2|1.3 (gesehen an diesen Messpunkten) · ist:einzeln (nur an einem Messpunkt)\n\nAlles andere sucht in Name, Bereich, Gerät und Wert – Umlaute egal (kuche findet Küche).\n\nMehrere ODER-Gruppen bekommen in der Liste je eine Farbe. „Kontext“ zeigt die Sekunden vor und nach jedem Treffer.\n\nBeispiele:\n1/*/* ist:antwort – unbeantwortete Leseanfragen in Hauptgruppe 1\nküche, bad -schalten – Küche oder Bad, ohne Schalten",
+  "filterHelpBody": "Leerzeichen = UND · Komma = ODER · -begriff = NICHT\n\n1/2/3 exakt · 1/2 Bereich · 1/*/3 oder 1/2/1* mit Platzhalter\n1.1.5 Absender · 1.1.* Linie · von:1.1.5\n\ntyp:w|r|a (Schreiben, Lesen, Antwort)\ndpt:9 oder dpt:9.001\nzeit:14:05 · zeit:14:05-14:10 (Uhrzeit, ohne das Ende)\nre:licht.*(kueche|bad) (regulärer Ausdruck über Adresse, Name, Gerät und Wert; ohne Leerzeichen und Komma)\nist:alarm · ist:wiederholt · ist:antwort · ist:projekt\nist:eigen · ist:fremd (selbst gesendet bzw. vom Bus)\nmesspunkt:1.2 oder messpunkt:1.2|1.3 (gesehen an diesen Messpunkten) · ist:einzeln (nur an einem Messpunkt)\n\nAlles andere sucht in Name, Bereich, Gerät und Wert – Umlaute egal (kuche findet Küche).\n\nMehrere ODER-Gruppen bekommen in der Liste je eine Farbe. „Kontext“ zeigt die Sekunden vor und nach jedem Treffer.\n\nBeispiele:\n1/*/* ist:antwort – unbeantwortete Leseanfragen in Hauptgruppe 1\nküche, bad -schalten – Küche oder Bad, ohne Schalten",
   "@filterHelpBody": {
     "description": "Hilfetext zur Filtersyntax"
   },
@@ -16950,5 +16950,864 @@
   "learnNoRoom": "Ohne Raum",
   "@learnNoRoom": {
     "description": "Teach-in: heading for named addresses without a room."
+  },
+  "operateMode": "Bedienen",
+  "@operateMode": {
+    "description": "Device drawing: chip that arms sending by tapping a channel or key."
+  },
+  "operateHint": "Tippen auf Kanal oder Taste sendet auf den Bus, wie ein Taster.",
+  "@operateHint": {
+    "description": "Device drawing: hint next to the armed chip."
+  },
+  "operateOffline": "Nicht verbunden: Bedienen geht nur mit Verbindung zum Bus.",
+  "@operateOffline": {
+    "description": "Device drawing: tried to operate without a connection."
+  },
+  "operateNothing": "{name}: kein Schaltobjekt, das sich senden lässt.",
+  "@operateNothing": {
+    "description": "Device drawing: channel without a switching address.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "operateSent": "{name}: {value} gesendet",
+  "@operateSent": {
+    "description": "Device drawing: sent, no status feedback in the project.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "operateConfirmed": "{name}: {value}, Rückmeldung bestätigt",
+  "@operateConfirmed": {
+    "description": "Device drawing: the actuator confirmed the value.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "operateNoFeedback": "{name}: {value} gesendet, aber keine Rückmeldung. Gesperrt, nicht verbunden oder ohne Last?",
+  "@operateNoFeedback": {
+    "description": "Device drawing: sent, the status feedback did not follow.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "operateUp": "Auf",
+  "@operateUp": {
+    "description": "Blind: move up."
+  },
+  "operateStop": "Stopp",
+  "@operateStop": {
+    "description": "Blind: stop."
+  },
+  "operateDown": "Ab",
+  "@operateDown": {
+    "description": "Blind: move down."
+  },
+  "operateBlindHint": "Nur fahren, wenn du Fenster und Behang siehst.",
+  "@operateBlindHint": {
+    "description": "Blind sheet: safety hint before moving."
+  },
+  "operateCautionTitle": "{name} wirklich schalten?",
+  "@operateCautionTitle": {
+    "description": "Operate: confirmation for gates, doors, locks, alarms and central functions.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "operateCautionBody": "Der Name klingt nach Tor, Tür, Schloss, Alarm oder Zentralfunktion. Sende nur, wenn du siehst, was sich bewegt, und niemand im Weg steht.",
+  "@operateCautionBody": {
+    "description": "Operate: body of the confirmation."
+  },
+  "operateCautionSend": "Senden",
+  "@operateCautionSend": {
+    "description": "Operate: confirm button."
+  },
+  "channelTestTitle": "Kanäle prüfen",
+  "@channelTestTitle": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestTool": "Kanal für Kanal schalten und festhalten, was reagiert",
+  "@channelTestTool": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestExplain": "Welcher Kanal ist welche Lampe? Die App schaltet einen Kanal ein, du sagst, was angegangen ist, dann schaltet sie ihn wieder aus und nimmt den nächsten. Ob der Aktor die Rückmeldung gesendet hat, merkt sie selbst. Rollläden, Tore und Kanäle ohne Schaltadresse löst du von Hand aus und bewertest sie nur. Gesendet wird ein Gruppentelegramm wie von einem Taster; die Handtasten am Gerät sind etwas anderes. Das Ergebnis bleibt gespeichert und lässt sich als Text teilen.",
+  "@channelTestExplain": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestChecked": "Geprüft",
+  "@channelTestChecked": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestIssues": "Auffällig",
+  "@channelTestIssues": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestChannels": "Kanäle",
+  "@channelTestChannels": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestNone": "Für dieses Gerät kennt das Projekt keine Kanäle.",
+  "@channelTestNone": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestSwitchOn": "Einschalten",
+  "@channelTestSwitchOn": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestSwitching": "Schalte …",
+  "@channelTestSwitching": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestQuestion": "Was hat reagiert?",
+  "@channelTestQuestion": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestNote": "Notiz (z. B. was stattdessen anging)",
+  "@channelTestNote": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestOk": "Richtige Last",
+  "@channelTestOk": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestWrong": "Falsche Last",
+  "@channelTestWrong": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestNothing": "Nichts",
+  "@channelTestNothing": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestSkip": "Überspringen",
+  "@channelTestSkip": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestSkipped": "Übersprungen",
+  "@channelTestSkipped": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestOpen": "Offen",
+  "@channelTestOpen": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestByHand": "Diesen Kanal schaltet die App nicht selbst (Rollladen, Tor, Zentralfunktion oder keine Schaltadresse). Löse ihn von Hand aus und bewerte ihn.",
+  "@channelTestByHand": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestFeedbackYes": "Rückmeldung bestätigt",
+  "@channelTestFeedbackYes": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestFeedbackNo": "Keine Rückmeldung",
+  "@channelTestFeedbackNo": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestFeedbackNone": "Kanal hat keine Rückmeldeadresse",
+  "@channelTestFeedbackNone": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestDone": "Alle Kanäle sind geprüft",
+  "@channelTestDone": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestDoneHint": "{count, plural, =0{Nichts Auffälliges.} =1{1 Kanal ist auffällig.} other{{count} Kanäle sind auffällig.}} Tippe einen Kanal an, um ihn noch einmal zu prüfen.",
+  "@channelTestDoneHint": {
+    "description": "Channel check (Pro).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "channelTestShare": "Bericht teilen",
+  "@channelTestShare": {
+    "description": "Channel check (Pro)."
+  },
+  "channelTestReport": "Kanalprüfung {device} ({address})",
+  "@channelTestReport": {
+    "description": "Channel check (Pro).",
+    "placeholders": {
+      "device": {
+        "type": "String"
+      },
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "heatTitle": "Heizung prüfen",
+  "@heatTitle": {
+    "description": "Heating check per room."
+  },
+  "heatTool": "Je Raum: Ist, Soll, Ventil und was das bedeutet",
+  "@heatTool": {
+    "description": "Heating check per room."
+  },
+  "heatExplain": "Raum bleibt kalt oder wird zu warm? Hier stehen je Raum Ist-Temperatur, Sollwert und Ventil nebeneinander, mit einem Urteil in Klartext: Fordert der Regler gar keine Wärme an, heizt es gerade, oder ist das Ventil offen und es wird trotzdem nicht warm? Daran siehst du, ob eher der Elektriker (Regler, Aktor, Programmierung) oder der Heizungsbauer (Antrieb, Hydraulik) gefragt ist. Die App liest nur mit und ändert nichts. Was sie nicht sieht: Parameter im Gerät, Druck und Durchfluss, klemmende Ventile.",
+  "@heatExplain": {
+    "description": "Heating check per room."
+  },
+  "heatRooms": "Räume",
+  "@heatRooms": {
+    "description": "Heating check per room."
+  },
+  "heatIssues": "Auffällig",
+  "@heatIssues": {
+    "description": "Heating check per room."
+  },
+  "heatNone": "Im Projekt sind keine Heizungsadressen zu erkennen (Ist-Temperatur, Sollwert, Stellwert je Raum).",
+  "@heatNone": {
+    "description": "Heating check per room."
+  },
+  "heatLimits": "Maßstab: mehr als 1 K Abstand zum Sollwert zählt; eine Ist-Temperatur gilt nach 2 h ohne Telegramm als fehlend; bei offenem Ventil sollte der Raum in 90 min mindestens 0,3 K gewinnen.",
+  "@heatLimits": {
+    "description": "Heating check per room."
+  },
+  "heatActual": "Ist",
+  "@heatActual": {
+    "description": "Heating check per room."
+  },
+  "heatSetpoint": "Soll",
+  "@heatSetpoint": {
+    "description": "Heating check per room."
+  },
+  "heatValve": "Ventil",
+  "@heatValve": {
+    "description": "Heating check per room."
+  },
+  "heatOk": "In Ordnung",
+  "@heatOk": {
+    "description": "Heating check per room."
+  },
+  "heatOkHint": "Der Raum liegt am Sollwert.",
+  "@heatOkHint": {
+    "description": "Heating check per room."
+  },
+  "heatHeating": "Heizt gerade",
+  "@heatHeating": {
+    "description": "Heating check per room."
+  },
+  "heatHeatingHint": "Der Raum ist kälter als gewünscht und das Ventil ist offen. Das braucht Zeit; bleibt es so, steht hier später ein anderer Befund.",
+  "@heatHeatingHint": {
+    "description": "Heating check per room."
+  },
+  "heatNotCalling": "Regler fordert keine Wärme an",
+  "@heatNotCalling": {
+    "description": "Heating check per room."
+  },
+  "heatNotCallingHint": "Der Raum ist kälter als der Sollwert, das Ventil aber zu. Häufige Gründe: Betriebsart (Nacht, Frostschutz, Sommer), ein offener Fensterkontakt oder eine Sperre. Das ist ein Thema für den Elektriker: Regler und Programmierung.",
+  "@heatNotCallingHint": {
+    "description": "Heating check per room."
+  },
+  "heatNotWarming": "Ventil offen, Raum wird nicht warm",
+  "@heatNotWarming": {
+    "description": "Heating check per room."
+  },
+  "heatNotWarmingHint": "Der Regler fordert seit über 90 Minuten Wärme an, die Temperatur steigt aber nicht. Der Bus tut, was er soll. Prüfen lassen: Sitzt der Stellantrieb, öffnet er wirklich, ist der Kanal am Heizungsaktor dem richtigen Raum zugeordnet, kommt warmes Wasser an? Das ist meist ein Thema für den Heizungsbauer.",
+  "@heatNotWarmingHint": {
+    "description": "Heating check per room."
+  },
+  "heatOverheating": "Zu warm, Ventil trotzdem offen",
+  "@heatOverheating": {
+    "description": "Heating check per room."
+  },
+  "heatOverheatingHint": "Der Raum ist wärmer als der Sollwert und das Ventil ist offen. Häufige Gründe: Fühler oder Kanäle sind vertauscht (das Ventil gehört zu einem anderen Raum), oder der Aktor läuft im Notbetrieb. Das ist ein Thema für den Elektriker.",
+  "@heatOverheatingHint": {
+    "description": "Heating check per room."
+  },
+  "heatStale": "Ist-Temperatur fehlt",
+  "@heatStale": {
+    "description": "Heating check per room."
+  },
+  "heatStaleHint": "Die Ist-Temperatur wurde seit über 2 Stunden nicht gesendet. Ohne sie regelt der Raum blind, viele Aktoren schalten dann in einen Notbetrieb. Prüfen lassen: Sendet der Fühler oder Taster noch, ist er ausgefallen?",
+  "@heatStaleHint": {
+    "description": "Heating check per room."
+  },
+  "heatIncomplete": "Zu wenig Werte",
+  "@heatIncomplete": {
+    "description": "Heating check per room."
+  },
+  "heatIncompleteHint": "Für ein Urteil fehlt ein Wert. Sollwert und Stellwert sendet die Anlage oft nur bei Änderung: Lass die App länger mitlaufen oder ändere den Sollwert einmal am Raumregler.",
+  "@heatIncompleteHint": {
+    "description": "Heating check per room."
+  },
+  "heatNoData": "Noch nichts gehört",
+  "@heatNoData": {
+    "description": "Heating check per room."
+  },
+  "heatNoDataHint": "Seit dem Verbinden kam für diesen Raum kein Telegramm. Lass die App mitlaufen.",
+  "@heatNoDataHint": {
+    "description": "Heating check per room."
+  },
+  "heatShare": "Befund teilen",
+  "@heatShare": {
+    "description": "Heating check per room."
+  },
+  "heatReportHeading": "Heizung je Raum, mitgelesen vom KNX-Bus",
+  "@heatReportHeading": {
+    "description": "Heating check per room."
+  },
+  "hocTitle": "Übergabe-Check",
+  "@hocTitle": {
+    "description": "Handover checklist for owners."
+  },
+  "hocTool": "Was dir der Elektriker übergeben muss, und was noch fehlt",
+  "@hocTool": {
+    "description": "Handover checklist for owners."
+  },
+  "hocExplain": "Eine KNX-Anlage gehört erst dann wirklich dir, wenn du ihre Unterlagen hast. Fehlt die Projektdatei, kann kein anderer Betrieb etwas ändern oder ein defektes Gerät ersetzen, ohne die Anlage mühsam zu rekonstruieren. Kläre die Übergabe am besten vor der Schlussrechnung, beim Hauskauf vor dem Notartermin. Die Liste zeigt, was dazugehört. Einiges erkennt die App selbst: ob ein Projekt geladen ist und ob es zu dem passt, was auf dem Bus gesendet wird. Den Rest hakst du ab. Für alles Offene erzeugt sie eine Nachricht an den Elektriker. Das ist keine Rechtsberatung; was dir vertraglich zusteht, regelt dein Vertrag.",
+  "@hocExplain": {
+    "description": "Handover checklist for owners."
+  },
+  "hocIntro": "Am besten vor der Schlussrechnung klären. Was die App selbst sieht, trägt sie ein.",
+  "@hocIntro": {
+    "description": "Handover checklist for owners."
+  },
+  "hocDone": "Vorhanden",
+  "@hocDone": {
+    "description": "Handover checklist for owners."
+  },
+  "hocMissing": "Offen",
+  "@hocMissing": {
+    "description": "Handover checklist for owners."
+  },
+  "hocStateOpen": "Offen",
+  "@hocStateOpen": {
+    "description": "Handover checklist for owners."
+  },
+  "hocStateReceived": "Vorhanden",
+  "@hocStateReceived": {
+    "description": "Handover checklist for owners."
+  },
+  "hocStateDetected": "Von der App erkannt",
+  "@hocStateDetected": {
+    "description": "Handover checklist for owners."
+  },
+  "hocStateNotNeeded": "Trifft nicht zu",
+  "@hocStateNotNeeded": {
+    "description": "Handover checklist for owners."
+  },
+  "hocProjectFile": "ETS-Projektdatei (.knxproj) mit Passwort",
+  "@hocProjectFile": {
+    "description": "Handover checklist for owners."
+  },
+  "hocProjectFileWhy": "Enthält alle Geräte, Adressen und Einstellungen. Ohne sie lässt sich nichts ändern und kein Gerät ersetzen.",
+  "@hocProjectFileWhy": {
+    "description": "Handover checklist for owners."
+  },
+  "hocProjectCurrent": "Projektdatei ist der letzte Stand",
+  "@hocProjectCurrent": {
+    "description": "Handover checklist for owners."
+  },
+  "hocProjectCurrentWhy": "Oft wird eine ältere Fassung herausgegeben als die, die in den Geräten steckt. Dann stimmen Namen und Funktionen nicht.",
+  "@hocProjectCurrentWhy": {
+    "description": "Handover checklist for owners."
+  },
+  "hocKeyring": "Keyring (.knxkeys) mit Passwort",
+  "@hocKeyring": {
+    "description": "Handover checklist for owners."
+  },
+  "hocKeyringWhy": "Nur bei KNX Secure: Ohne die Schlüssel lassen sich gesicherte Geräte weder mitlesen noch neu einrichten.",
+  "@hocKeyringWhy": {
+    "description": "Handover checklist for owners."
+  },
+  "hocDevicePasswords": "Gerätepasswörter (BCU-Schlüssel)",
+  "@hocDevicePasswords": {
+    "description": "Handover checklist for owners."
+  },
+  "hocDevicePasswordsWhy": "Manche Betriebe sperren Geräte gegen Umprogrammieren. Ohne den Schlüssel bleibt nur das Zurücksetzen ab Werk.",
+  "@hocDevicePasswordsWhy": {
+    "description": "Handover checklist for owners."
+  },
+  "hocGatewayAccess": "Zugang zu IP-Schnittstelle, Router und Netzwerkgeräten",
+  "@hocGatewayAccess": {
+    "description": "Handover checklist for owners."
+  },
+  "hocGatewayAccessWhy": "Adresse, Benutzer und Passwort der KNX-IP-Schnittstelle, dazu Fernzugänge, die der Betrieb eingerichtet hat.",
+  "@hocGatewayAccessWhy": {
+    "description": "Handover checklist for owners."
+  },
+  "hocVisuAccess": "Visualisierung, Server oder Logikmodul: Zugangsdaten und Projekt",
+  "@hocVisuAccess": {
+    "description": "Handover checklist for owners."
+  },
+  "hocVisuAccessWhy": "Für Gira X1, HomeServer, Loxone-Brücken und Ähnliches gibt es eigene Projektdateien und Admin-Zugänge.",
+  "@hocVisuAccessWhy": {
+    "description": "Handover checklist for owners."
+  },
+  "hocCircuitPlan": "Verteilerplan und Stromkreise",
+  "@hocCircuitPlan": {
+    "description": "Handover checklist for owners."
+  },
+  "hocCircuitPlanWhy": "Welche Sicherung und welcher Aktorkanal zu welchem Raum gehört. Den braucht jeder, der später etwas sucht.",
+  "@hocCircuitPlanWhy": {
+    "description": "Handover checklist for owners."
+  },
+  "hocDeviceList": "Geräteliste mit Einbauort, Beschriftung im Verteiler passt dazu",
+  "@hocDeviceList": {
+    "description": "Handover checklist for owners."
+  },
+  "hocDeviceListWhy": "Unterputz-Geräte findet ohne Liste niemand wieder. Die Beschriftung sollte die physikalische Adresse nennen.",
+  "@hocDeviceListWhy": {
+    "description": "Handover checklist for owners."
+  },
+  "hocInstruction": "Einweisung und Ansprechpartner",
+  "@hocInstruction": {
+    "description": "Handover checklist for owners."
+  },
+  "hocInstructionWhy": "Bedienung, was im Störfall zu tun ist, und wer dann kommt.",
+  "@hocInstructionWhy": {
+    "description": "Handover checklist for owners."
+  },
+  "hocSeenProject": "In der App geladen: {devices} Geräte, {groups} Gruppenadressen.",
+  "@hocSeenProject": {
+    "description": "Handover checklist for owners.",
+    "placeholders": {
+      "devices": {
+        "type": "int"
+      },
+      "groups": {
+        "type": "int"
+      }
+    }
+  },
+  "hocSeenCsv": "Geladen ist nur eine Adressliste ohne Geräte. Das ist kein Ersatz für die Projektdatei.",
+  "@hocSeenCsv": {
+    "description": "Handover checklist for owners."
+  },
+  "hocSeenFits": "Passt zu den {count} Adressen, die bisher auf dem Bus gesendet haben.",
+  "@hocSeenFits": {
+    "description": "Handover checklist for owners.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hocSeenStale": "{count, plural, =1{1 Adresse sendet auf dem Bus, die im Projekt fehlt oder dort anders angelegt ist.} other{{count} Adressen senden auf dem Bus, die im Projekt fehlen oder dort anders angelegt sind.}} Das spricht für einen älteren Stand. Frag nach der aktuellen Datei.",
+  "@hocSeenStale": {
+    "description": "Handover checklist for owners.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hocSeenNotYet": "Noch zu wenig mitgehört, um das zu beurteilen. Verbinde die App und lass sie eine Weile laufen.",
+  "@hocSeenNotYet": {
+    "description": "Handover checklist for owners."
+  },
+  "hocSeenKeyring": "In der App ist ein Keyring geladen.",
+  "@hocSeenKeyring": {
+    "description": "Handover checklist for owners."
+  },
+  "hocAllThere": "Alles da. Bewahre die Dateien an zwei Orten auf.",
+  "@hocAllThere": {
+    "description": "Handover checklist for owners."
+  },
+  "hocAsk": "{count, plural, =1{Nachricht für 1 offenen Punkt} other{Nachricht für {count} offene Punkte}}",
+  "@hocAsk": {
+    "description": "Handover checklist for owners.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hocMessageIntro": "Hallo,\n\nfür die Übergabe unserer KNX-Anlage fehlen uns noch diese Unterlagen:",
+  "@hocMessageIntro": {
+    "description": "Handover checklist for owners."
+  },
+  "hocMessageOutro": "Bitte lassen Sie uns diese vor der Schlussrechnung zukommen. Vielen Dank!",
+  "@hocMessageOutro": {
+    "description": "Handover checklist for owners."
+  },
+  "locksTitle": "Sperren",
+  "@locksTitle": {
+    "description": "Locks: who locked what when."
+  },
+  "locksTool": "Wer hat wann was gesperrt, und wann war es wieder frei",
+  "@locksTool": {
+    "description": "Locks: who locked what when."
+  },
+  "locksExplain": "Ein gesperrter Kanal nimmt Befehle an und tut nichts: Das Licht bleibt aus, der Rollladen fährt nicht, der Präsenzmelder schaltet nicht. Hier siehst du, was gerade gesperrt ist, wer es seit wann gesperrt hat, und im Verlauf jede Sperre mit Beginn, Ende, Dauer und wer sie gelöst hat. Die App erkennt Sperradressen am Namen (Sperre, Lock, Freigabe, Enable, Zwangsführung) und am Typ 1.003. Ob 1 oder 0 sperrt, ist je Hersteller verschieden und steht nicht im Telegramm: Eine Sperre sperrt hier bei 1, eine Freigabe bei 0. Stimmt das bei einer Adresse nicht, dreh die Deutung dort um. Alles stammt aus der Aufzeichnung, gesendet wird nichts. Sperren von vor dem Verbinden kennt die App erst, wenn die Adresse wieder gesendet oder gelesen wird.",
+  "@locksExplain": {
+    "description": "Locks: who locked what when."
+  },
+  "locksNow": "Jetzt gesperrt",
+  "@locksNow": {
+    "description": "Locks: who locked what when."
+  },
+  "locksHistory": "Verlauf",
+  "@locksHistory": {
+    "description": "Locks: who locked what when."
+  },
+  "locksAddresses": "Sperradressen",
+  "@locksAddresses": {
+    "description": "Locks: who locked what when."
+  },
+  "locksNone": "Im Projekt sind keine Sperradressen zu erkennen.",
+  "@locksNone": {
+    "description": "Locks: who locked what when."
+  },
+  "locksNoneNow": "Gerade ist nichts gesperrt, soweit die Aufzeichnung reicht.",
+  "@locksNoneNow": {
+    "description": "Locks: who locked what when."
+  },
+  "locksNoHistory": "Seit dem Verbinden wurde keine Sperre wieder gelöst.",
+  "@locksNoHistory": {
+    "description": "Locks: who locked what when."
+  },
+  "locksSince": "seit {time}",
+  "@locksSince": {
+    "description": "Locks: who locked what when.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "locksSinceAtLeast": "seit mindestens {time}",
+  "@locksSinceAtLeast": {
+    "description": "Locks: who locked what when.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "locksLockedBy": "gesperrt von {who}",
+  "@locksLockedBy": {
+    "description": "Locks: who locked what when.",
+    "placeholders": {
+      "who": {
+        "type": "String"
+      }
+    }
+  },
+  "locksReleasedBy": "gelöst von {who}",
+  "@locksReleasedBy": {
+    "description": "Locks: who locked what when.",
+    "placeholders": {
+      "who": {
+        "type": "String"
+      }
+    }
+  },
+  "locksActsOn": "wirkt auf {devices}",
+  "@locksActsOn": {
+    "description": "Locks: who locked what when.",
+    "placeholders": {
+      "devices": {
+        "type": "String"
+      }
+    }
+  },
+  "locksByApp": "dieser App",
+  "@locksByApp": {
+    "description": "Locks: who locked what when."
+  },
+  "locksStateLocked": "gesperrt",
+  "@locksStateLocked": {
+    "description": "Locks: who locked what when."
+  },
+  "locksStateFree": "frei",
+  "@locksStateFree": {
+    "description": "Locks: who locked what when."
+  },
+  "locksStateUnknown": "noch nichts gehört",
+  "@locksStateUnknown": {
+    "description": "Locks: who locked what when."
+  },
+  "locksSenseOne": "1 sperrt",
+  "@locksSenseOne": {
+    "description": "Locks: who locked what when."
+  },
+  "locksSenseZero": "0 sperrt",
+  "@locksSenseZero": {
+    "description": "Locks: who locked what when."
+  },
+  "locksSenseHint": "Deutung je Adresse: Bei einer Sperre sperrt die 1, bei einer Freigabe die 0. Mit dem Pfeil drehst du sie um.",
+  "@locksSenseHint": {
+    "description": "Locks: who locked what when."
+  },
+  "locksFlip": "Deutung umdrehen",
+  "@locksFlip": {
+    "description": "Locks: who locked what when."
+  },
+  "operateLocked": "{name}: gesperrt seit {time} von {who}. Der Befehl kam an, der Kanal bleibt, wie er ist.",
+  "@operateLocked": {
+    "description": "Locks: who locked what when.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      },
+      "who": {
+        "type": "String"
+      }
+    }
+  },
+  "channelTestLocked": "Gesperrt seit {time} von {who}",
+  "@channelTestLocked": {
+    "description": "Locks: who locked what when.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "who": {
+        "type": "String"
+      }
+    }
+  },
+  "operateNotSent": "{name}: nicht gesendet. Der Bus hat das Telegramm nicht bestätigt.",
+  "@operateNotSent": {
+    "description": "Operate and channel check: the write was rejected or not confirmed.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "objectFrom": "von {who}",
+  "@objectFrom": {
+    "description": "Channel objects: sender of the last telegram.",
+    "placeholders": {
+      "who": {
+        "type": "String"
+      }
+    }
+  },
+  "objectBefore": "vorher {value}",
+  "@objectBefore": {
+    "description": "Channel objects: the value before the last one.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "acceptProjectState": "Projektstand",
+  "@acceptProjectState": {
+    "description": "Acceptance PDF: label of the project the installation was checked against."
+  },
+  "acceptProjectImported": "importiert {date}",
+  "@acceptProjectImported": {
+    "description": "Acceptance PDF: import date of the project.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "acceptProjectSize": "Umfang",
+  "@acceptProjectSize": {
+    "description": "Acceptance PDF: label for the size of the project."
+  },
+  "acceptProjectCounts": "{groups} Adressen, {devices} Geräte",
+  "@acceptProjectCounts": {
+    "description": "Acceptance PDF: size of the project.",
+    "placeholders": {
+      "groups": {
+        "type": "int"
+      },
+      "devices": {
+        "type": "int"
+      }
+    }
+  },
+  "acceptProjectFingerprint": "Kennung",
+  "@acceptProjectFingerprint": {
+    "description": "Acceptance PDF: fingerprint of the project state."
+  },
+  "acceptFeedbackYes": "RM ja",
+  "@acceptFeedbackYes": {
+    "description": "Acceptance PDF, channel check: status feedback confirmed (short)."
+  },
+  "acceptFeedbackNo": "RM fehlt",
+  "@acceptFeedbackNo": {
+    "description": "Acceptance PDF, channel check: status feedback missing (short)."
+  },
+  "roomsTitle": "Räume",
+  "@roomsTitle": {
+    "description": "Rooms: operate by room and check command against status feedback."
+  },
+  "roomsTool": "Raum für Raum schalten und sehen, ob die Anzeige stimmt",
+  "@roomsTool": {
+    "description": "Rooms: operate by room and check command against status feedback."
+  },
+  "roomsExplain": "Alles, was sich laut Projekt schalten lässt, nach Raum sortiert: Licht und Steckdosen mit Schalter, Rollläden mit Auf, Stopp, Ab. Die Namen kommen aus dem Projekt. Gesendet wird ein Gruppentelegramm wie von einem Taster; Tor, Tür, Alarm und Zentralfunktionen fragen nach, Heizventile und Sperren lassen sich hier nicht schalten. Das ist eine Prüfseite, keine Visualisierung.\n\nUnter jedem Schalter steht, ob die Rückmeldung zum Befehl passt. Daran liegt es meist, wenn eine Visualisierung oder Home Assistant den falschen Zustand zeigt: Die Rückmeldung fehlt im Projekt, sie sagt etwas anderes als der letzte Befehl (gesperrt, von woanders geschaltet, falsch verknüpft), oder sie antwortet nicht, wenn man sie liest. „Rückmeldungen lesen“ fragt jede einmal ab; das ändert nichts an der Anlage.",
+  "@roomsExplain": {
+    "description": "Rooms: operate by room and check command against status feedback."
+  },
+  "roomsCount": "Räume",
+  "@roomsCount": {
+    "description": "Rooms: operate by room and check command against status feedback."
+  },
+  "roomsControls": "Schaltbar",
+  "@roomsControls": {
+    "description": "Rooms: operate by room and check command against status feedback."
+  },
+  "roomsIssues": "Anzeige unsicher",
+  "@roomsIssues": {
+    "description": "Rooms: operate by room and check command against status feedback."
+  },
+  "roomsNone": "Im Projekt ist nichts zu erkennen, das sich schalten lässt.",
+  "@roomsNone": {
+    "description": "Rooms: operate by room and check command against status feedback."
+  },
+  "roomsNoRoom": "Ohne Raum",
+  "@roomsNoRoom": {
+    "description": "Rooms: operate by room and check command against status feedback."
+  },
+  "roomsMove": "Fahren",
+  "@roomsMove": {
+    "description": "Rooms: operate by room and check command against status feedback."
+  },
+  "roomsReadStatus": "Rückmeldungen lesen",
+  "@roomsReadStatus": {
+    "description": "Rooms: operate by room and check command against status feedback."
+  },
+  "roomsReading": "Lese {done} von {total} …",
+  "@roomsReading": {
+    "description": "Rooms: operate by room and check command against status feedback.",
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "roomsStatusOk": "Rückmeldung passt",
+  "@roomsStatusOk": {
+    "description": "Rooms: operate by room and check command against status feedback."
+  },
+  "roomsStatusUnknown": "Rückmeldung noch nicht gehört",
+  "@roomsStatusUnknown": {
+    "description": "Rooms: operate by room and check command against status feedback."
+  },
+  "roomsStatusNone": "keine Rückmeldung im Projekt",
+  "@roomsStatusNone": {
+    "description": "Rooms: operate by room and check command against status feedback."
+  },
+  "roomsStatusMismatch": "Rückmeldung widerspricht dem Befehl",
+  "@roomsStatusMismatch": {
+    "description": "Rooms: operate by room and check command against status feedback."
+  },
+  "roomsStatusSilent": "Rückmeldung antwortet nicht auf Lesen",
+  "@roomsStatusSilent": {
+    "description": "Rooms: operate by room and check command against status feedback."
+  },
+  "snapTitle": "Vorher/Nachher",
+  "@snapTitle": {
+    "description": "Before/after comparison of the installation state."
+  },
+  "snapTool": "Stand festhalten, später sehen, was anders ist und wer stumm bleibt",
+  "@snapTool": {
+    "description": "Before/after comparison of the installation state."
+  },
+  "snapExplain": "Bevor an der Anlage etwas passiert (Strom aus, Gerät getauscht, neue Programmierung aus der ETS), hältst du den Stand fest: den letzten Wert jeder Adresse und welche Geräte gesendet haben. Danach zeigt die App, was sich geändert hat, welche Werte noch die alten sind, und welche Geräte sich seitdem nicht mehr gemeldet haben. Nach einem Stromausfall findest du so Geräte, die nicht wieder angelaufen sind, und Zustände, die anders zurückgekommen sind. Die App liest nur mit. Ein Gerät, das selten sendet, steht anfangs als stumm da: Lass die App laufen oder lies seine Rückmeldungen (Werkzeug „Räume“). Der Stand bleibt gespeichert, bis du ihn verwirfst.",
+  "@snapExplain": {
+    "description": "Before/after comparison of the installation state."
+  },
+  "snapIntro": "Halte jetzt den Stand fest, bevor etwas an der Anlage passiert. Danach siehst du hier, was anders ist.",
+  "@snapIntro": {
+    "description": "Before/after comparison of the installation state."
+  },
+  "snapTake": "{count, plural, =1{Stand festhalten (1 Wert)} other{Stand festhalten ({count} Werte)}}",
+  "@snapTake": {
+    "description": "Before/after comparison of the installation state.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "snapRetake": "Neuen Stand festhalten",
+  "@snapRetake": {
+    "description": "Before/after comparison of the installation state."
+  },
+  "snapDiscard": "Stand verwerfen",
+  "@snapDiscard": {
+    "description": "Before/after comparison of the installation state."
+  },
+  "snapTakenAt": "Stand von {time} mit {count} Werten",
+  "@snapTakenAt": {
+    "description": "Before/after comparison of the installation state.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "snapChanged": "Geändert",
+  "@snapChanged": {
+    "description": "Before/after comparison of the installation state."
+  },
+  "snapSilentDevices": "Stumme Geräte",
+  "@snapSilentDevices": {
+    "description": "Before/after comparison of the installation state."
+  },
+  "snapQuiet": "Noch alter Wert",
+  "@snapQuiet": {
+    "description": "Before/after comparison of the installation state."
+  },
+  "snapSame": "Unverändert",
+  "@snapSame": {
+    "description": "Before/after comparison of the installation state."
+  },
+  "snapFresh": "Neu dazugekommen",
+  "@snapFresh": {
+    "description": "Before/after comparison of the installation state."
+  },
+  "snapNothingChanged": "Kein Wert hat sich seit dem Stand geändert.",
+  "@snapNothingChanged": {
+    "description": "Before/after comparison of the installation state."
+  },
+  "snapAllBack": "Alle Geräte, die vorher gesendet haben, haben sich wieder gemeldet.",
+  "@snapAllBack": {
+    "description": "Before/after comparison of the installation state."
+  },
+  "snapSilentHint": "Haben vor dem Stand gesendet und seitdem nicht mehr.",
+  "@snapSilentHint": {
+    "description": "Before/after comparison of the installation state."
+  },
+  "snapBeforeAfter": "vorher {before} · jetzt {after}",
+  "@snapBeforeAfter": {
+    "description": "Before/after comparison of the installation state.",
+    "placeholders": {
+      "before": {
+        "type": "String"
+      },
+      "after": {
+        "type": "String"
+      }
+    }
   }
 }

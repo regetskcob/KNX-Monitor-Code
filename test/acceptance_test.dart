@@ -13,6 +13,7 @@ import 'package:knx_monitor/knx/group_catalog.dart';
 import 'package:knx_monitor/knx/telegram.dart';
 import 'package:knx_monitor/l10n/locale_controller.dart';
 import 'package:knx_monitor/model/acceptance.dart';
+import 'package:knx_monitor/model/channel_test.dart';
 import 'package:knx_monitor/model/commissioning.dart';
 import 'package:knx_monitor/platform/storage.dart';
 import 'package:knx_monitor/platform/storage_io.dart';
@@ -238,5 +239,60 @@ void main() {
         );
       });
     }
+  });
+
+  test('Projektstand und Kanalprüfung: nur geschrieben, wenn vorhanden; überstehen Speichern und Laden', () async {
+    final plain = Acceptance.fromJson(jsonDecode(_oldProtocol) as Map<String, Object?>);
+    expect(plain.projectProof, isNull);
+    expect(plain.channelChecks, isEmpty);
+    expect(plain.checksum, _oldProtocolChecksum, reason: 'alte Protokolle behalten ihre Prüfsumme');
+
+    final proof = ProjectProof.of(CatalogStore.instance)!;
+    expect((proof.groups, proof.devices, proof.fingerprint.length), (2, 0, 16));
+    expect(
+      ProjectProof.of(CatalogStore.instance)!.fingerprint,
+      proof.fingerprint,
+      reason: 'gleicher Stand, gleiche Kennung',
+    );
+
+    final a = Acceptance.fromCommissioning(
+      c,
+      customer: 'Familie Muster',
+      site: '',
+      technician: 'D. Elektro',
+      customerSigner: 'MAX MUSTER',
+      remarks: '',
+      followUps: '',
+      language: 'de',
+      customerSignature: Signature.fromJson(const []),
+      technicianSignature: Signature.fromJson(const []),
+      projectProof: proof,
+      channelChecks: [
+        ChannelCheckRecord(
+          device: parseIndividual('1.1.10')!,
+          name: 'Schaltaktor UV',
+          rows: [
+            (label: 'A', title: 'Küche Decke', address: rm, result: ChannelResult.ok, feedback: true, note: null),
+            (
+              label: 'B',
+              title: null,
+              address: null,
+              result: ChannelResult.wrongLoad,
+              feedback: false,
+              note: 'schaltet das Bad',
+            ),
+          ],
+        ),
+      ],
+    );
+    final again = Acceptance.fromJson(jsonDecode(jsonEncode(a.toJson())) as Map<String, Object?>);
+    expect(again.checksum, a.checksum);
+    expect(again.projectProof!.fingerprint, proof.fingerprint);
+    final record = again.channelChecks.single;
+    expect((record.name, record.rows.length, record.issues), ('Schaltaktor UV', 2, 1));
+    expect(record.rows[1].note, 'schaltet das Bad');
+    expect(again.stamped(checkedBy: 'Prüfer').channelChecks, hasLength(1), reason: 'der Stempel nimmt beides mit');
+    // Das PDF baut den Projektstand und die Tabelle der Kanalprüfung ohne Fehler.
+    expect((await buildAcceptancePdf(again)).length, greaterThan(1000));
   });
 }

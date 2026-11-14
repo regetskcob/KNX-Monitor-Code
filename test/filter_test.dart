@@ -59,6 +59,18 @@ void main() {
     expect(m('', k), isTrue);
   });
 
+  test('re: regulärer Ausdruck über Adresse, Name und Wert; halb getippt trifft nichts', () {
+    final k = t('1/2/13', '1.1.5');
+    final temp = t('2/0/0', '1.1.9');
+    expect(m('re:k.che', k), isTrue);
+    expect(m('re:^1/2/1[0-9]', k), isTrue);
+    expect(m('re:(decke|temperatur)', k), isTrue);
+    expect(m('re:(decke|temperatur)', temp), isTrue);
+    expect(m('regex:^2/', k), isFalse);
+    expect(m('-re:k.che', k), isFalse, reason: 'auch verneint');
+    expect(m('re:(kü', k), isFalse, reason: 'ungültiges Muster');
+  });
+
   test('ist: Auffälligkeiten', () {
     expect(m('ist:wiederholt', t('1/2/13', '1.1.5', repeated: true)), isTrue);
     expect(m('is:repeated', t('1/2/13', '1.1.5')), isFalse);

@@ -457,9 +457,9 @@ class CustomerDetailView extends StatelessWidget {
                             VisitKind.manual => () => editVisit(context, id, visit: v),
                             // Ready for the service report as soon as the
                             // installation is active.
-                            VisitKind.faultReport when active && v.ref != null => () => Navigator.of(
-                              context,
-                            ).push(MaterialPageRoute<void>(builder: (_) => ServiceReportScreen(recordingId: v.ref))),
+                            VisitKind.faultReport when active && v.ref != null => () => unawaited(
+                              _openServiceReport(context, recordingId: v.ref),
+                            ),
                             VisitKind.faultReply when active && v.ref != null => () => unawaited(
                               shareFaultReply(context, v),
                             ),
@@ -484,13 +484,7 @@ class CustomerDetailView extends StatelessWidget {
                     CardRow(title: s.customerPdf, value: 'PDF', onTap: () => unawaited(pdf())),
                     // Reports belong to the active installation.
                     if (active)
-                      CardRow(
-                        title: s.srTitle,
-                        value: 'PDF',
-                        onTap: () =>
-                            Navigator.of(context)
-                                .push(MaterialPageRoute<void>(builder: (_) => const ServiceReportScreen())),
-                      ),
+                      CardRow(title: s.srTitle, value: 'PDF', onTap: () => unawaited(_openServiceReport(context))),
                   ],
                 ),
               ],
@@ -760,4 +754,11 @@ class _VisitDialogState extends State<_VisitDialog> {
       horizontDialogAction(context, label: s.commonSave, primary: true, onPressed: _save),
     ],
   );
+}
+
+/// The service report is Pro, also when it is opened from a customer file.
+Future<void> _openServiceReport(BuildContext context, {String? recordingId}) async {
+  if (!await unlock(context, Feature.serviceReport) || !context.mounted) return;
+  await Navigator.of(context)
+      .push(MaterialPageRoute<void>(builder: (_) => ServiceReportScreen(recordingId: recordingId)));
 }

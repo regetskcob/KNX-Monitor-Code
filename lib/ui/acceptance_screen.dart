@@ -8,7 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../catalog_store.dart';
 import '../knx/demo_tunnel.dart';
-import '../knx/telegram.dart' show formatGroup;
+import '../knx/telegram.dart' show formatGroup, formatIndividual;
+import '../model/channel_test.dart';
+import '../model/device_art.dart' show deviceChannels;
 import '../export/pdf_export.dart';
 import '../l10n/locale_controller.dart';
 import '../model/acceptance.dart';
@@ -175,6 +177,12 @@ class _AcceptanceScreenState extends State<AcceptanceScreen> {
       projectNumber: _projectNumber.text,
       warrantyStart: _warrantyStart,
       defectPhotos: photos,
+      projectProof: ProjectProof.of(CatalogStore.instance),
+      channelChecks: [
+        for (final t in await ChannelTestStore.instance.all(deviceChannels))
+          if (t.done > 0)
+            ChannelCheckRecord.of(t, CatalogStore.instance.device(t.device)?.name ?? formatIndividual(t.device)),
+      ],
     );
     // Pro team: fill in "checked by" and submit to the supervisor. Otherwise
     // unchanged.

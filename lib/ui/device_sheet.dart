@@ -18,6 +18,7 @@ import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'actuator_view.dart';
 import 'flush_input_view.dart';
+import 'operate_mode.dart';
 import 'live_updates.dart';
 import 'presence_view.dart';
 import 'push_button_view.dart';
@@ -488,7 +489,7 @@ class _Channels extends StatelessWidget {
               style: theme.textTheme.labelLarge,
             ),
           ),
-          ChannelObjects(channel: c, latest: log.latest),
+          ChannelObjects(channel: c, latest: log.latest, log: log),
         ],
       ],
     );
@@ -571,7 +572,31 @@ Widget deviceDrawing(
 }) {
   final catalog = CatalogStore.instance.catalog;
   final art = artFor(address);
-  return switch (art != null ? DeviceShape.din : shapeOf(address, catalog)) {
+  final shape = art != null ? DeviceShape.din : shapeOf(address, catalog);
+  // Actuators and push buttons can be operated from their drawing.
+  if (!compact && (shape == DeviceShape.din || shape == DeviceShape.pushButton)) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // The channel check is for actuators: on a push button there is no load to look at.
+        OperateBar(device: shape == DeviceShape.din ? address : null, log: log),
+        _drawing(address, log, shape, selected: selected, onSelected: onSelected, compact: compact),
+      ],
+    );
+  }
+  return _drawing(address, log, shape, selected: selected, onSelected: onSelected, compact: compact);
+}
+
+Widget _drawing(
+  int address,
+  TelegramLog log,
+  DeviceShape shape, {
+  int? selected,
+  ValueChanged<int?>? onSelected,
+  required bool compact,
+}) {
+  final catalog = CatalogStore.instance.catalog;
+  return switch (shape) {
     DeviceShape.pushButton => PushButtonView(button: pushButtonOf(address, catalog)!, log: log, compact: compact),
     DeviceShape.flushInput => FlushInputView(address: address, log: log, compact: compact),
     DeviceShape.ceilingPresence => PresenceView(address: address, log: log, compact: compact),

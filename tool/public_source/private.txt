@@ -78,6 +78,7 @@ lib/export/pdf_home_plan.dart
 lib/theme/device_icons.dart
 assets/home_plan
 test/home_plan_exchange_test.dart
+test/home_plan_extras_test.dart
 test/home_plan_live_test.dart
 test/home_plan_screen_test.dart
 test/home_plan_test.dart

@@ -391,6 +391,14 @@ class DemoTunnel extends KnxTunnel {
       case 2:
         walk(_ga('4/0/1'), 0.6, 0, 9);
         _emit(_ga('4/0/1'));
+        // Wind alarm: above 7 m/s the weather station locks the blinds, below 5 it releases
+        // them. Only a change sends, so the usual traffic stays as it is.
+        final wind = _values[_ga('4/0/1')]!;
+        final locked = _values[_windLock] == 1;
+        if (!locked && wind > 7 || locked && wind < 5) {
+          _values[_windLock] = locked ? 0 : 1;
+          _emit(_windLock);
+        }
         if (_tick % 12 == 2) {
           walk(_humidity, 2, 40, 70);
           _emit(_humidity);
@@ -638,6 +646,9 @@ abstract final class DemoDali {
 /// Demo findings: valve state without read flag, humidity with wrong length.
 final _silent = _ga('2/3/3');
 final _humidity = _ga('2/4/2');
+
+/// Lock of all blinds, set by the weather station at wind alarm.
+final _windLock = _ga('3/3/0');
 int _pa(String s) => parseIndividual(s)!;
 
 /// Rooms: (number, abbreviation DE, abbreviation EN).
@@ -824,6 +835,13 @@ GroupCatalog demoCatalog() {
     send('1.2.20'),
     for (final r in _rooms) hear('1.1.${30 + r.$1}'),
   ]);
+  ga(
+    '3/3/0',
+    t('Jalousien Wind Sperre', 'Blinds wind lock'),
+    t('Jalousien › Sperre', 'Blinds › Lock'),
+    const Dpt(1, 3),
+    [send('1.2.20'), hear('1.1.12')],
+  );
   ga('4/0/1', t('Windgeschwindigkeit', 'Wind speed'), t('Wetter', 'Weather'), const Dpt(9, 5), [
     send('1.2.20'),
     hear('1.1.12'),

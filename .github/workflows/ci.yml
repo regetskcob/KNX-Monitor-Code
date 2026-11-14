@@ -110,7 +110,7 @@ jobs:
         with:
           name: knx-monitor-linux
           path: knx-monitor-linux-x64.tar.gz
-          retention-days: 7
+          retention-days: 1
 
   windows:
     if: startsWith(github.ref, 'refs/tags/app-v') || github.event_name == 'workflow_dispatch'
@@ -130,7 +130,7 @@ jobs:
         with:
           name: knx-monitor-windows
           path: build/windows/x64/runner/Release
-          retention-days: 7
+          retention-days: 1
 
   # Installable APK as a build artifact for testing. Without key.properties
   # it is signed with the debug key (not for Google Play).
@@ -156,7 +156,7 @@ jobs:
         with:
           name: knx-monitor-android
           path: build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 7
+          retention-days: 1
 
   # Add-on server.
   addon-server:

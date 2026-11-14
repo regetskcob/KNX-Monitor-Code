@@ -191,6 +191,12 @@ class InstallationStore extends ChangeNotifier {
     HomePlanStore.previousPath,
     FloorViewStore.path,
     KeyringStore.sequencePath,
+    // Results and settings of the tools (channel check, handover check, lock readings,
+    // before/after): they belong to the installation and go with it.
+    'channel_tests.json',
+    'handover_check.json',
+    'lock_polarity.json',
+    'snapshot.json',
   ];
 
   /// Folders with the installation's documents; deleted along with it (customer data).

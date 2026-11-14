@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -15,11 +16,14 @@ import '../l10n/locale_controller.dart';
 import '../model/commissioning.dart' show isStatusGroup;
 import '../model/device_art.dart';
 import '../model/device_channels.dart';
+import '../model/plain_text.dart';
 import '../model/telegram_log.dart';
 import '../model/topology.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'live_updates.dart';
+import 'operate_mode.dart';
+import 'telegram_row.dart' show formatTime;
 
 /// Device drawn as a technical drawing of a DIN-rail device: terminal strips at
 /// the top and bottom (one terminal pair per channel), front plate with channel
@@ -263,7 +267,21 @@ class _ActuatorViewState extends State<ActuatorView> with TickerProviderStateMix
     ),
     child: Tooltip(
       message: [?st.channel.title, if (st.text.isNotEmpty) st.text].join(' · '),
-      child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: () => _select(i)),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        // Armed: the tap sends like a push button would; otherwise it selects.
+        // Only the full drawing has the switch above it: a compact one never sends.
+        onTap: () => operateMode.value && !widget.compact ? _operate(st.channel) : _select(i),
+      ),
+    ),
+  );
+
+  void _operate(DeviceChannel channel) => unawaited(
+    operateChannel(
+      context,
+      channel,
+      widget.log,
+      name: channel.title ?? (channel.label.isEmpty ? s.deviceGeneral : channel.label),
     ),
   );
 
@@ -607,7 +625,7 @@ class _ActuatorViewState extends State<ActuatorView> with TickerProviderStateMix
                     ? const SizedBox(width: double.infinity)
                     : Padding(
                         padding: const EdgeInsets.only(top: HzSpace.s8),
-                        child: ChannelObjects(channel: selected, latest: widget.log.latest),
+                        child: ChannelObjects(channel: selected, latest: widget.log.latest, log: widget.log),
                       ),
               ),
           ],
@@ -1179,10 +1197,44 @@ class _DevicePainter extends CustomPainter {
 /// Objects of a channel with their current value: number, name, address and
 /// DPT, value on the right; values in Monaspace, rows separated by hairlines.
 class ChannelObjects extends StatelessWidget {
-  const ChannelObjects({super.key, required this.channel, required this.latest});
+  const ChannelObjects({super.key, required this.channel, required this.latest, this.log});
 
   final DeviceChannel channel;
   final Map<int, Telegram> latest;
+
+  /// With the recording, every object also says when its value came, from whom,
+  /// and what it was before.
+  final TelegramLog? log;
+
+  /// How far back the previous value is looked for.
+  static const _lookBack = 5000;
+
+  /// The value telegram on the address of [last] before [last], if the recent
+  /// recording has one.
+  static Telegram? _previous(List<Telegram> log, Telegram last) {
+    final from = log.length - 1, to = log.length > _lookBack ? log.length - _lookBack : 0;
+    var seen = false;
+    for (var i = from; i >= to; i--) {
+      final t = log[i];
+      if (t.destination != last.destination || t.type == TelegramType.read) continue;
+      if (seen) return t;
+      seen = identical(t, last) || !t.time.isAfter(last.time);
+    }
+    return null;
+  }
+
+  /// "14:02:10 · von Taster Küche · vorher Aus" for the last telegram of an object.
+  String? _trail(Telegram? last) {
+    final log = this.log;
+    if (log == null || last == null || last.type == TelegramType.read) return null;
+    final store = CatalogStore.instance;
+    final before = _previous(log.log, last);
+    return [
+      formatTime(last.time, millis: false),
+      s.objectFrom(last.outgoing ? s.locksByApp : (plainSender(last.source) ?? formatIndividual(last.source))),
+      if (before != null) s.objectBefore(store.value(before)),
+    ].join(metaSeparator);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1243,6 +1295,8 @@ class ChannelObjects extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: meta,
                           ),
+                          if (_trail(latest[o.address]) case final trail?)
+                            Text(trail, maxLines: 1, overflow: TextOverflow.ellipsis, style: meta),
                         ],
                       ),
                     ),

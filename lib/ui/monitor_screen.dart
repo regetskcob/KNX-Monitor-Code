@@ -19,6 +19,8 @@ import '../knx/shared_tunnel.dart';
 import '../model/send_scheduler.dart';
 import '../model/auto_reconnect.dart';
 import '../model/health.dart';
+import '../model/heating_check.dart';
+import '../model/locks.dart';
 import '../model/history_store.dart';
 import '../model/recording.dart';
 import '../monitor_model.dart';
@@ -32,6 +34,11 @@ import 'handover_screen.dart';
 import 'commissioning_screen.dart';
 import 'floor_view_screen.dart';
 import 'health_screen.dart';
+import 'handover_check_screen.dart';
+import 'heating_check_screen.dart';
+import 'locks_screen.dart';
+import 'room_control_screen.dart';
+import 'snapshot_screen.dart';
 import 'home_plan/home_plan_screen.dart';
 import 'diagnostics_screen.dart';
 import 'trigger_dialog.dart';
@@ -592,6 +599,15 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             open: (_) =>
                 pushTool<void>(context, (_) => ReportFlowScreen(log: _model, session: _model.session, tunnel: _tunnel)),
           ),
+          // Handover checklist for owners and builders, Free.
+          ToolEntry(
+            icon: AppIcons.handover,
+            title: s.hocTitle,
+            subtitle: s.hocTool,
+            group: ToolGroup.documents,
+            order: 6,
+            open: (_) => openHandoverCheck(context, log: _model),
+          ),
           ToolEntry(
             icon: AppIcons.annotation,
             title: s.annotationsTitle,
@@ -634,6 +650,45 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
               group: ToolGroup.check,
               order: 2,
               open: (_) => openDali(context, asTool: true),
+            ),
+          // Rooms: operate what the project has and check the feedback, Free.
+          if (!CatalogStore.instance.catalog.isEmpty)
+            ToolEntry(
+              icon: AppIcons.objects,
+              title: s.roomsTitle,
+              subtitle: s.roomsTool,
+              group: ToolGroup.check,
+              order: 1,
+              open: (_) => pushTool<void>(context, (_) => RoomControlScreen(log: _model)),
+            ),
+          // Before/after: freeze the state, compare later, Free.
+          ToolEntry(
+            icon: AppIcons.cycle,
+            title: s.snapTitle,
+            subtitle: s.snapTool,
+            group: ToolGroup.check,
+            order: 2,
+            open: (_) => pushTool<void>(context, (_) => SnapshotScreen(log: _model)),
+          ),
+          // Locks: who locked what when, Free.
+          if (hasLocks(CatalogStore.instance.catalog))
+            ToolEntry(
+              icon: AppIcons.locked,
+              title: s.locksTitle,
+              subtitle: s.locksTool,
+              group: ToolGroup.check,
+              order: 1,
+              open: (_) => pushTool<void>(context, (_) => LocksScreen(log: _model)),
+            ),
+          // Heating per room in plain words: for people who are not electricians, Free.
+          if (hasHeating(CatalogStore.instance.catalog))
+            ToolEntry(
+              icon: AppIcons.thermostat,
+              title: s.heatTitle,
+              subtitle: s.heatTool,
+              group: ToolGroup.check,
+              order: 1,
+              open: (_) => pushTool<void>(context, (_) => HeatingCheckScreen(log: _model)),
             ),
           ToolEntry(
             icon: AppIcons.commissioning,

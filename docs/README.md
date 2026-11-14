@@ -55,6 +55,15 @@ this folder on every release; changes go here.
 ## KNX and ETS
 
 - [group-addresses.md](group-addresses.md): naming schemes the app recognises.
+- [device-operation.md](device-operation.md): operating actuators and push
+  buttons from their drawing, the channel check and the rooms page: what is
+  sent, how success is confirmed, what is never sent, why a display may be wrong.
+- [locks.md](locks.md): locks: which addresses count, how lock periods are
+  read from the recording, turning the reading around, limits.
+- [before-after.md](before-after.md): freezing the state of an installation
+  and comparing it later: changed values, silent devices.
+- [heating-check.md](heating-check.md): the heating check per room: which
+  addresses count, the verdicts and their thresholds, limits.
 - [dali.md](dali.md): DALI lighting behind a KNX-DALI gateway: decoded datapoint
   types, the model in `dali.json`, alarms, the emergency lighting log, gateway
   profiles.

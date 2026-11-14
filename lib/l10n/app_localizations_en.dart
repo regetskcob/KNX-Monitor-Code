@@ -1054,7 +1054,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get filterHelpBody =>
-      'Space = AND · comma = OR · -term = NOT\n\n1/2/3 exact · 1/2 range · 1/*/3 or 1/2/1* with wildcard\n1.1.5 sender · 1.1.* line · from:1.1.5\n\ntype:w|r|a (write, read, response)\ndpt:9 or dpt:9.001\ntime:14:05 · time:14:05-14:10 (time of day, end excluded)\nis:alarm · is:repeated · is:unanswered · is:unknown\nis:own · is:received (sent by you or from the bus)\ntap:1.2 or tap:1.2|1.3 (seen at these tap points) · is:single (seen at one tap point only)\n\nAnything else searches name, range, device and value – umlauts optional.\n\nSeveral OR groups each get a colour in the list. \"Context\" shows the seconds before and after every match.\n\nExamples:\n1/*/* is:unanswered – unanswered reads in main group 1\nkitchen, bath -switch – kitchen or bath, without switch';
+      'Space = AND · comma = OR · -term = NOT\n\n1/2/3 exact · 1/2 range · 1/*/3 or 1/2/1* with wildcard\n1.1.5 sender · 1.1.* line · from:1.1.5\n\ntype:w|r|a (write, read, response)\ndpt:9 or dpt:9.001\ntime:14:05 · time:14:05-14:10 (time of day, end excluded)\nre:light.*(kitchen|bath) (regular expression over address, name, device and value; no spaces or commas)\nis:alarm · is:repeated · is:unanswered · is:unknown\nis:own · is:received (sent by you or from the bus)\ntap:1.2 or tap:1.2|1.3 (seen at these tap points) · is:single (seen at one tap point only)\n\nAnything else searches name, range, device and value – umlauts optional.\n\nSeveral OR groups each get a colour in the list. \"Context\" shows the seconds before and after every match.\n\nExamples:\n1/*/* is:unanswered – unanswered reads in main group 1\nkitchen, bath -switch – kitchen or bath, without switch';
 
   @override
   String get checkTitle => 'Project check';
@@ -12283,4 +12283,624 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get learnNoRoom => 'No room';
+
+  @override
+  String get operateMode => 'Operate';
+
+  @override
+  String get operateHint => 'Tapping a channel or key sends to the bus, like a push button.';
+
+  @override
+  String get operateOffline => 'Not connected: operating needs a connection to the bus.';
+
+  @override
+  String operateNothing(String name) {
+    return '$name: no switching object that can be sent.';
+  }
+
+  @override
+  String operateSent(String name, String value) {
+    return '$name: $value sent';
+  }
+
+  @override
+  String operateConfirmed(String name, String value) {
+    return '$name: $value, feedback confirmed';
+  }
+
+  @override
+  String operateNoFeedback(String name, String value) {
+    return '$name: $value sent, but no feedback. Locked, not linked or without a load?';
+  }
+
+  @override
+  String get operateUp => 'Up';
+
+  @override
+  String get operateStop => 'Stop';
+
+  @override
+  String get operateDown => 'Down';
+
+  @override
+  String get operateBlindHint => 'Only move it while you can see the window and the blind.';
+
+  @override
+  String operateCautionTitle(String name) {
+    return 'Really switch $name?';
+  }
+
+  @override
+  String get operateCautionBody =>
+      'The name sounds like a gate, door, lock, alarm or central function. Only send if you can see what moves and nobody is in the way.';
+
+  @override
+  String get operateCautionSend => 'Send';
+
+  @override
+  String get channelTestTitle => 'Check channels';
+
+  @override
+  String get channelTestTool => 'Switch channel by channel and record what reacts';
+
+  @override
+  String get channelTestExplain =>
+      'Which channel is which lamp? The app switches one channel on, you say what came on, then it switches it off again and takes the next. It notices by itself whether the actuator sent its status feedback. Blinds, gates and channels without a switching address you trigger by hand and only rate. What is sent is a group telegram like from a push button; the manual keys on the device are something else. The result stays saved and can be shared as text.';
+
+  @override
+  String get channelTestChecked => 'Checked';
+
+  @override
+  String get channelTestIssues => 'Issues';
+
+  @override
+  String get channelTestChannels => 'Channels';
+
+  @override
+  String get channelTestNone => 'The project knows no channels for this device.';
+
+  @override
+  String get channelTestSwitchOn => 'Switch on';
+
+  @override
+  String get channelTestSwitching => 'Switching …';
+
+  @override
+  String get channelTestQuestion => 'What reacted?';
+
+  @override
+  String get channelTestNote => 'Note (e.g. what came on instead)';
+
+  @override
+  String get channelTestOk => 'Right load';
+
+  @override
+  String get channelTestWrong => 'Wrong load';
+
+  @override
+  String get channelTestNothing => 'Nothing';
+
+  @override
+  String get channelTestSkip => 'Skip';
+
+  @override
+  String get channelTestSkipped => 'Skipped';
+
+  @override
+  String get channelTestOpen => 'Open';
+
+  @override
+  String get channelTestByHand =>
+      'The app does not switch this channel itself (blind, gate, central function or no switching address). Trigger it by hand and rate it.';
+
+  @override
+  String get channelTestFeedbackYes => 'Feedback confirmed';
+
+  @override
+  String get channelTestFeedbackNo => 'No feedback';
+
+  @override
+  String get channelTestFeedbackNone => 'Channel has no feedback address';
+
+  @override
+  String get channelTestDone => 'All channels are checked';
+
+  @override
+  String channelTestDoneHint(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count channels have issues.',
+      one: '1 channel has an issue.',
+      zero: 'Nothing unusual.',
+    );
+    return '$_temp0 Tap a channel to check it again.';
+  }
+
+  @override
+  String get channelTestShare => 'Share report';
+
+  @override
+  String channelTestReport(String device, String address) {
+    return 'Channel check $device ($address)';
+  }
+
+  @override
+  String get heatTitle => 'Check heating';
+
+  @override
+  String get heatTool => 'Per room: actual, setpoint, valve and what it means';
+
+  @override
+  String get heatExplain =>
+      'A room stays cold or gets too warm? Here actual temperature, setpoint and valve stand side by side per room, with a verdict in plain words: is the controller asking for no heat at all, is it heating right now, or is the valve open and it still does not get warm? That tells you whether to ask the electrician (controller, actuator, programming) or the heating engineer (drive, hydraulics). The app only listens and changes nothing. What it cannot see: parameters in the device, pressure and flow, stuck valves.';
+
+  @override
+  String get heatRooms => 'Rooms';
+
+  @override
+  String get heatIssues => 'Issues';
+
+  @override
+  String get heatNone => 'The project shows no heating addresses (actual temperature, setpoint, valve per room).';
+
+  @override
+  String get heatLimits =>
+      'Scale: more than 1 K away from the setpoint counts; an actual temperature counts as missing after 2 h without a telegram; with an open valve the room should gain at least 0.3 K in 90 min.';
+
+  @override
+  String get heatActual => 'Actual';
+
+  @override
+  String get heatSetpoint => 'Setpoint';
+
+  @override
+  String get heatValve => 'Valve';
+
+  @override
+  String get heatOk => 'All right';
+
+  @override
+  String get heatOkHint => 'The room is at its setpoint.';
+
+  @override
+  String get heatHeating => 'Heating';
+
+  @override
+  String get heatHeatingHint =>
+      'The room is colder than wanted and the valve is open. That takes time; if it stays like this, another finding will show here later.';
+
+  @override
+  String get heatNotCalling => 'Controller asks for no heat';
+
+  @override
+  String get heatNotCallingHint =>
+      'The room is colder than the setpoint, but the valve is closed. Common reasons: operating mode (night, frost protection, summer), an open window contact or a lock. That is one for the electrician: controller and programming.';
+
+  @override
+  String get heatNotWarming => 'Valve open, room does not warm up';
+
+  @override
+  String get heatNotWarmingHint =>
+      'The controller has been asking for heat for more than 90 minutes, but the temperature does not rise. The bus does what it should. Have it checked: is the valve drive seated, does it really open, is the channel on the heating actuator assigned to the right room, does warm water arrive? That is usually one for the heating engineer.';
+
+  @override
+  String get heatOverheating => 'Too warm, valve open anyway';
+
+  @override
+  String get heatOverheatingHint =>
+      'The room is warmer than the setpoint and the valve is open. Common reasons: sensors or channels are swapped (the valve belongs to another room), or the actuator runs in emergency mode. That is one for the electrician.';
+
+  @override
+  String get heatStale => 'Actual temperature missing';
+
+  @override
+  String get heatStaleHint =>
+      'The actual temperature has not been sent for more than 2 hours. Without it the room is controlled blind, and many actuators then switch to an emergency mode. Have it checked: is the sensor or push button still sending, has it failed?';
+
+  @override
+  String get heatIncomplete => 'Too few values';
+
+  @override
+  String get heatIncompleteHint =>
+      'One value is missing for a verdict. Installations often send setpoint and valve only on change: let the app listen longer or change the setpoint once at the room controller.';
+
+  @override
+  String get heatNoData => 'Nothing heard yet';
+
+  @override
+  String get heatNoDataHint => 'No telegram for this room since connecting. Let the app keep listening.';
+
+  @override
+  String get heatShare => 'Share findings';
+
+  @override
+  String get heatReportHeading => 'Heating per room, read from the KNX bus';
+
+  @override
+  String get hocTitle => 'Handover check';
+
+  @override
+  String get hocTool => 'What your electrician must hand over, and what is still missing';
+
+  @override
+  String get hocExplain =>
+      'A KNX installation is only really yours once you hold its documents. Without the project file no other company can change anything or replace a broken device without laboriously reconstructing the installation. Settle the handover before the final invoice, or before signing when you buy a house. The list shows what belongs to it. The app recognises some of it by itself: whether a project is loaded and whether it matches what is sent on the bus. You tick off the rest. For everything open it writes a message to the electrician. This is not legal advice; what you are entitled to is governed by your contract.';
+
+  @override
+  String get hocIntro => 'Best settled before the final invoice. The app fills in what it can see itself.';
+
+  @override
+  String get hocDone => 'There';
+
+  @override
+  String get hocMissing => 'Open';
+
+  @override
+  String get hocStateOpen => 'Open';
+
+  @override
+  String get hocStateReceived => 'There';
+
+  @override
+  String get hocStateDetected => 'Recognised by the app';
+
+  @override
+  String get hocStateNotNeeded => 'Does not apply';
+
+  @override
+  String get hocProjectFile => 'ETS project file (.knxproj) with its password';
+
+  @override
+  String get hocProjectFileWhy =>
+      'Holds every device, address and setting. Without it nothing can be changed and no device replaced.';
+
+  @override
+  String get hocProjectCurrent => 'The project file is the latest state';
+
+  @override
+  String get hocProjectCurrentWhy =>
+      'Often an older version is handed out than the one in the devices. Then names and functions do not match.';
+
+  @override
+  String get hocKeyring => 'Keyring (.knxkeys) with its password';
+
+  @override
+  String get hocKeyringWhy =>
+      'Only with KNX Secure: without the keys, secured devices can neither be read nor set up again.';
+
+  @override
+  String get hocDevicePasswords => 'Device passwords (BCU keys)';
+
+  @override
+  String get hocDevicePasswordsWhy =>
+      'Some companies lock devices against reprogramming. Without the key only a factory reset remains.';
+
+  @override
+  String get hocGatewayAccess => 'Access to IP interface, router and network devices';
+
+  @override
+  String get hocGatewayAccessWhy =>
+      'Address, user and password of the KNX IP interface, plus any remote access the company set up.';
+
+  @override
+  String get hocVisuAccess => 'Visualization, server or logic module: access data and project';
+
+  @override
+  String get hocVisuAccessWhy =>
+      'Gira X1, HomeServer, Loxone bridges and the like have their own project files and admin accounts.';
+
+  @override
+  String get hocCircuitPlan => 'Distribution board plan and circuits';
+
+  @override
+  String get hocCircuitPlanWhy =>
+      'Which fuse and which actuator channel belongs to which room. Anyone looking for something later needs it.';
+
+  @override
+  String get hocDeviceList => 'Device list with locations, labels in the board match it';
+
+  @override
+  String get hocDeviceListWhy =>
+      'Nobody finds flush-mounted devices again without a list. The labels should name the individual address.';
+
+  @override
+  String get hocInstruction => 'Instruction and contact';
+
+  @override
+  String get hocInstructionWhy => 'How to operate it, what to do in case of a fault, and who comes then.';
+
+  @override
+  String hocSeenProject(int devices, int groups) {
+    return 'Loaded in the app: $devices devices, $groups group addresses.';
+  }
+
+  @override
+  String get hocSeenCsv => 'Only an address list without devices is loaded. That does not replace the project file.';
+
+  @override
+  String hocSeenFits(int count) {
+    return 'Matches the $count addresses that have sent on the bus so far.';
+  }
+
+  @override
+  String hocSeenStale(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count addresses send on the bus that are missing from the project or set up differently there.',
+      one: '1 address sends on the bus that is missing from the project or set up differently there.',
+    );
+    return '$_temp0 That points to an older state. Ask for the current file.';
+  }
+
+  @override
+  String get hocSeenNotYet => 'Too little heard so far to judge. Connect the app and let it run for a while.';
+
+  @override
+  String get hocSeenKeyring => 'A keyring is loaded in the app.';
+
+  @override
+  String get hocAllThere => 'Everything is there. Keep the files in two places.';
+
+  @override
+  String hocAsk(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Message for $count open items',
+      one: 'Message for 1 open item',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get hocMessageIntro =>
+      'Hello,\n\nfor the handover of our KNX installation we are still missing these documents:';
+
+  @override
+  String get hocMessageOutro => 'Please send them to us before the final invoice. Thank you!';
+
+  @override
+  String get locksTitle => 'Locks';
+
+  @override
+  String get locksTool => 'Who locked what when, and when it was free again';
+
+  @override
+  String get locksExplain =>
+      'A locked channel takes commands and does nothing: the light stays off, the blind does not move, the presence detector does not switch. Here you see what is locked right now, who locked it and since when, and in the history every lock with its start, end, duration and who released it. The app recognises lock addresses by their name (Sperre, lock, Freigabe, enable, forced control) and by type 1.003. Whether 1 or 0 locks differs between manufacturers and is not in the telegram: a lock locks on 1 here, an enable on 0. If that is wrong for an address, turn its reading around there. Everything comes from the recording, nothing is sent. Locks from before connecting are only known once the address sends again or is read.';
+
+  @override
+  String get locksNow => 'Locked now';
+
+  @override
+  String get locksHistory => 'History';
+
+  @override
+  String get locksAddresses => 'Lock addresses';
+
+  @override
+  String get locksNone => 'The project shows no lock addresses.';
+
+  @override
+  String get locksNoneNow => 'Nothing is locked right now, as far as the recording reaches.';
+
+  @override
+  String get locksNoHistory => 'No lock has been released since connecting.';
+
+  @override
+  String locksSince(String time) {
+    return 'since $time';
+  }
+
+  @override
+  String locksSinceAtLeast(String time) {
+    return 'since at least $time';
+  }
+
+  @override
+  String locksLockedBy(String who) {
+    return 'locked by $who';
+  }
+
+  @override
+  String locksReleasedBy(String who) {
+    return 'released by $who';
+  }
+
+  @override
+  String locksActsOn(String devices) {
+    return 'acts on $devices';
+  }
+
+  @override
+  String get locksByApp => 'this app';
+
+  @override
+  String get locksStateLocked => 'locked';
+
+  @override
+  String get locksStateFree => 'free';
+
+  @override
+  String get locksStateUnknown => 'nothing heard yet';
+
+  @override
+  String get locksSenseOne => '1 locks';
+
+  @override
+  String get locksSenseZero => '0 locks';
+
+  @override
+  String get locksSenseHint => 'Reading per address: a lock locks on 1, an enable on 0. The arrow turns it around.';
+
+  @override
+  String get locksFlip => 'Turn the reading around';
+
+  @override
+  String operateLocked(String name, String time, String who) {
+    return '$name: locked since $time by $who. The command arrived, the channel stays as it is.';
+  }
+
+  @override
+  String channelTestLocked(String time, String who) {
+    return 'Locked since $time by $who';
+  }
+
+  @override
+  String operateNotSent(String name) {
+    return '$name: not sent. The bus did not confirm the telegram.';
+  }
+
+  @override
+  String objectFrom(String who) {
+    return 'from $who';
+  }
+
+  @override
+  String objectBefore(String value) {
+    return 'before $value';
+  }
+
+  @override
+  String get acceptProjectState => 'Project state';
+
+  @override
+  String acceptProjectImported(String date) {
+    return 'imported $date';
+  }
+
+  @override
+  String get acceptProjectSize => 'Size';
+
+  @override
+  String acceptProjectCounts(int groups, int devices) {
+    return '$groups addresses, $devices devices';
+  }
+
+  @override
+  String get acceptProjectFingerprint => 'Fingerprint';
+
+  @override
+  String get acceptFeedbackYes => 'feedback ok';
+
+  @override
+  String get acceptFeedbackNo => 'no feedback';
+
+  @override
+  String get roomsTitle => 'Rooms';
+
+  @override
+  String get roomsTool => 'Switch room by room and see whether the display is right';
+
+  @override
+  String get roomsExplain =>
+      'Everything the project lets you switch, sorted by room: lights and sockets with a switch, blinds with up, stop, down. The names come from the project. What is sent is a group telegram like from a push button; gates, doors, alarms and central functions ask first, heating valves and locks cannot be switched here. This is a test page, not a visualization.\n\nBelow every switch it says whether the status feedback matches the command. That is usually the reason when a visualization or Home Assistant shows the wrong state: the feedback is missing from the project, it says something else than the last command (locked, switched from elsewhere, wrongly linked), or it does not answer when read. “Read feedback” asks each one once; that changes nothing in the installation.';
+
+  @override
+  String get roomsCount => 'Rooms';
+
+  @override
+  String get roomsControls => 'Switchable';
+
+  @override
+  String get roomsIssues => 'Display unsure';
+
+  @override
+  String get roomsNone => 'The project shows nothing that can be switched.';
+
+  @override
+  String get roomsNoRoom => 'No room';
+
+  @override
+  String get roomsMove => 'Move';
+
+  @override
+  String get roomsReadStatus => 'Read feedback';
+
+  @override
+  String roomsReading(int done, int total) {
+    return 'Reading $done of $total …';
+  }
+
+  @override
+  String get roomsStatusOk => 'feedback matches';
+
+  @override
+  String get roomsStatusUnknown => 'feedback not heard yet';
+
+  @override
+  String get roomsStatusNone => 'no feedback in the project';
+
+  @override
+  String get roomsStatusMismatch => 'feedback contradicts the command';
+
+  @override
+  String get roomsStatusSilent => 'feedback does not answer a read';
+
+  @override
+  String get snapTitle => 'Before/after';
+
+  @override
+  String get snapTool => 'Freeze the state, see later what is different and who stays silent';
+
+  @override
+  String get snapExplain =>
+      'Before something happens to the installation (power off, a device swapped, new programming from the ETS) you freeze the state: the last value of every address and which devices have sent. Afterwards the app shows what changed, which values are still the old ones, and which devices have not reported since. After a power failure this finds devices that did not start again and states that came back differently. The app only listens. A device that sends rarely shows as silent at first: let the app run or read its feedback (tool “Rooms”). The state stays saved until you discard it.';
+
+  @override
+  String get snapIntro =>
+      'Freeze the state now, before anything happens to the installation. Afterwards you see here what is different.';
+
+  @override
+  String snapTake(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Freeze the state ($count values)',
+      one: 'Freeze the state (1 value)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get snapRetake => 'Freeze a new state';
+
+  @override
+  String get snapDiscard => 'Discard the state';
+
+  @override
+  String snapTakenAt(String time, int count) {
+    return 'State of $time with $count values';
+  }
+
+  @override
+  String get snapChanged => 'Changed';
+
+  @override
+  String get snapSilentDevices => 'Silent devices';
+
+  @override
+  String get snapQuiet => 'Still the old value';
+
+  @override
+  String get snapSame => 'Unchanged';
+
+  @override
+  String get snapFresh => 'New since then';
+
+  @override
+  String get snapNothingChanged => 'No value has changed since the state.';
+
+  @override
+  String get snapAllBack => 'Every device that sent before has reported again.';
+
+  @override
+  String get snapSilentHint => 'Sent before the state and not since.';
+
+  @override
+  String snapBeforeAfter(String before, String after) {
+    return 'before $before · now $after';
+  }
 }

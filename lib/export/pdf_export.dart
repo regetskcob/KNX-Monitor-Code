@@ -11,6 +11,7 @@ import '../catalog_store.dart';
 import '../knx/demo_tunnel.dart';
 import '../knx/group_catalog.dart';
 import '../knx/telegram.dart';
+import '../model/channel_test.dart';
 import '../model/betrieb_mode.dart';
 import '../model/acceptance.dart';
 import '../model/alarms.dart';
@@ -443,6 +444,18 @@ Future<Uint8List> buildAcceptancePdf(Acceptance a, {Map<String, Uint8List> photo
         (s.connectGateway, a.gateway ?? '—', 3),
       ], fonts),
       if (a.hasDetails) ...[pw.SizedBox(height: 8), pdfSummary(acceptanceDetailCells(a), fonts)],
+      if (a.projectProof case final p?) ...[
+        pw.SizedBox(height: 8),
+        pdfSummary([
+          (
+            s.acceptProjectState,
+            [?p.file, if (p.imported case final d?) s.acceptProjectImported(pdfDate(d))].join(' · ').ifEmpty('—'),
+            4,
+          ),
+          (s.acceptProjectSize, s.acceptProjectCounts(p.groups, p.devices), 3),
+          (s.acceptProjectFingerprint, p.fingerprint, 2),
+        ], fonts),
+      ],
       pw.SizedBox(height: 16),
       for (final MapEntry(key: path, value: items) in groups.entries)
         ...pdfSection(
@@ -514,6 +527,26 @@ Future<Uint8List> buildAcceptancePdf(Acceptance a, {Map<String, Uint8List> photo
           ),
         ),
       if (open.isNotEmpty) ...pdfSection(s.acceptOpenPoints, fonts, count: open.length, list(open)),
+      for (final c in a.channelChecks)
+        ..._simpleTable('${s.channelTestTitle}: ${c.name} (${formatIndividual(c.device)})', fonts, [
+          for (final r in c.rows)
+            [
+              [r.label, if (r.address case final a?) formatGroup(a)].join(' · '),
+              [?r.title, ?r.note].join(' – '),
+              switch (r.feedback) {
+                true => s.acceptFeedbackYes,
+                false => s.acceptFeedbackNo,
+                null => '',
+              },
+              switch (r.result) {
+                ChannelResult.ok => s.channelTestOk,
+                ChannelResult.wrongLoad => s.channelTestWrong,
+                ChannelResult.noReaction => s.channelTestNothing,
+                ChannelResult.skipped => s.channelTestSkipped,
+                ChannelResult.open => s.channelTestOpen,
+              },
+            ],
+        ]),
       // Boxes and the closing part with signatures do not break across pages.
       if (a.followUps.isNotEmpty) ...[
         pw.Inseparable(child: pdfNote(a.followUps, fonts, label: s.acceptFollowUps)),
@@ -1733,3 +1766,7 @@ Future<Uint8List> Function() _pdfTask(
     ..adoptPast(past);
   return buildPdf(job, letterhead: letterhead);
 };
+
+extension on String {
+  String ifEmpty(String other) => isEmpty ? other : this;
+}

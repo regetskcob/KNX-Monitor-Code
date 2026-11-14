@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import '../model/telegram_log.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'actuator_view.dart';
+import 'operate_mode.dart';
 import 'telegram_row.dart';
 
 /// Push button as a front view: frame 55 with rockers or a glass push button
@@ -224,7 +226,7 @@ class _PushButtonViewState extends State<PushButtonView> with SingleTickerProvid
                 ? const SizedBox(width: double.infinity)
                 : Padding(
                     padding: const EdgeInsets.only(top: HzSpace.s8),
-                    child: ChannelObjects(channel: selected.channel, latest: latest),
+                    child: ChannelObjects(channel: selected.channel, latest: latest, log: widget.log),
                   ),
           ),
         ],
@@ -247,7 +249,23 @@ class _PushButtonViewState extends State<PushButtonView> with SingleTickerProvid
         message: [f.label, ?title].join(' · '),
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => setState(() => _selected = _selected == index ? null : index),
+          onTap: () {
+            // Only the full drawing has the switch above it: a compact one never sends.
+            if (!operateMode.value || widget.compact) {
+              return setState(() => _selected = _selected == index ? null : index);
+            }
+            // Armed: the tap sends what the key sends. A pair is on/up and off/down, a
+            // single key toggles.
+            unawaited(
+              operateChannel(
+                context,
+                f.channel,
+                widget.log,
+                key: f.second == null ? null : (key == f.first ? OperateKey.first : OperateKey.second),
+                name: title ?? f.label,
+              ),
+            );
+          },
         ),
       ),
     );

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import '../catalog_store.dart';
 import '../knx/demo_tunnel.dart';
+import 'channel_test.dart';
 import 'commissioning.dart';
 import 'installation.dart';
 
@@ -62,6 +63,112 @@ class DefectPhoto {
   factory DefectPhoto.fromJson(Map<String, Object?> j) => DefectPhoto(j['i'] as String? ?? '', j['h'] as String? ?? '');
 }
 
+/// Which project an acceptance refers to. The fingerprint is a SHA-256 over the
+/// project's group addresses and devices as the app holds them: two protocols
+/// with the same fingerprint were checked against the same project state.
+@immutable
+class ProjectProof {
+  const ProjectProof({
+    this.file,
+    this.imported,
+    required this.groups,
+    required this.devices,
+    required this.fingerprint,
+  });
+
+  /// The project loaded in [store], `null` without one.
+  static ProjectProof? of(CatalogStore store) {
+    final project = store.project;
+    if (project.isEmpty && project.devices.isEmpty) return null;
+    return ProjectProof(
+      file: store.fileName,
+      imported: store.projectStates.lastOrNull?.imported,
+      groups: project.groups.length,
+      devices: project.devices.length,
+      fingerprint: sha256.convert(utf8.encode(jsonEncode(project.toJson()))).toString().substring(0, 16),
+    );
+  }
+
+  /// File name of the import ("Haus.knxproj").
+  final String? file;
+
+  /// When it was imported into the app, if known.
+  final DateTime? imported;
+  final int groups, devices;
+  final String fingerprint;
+
+  Map<String, Object?> toJson() => {
+    'file': ?file,
+    'imported': ?imported?.millisecondsSinceEpoch,
+    'groups': groups,
+    'devices': devices,
+    'fingerprint': fingerprint,
+  };
+
+  factory ProjectProof.fromJson(Map<String, Object?> j) => ProjectProof(
+    file: j['file'] as String?,
+    imported: j['imported'] is int ? DateTime.fromMillisecondsSinceEpoch(j['imported']! as int) : null,
+    groups: j['groups'] as int? ?? 0,
+    devices: j['devices'] as int? ?? 0,
+    fingerprint: j['fingerprint'] as String? ?? '',
+  );
+}
+
+/// The channel check of one device as it goes into the protocol.
+@immutable
+class ChannelCheckRecord {
+  const ChannelCheckRecord({required this.device, required this.name, required this.rows});
+
+  /// Freezes [test] with the device name of now; channels without a result are left out.
+  factory ChannelCheckRecord.of(ChannelTest test, String name) => ChannelCheckRecord(
+    device: test.device,
+    name: name,
+    rows: [
+      for (final i in test.items)
+        if (i.result != ChannelResult.open)
+          (
+            label: i.label,
+            title: i.title,
+            address: i.control?.address,
+            result: i.result,
+            feedback: i.feedback,
+            note: i.note,
+          ),
+    ],
+  );
+
+  final int device;
+  final String name;
+  final List<({String label, String? title, int? address, ChannelResult result, bool? feedback, String? note})> rows;
+
+  int get issues => rows.where((r) => r.result.issue || r.feedback == false).length;
+
+  Map<String, Object?> toJson() => {
+    'device': device,
+    'name': name,
+    'rows': [
+      for (final r in rows)
+        {'l': r.label, 't': ?r.title, 'a': ?r.address, 'r': r.result.name, 'f': ?r.feedback, 'n': ?r.note},
+    ],
+  };
+
+  factory ChannelCheckRecord.fromJson(Map<String, Object?> j) => ChannelCheckRecord(
+    device: j['device'] as int? ?? 0,
+    name: j['name'] as String? ?? '',
+    rows: [
+      for (final r in (j['rows'] as List? ?? const []).whereType<Map<Object?, Object?>>())
+        (
+          label: r['l'] as String? ?? '',
+          title: r['t'] as String?,
+          address: r['a'] as int?,
+          result: ChannelResult.values.asNameMap()[r['r']] ?? ChannelResult.skipped,
+          feedback: r['f'] as bool?,
+          note: r['n'] as String?,
+        ),
+    ],
+  );
+}
+
 /// Acceptance protocol: a frozen snapshot of the commissioning with customer and
 /// site details and the signatures of both parties. Immutable once signed;
 /// changes mean a new protocol.
@@ -87,6 +194,8 @@ class Acceptance {
     this.projectNumber = '',
     this.warrantyStart,
     this.defectPhotos = const {},
+    this.projectProof,
+    this.channelChecks = const [],
     this.checkedBy,
     this.checkedByMember,
     this.checkedAt,
@@ -114,6 +223,8 @@ class Acceptance {
     String projectNumber = '',
     DateTime? warrantyStart,
     Map<int, DefectPhoto> defectPhotos = const {},
+    ProjectProof? projectProof,
+    List<ChannelCheckRecord> channelChecks = const [],
     DateTime? now,
   }) {
     final store = CatalogStore.instance;
@@ -146,6 +257,8 @@ class Acceptance {
         for (final i in items)
           if (i.state == CheckState.issue) i.address: ?defectPhotos[i.address],
       },
+      projectProof: projectProof,
+      channelChecks: channelChecks,
     );
   }
 
@@ -188,6 +301,14 @@ class Acceptance {
 
   bool get hasDetails => standard.isNotEmpty || projectNumber.isNotEmpty || warrantyStart != null;
 
+  /// Which project the installation was checked against: file, import time and a
+  /// fingerprint. `null` for protocols from before it existed and without a project.
+  final ProjectProof? projectProof;
+
+  /// Results of the channel check per device, frozen like the items. Empty when
+  /// no channel was checked.
+  final List<ChannelCheckRecord> channelChecks;
+
   /// Four-eyes acceptance (Pro team): who pre-checked and who signed off. Empty for
   /// all other protocols; the file is then byte-identical to before and its
   /// checksum stays valid.
@@ -228,6 +349,8 @@ class Acceptance {
     projectNumber: projectNumber,
     warrantyStart: warrantyStart,
     defectPhotos: defectPhotos,
+    projectProof: projectProof,
+    channelChecks: channelChecks,
     checkedBy: checkedBy ?? this.checkedBy,
     checkedByMember: checkedByMember ?? this.checkedByMember,
     checkedAt: checkedAt ?? this.checkedAt,
@@ -266,6 +389,8 @@ class Acceptance {
     if (warrantyStart case final d?) 'warrantyStart': _day(d),
     if (defectPhotos.isNotEmpty)
       'defectPhotos': {for (final MapEntry(:key, :value) in defectPhotos.entries) '$key': value.toJson()},
+    if (projectProof case final p?) 'projectProof': p.toJson(),
+    if (channelChecks.isNotEmpty) 'channelChecks': [for (final c in channelChecks) c.toJson()],
     if (checkedBy != null) 'checkedBy': checkedBy,
     if (checkedByMember != null) 'checkedByMember': checkedByMember,
     if (checkedAt != null) 'checkedAt': checkedAt!.millisecondsSinceEpoch,
@@ -300,6 +425,10 @@ class Acceptance {
       for (final MapEntry(:key, :value) in (j['defectPhotos'] as Map? ?? const {}).entries)
         int.parse(key as String): DefectPhoto.fromJson((value as Map).cast()),
     },
+    projectProof: j['projectProof'] is Map ? ProjectProof.fromJson((j['projectProof']! as Map).cast()) : null,
+    channelChecks: [
+      for (final c in (j['channelChecks'] as List? ?? const [])) ChannelCheckRecord.fromJson((c as Map).cast()),
+    ],
     checkedBy: j['checkedBy'] as String?,
     checkedByMember: j['checkedByMember'] as String?,
     checkedAt: j['checkedAt'] == null ? null : DateTime.fromMillisecondsSinceEpoch(j['checkedAt']! as int),

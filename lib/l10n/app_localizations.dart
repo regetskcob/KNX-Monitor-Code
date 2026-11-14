@@ -1979,7 +1979,7 @@ abstract class AppLocalizations {
   /// Hilfetext zur Filtersyntax
   ///
   /// In de, this message translates to:
-  /// **'Leerzeichen = UND · Komma = ODER · -begriff = NICHT\n\n1/2/3 exakt · 1/2 Bereich · 1/*/3 oder 1/2/1* mit Platzhalter\n1.1.5 Absender · 1.1.* Linie · von:1.1.5\n\ntyp:w|r|a (Schreiben, Lesen, Antwort)\ndpt:9 oder dpt:9.001\nzeit:14:05 · zeit:14:05-14:10 (Uhrzeit, ohne das Ende)\nist:alarm · ist:wiederholt · ist:antwort · ist:projekt\nist:eigen · ist:fremd (selbst gesendet bzw. vom Bus)\nmesspunkt:1.2 oder messpunkt:1.2|1.3 (gesehen an diesen Messpunkten) · ist:einzeln (nur an einem Messpunkt)\n\nAlles andere sucht in Name, Bereich, Gerät und Wert – Umlaute egal (kuche findet Küche).\n\nMehrere ODER-Gruppen bekommen in der Liste je eine Farbe. „Kontext“ zeigt die Sekunden vor und nach jedem Treffer.\n\nBeispiele:\n1/*/* ist:antwort – unbeantwortete Leseanfragen in Hauptgruppe 1\nküche, bad -schalten – Küche oder Bad, ohne Schalten'**
+  /// **'Leerzeichen = UND · Komma = ODER · -begriff = NICHT\n\n1/2/3 exakt · 1/2 Bereich · 1/*/3 oder 1/2/1* mit Platzhalter\n1.1.5 Absender · 1.1.* Linie · von:1.1.5\n\ntyp:w|r|a (Schreiben, Lesen, Antwort)\ndpt:9 oder dpt:9.001\nzeit:14:05 · zeit:14:05-14:10 (Uhrzeit, ohne das Ende)\nre:licht.*(kueche|bad) (regulärer Ausdruck über Adresse, Name, Gerät und Wert; ohne Leerzeichen und Komma)\nist:alarm · ist:wiederholt · ist:antwort · ist:projekt\nist:eigen · ist:fremd (selbst gesendet bzw. vom Bus)\nmesspunkt:1.2 oder messpunkt:1.2|1.3 (gesehen an diesen Messpunkten) · ist:einzeln (nur an einem Messpunkt)\n\nAlles andere sucht in Name, Bereich, Gerät und Wert – Umlaute egal (kuche findet Küche).\n\nMehrere ODER-Gruppen bekommen in der Liste je eine Farbe. „Kontext“ zeigt die Sekunden vor und nach jedem Treffer.\n\nBeispiele:\n1/*/* ist:antwort – unbeantwortete Leseanfragen in Hauptgruppe 1\nküche, bad -schalten – Küche oder Bad, ohne Schalten'**
   String get filterHelpBody;
 
   /// Titel: Abgleich Busverkehr mit ETS-Projekt
@@ -20335,6 +20335,1038 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Ohne Raum'**
   String get learnNoRoom;
+
+  /// Device drawing: chip that arms sending by tapping a channel or key.
+  ///
+  /// In de, this message translates to:
+  /// **'Bedienen'**
+  String get operateMode;
+
+  /// Device drawing: hint next to the armed chip.
+  ///
+  /// In de, this message translates to:
+  /// **'Tippen auf Kanal oder Taste sendet auf den Bus, wie ein Taster.'**
+  String get operateHint;
+
+  /// Device drawing: tried to operate without a connection.
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht verbunden: Bedienen geht nur mit Verbindung zum Bus.'**
+  String get operateOffline;
+
+  /// Device drawing: channel without a switching address.
+  ///
+  /// In de, this message translates to:
+  /// **'{name}: kein Schaltobjekt, das sich senden lässt.'**
+  String operateNothing(String name);
+
+  /// Device drawing: sent, no status feedback in the project.
+  ///
+  /// In de, this message translates to:
+  /// **'{name}: {value} gesendet'**
+  String operateSent(String name, String value);
+
+  /// Device drawing: the actuator confirmed the value.
+  ///
+  /// In de, this message translates to:
+  /// **'{name}: {value}, Rückmeldung bestätigt'**
+  String operateConfirmed(String name, String value);
+
+  /// Device drawing: sent, the status feedback did not follow.
+  ///
+  /// In de, this message translates to:
+  /// **'{name}: {value} gesendet, aber keine Rückmeldung. Gesperrt, nicht verbunden oder ohne Last?'**
+  String operateNoFeedback(String name, String value);
+
+  /// Blind: move up.
+  ///
+  /// In de, this message translates to:
+  /// **'Auf'**
+  String get operateUp;
+
+  /// Blind: stop.
+  ///
+  /// In de, this message translates to:
+  /// **'Stopp'**
+  String get operateStop;
+
+  /// Blind: move down.
+  ///
+  /// In de, this message translates to:
+  /// **'Ab'**
+  String get operateDown;
+
+  /// Blind sheet: safety hint before moving.
+  ///
+  /// In de, this message translates to:
+  /// **'Nur fahren, wenn du Fenster und Behang siehst.'**
+  String get operateBlindHint;
+
+  /// Operate: confirmation for gates, doors, locks, alarms and central functions.
+  ///
+  /// In de, this message translates to:
+  /// **'{name} wirklich schalten?'**
+  String operateCautionTitle(String name);
+
+  /// Operate: body of the confirmation.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Name klingt nach Tor, Tür, Schloss, Alarm oder Zentralfunktion. Sende nur, wenn du siehst, was sich bewegt, und niemand im Weg steht.'**
+  String get operateCautionBody;
+
+  /// Operate: confirm button.
+  ///
+  /// In de, this message translates to:
+  /// **'Senden'**
+  String get operateCautionSend;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Kanäle prüfen'**
+  String get channelTestTitle;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Kanal für Kanal schalten und festhalten, was reagiert'**
+  String get channelTestTool;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Welcher Kanal ist welche Lampe? Die App schaltet einen Kanal ein, du sagst, was angegangen ist, dann schaltet sie ihn wieder aus und nimmt den nächsten. Ob der Aktor die Rückmeldung gesendet hat, merkt sie selbst. Rollläden, Tore und Kanäle ohne Schaltadresse löst du von Hand aus und bewertest sie nur. Gesendet wird ein Gruppentelegramm wie von einem Taster; die Handtasten am Gerät sind etwas anderes. Das Ergebnis bleibt gespeichert und lässt sich als Text teilen.'**
+  String get channelTestExplain;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Geprüft'**
+  String get channelTestChecked;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Auffällig'**
+  String get channelTestIssues;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Kanäle'**
+  String get channelTestChannels;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Für dieses Gerät kennt das Projekt keine Kanäle.'**
+  String get channelTestNone;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Einschalten'**
+  String get channelTestSwitchOn;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Schalte …'**
+  String get channelTestSwitching;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Was hat reagiert?'**
+  String get channelTestQuestion;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Notiz (z. B. was stattdessen anging)'**
+  String get channelTestNote;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Richtige Last'**
+  String get channelTestOk;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Falsche Last'**
+  String get channelTestWrong;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Nichts'**
+  String get channelTestNothing;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Überspringen'**
+  String get channelTestSkip;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Übersprungen'**
+  String get channelTestSkipped;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Offen'**
+  String get channelTestOpen;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Diesen Kanal schaltet die App nicht selbst (Rollladen, Tor, Zentralfunktion oder keine Schaltadresse). Löse ihn von Hand aus und bewerte ihn.'**
+  String get channelTestByHand;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Rückmeldung bestätigt'**
+  String get channelTestFeedbackYes;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Keine Rückmeldung'**
+  String get channelTestFeedbackNo;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Kanal hat keine Rückmeldeadresse'**
+  String get channelTestFeedbackNone;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Alle Kanäle sind geprüft'**
+  String get channelTestDone;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =0{Nichts Auffälliges.} =1{1 Kanal ist auffällig.} other{{count} Kanäle sind auffällig.}} Tippe einen Kanal an, um ihn noch einmal zu prüfen.'**
+  String channelTestDoneHint(int count);
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Bericht teilen'**
+  String get channelTestShare;
+
+  /// Channel check (Pro).
+  ///
+  /// In de, this message translates to:
+  /// **'Kanalprüfung {device} ({address})'**
+  String channelTestReport(String device, String address);
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Heizung prüfen'**
+  String get heatTitle;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Je Raum: Ist, Soll, Ventil und was das bedeutet'**
+  String get heatTool;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Raum bleibt kalt oder wird zu warm? Hier stehen je Raum Ist-Temperatur, Sollwert und Ventil nebeneinander, mit einem Urteil in Klartext: Fordert der Regler gar keine Wärme an, heizt es gerade, oder ist das Ventil offen und es wird trotzdem nicht warm? Daran siehst du, ob eher der Elektriker (Regler, Aktor, Programmierung) oder der Heizungsbauer (Antrieb, Hydraulik) gefragt ist. Die App liest nur mit und ändert nichts. Was sie nicht sieht: Parameter im Gerät, Druck und Durchfluss, klemmende Ventile.'**
+  String get heatExplain;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Räume'**
+  String get heatRooms;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Auffällig'**
+  String get heatIssues;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Im Projekt sind keine Heizungsadressen zu erkennen (Ist-Temperatur, Sollwert, Stellwert je Raum).'**
+  String get heatNone;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Maßstab: mehr als 1 K Abstand zum Sollwert zählt; eine Ist-Temperatur gilt nach 2 h ohne Telegramm als fehlend; bei offenem Ventil sollte der Raum in 90 min mindestens 0,3 K gewinnen.'**
+  String get heatLimits;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Ist'**
+  String get heatActual;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Soll'**
+  String get heatSetpoint;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Ventil'**
+  String get heatValve;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'In Ordnung'**
+  String get heatOk;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Raum liegt am Sollwert.'**
+  String get heatOkHint;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Heizt gerade'**
+  String get heatHeating;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Raum ist kälter als gewünscht und das Ventil ist offen. Das braucht Zeit; bleibt es so, steht hier später ein anderer Befund.'**
+  String get heatHeatingHint;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Regler fordert keine Wärme an'**
+  String get heatNotCalling;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Raum ist kälter als der Sollwert, das Ventil aber zu. Häufige Gründe: Betriebsart (Nacht, Frostschutz, Sommer), ein offener Fensterkontakt oder eine Sperre. Das ist ein Thema für den Elektriker: Regler und Programmierung.'**
+  String get heatNotCallingHint;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Ventil offen, Raum wird nicht warm'**
+  String get heatNotWarming;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Regler fordert seit über 90 Minuten Wärme an, die Temperatur steigt aber nicht. Der Bus tut, was er soll. Prüfen lassen: Sitzt der Stellantrieb, öffnet er wirklich, ist der Kanal am Heizungsaktor dem richtigen Raum zugeordnet, kommt warmes Wasser an? Das ist meist ein Thema für den Heizungsbauer.'**
+  String get heatNotWarmingHint;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Zu warm, Ventil trotzdem offen'**
+  String get heatOverheating;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Raum ist wärmer als der Sollwert und das Ventil ist offen. Häufige Gründe: Fühler oder Kanäle sind vertauscht (das Ventil gehört zu einem anderen Raum), oder der Aktor läuft im Notbetrieb. Das ist ein Thema für den Elektriker.'**
+  String get heatOverheatingHint;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Ist-Temperatur fehlt'**
+  String get heatStale;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Ist-Temperatur wurde seit über 2 Stunden nicht gesendet. Ohne sie regelt der Raum blind, viele Aktoren schalten dann in einen Notbetrieb. Prüfen lassen: Sendet der Fühler oder Taster noch, ist er ausgefallen?'**
+  String get heatStaleHint;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Zu wenig Werte'**
+  String get heatIncomplete;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Für ein Urteil fehlt ein Wert. Sollwert und Stellwert sendet die Anlage oft nur bei Änderung: Lass die App länger mitlaufen oder ändere den Sollwert einmal am Raumregler.'**
+  String get heatIncompleteHint;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch nichts gehört'**
+  String get heatNoData;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Seit dem Verbinden kam für diesen Raum kein Telegramm. Lass die App mitlaufen.'**
+  String get heatNoDataHint;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Befund teilen'**
+  String get heatShare;
+
+  /// Heating check per room.
+  ///
+  /// In de, this message translates to:
+  /// **'Heizung je Raum, mitgelesen vom KNX-Bus'**
+  String get heatReportHeading;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Übergabe-Check'**
+  String get hocTitle;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Was dir der Elektriker übergeben muss, und was noch fehlt'**
+  String get hocTool;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Eine KNX-Anlage gehört erst dann wirklich dir, wenn du ihre Unterlagen hast. Fehlt die Projektdatei, kann kein anderer Betrieb etwas ändern oder ein defektes Gerät ersetzen, ohne die Anlage mühsam zu rekonstruieren. Kläre die Übergabe am besten vor der Schlussrechnung, beim Hauskauf vor dem Notartermin. Die Liste zeigt, was dazugehört. Einiges erkennt die App selbst: ob ein Projekt geladen ist und ob es zu dem passt, was auf dem Bus gesendet wird. Den Rest hakst du ab. Für alles Offene erzeugt sie eine Nachricht an den Elektriker. Das ist keine Rechtsberatung; was dir vertraglich zusteht, regelt dein Vertrag.'**
+  String get hocExplain;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Am besten vor der Schlussrechnung klären. Was die App selbst sieht, trägt sie ein.'**
+  String get hocIntro;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Vorhanden'**
+  String get hocDone;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Offen'**
+  String get hocMissing;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Offen'**
+  String get hocStateOpen;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Vorhanden'**
+  String get hocStateReceived;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Von der App erkannt'**
+  String get hocStateDetected;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Trifft nicht zu'**
+  String get hocStateNotNeeded;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'ETS-Projektdatei (.knxproj) mit Passwort'**
+  String get hocProjectFile;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Enthält alle Geräte, Adressen und Einstellungen. Ohne sie lässt sich nichts ändern und kein Gerät ersetzen.'**
+  String get hocProjectFileWhy;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Projektdatei ist der letzte Stand'**
+  String get hocProjectCurrent;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Oft wird eine ältere Fassung herausgegeben als die, die in den Geräten steckt. Dann stimmen Namen und Funktionen nicht.'**
+  String get hocProjectCurrentWhy;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Keyring (.knxkeys) mit Passwort'**
+  String get hocKeyring;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Nur bei KNX Secure: Ohne die Schlüssel lassen sich gesicherte Geräte weder mitlesen noch neu einrichten.'**
+  String get hocKeyringWhy;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Gerätepasswörter (BCU-Schlüssel)'**
+  String get hocDevicePasswords;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Manche Betriebe sperren Geräte gegen Umprogrammieren. Ohne den Schlüssel bleibt nur das Zurücksetzen ab Werk.'**
+  String get hocDevicePasswordsWhy;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Zugang zu IP-Schnittstelle, Router und Netzwerkgeräten'**
+  String get hocGatewayAccess;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Adresse, Benutzer und Passwort der KNX-IP-Schnittstelle, dazu Fernzugänge, die der Betrieb eingerichtet hat.'**
+  String get hocGatewayAccessWhy;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Visualisierung, Server oder Logikmodul: Zugangsdaten und Projekt'**
+  String get hocVisuAccess;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Für Gira X1, HomeServer, Loxone-Brücken und Ähnliches gibt es eigene Projektdateien und Admin-Zugänge.'**
+  String get hocVisuAccessWhy;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Verteilerplan und Stromkreise'**
+  String get hocCircuitPlan;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Welche Sicherung und welcher Aktorkanal zu welchem Raum gehört. Den braucht jeder, der später etwas sucht.'**
+  String get hocCircuitPlanWhy;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Geräteliste mit Einbauort, Beschriftung im Verteiler passt dazu'**
+  String get hocDeviceList;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Unterputz-Geräte findet ohne Liste niemand wieder. Die Beschriftung sollte die physikalische Adresse nennen.'**
+  String get hocDeviceListWhy;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Einweisung und Ansprechpartner'**
+  String get hocInstruction;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Bedienung, was im Störfall zu tun ist, und wer dann kommt.'**
+  String get hocInstructionWhy;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'In der App geladen: {devices} Geräte, {groups} Gruppenadressen.'**
+  String hocSeenProject(int devices, int groups);
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Geladen ist nur eine Adressliste ohne Geräte. Das ist kein Ersatz für die Projektdatei.'**
+  String get hocSeenCsv;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Passt zu den {count} Adressen, die bisher auf dem Bus gesendet haben.'**
+  String hocSeenFits(int count);
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Adresse sendet auf dem Bus, die im Projekt fehlt oder dort anders angelegt ist.} other{{count} Adressen senden auf dem Bus, die im Projekt fehlen oder dort anders angelegt sind.}} Das spricht für einen älteren Stand. Frag nach der aktuellen Datei.'**
+  String hocSeenStale(int count);
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch zu wenig mitgehört, um das zu beurteilen. Verbinde die App und lass sie eine Weile laufen.'**
+  String get hocSeenNotYet;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'In der App ist ein Keyring geladen.'**
+  String get hocSeenKeyring;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Alles da. Bewahre die Dateien an zwei Orten auf.'**
+  String get hocAllThere;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{Nachricht für 1 offenen Punkt} other{Nachricht für {count} offene Punkte}}'**
+  String hocAsk(int count);
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Hallo,\n\nfür die Übergabe unserer KNX-Anlage fehlen uns noch diese Unterlagen:'**
+  String get hocMessageIntro;
+
+  /// Handover checklist for owners.
+  ///
+  /// In de, this message translates to:
+  /// **'Bitte lassen Sie uns diese vor der Schlussrechnung zukommen. Vielen Dank!'**
+  String get hocMessageOutro;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'Sperren'**
+  String get locksTitle;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'Wer hat wann was gesperrt, und wann war es wieder frei'**
+  String get locksTool;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'Ein gesperrter Kanal nimmt Befehle an und tut nichts: Das Licht bleibt aus, der Rollladen fährt nicht, der Präsenzmelder schaltet nicht. Hier siehst du, was gerade gesperrt ist, wer es seit wann gesperrt hat, und im Verlauf jede Sperre mit Beginn, Ende, Dauer und wer sie gelöst hat. Die App erkennt Sperradressen am Namen (Sperre, Lock, Freigabe, Enable, Zwangsführung) und am Typ 1.003. Ob 1 oder 0 sperrt, ist je Hersteller verschieden und steht nicht im Telegramm: Eine Sperre sperrt hier bei 1, eine Freigabe bei 0. Stimmt das bei einer Adresse nicht, dreh die Deutung dort um. Alles stammt aus der Aufzeichnung, gesendet wird nichts. Sperren von vor dem Verbinden kennt die App erst, wenn die Adresse wieder gesendet oder gelesen wird.'**
+  String get locksExplain;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'Jetzt gesperrt'**
+  String get locksNow;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'Verlauf'**
+  String get locksHistory;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'Sperradressen'**
+  String get locksAddresses;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'Im Projekt sind keine Sperradressen zu erkennen.'**
+  String get locksNone;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'Gerade ist nichts gesperrt, soweit die Aufzeichnung reicht.'**
+  String get locksNoneNow;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'Seit dem Verbinden wurde keine Sperre wieder gelöst.'**
+  String get locksNoHistory;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'seit {time}'**
+  String locksSince(String time);
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'seit mindestens {time}'**
+  String locksSinceAtLeast(String time);
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'gesperrt von {who}'**
+  String locksLockedBy(String who);
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'gelöst von {who}'**
+  String locksReleasedBy(String who);
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'wirkt auf {devices}'**
+  String locksActsOn(String devices);
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'dieser App'**
+  String get locksByApp;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'gesperrt'**
+  String get locksStateLocked;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'frei'**
+  String get locksStateFree;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'noch nichts gehört'**
+  String get locksStateUnknown;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'1 sperrt'**
+  String get locksSenseOne;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'0 sperrt'**
+  String get locksSenseZero;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'Deutung je Adresse: Bei einer Sperre sperrt die 1, bei einer Freigabe die 0. Mit dem Pfeil drehst du sie um.'**
+  String get locksSenseHint;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'Deutung umdrehen'**
+  String get locksFlip;
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'{name}: gesperrt seit {time} von {who}. Der Befehl kam an, der Kanal bleibt, wie er ist.'**
+  String operateLocked(String name, String time, String who);
+
+  /// Locks: who locked what when.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesperrt seit {time} von {who}'**
+  String channelTestLocked(String time, String who);
+
+  /// Operate and channel check: the write was rejected or not confirmed.
+  ///
+  /// In de, this message translates to:
+  /// **'{name}: nicht gesendet. Der Bus hat das Telegramm nicht bestätigt.'**
+  String operateNotSent(String name);
+
+  /// Channel objects: sender of the last telegram.
+  ///
+  /// In de, this message translates to:
+  /// **'von {who}'**
+  String objectFrom(String who);
+
+  /// Channel objects: the value before the last one.
+  ///
+  /// In de, this message translates to:
+  /// **'vorher {value}'**
+  String objectBefore(String value);
+
+  /// Acceptance PDF: label of the project the installation was checked against.
+  ///
+  /// In de, this message translates to:
+  /// **'Projektstand'**
+  String get acceptProjectState;
+
+  /// Acceptance PDF: import date of the project.
+  ///
+  /// In de, this message translates to:
+  /// **'importiert {date}'**
+  String acceptProjectImported(String date);
+
+  /// Acceptance PDF: label for the size of the project.
+  ///
+  /// In de, this message translates to:
+  /// **'Umfang'**
+  String get acceptProjectSize;
+
+  /// Acceptance PDF: size of the project.
+  ///
+  /// In de, this message translates to:
+  /// **'{groups} Adressen, {devices} Geräte'**
+  String acceptProjectCounts(int groups, int devices);
+
+  /// Acceptance PDF: fingerprint of the project state.
+  ///
+  /// In de, this message translates to:
+  /// **'Kennung'**
+  String get acceptProjectFingerprint;
+
+  /// Acceptance PDF, channel check: status feedback confirmed (short).
+  ///
+  /// In de, this message translates to:
+  /// **'RM ja'**
+  String get acceptFeedbackYes;
+
+  /// Acceptance PDF, channel check: status feedback missing (short).
+  ///
+  /// In de, this message translates to:
+  /// **'RM fehlt'**
+  String get acceptFeedbackNo;
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'Räume'**
+  String get roomsTitle;
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'Raum für Raum schalten und sehen, ob die Anzeige stimmt'**
+  String get roomsTool;
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'Alles, was sich laut Projekt schalten lässt, nach Raum sortiert: Licht und Steckdosen mit Schalter, Rollläden mit Auf, Stopp, Ab. Die Namen kommen aus dem Projekt. Gesendet wird ein Gruppentelegramm wie von einem Taster; Tor, Tür, Alarm und Zentralfunktionen fragen nach, Heizventile und Sperren lassen sich hier nicht schalten. Das ist eine Prüfseite, keine Visualisierung.\n\nUnter jedem Schalter steht, ob die Rückmeldung zum Befehl passt. Daran liegt es meist, wenn eine Visualisierung oder Home Assistant den falschen Zustand zeigt: Die Rückmeldung fehlt im Projekt, sie sagt etwas anderes als der letzte Befehl (gesperrt, von woanders geschaltet, falsch verknüpft), oder sie antwortet nicht, wenn man sie liest. „Rückmeldungen lesen“ fragt jede einmal ab; das ändert nichts an der Anlage.'**
+  String get roomsExplain;
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'Räume'**
+  String get roomsCount;
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'Schaltbar'**
+  String get roomsControls;
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'Anzeige unsicher'**
+  String get roomsIssues;
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'Im Projekt ist nichts zu erkennen, das sich schalten lässt.'**
+  String get roomsNone;
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne Raum'**
+  String get roomsNoRoom;
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'Fahren'**
+  String get roomsMove;
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'Rückmeldungen lesen'**
+  String get roomsReadStatus;
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'Lese {done} von {total} …'**
+  String roomsReading(int done, int total);
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'Rückmeldung passt'**
+  String get roomsStatusOk;
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'Rückmeldung noch nicht gehört'**
+  String get roomsStatusUnknown;
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'keine Rückmeldung im Projekt'**
+  String get roomsStatusNone;
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'Rückmeldung widerspricht dem Befehl'**
+  String get roomsStatusMismatch;
+
+  /// Rooms: operate by room and check command against status feedback.
+  ///
+  /// In de, this message translates to:
+  /// **'Rückmeldung antwortet nicht auf Lesen'**
+  String get roomsStatusSilent;
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'Vorher/Nachher'**
+  String get snapTitle;
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'Stand festhalten, später sehen, was anders ist und wer stumm bleibt'**
+  String get snapTool;
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'Bevor an der Anlage etwas passiert (Strom aus, Gerät getauscht, neue Programmierung aus der ETS), hältst du den Stand fest: den letzten Wert jeder Adresse und welche Geräte gesendet haben. Danach zeigt die App, was sich geändert hat, welche Werte noch die alten sind, und welche Geräte sich seitdem nicht mehr gemeldet haben. Nach einem Stromausfall findest du so Geräte, die nicht wieder angelaufen sind, und Zustände, die anders zurückgekommen sind. Die App liest nur mit. Ein Gerät, das selten sendet, steht anfangs als stumm da: Lass die App laufen oder lies seine Rückmeldungen (Werkzeug „Räume“). Der Stand bleibt gespeichert, bis du ihn verwirfst.'**
+  String get snapExplain;
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'Halte jetzt den Stand fest, bevor etwas an der Anlage passiert. Danach siehst du hier, was anders ist.'**
+  String get snapIntro;
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{Stand festhalten (1 Wert)} other{Stand festhalten ({count} Werte)}}'**
+  String snapTake(int count);
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'Neuen Stand festhalten'**
+  String get snapRetake;
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'Stand verwerfen'**
+  String get snapDiscard;
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'Stand von {time} mit {count} Werten'**
+  String snapTakenAt(String time, int count);
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'Geändert'**
+  String get snapChanged;
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'Stumme Geräte'**
+  String get snapSilentDevices;
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch alter Wert'**
+  String get snapQuiet;
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'Unverändert'**
+  String get snapSame;
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'Neu dazugekommen'**
+  String get snapFresh;
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Wert hat sich seit dem Stand geändert.'**
+  String get snapNothingChanged;
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'Alle Geräte, die vorher gesendet haben, haben sich wieder gemeldet.'**
+  String get snapAllBack;
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'Haben vor dem Stand gesendet und seitdem nicht mehr.'**
+  String get snapSilentHint;
+
+  /// Before/after comparison of the installation state.
+  ///
+  /// In de, this message translates to:
+  /// **'vorher {before} · jetzt {after}'**
+  String snapBeforeAfter(String before, String after);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
