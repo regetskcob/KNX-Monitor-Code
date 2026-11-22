@@ -500,25 +500,31 @@ void main() {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
       await tester.pump();
     }
+    // Schritt 1, Beschreiben: der Fehler steht oben; ohne Screenshots kein Schalter dazu.
     expect(find.text('Verbindung verloren'), findsOneWidget);
+    expect(find.text('Screenshots mitsenden'), findsNothing);
+    // Schritt 2, Aufzeichnung.
+    await next(tester);
     expect(find.textContaining('Laufende Sitzung'), findsOneWidget);
     expect(find.textContaining('„Licht Küche“'), findsOneWidget);
-    expect(find.text('Namen von Gruppenadressen und Geräten: enthalten'), findsOneWidget);
     // Ganze Aufzeichnung: drei normale, ein Data-Secure-Telegramm.
     await tester.tap(find.text('Alles'));
     await tester.pump();
+    // Schritt 3, Inhalt prüfen.
+    await next(tester);
+    expect(find.text('Namen von Gruppenadressen und Geräten: enthalten'), findsOneWidget);
     expect(find.textContaining('Busaufzeichnung: 3 Telegramme'), findsOneWidget);
     expect(find.textContaining('Data Secure: 1 Telegramme'), findsOneWidget);
 
+    await back(tester);
     await tester.tap(find.text('Namen mitsenden'));
     await tester.pump();
+    await next(tester);
     expect(find.text('Namen von Gruppenadressen und Geräten: entfernt'), findsOneWidget);
     // Der Inhalt sagt offen, was nicht gefiltert wird.
     expect(find.textContaining('Nicht gefiltert:'), findsOneWidget);
-    // Ohne Screenshots kein Schalter dazu.
-    expect(find.text('Screenshots mitsenden'), findsNothing);
-    // Testplattform Android: Teilen-Menü.
-    expect(find.text('Paket teilen'), findsOneWidget);
+    // Testplattform Android: Teilen-Menü; der letzte Schritt teilt.
+    expect(find.widgetWithText(FilledButton, 'Paket teilen'), findsOneWidget);
     await tester.runAsync(CatalogStore.instance.clear);
     InstallationStore.instance.debugReset();
     log.dispose();
@@ -603,10 +609,13 @@ void main() {
     expect(toggle, findsOneWidget);
     expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
     expect(find.textContaining('Bilder werden nicht gefiltert'), findsOneWidget);
+    await next(tester, 2);
     expect(find.text('Screenshots: 1 vorhanden, nicht enthalten'), findsOneWidget);
 
+    await back(tester, 2);
     await tester.tap(toggle);
     await tester.pump();
+    await next(tester, 2);
     expect(find.text('Screenshots: 1 vorhanden, nicht enthalten'), findsNothing);
     expect(find.textContaining('1 Screenshot'), findsOneWidget);
   });
@@ -621,11 +630,14 @@ void main() {
     await pumpScreen(
       tester,
       SupportPackageScreen(log: log, session: session),
-      until: source,
+      until: find.text('Continue'),
     );
+    await next(tester);
+    await pumpUntil(tester, source);
     expect(source, findsOneWidget);
     await tester.tap(find.text('Alles'));
     await tester.pump();
+    await next(tester);
     expect(find.textContaining('Busaufzeichnung: 6000 Telegramme'), findsOneWidget);
     log.dispose();
   });
@@ -635,9 +647,12 @@ void main() {
     final lines = [for (final x in telegrams) jsonEncode(x.toJson())].join('\n');
     await tester.runAsync(() => InstallationStore.instance.storage.write('history/2026-10-21.ndjson', '$lines\n'));
     final source = find.text('Langzeitverlauf 21.10.2026');
-    await pumpScreen(tester, const SupportPackageScreen(), until: source);
+    await pumpScreen(tester, const SupportPackageScreen(), until: find.text('Continue'));
+    await next(tester);
+    await pumpUntil(tester, source);
     expect(source, findsOneWidget);
     await tester.tap(find.text('Alles'));
+    await next(tester);
     final all = find.textContaining('Busaufzeichnung: 4 Telegramme');
     await pumpUntil(tester, all);
     expect(all, findsOneWidget);
@@ -660,7 +675,9 @@ void main() {
       );
     });
     final source = find.text('Langzeitverlauf 21.10.2026');
-    await pumpScreen(tester, const SupportPackageScreen(), until: source);
+    await pumpScreen(tester, const SupportPackageScreen(), until: find.text('Continue'));
+    await next(tester);
+    await pumpUntil(tester, source);
     expect(source, findsOneWidget);
   });
 
@@ -705,10 +722,32 @@ void main() {
     expect(card, findsOneWidget);
     expect(find.text('EXC_BAD_ACCESS (SIGSEGV)'), findsOneWidget);
     final content = find.text('Absturzbericht des Systems: Art und Modul');
+    await next(tester, 2);
+    await pumpUntil(tester, content);
     expect(content, findsOneWidget);
+    await back(tester, 2);
     await tester.tap(find.text('Ins Paket übernehmen'));
     await tester.pump();
+    await next(tester, 2);
     expect(content, findsNothing);
+    // Nach einem Absturz teilt der dritte Schritt, der vierte führt zum Issue.
+    expect(find.widgetWithText(FilledButton, 'Paket teilen'), findsOneWidget);
     expect(find.text('Als Issue melden'), findsNothing, reason: 'erst nach dem Teilen');
   });
+}
+
+/// Der Wizard zeigt einen Schritt nach dem anderen: weiter bzw. zurück (ohne Sprachdateien
+/// heißen die Knöpfe „Continue“ und „Back“).
+Future<void> next(WidgetTester tester, [int steps = 1]) async {
+  for (var i = 0; i < steps; i++) {
+    await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
+    await tester.pump();
+  }
+}
+
+Future<void> back(WidgetTester tester, [int steps = 1]) async {
+  for (var i = 0; i < steps; i++) {
+    await tester.tap(find.text('Back'));
+    await tester.pump();
+  }
 }

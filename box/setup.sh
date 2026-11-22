@@ -52,7 +52,17 @@ healthy() {
   return 1
 }
 
-# Restore and start the previous version (server.prev, web.prev).
+lib=$root/usr/local/lib/knx-box
+units_dir=$root/etc/systemd/system
+units="knx-box.service knx-box-firstboot.service knx-box-firewall.service knx-box-data.service
+  knx-box-time.path knx-box-time.service knx-box-lan.path knx-box-lan.service knx-box-lan-lock.service
+  knx-box-secrets.path knx-box-secrets.service knx-box-reset.service
+  knx-box-clock-save.service knx-box-clock-save.timer knx-box-health.service knx-box-health.timer"
+
+# Restore and start the previous version (server.prev, web.prev) together with
+# the helper scripts and units it came with (files.prev): an old server next to
+# new units or helpers is a combination nobody tested. Units the newer version
+# added stay installed.
 restore_previous() {
   if [ ! -x "$opt/server.prev" ] || [ ! -d "$opt/web.prev" ]; then die "keine vorige Version vorhanden ($opt/server.prev)"; fi
   systemctl stop knx-box.service || true
@@ -60,6 +70,12 @@ restore_previous() {
   rm -rf "$opt/web"
   mv "$opt/web.prev" "$opt/web"
   if [ -f "$opt/VERSION.prev" ]; then mv -f "$opt/VERSION.prev" "$opt/VERSION"; fi
+  if [ -d "$opt/files.prev" ]; then
+    cp -p "$opt/files.prev/lib/"* "$lib/" 2>/dev/null || true
+    cp -p "$opt/files.prev/units/"* "$units_dir/" 2>/dev/null || true
+    rm -rf "$opt/files.prev"
+    systemctl daemon-reload || true
+  fi
   systemctl start knx-box.service || true
 }
 
@@ -107,6 +123,13 @@ if [ "$image" = no ] && [ -x "$opt/server" ] && [ -d "$opt/web" ]; then
   cp -p "$opt/server" "$opt/server.prev"
   cp -Rp "$opt/web" "$opt/web.prev"
   [ -f "$opt/VERSION" ] && cp -p "$opt/VERSION" "$opt/VERSION.prev"
+  # Helper scripts and units of the running version, for the same way back.
+  rm -rf "$opt/files.prev"
+  install -d -m 0755 "$opt/files.prev/lib" "$opt/files.prev/units"
+  cp -p "$lib/"* "$opt/files.prev/lib/" 2>/dev/null || true
+  for unit in $units; do
+    [ ! -f "$units_dir/$unit" ] || cp -p "$units_dir/$unit" "$opt/files.prev/units/"
+  done
   updated=yes
 fi
 install -m 0755 "$here/server" "$opt/server.new"
@@ -121,18 +144,15 @@ rm -rf "$opt/web.old"
 echo "$version" >"$opt/VERSION"
 
 # --- Helper scripts and services ------------------------------------------------
-install -d -m 0755 "$root/usr/local/lib/knx-box"
+install -d -m 0755 "$lib"
 install -m 0755 "$here/files/firstboot.sh" "$here/files/settime.sh" "$here/files/lan-access.sh" \
   "$here/files/data-mount.sh" "$here/files/secrets.sh" "$here/files/tls-cert.sh" "$here/files/last-exit.sh" \
-  "$root/usr/local/lib/knx-box/"
-install -m 0644 "$here/files/box-common.sh" "$root/usr/local/lib/knx-box/"
-install -m 0644 "$here/files/firewall.nft" "$here/files/lan.nft" "$root/usr/local/lib/knx-box/"
-install -d -m 0755 "$root/etc/systemd/system"
-for unit in knx-box.service knx-box-firstboot.service knx-box-firewall.service knx-box-data.service \
-  knx-box-time.path knx-box-time.service knx-box-lan.path knx-box-lan.service knx-box-lan-lock.service \
-  knx-box-secrets.path knx-box-secrets.service knx-box-reset.service \
-  knx-box-clock-save.service knx-box-clock-save.timer; do
-  install -m 0644 "$here/files/$unit" "$root/etc/systemd/system/"
+  "$here/files/health.sh" "$lib/"
+install -m 0644 "$here/files/box-common.sh" "$lib/"
+install -m 0644 "$here/files/firewall.nft" "$here/files/lan.nft" "$lib/"
+install -d -m 0755 "$units_dir"
+for unit in $units; do
+  install -m 0644 "$here/files/$unit" "$units_dir/"
 done
 
 install -d -m 0755 "$root/etc/chrony/conf.d"
@@ -201,7 +221,7 @@ systemctl disable NetworkManager-wait-online.service 2>/dev/null || true
 systemctl enable NetworkManager.service avahi-daemon.service chrony.service \
   knx-box-firstboot.service knx-box-data.service knx-box.service \
   knx-box-time.path knx-box-lan.path knx-box-lan.service knx-box-lan-lock.service knx-box-secrets.path \
-  knx-box-reset.service knx-box-clock-save.timer
+  knx-box-reset.service knx-box-clock-save.timer knx-box-health.timer
 # A set-up box with the firewall disabled has chosen INTERNET_SHARING=yes:
 # the update leaves it that way.
 firewall=yes
@@ -221,7 +241,7 @@ if [ "$image" = no ]; then
   # connections, such as this SSH session, are not affected.
   systemctl start knx-box-lan-lock.service
   systemctl restart knx-box-lan.service knx-box-time.path knx-box-lan.path knx-box-secrets.path
-  systemctl start knx-box-clock-save.timer || true
+  systemctl start knx-box-clock-save.timer knx-box-health.timer || true
   systemctl restart systemd-journald.service || true
   # If even the start fails, treat it like a silent server: roll back.
   systemctl restart knx-box.service || true

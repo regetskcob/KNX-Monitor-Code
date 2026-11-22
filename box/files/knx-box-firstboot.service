@@ -1,5 +1,6 @@
 # Once on first boot: name, Wi-Fi, passwords (from knx-box.txt on the
-# boot partition or random), set up the hotspot.
+# boot partition or random), set up the hotspot. firstboot.sh creates
+# /etc/knx-box/env as its last step, so an interrupted run repeats on the next boot.
 [Unit]
 Description=Busclear Box: Erststart
 After=local-fs.target NetworkManager.service

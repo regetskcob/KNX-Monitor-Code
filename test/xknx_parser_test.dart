@@ -31,6 +31,25 @@ void main() {
       expect(rows.last['name'], startsWith('Adresse 255'));
     });
 
+    test('beschädigte Datei: Zeiger hinter das Dateiende ergeben FormatException', () {
+      final good = _fixture('testhaus.xknx');
+      // Cell pointers of the schema page (page 1, header at 100) point past the end.
+      final cells = Uint8List.fromList(good);
+      for (var i = 108; i < 108 + 2 * ((good[103] << 8) | good[104]); i++) {
+        cells[i] = 0xFF;
+      }
+      expect(() => SqliteReader(cells).rows('projects'), throwsFormatException);
+      // Cut in the middle of the pages: tables point to pages that are gone.
+      final cut = Uint8List.sublistView(good, 0, good.length ~/ 2 + 7);
+      expect(() {
+        final db = SqliteReader(cut);
+        for (final t in db.tables) {
+          db.rows(t);
+        }
+      }, throwsFormatException);
+      expect(() => parseXknx(cells), throwsFormatException);
+    });
+
     test('Blob-Spalten und NULL', () {
       final p = SqliteReader(_fixture('testhaus.xknx')).rows('projects').single;
       expect(p['knx_master_xml'], isA<Uint8List>());

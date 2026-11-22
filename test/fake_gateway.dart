@@ -36,6 +36,9 @@ class FakeGateway {
     return seq;
   }
 
+  /// Geräte, die eine Anfrage mit T_Disconnect beenden statt zu antworten.
+  final hangUp = <int>{};
+
   /// Wie Gira X1: bestätigt jede Einzeladresse positiv, auch ohne Gerät.
   bool confirmAll = false;
 
@@ -56,6 +59,16 @@ class FakeGateway {
 
   /// Nur Tunnelling v1: Extended CRI (feste Tunneladresse) wird abgelehnt.
   bool rejectExtended = false;
+
+  /// Quittiert keine Tunneling-Requests mehr (verlorene ACKs).
+  bool dropAcks = false;
+
+  /// Hält die L_Data.con zurück, bis [release] sie schickt.
+  bool holdConfirmations = false;
+  final _held = <List<int>>[];
+
+  /// Schickt die älteste zurückgehaltene Bestätigung.
+  void release() => _toClient(_held.removeAt(0));
 
   /// Empfangene L_Data.req (zum Prüfen im Test).
   final requests = <Uint8List>[];
@@ -110,6 +123,10 @@ class FakeGateway {
         _send(0x0204, description);
       case 0x0209: // DISCONNECT_REQUEST
         _send(0x020A, [0x01, 0x00]);
+      case 0x0207: // CONNECTIONSTATE_REQUEST
+        _send(0x0208, [0x01, 0x00]);
+      case 0x0420 when dropAcks:
+        break;
       case 0x0420: // TUNNELING_REQUEST
         _send(0x0421, [0x04, 0x01, p[8], 0x00]);
         _onCemi(Uint8List.sublistView(p, 10));
@@ -126,7 +143,12 @@ class FakeGateway {
 
     // Ohne Empfänger quittiert niemand (Einzeladresse unbekannt).
     final acked = group || confirmAll || devices.containsKey(dst);
-    _toClient([0x2E, 0x00, c[2] | (acked ? 0 : 1), c[3], tunnelAddress >> 8, tunnelAddress & 0xFF, ...c.sublist(6)]);
+    final con = [0x2E, 0x00, c[2] | (acked ? 0 : 1), c[3], tunnelAddress >> 8, tunnelAddress & 0xFF, ...c.sublist(6)];
+    if (holdConfirmations) {
+      _held.add(con);
+      return;
+    }
+    _toClient(con);
 
     if (group && dst == 0 && apci == 0x100) {
       for (final pa in programmingMode) {
@@ -138,6 +160,10 @@ class FakeGateway {
     } else if (!group && devices.containsKey(dst) && tpdu[0] & 0xC0 == 0x40 && tpdu.length >= 2) {
       // T_Data_Connected: quittieren und beantworten.
       _ind(dst, tunnelAddress, group: false, tpdu: [0xC2 | (tpdu[0] & 0x3C)]); // T_ACK
+      if (hangUp.contains(dst)) {
+        _ind(dst, tunnelAddress, group: false, tpdu: [0x81]); // T_Disconnect
+        return;
+      }
       if (apci == 0x300) {
         final mask = devices[dst]!;
         _ind(dst, tunnelAddress, group: false, tpdu: [0x43 | (_nextSeq(dst) << 2), 0x40, mask >> 8, mask & 0xFF]);

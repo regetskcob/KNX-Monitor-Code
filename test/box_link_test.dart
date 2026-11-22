@@ -265,4 +265,16 @@ void main() {
       server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     });
   });
+
+  test('withTls: HTTPS mit Fingerabdruck und Port der Box, Zugang bleibt', () {
+    final link = BoxLink.parse('knxmonitor://box?url=http%3A%2F%2F10.42.0.1%3A8765%2F&key=abc&name=Box')!;
+    final pinned = link.withTls('B' * 43, port: 8766)!;
+    expect(pinned.encrypted, isTrue);
+    expect(pinned.url.port, 8766);
+    expect(pinned.fp, 'B' * 43);
+    expect(pinned.key, 'abc');
+    expect(pinned.name, 'Box');
+    expect(link.withTls('kurz'), isNull);
+    expect(pinned.withTls('C' * 43), isNull);
+  });
 }

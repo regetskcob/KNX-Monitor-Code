@@ -117,7 +117,9 @@ Without a working Secret Service, `KeychainFileKey.load` returns `null`:
   data;
 - a KNX Secure keyring is kept in memory for the session only, never written to a
   plain file (`KeyringStore._writeStored`);
-- an app lock password hash falls back to SharedPreferences (section 3).
+- an app lock password hash falls back to SharedPreferences (section 3);
+- in builds with an account, the account session stays in SharedPreferences
+  too, in plain text (`lib/platform/session_vault.dart`).
 
 ### Limits
 
@@ -269,7 +271,10 @@ Where the keyring lives:
 
 - **Native apps:** in the keychain, one entry per installation
   (`knx_keyring:<id>`), with `first_unlock_this_device`: no iCloud keychain
-  sync, no migration through device backups. It leaves the device only in a
+  sync, no migration through device backups. On macOS the entry lies in the
+  login keychain (`usesDataProtectionKeychain: false`), where that attribute
+  presumably has no effect: assume there that it travels with Time Machine
+  and Migration Assistant like the rest of the login keychain (not verified). It leaves the device only in a
   full backup (section 2), or on a Busclear Box after an explicit question per box
   and certificate (`lib/model/box_keyring_consent.dart`,
   `test/backup_hardening_test.dart`, group "Keyring zur Box").
@@ -295,7 +300,9 @@ Limits:
 
 - Without a device authentication code in the keyring or settings, the gateway's
   identity is not verified; the session is encrypted but could be terminated by
-  a man in the middle who knows the user password.
+  a man in the middle who knows the user password. Such a man in the middle
+  also sees the handshake and can try user passwords against it offline. Both
+  hold for the app and for the server alike.
 - Secure routing (IP Secure multicast) is not implemented. Routing is plain.
 - Plain KNXnet/IP tunnelling and routing are unencrypted by design of the
   protocol. The app shows which kind of connection is in use
@@ -310,7 +317,9 @@ or if the 4-byte MAC does not match. Telegrams without a key are counted
 (`withoutKey`), invalid ones too (`rejected`), and shown as encrypted.
 
 The keyring only carries the sequence numbers from the time of its ETS export.
-The server therefore keeps the highest valid number per sender in
+The app therefore keeps the highest valid number per sender and installation
+in `secure_sequence.json` in its encrypted storage (`KeyringStore`,
+`sequencePath`), and the server keeps the highest valid number per sender in
 `secure_sequence.json` next to `secure_keys.json` in the installation folder
 (`BusService._noteSequence`, `_saveSequences` in `server/lib/src/bus.dart`),
 written atomically at most every 30 seconds and on shutdown, and starts from
@@ -444,8 +453,11 @@ With read-only on:
   read-only mode.
 
 The server sends nothing on its own except that time request. The MQTT bridge
-accepts only the command to start or stop recording, never bus telegrams
-(`server/lib/src/mqtt_bridge.dart`).
+accepts two commands, `recording/set` (start or stop recording) and
+`telegrams/set` (pause or resume the telegram stream to the broker, only once
+an admin has set the stream up), each only with `ON` or `OFF`; it never takes
+bus telegrams (`server/lib/src/mqtt_bridge.dart`). Anyone who may publish on
+the broker can send both.
 
 ### What paired devices may send
 
@@ -500,7 +512,7 @@ Rules in `ha-addon/knx_monitor/server/lib/src/relay_policy.dart`, tests in
 - When access is revoked or the box password changes, open relays, bus
   WebSockets and event channels are closed (`onAccessChanged`).
 - The event channel `/ws/events` ([event-channel.md](event-channel.md)) takes
-  nothing from the client (a message over 1 KiB closes it with 1009), holds at
+  nothing from the client (a frame over 1 KiB closes it before it is read in, with 1002), holds at
   most 256 KiB per connection and cuts off a client that stops reading, and
   accepts at most 8 connections, 2 per device or address, the last one only
   with admin rights.
@@ -665,7 +677,10 @@ tests in `server/test/box_access_test.dart`, group "Kopplungscode"):
   all counters and lockouts. In Docker, deleting `access-strikes.json` from
   the data folder while the container is stopped does the same; whoever can do
   that can read `access.json` as well. Moving the clock forward ends lockouts
-  early; setting the clock needs admin rights.
+  early. A clock that is already set can only be moved with admin rights
+  (`force`); a box whose clock is not set yet (no RTC, no internet) takes the
+  first time it is offered, also from a `device` or from a time sender on the
+  bus (see "Box clock" below).
 - Connections: at most 64 live views (`/ws/bus`) and 16 UDP relays (`/ws`) at
   once; beyond that the server answers 503 before the WebSocket upgrade.
 - Requests: only `GET`, `HEAD`, `POST`, `PUT`, `PATCH` and `DELETE` (405
@@ -697,12 +712,35 @@ tests in `server/test/box_access_test.dart`, group "Kopplungscode"):
   Changing the password does not revoke paired devices (except after the
   sticker password, see below): remove a lost device, or lock out all.
 - Admin device tokens survive a password change, so they are only issued
-  against the password itself (`POST /api/box/pair` with HTTP Basic): a
-  borrowed browser session or a lost admin tablet cannot mint a lasting one.
-- Changing the password and locking out all devices need the current
-  password, also with an admin token or a session (a lost tablet must not lock
-  the owner out); a wrong one counts as a failed login. Only the required
-  first change of the sticker password goes without it.
+  against the password itself: `POST /api/box/pair` with HTTP Basic, and on
+  `/pair` a device with "Verwalten" (as a key or as a pairing code) only if
+  the request carries the password (HTTP Basic) or the form field with the
+  current one (`BoxAccess._withPassword`). A borrowed browser session or a
+  lost admin tablet cannot mint a lasting one. Devices without admin rights
+  can still be paired from a session or an admin token.
+- Changing the password, locking out all devices and revoking another device
+  with admin rights need the current password, also with an admin token or a
+  session (a lost tablet must not lock the owner out); a wrong one counts as a
+  failed login. Only the required first change of the sticker password goes
+  without it. Revoking a device without admin rights, or one's own, needs no
+  password.
+- Changing the password and "Alle sperren" also switch off the MCP access and
+  the Prometheus endpoint and forget their tokens (`BoxAccess.onLockout`);
+  switched on again, each gets a new one.
+
+Box clock: a box without battery clock and internet takes the first time it is
+offered, from the app of a `device` or from a time sender on the bus
+(`clockFromKnx`, on by default). Retention deletes by age, so a time far
+ahead would empty the history. A step of more than 24 hours forward from such
+a source is therefore applied but marked unconfirmed (`BoxClock.unconfirmed`,
+kept across restarts in `clock-unconfirmed.json`, shown in the clock status):
+until NTP, an RTC or an admin's clock agrees or an admin sets the time,
+nothing is deleted by age; the size limit and "disk full" still apply. The
+same hold applies when `server.json` was lost or taken from its backup
+(`retentionUnconfirmed` in the status), until an admin sends the retention
+again. Not covered: a wrong time below 24 hours ahead, which can expire at
+most one day early, and telegrams stamped with the wrong time until it is
+corrected.
 
 Error texts of unexpected restarts (`/api/restarts`) only go to `admin`; a
 paired device sees time and reason.
@@ -732,9 +770,13 @@ device sends is marked with its device id (`owner`); entries of other devices
 and of the admin (without `owner`) stay as they are, also when the device
 leaves them out or sends an entry with the same name or id. All other fields
 keep their stored value; in particular `allowed` in `charts.json` (whether the
-dashboard card shows values) cannot be changed by a device and is `false` while
-none is stored. Writes of the admin replace the whole file, as before: an admin
-app that shares its own list removes entries of devices.
+dashboard card shows values) cannot be changed by a device. Where none is
+stored, the first write of a device sets it to `false`; only a file that
+already holds charts of the admin without the field (written before it
+existed, and read as unlocked) keeps it absent, so a device can neither unlock
+the card nor lock the admin's. A device stores at most 100 charts and 100
+watchers (`maxDeviceEntries`). Writes of the admin replace the whole file, as
+before: an admin app that shares its own list removes entries of devices.
 
 Server-owned files such as `access.json`, `server.json` (gateway and IP Secure
 credentials), `report_settings.json`, `export.json` and
@@ -931,6 +973,7 @@ user confirms the connection.
 | Prometheus | Server `/metrics` (inbound) | Only if the admin enables it |
 | Official store builds | App Store or Google Play, through the RevenueCat SDK | To check purchases; only when built with `RC_APPLE_KEY` / `RC_GOOGLE_KEY` (`lib/platform/store_plan.dart`) |
 | Official Windows builds | Licence server | To refresh a bought licence; only when built with `LICENSE_PUBLIC_KEY` and `WINDOWS_SHOP` (`lib/platform/license_plan.dart`) |
+| Builds that sell through the website (official Windows builds, builds with an account) | `busclear.de/kaufen/angebote.json` | When the plan page asks for the offers and prices (`webOffers` in `lib/platform/web_shop.dart`); a plain GET without identifiers |
 
 A build from this source without those keys contacts neither. Which features
 it unlocks is decided in `planSourceFor` (`lib/platform/store_plan.dart`): web
@@ -952,6 +995,9 @@ Diagnostics packages (below) are files the user shares by hand.
   was not meant for. The settings API returns only
   whether a token is set (`hasNotifyToken`, `hasInfluxToken`,
   `hasPrometheusToken`); a newly generated Prometheus token is returned once.
+  The targets themselves (`notifyUrl`, `notifyTopic`, `influxUrl`) go only to
+  an admin: with ntfy the topic is the secret, and a webhook address usually
+  carries one. Other roles see `hasNotifyTarget` and `hasInfluxUrl`.
 - Forbidden targets (`isForbiddenOutboundAddress`): link-local (including cloud
   metadata at `169.254.169.254` and `fd00:ec2::254`), `0.0.0.0/8`, multicast,
   broadcast, the unspecified address, and IPv4-mapped forms of these. Private
@@ -1052,6 +1098,18 @@ Collected from the sections above, and in `tool/public-repo/SECURITY.md`:
   and Data Secure where the installation supports them.
 - IP Secure without a device authentication code does not verify the gateway.
   Secure routing is not implemented.
+- A Busclear Box without battery clock and internet takes the first time it is
+  offered, also from a device without admin rights or from the bus. A step of
+  more than 24 hours ahead deletes nothing until an admin, NTP or an RTC
+  confirms it; telegrams recorded meanwhile carry the wrong time.
+- The add-on container runs as root with host network, the Supervisor and Home
+  Assistant APIs and write access to the Home Assistant configuration (for the
+  dashboard cards), without an AppArmor profile of its own. A flaw in the
+  server therefore reaches Home Assistant.
+- The dashboard cards under `/local/knx-monitor/` carry the add-on's Ingress
+  path, and Home Assistant serves `/local/` without login. The path alone
+  opens nothing (Ingress still needs a Home Assistant session), but it is not
+  secret.
 - Diagnostics packages are scrubbed, not anonymous.
 - Pairing and setup links use the custom scheme `knxmonitor://`, which any app
   on the phone can register too, and links end up in histories, logs and

@@ -12,8 +12,9 @@ on:
       - .github/workflows/docker.yml
       # The compose template is started with the built image below.
       - tool/public-repo/docker/compose.yaml
-      # Flutter version check below.
-      - .github/workflows/ci.yml
+      # Not ci.yml: that the Flutter versions match is checked by
+      # tool/release.sh verify (verify_extra), the check below stays for a run
+      # by hand.
   workflow_dispatch:
 
 permissions:

@@ -495,7 +495,8 @@ class _SearchTapDialogState extends State<_SearchTapDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (_searching) ...[const LinearProgressIndicator(), const SizedBox(height: HzSpace.s8)],
-              if (_error case final e?) HorizontNotice(HorizontStatus.warning, child: Text('${s.tapSearchFailed} $e')),
+              if (_error case final e?)
+                HorizontNotice(HorizontStatus.warning, child: Text('${s.tapSearchFailed} ${tapErrorText(e)}')),
               if (!_searching && _found.isEmpty) ...[
                 if (_error == null) Text(s.tapSearchNone, style: muted),
                 const SizedBox(height: HzSpace.s8),

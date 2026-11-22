@@ -48,7 +48,7 @@ class CauseChainView extends StatelessWidget {
             alignment: AlignmentDirectional.centerStart,
             child: OutlinedButton.icon(
               onPressed: () => unlock(context, Feature.causeChain),
-              icon: const Icon(AppIcons.locked, size: 18),
+              icon: const Icon(AppIcons.locked, size: HzIconSize.row),
               label: Text(s.chainLocked),
             ),
           );
@@ -295,7 +295,7 @@ class _StatsRow extends StatelessWidget {
                   spacing: HzSpace.s4,
                   children: [
                     // Anomalies with an icon, not just color.
-                    if (warn) Icon(HorizontStatus.warning.icon, size: 16, color: hz.warning),
+                    if (warn) Icon(HorizontStatus.warning.icon, size: HzIconSize.inline, color: hz.warning),
                     Expanded(child: Text(name, style: theme.textTheme.bodyLarge)),
                   ],
                 ),

@@ -7,6 +7,19 @@ slug: "changelog"
 ---
 Was die letzten Versionen von Busclear gebracht haben, neueste zuerst. App, Home-Assistant-Add-on und Busclear Box haben eine gemeinsame Versionsnummer. Jede Version liegt auf [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant zeigt das Add-on dieselben Hinweise vor einem Update (auf Englisch).
 
+## 1.13.0 – 22.11.2026
+
+- Bedienen aus der Gerätezeichnung: Ein Schalter „Bedienen“ über Aktor- und Tasterzeichnungen schaltet das Senden scharf, ein Tipp auf einen Kanal oder eine Taste sendet wie ein Taster. Geschaltet gilt erst, wenn die Rückmeldung folgt; Tore, Türen, Schlösser, Alarme und Zentralfunktionen fragen jedes Mal nach.
+- Neue Prüfungen: Kanalprüfung für Elektriker (schaltet jeden Kanal, prüft die Rückmeldung, fragt, was reagiert hat), Heizungsprüfung je Raum in Klartext, Übergabeprüfung mit den neun Dingen, die der Elektriker übergibt, Sperren (was gesperrt ist, von wem und seit wann), Räume mit einem Schalter je Funktion und Vorher/Nachher, um zu sehen, was sich am Bus geändert hat.
+- Anlernen: Jede Adresse, die ohne Namen gehört wurde, steht in einer Liste und lässt sich direkt benennen, auch bei veraltetem Projekt; Name, Raum und Gerät sind mit dem vorbelegt, was schon bekannt ist.
+- Aufgeräumtes Menü: Prüfungen, Fehlersuche, Unterlagen und Einrichtung haben je eine eigene Seite. Diagnosepaket, Sicherung und Übergabepaket führen Schritt für Schritt.
+- Abnahmeprotokoll: hält fest, gegen welchen Projektstand die Anlage geprüft wurde, und die Kanalprüfung je Gerät.
+- Filter mit regulären Ausdrücken (`re:`); die Objektliste zeigt das letzte Telegramm je Objekt.
+- Aufnahmen sind sicherer: Eine laufende Aufnahme wird im Hintergrund und beim Verlassen des Monitors gesichert und endet bei 500.000 Telegrammen mit einer Sicherung.
+- Sicherheit und Stabilität: Admin-Geräte auf `/pair` verwalten braucht das Box-Passwort, Schlüssel gehen nie per unverschlüsseltem HTTP an eine Box, nach dem Koppeln wechselt die App zu HTTPS mit dem festgelegten Zertifikat der Box, Verluste beim Routing zeigt die App als Hinweis, Verbinden lässt sich abbrechen.
+- Box und Docker: Eine Prüfung startet einen hängenden Server neu; ein Server, der vor dem Start noch seinen Verlauf aufräumt, bleibt in Ruhe.
+- Behoben: Die Demo konnte gespeicherte Ergebnisse der echten Anlage in Kanal-, Übergabe- und Sperrenprüfung ersetzen; Fußbodenheizung galt als Bodenfühler; Tore wie „Hallentor“ fragten vor dem Schalten nicht nach; ein leerer Busmonitor-Rahmen führte zu einem Fehler.
+
 ## 1.12.0 – 12.11.2026
 
 - DALI über KNX ([#6](https://github.com/regetskcob/KNX-Monitor/issues/6)): Busclear zeigt, was ein KNX-DALI-Gateway auf dem Bus meldet: Fehler je Leuchte, den Zustand der Notlicht-Konverter und ihre Testergebnisse, mit Profilen für Gateways von ABB und MDT. Fehler lösen Alarme aus, das Prüfbuch der Notbeleuchtung gibt es als PDF. Busclear hört nur zu und adressiert oder programmiert keine DALI-Geräte.

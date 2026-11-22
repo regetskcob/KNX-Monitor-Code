@@ -556,9 +556,8 @@ void main() {
       await tester.pumpWidget(app(const HandoverScreen()));
       await tester.pump();
       expect(find.textContaining('Trage zuerst deine Firma ein'), findsOneWidget);
-      final button = tester.widget<ButtonStyleButton>(
-        find.ancestor(of: find.text('Paket erstellen und teilen'), matching: find.bySubtype<ButtonStyleButton>()),
-      );
+      // The wizard's main button: without a company there is no way on.
+      final button = tester.widget<FilledButton>(find.bySubtype<FilledButton>());
       expect(button.onPressed, isNull);
     });
 
@@ -572,9 +571,15 @@ void main() {
       await tester.pumpWidget(app(const HandoverScreen()));
       await tester.pump();
       expect(find.byType(PasswordQr), findsNothing);
+      // Unprotected the first step is the last one and creates the file.
+      expect(find.widgetWithText(FilledButton, 'Erstellen'), findsOneWidget);
       await tester.tap(find.text('Mit Passwort schützen'));
       await tester.pump();
+      // Protected: a second step shows the password.
+      await tester.tap(find.widgetWithText(FilledButton, 'Weiter'));
+      await tester.pump();
       expect(find.byType(PasswordQr), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Erstellen'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -592,42 +597,37 @@ void main() {
         ),
       );
       await tester.pump();
+      await tester.ensureVisible(find.text('Mit Passwort schützen'));
+      await tester.pump();
       await tester.tap(find.text('Mit Passwort schützen'));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, 'Weiter'));
       await tester.pump();
     }
 
-    testWidgets('1400 pt: Inhalt links, Passwort und Erstellen rechts daneben', (tester) async {
+    testWidgets('1400 pt: Schritte links, das Passwort neben dem QR-Code', (tester) async {
       await protect(tester, const Size(1400, 900));
-      final contents = tester.getTopLeft(find.text('Inhalt'));
-      final password = tester.getTopLeft(find.text('Passwort'));
-      expect(contents.dx, lessThan(100));
-      expect(password.dx, greaterThan(700));
-      expect(password.dy, contents.dy);
-      expect(password.dy, lessThan(200));
-      expect(tester.getTopLeft(find.text('Paket erstellen und teilen')).dx, greaterThan(700));
+      // The list of steps stands left of the current one.
+      expect(tester.getTopLeft(find.text('Inhalt')).dx, lessThan(tester.getTopLeft(find.byType(PasswordQr)).dx));
       // In the wide card the password stands beside the QR code.
       expect(tester.getTopLeft(find.text('Kopieren')).dx, greaterThan(tester.getTopRight(find.byType(PasswordQr)).dx));
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('Telefon: eine Spalte, das Passwort unter dem QR-Code', (tester) async {
+    testWidgets('Telefon: ein Schritt je Seite, das Passwort unter dem QR-Code', (tester) async {
       await protect(tester, const Size(375, 1600));
-      expect(tester.getTopLeft(find.text('Passwort')).dx, tester.getTopLeft(find.text('Inhalt')).dx);
-      expect(tester.getTopLeft(find.text('Passwort')).dy, greaterThan(tester.getTopLeft(find.text('Inhalt')).dy));
+      expect(find.text('Mit Passwort schützen'), findsNothing);
       expect(
         tester.getTopLeft(find.text('Kopieren')).dy,
         greaterThan(tester.getBottomLeft(find.byType(PasswordQr)).dy),
       );
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('375 pt breit, Textgröße 2.0: kein Überlauf', (tester) async {
       await protect(tester, const Size(375, 667), scale: 2);
-      expect(tester.takeException(), isNull);
-      await tester.dragUntilVisible(
-        find.text('Paket oder Meldung öffnen'),
-        find.byType(ListView),
-        const Offset(0, -300),
-      );
+      // Both steps: contents (before "Weiter") and the password with its QR code.
+      expect(find.byType(PasswordQr), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

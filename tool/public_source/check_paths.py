@@ -30,7 +30,9 @@ import sys
 
 HERE = pathlib.Path(__file__).parent
 KEYWORDS = re.compile(
-    r'cloud_sync|cloudsync|knxcloud|account|konto|team|betrieb|home_plan|paddle|licen[cs]e|web_shop|store_plan',
+    r'cloud_sync|cloudsync|knxcloud|account|konto|team|betrieb|home_plan|paddle|licen[cs]e|web_shop|store_plan'
+    # Names the private parts use today outside those words (security review, 16 Nov 2026).
+    r'|session_vault|auth_outage|site_survey|site_notes|ga_assistant|standard_|send_guard|mfa|passkey|supabase',
     re.IGNORECASE,
 )
 

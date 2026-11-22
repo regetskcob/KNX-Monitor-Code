@@ -141,7 +141,7 @@ class StatisticsScreen extends StatelessWidget {
               children: [
                 // Address in Monaspace, the name in the UI font.
                 Expanded(child: AddressTitle(title)),
-                if (warning) Icon(HorizontStatus.warning.icon, size: 16, color: hz.warning),
+                if (warning) Icon(HorizontStatus.warning.icon, size: HzIconSize.inline, color: hz.warning),
                 Text(
                   value,
                   style: context
@@ -227,7 +227,7 @@ class StatisticsScreen extends StatelessWidget {
           if (stats.flappers.isEmpty)
             Row(
               children: [
-                Icon(HorizontStatus.positive.icon, size: 18, color: hz.positive),
+                Icon(HorizontStatus.positive.icon, size: HzIconSize.row, color: hz.positive),
                 const SizedBox(width: Gap.item),
                 Expanded(
                   child: Text(s.checkAllGood, style: TextStyle(color: hz.positive)),
@@ -455,10 +455,7 @@ class _LongTermCardState extends State<_LongTermCard> {
           final data = snapshot.data;
           if (snapshot.hasError) return Text(s.statsLongTermUnavailable, style: theme.textTheme.bodySmall);
           if (data == null) {
-            return const Padding(
-              padding: EdgeInsets.all(HzSpace.s24),
-              child: Center(child: CircularProgressIndicator.adaptive()),
-            );
+            return const LoadingHint();
           }
           final grid = [
             for (final r in data['heatmap']! as List) [for (final v in r as List) v as int],

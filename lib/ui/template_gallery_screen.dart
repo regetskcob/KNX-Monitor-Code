@@ -137,7 +137,7 @@ class _TemplateGalleryScreenState extends State<TemplateGalleryScreen> {
           ),
         );
       }
-      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator.adaptive());
+      if (!snapshot.hasData) return const LoadingHint();
       return ListenableBuilder(
         listenable: Listenable.merge([_search, CustomTemplates.instance, CatalogStore.instance]),
         builder: (context, _) => _list(context, snapshot.data!, columns),
@@ -161,7 +161,7 @@ class _TemplateGalleryScreenState extends State<TemplateGalleryScreen> {
     final submit = Builder(
       builder: (button) => OutlinedButton.icon(
         onPressed: () => _submit(rectOf(button)),
-        icon: Icon(AppIcons.share, size: 18),
+        icon: Icon(AppIcons.share, size: HzIconSize.row),
         label: Text(s.gallerySubmit),
       ),
     );

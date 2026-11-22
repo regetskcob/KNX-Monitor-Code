@@ -145,11 +145,12 @@ class _ExportsScreenState extends State<ExportsScreen> {
     _ => buildPdfInBackground(_job(item)!),
   };
 
+  /// Your own log and the telegrams as CSV and simple PDF are always exportable, even after a
+  /// subscription ends.
+  static const _free = {_Item.commissioning, _Item.telegramsPdf, _Item.telegramsCsv};
+
   Future<void> _export(_Item item, Rect? origin) async {
-    // Your own log and the telegrams as CSV and simple PDF are always
-    // exportable, even after a subscription ends.
-    const free = {_Item.commissioning, _Item.telegramsPdf, _Item.telegramsCsv};
-    if (!free.contains(item) && !await unlock(context, Feature.export) || !mounted) return;
+    if (!_free.contains(item) && !await unlock(context, Feature.export) || !mounted) return;
     final (name, mime) = _file(item);
     if (_job(item) case final job?) {
       await sharePdf(context, () async => job, name, origin: origin);
@@ -158,6 +159,26 @@ class _ExportsScreenState extends State<ExportsScreen> {
       if (!mounted) return;
       await saveBytes(context, bytes, name, mimeType: mime);
     }
+  }
+
+  /// Removes an entry from the list and offers to bring it back (re-added as the newest).
+  Future<void> _removeEntry(ExportEntry e) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final colors = context.hz;
+    final history = ExportHistory.instance;
+    final bytes = await history.read(e);
+    await history.remove(e);
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(
+        horizontMessageSnackBar(
+          colors,
+          s.exportsRemoved(e.name),
+          action: bytes == null
+              ? null
+              : SnackBarAction(label: s.commonUndo, onPressed: () => unawaited(history.add(e.name, bytes, e.mimeType))),
+        ),
+      );
   }
 
   Future<void> _exportBundle(Rect? origin) async {
@@ -249,6 +270,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
     final from = DateTime(now.year, now.month, now.day - (days - 1));
     final all = days == _EtsHistoryDialog.all;
     final messenger = ScaffoldMessenger.of(context);
+    final colors = context.hz;
     try {
       Future<Uint8List?> load() => all ? Addon.etsHistoryAll() : Addon.etsHistory(from, now);
       final bytes = Addon.embedded ? await load() : await withProgress(context, s.exportsEtsHistoryLoading, load);
@@ -260,7 +282,9 @@ class _ExportsScreenState extends State<ExportsScreen> {
         mimeType: all ? 'application/zip' : 'application/xml',
       );
     } on AddonException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(s.exportFailed(e.message))));
+      messenger.showSnackBar(
+        horizontMessageSnackBar(colors, s.exportFailed(e.message), status: HorizontStatus.critical),
+      );
     }
   }
 
@@ -278,7 +302,14 @@ class _ExportsScreenState extends State<ExportsScreen> {
   // rows, buttons and "Läuft …" (running).
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: Listenable.merge([widget.log, HealthCheck.instance, Commissioning.instance, ?widget.tunnel?.state]),
+    listenable: Listenable.merge([
+      widget.log,
+      HealthCheck.instance,
+      Commissioning.instance,
+      // The tier badges on the rows follow a purchase.
+      Plan.instance,
+      ?widget.tunnel?.state,
+    ]),
     builder: (context, _) => _page(context),
   );
 
@@ -303,6 +334,8 @@ class _ExportsScreenState extends State<ExportsScreen> {
           title: _label(item),
           meta: _state(item),
           chevron: available,
+          // Paid and free rows must not look alike: the locked ones say so before the tap.
+          badge: _free.contains(item) ? null : lockBadge(Feature.export),
           trailing: trailing,
           onTap: available ? () => _export(item, rectOf(rowContext)) : null,
         );
@@ -360,7 +393,14 @@ class _ExportsScreenState extends State<ExportsScreen> {
           Builder(
             builder: (buttonContext) => FilledButton(
               onPressed: selected.isEmpty ? null : () => _exportBundle(rectOf(buttonContext)),
-              child: Text(s.exportsBundleButton(selected.length)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: HzSpace.s8,
+                children: [
+                  Flexible(child: Text(s.exportsBundleButton(selected.length))),
+                  ?lockBadge(Feature.export),
+                ],
+              ),
             ),
           ),
         ],
@@ -395,7 +435,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
                             IconButton(
                               tooltip: s.exportsRemove,
                               icon: const Icon(AppIcons.delete, size: HzIconSize.row),
-                              onPressed: () => ExportHistory.instance.remove(e),
+                              onPressed: () => _removeEntry(e),
                             ),
                           ],
                         ),
@@ -413,7 +453,13 @@ class _ExportsScreenState extends State<ExportsScreen> {
     final permanent = Addon.available;
     final continuous = RowCard(
       children: [
-        CardRow(title: s.exportsEtsHistory, meta: s.exportsEtsHistoryMeta, chevron: true, onTap: _exportEtsHistory),
+        CardRow(
+          title: s.exportsEtsHistory,
+          meta: s.exportsEtsHistoryMeta,
+          chevron: true,
+          badge: lockBadge(Feature.export),
+          onTap: _exportEtsHistory,
+        ),
         // AI access to the recording (MCP server of the add-on or box); the server lets only an
         // admin change it.
         CardRow(

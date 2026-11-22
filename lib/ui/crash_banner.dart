@@ -69,10 +69,10 @@ class CrashBannerHost extends StatelessWidget {
   Widget build(BuildContext context) {
     final guard = this.guard ?? CrashGuard.instance;
     return ListenableBuilder(
-      listenable: Listenable.merge([guard, routes]),
+      listenable: Listenable.merge([guard, routes, SupportPackageScreen.open]),
       builder: (context, _) {
         final when = guard.unclean;
-        final show = when != null && routes.depth > 1 && routes.topName != SupportPackageScreen.routeName;
+        final show = when != null && routes.depth > 1 && SupportPackageScreen.open.value == 0;
         return Column(
           children: [
             if (show) CrashBanner(time: when, onView: () => onReport(when), onClose: guard.dismiss),

@@ -216,7 +216,7 @@ class _FaultHuntScreenState extends State<FaultHuntScreen> {
               alignment: AlignmentDirectional.centerStart,
               child: OutlinedButton.icon(
                 onPressed: () => _stop(hunt),
-                icon: const Icon(AppIcons.stop, size: 18),
+                icon: const Icon(AppIcons.stop, size: HzIconSize.row),
                 label: Text(s.huntStop),
               ),
             ),
@@ -296,7 +296,7 @@ class _FaultHuntScreenState extends State<FaultHuntScreen> {
             alignment: AlignmentDirectional.centerStart,
             child: FilledButton.icon(
               onPressed: _chosen.isEmpty ? null : _start,
-              icon: const Icon(AppIcons.hunt, size: 18),
+              icon: const Icon(AppIcons.hunt, size: HzIconSize.row),
               label: Text(s.huntStart),
             ),
           ),

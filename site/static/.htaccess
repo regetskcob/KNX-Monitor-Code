@@ -39,8 +39,9 @@ AddType application/wasm .wasm
   Header always set Referrer-Policy "strict-origin-when-cross-origin"
   Header always set X-Frame-Options "SAMEORIGIN"
   Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()"
-  # HSTS only after HTTPS has run without trouble for a while.
-  #Header always set Strict-Transport-Security "max-age=31536000"
+  # HSTS: HTTPS is forced above since 08.11.2026. 30 days to begin with and
+  # without includeSubDomains; raise to a year once it has run without trouble.
+  Header always set Strict-Transport-Security "max-age=2592000"
 
   # The offers (kaufen/angebote.json) are read by the web app and the add-on
   # from another origin, as GitHub Pages allowed it.

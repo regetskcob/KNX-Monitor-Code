@@ -264,7 +264,7 @@ class _PointDot extends StatelessWidget {
               top: 0,
               child: DecoratedBox(
                 decoration: BoxDecoration(shape: BoxShape.circle, color: hz.surface),
-                child: Icon(HorizontStatus.warning.icon, size: 14, color: hz.warning),
+                child: Icon(HorizontStatus.warning.icon, size: HzIconSize.badge, color: hz.warning),
               ),
             ),
           ],
@@ -543,7 +543,7 @@ class _FloorViewScreenState extends State<FloorViewScreen> {
           ],
         ),
         body: !_store.loaded
-            ? const Center(child: CircularProgressIndicator())
+            ? const LoadingHint()
             : _store.tooNew
             ? Padding(padding: Gap.page, child: Text(s.floorTooNew))
             : floor == null
@@ -622,9 +622,13 @@ class _FloorViewScreenState extends State<FloorViewScreen> {
               }),
             ),
           if (_editing) ...[
-            ActionChip(avatar: const Icon(AppIcons.add, size: 18), label: Text(s.floorAddLevel), onPressed: _addFloor),
             ActionChip(
-              avatar: const Icon(AppIcons.image, size: 18),
+              avatar: const Icon(AppIcons.add, size: HzIconSize.row),
+              label: Text(s.floorAddLevel),
+              onPressed: _addFloor,
+            ),
+            ActionChip(
+              avatar: const Icon(AppIcons.image, size: HzIconSize.row),
               label: Text(s.floorPickImage),
               onPressed: () => _pickImage(floor),
             ),
@@ -640,7 +644,7 @@ class _FloorViewScreenState extends State<FloorViewScreen> {
           child: TextButton.icon(
             style: TextButton.styleFrom(foregroundColor: context.hz.critical),
             onPressed: () => unawaited(_deleteFloor(floor)),
-            icon: const Icon(AppIcons.delete, size: 18),
+            icon: const Icon(AppIcons.delete, size: HzIconSize.row),
             label: Text(s.floorDeleteLevel),
           ),
         ),

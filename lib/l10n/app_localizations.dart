@@ -13538,6 +13538,18 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 Telegramm} other{{count} Telegramme}} ließen sich nicht entschlüsseln. Meist ist der Keyring älter als das Projekt – neu aus der ETS exportieren.'**
   String secWithoutKeyText(int count);
 
+  /// Befund im Sicherheits-Check: Klartext auf Gruppenadressen mit Data-Secure-Schlüssel
+  ///
+  /// In de, this message translates to:
+  /// **'Ungesicherte Telegramme auf gesicherten Adressen'**
+  String get secPlainOnSecuredTitle;
+
+  /// Befund im Sicherheits-Check
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Telegramm kam} other{{count} Telegramme kamen}} unverschlüsselt auf Gruppenadressen an, die im Keyring gesichert sind. Die Geräte verwerfen solche Telegramme; Anzeige, Verlauf und Wächter haben sie trotzdem übernommen. Absender in der Liste prüfen.'**
+  String secPlainOnSecuredText(int count);
+
   /// Befund
   ///
   /// In de, this message translates to:
@@ -21367,6 +21379,408 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'vorher {before} · jetzt {after}'**
   String snapBeforeAfter(String before, String after);
+
+  /// Title: the keyring is not sent to a box reached over plain HTTP.
+  ///
+  /// In de, this message translates to:
+  /// **'Keyring bleibt auf diesem Gerät'**
+  String get boxKeyringPlainTitle;
+
+  /// Body: why keyring and IP Secure credentials are not sent over plain HTTP and what to do.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Verbindung zur Box unter {address} ist nicht verschlüsselt. Deshalb gehen Keyring und IP-Secure-Zugangsdaten nicht dorthin: Im Netz könnte jemand mitlesen, und unter derselben Adresse könnte ein anderes Gerät antworten. Der Monitor läuft weiter; gesicherte Telegramme zeichnet die Box nur mit dem Keyring auf, den sie schon hat. Für die verschlüsselte Verbindung auf der Seite /pair der Box einen neuen QR-Code erzeugen und scannen. Kann die Box kein HTTPS, lässt sich der Keyring in ihrer Weboberfläche hinterlegen.'**
+  String boxKeyringPlainBody(String address);
+
+  /// Pairing confirmation in the app (scanned or typed link): what the box receives.
+  ///
+  /// In de, this message translates to:
+  /// **'Nach dem Koppeln bekommt die Box dein Projekt: das ETS-Projekt mit allen Adressen und Namen, den Namen der Anlage und die Gateway-Adresse.'**
+  String get boxPairSharesProject;
+
+  /// AI access: warning when the MCP endpoint is plain HTTP.
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Adresse ist unverschlüsselt (HTTP): Der Token geht bei jeder Anfrage des KI-Werkzeugs im Klartext durchs Netz. Nur im eigenen Netz verwenden.'**
+  String get aiAccessPlain;
+
+  /// AI access: message after copying the token or the command that contains it.
+  ///
+  /// In de, this message translates to:
+  /// **'Kopiert. Verschwindet nach einer Minute aus der Zwischenablage.'**
+  String get aiAccessCopiedSecret;
+
+  /// Forum text: stands in place of the value of a telegram to a Data Secure group address.
+  ///
+  /// In de, this message translates to:
+  /// **'gesichert'**
+  String get forumSecureValue;
+
+  /// Handover update dialog: the package comes from another company than the earlier one.
+  ///
+  /// In de, this message translates to:
+  /// **'Das frühere Paket kam von {before}, dieses von {company}. Nur aktualisieren, wenn du diesen Absender kennst.'**
+  String handoverUpdateCompany(String before, String company);
+
+  /// Handover update dialog: the package names another KNX/IP interface.
+  ///
+  /// In de, this message translates to:
+  /// **'Das Gateway ändert sich: bisher {before}, danach {after}. Die App verbindet sich dann mit der neuen Adresse.'**
+  String handoverUpdateGateway(String before, String after);
+
+  /// Handover update dialog: the installation had no gateway, the package brings one.
+  ///
+  /// In de, this message translates to:
+  /// **'Das Paket setzt das Gateway auf {after}. Die App verbindet sich dann mit dieser Adresse.'**
+  String handoverUpdateGatewayNew(String after);
+
+  /// Fehler: Box oder Add-on antwortet mit einem Serverfehler, ohne Code
+  ///
+  /// In de, this message translates to:
+  /// **'Die Box hat die Anfrage nicht verarbeitet. Versuch es noch einmal; bleibt es dabei, hilft das Diagnosepaket.'**
+  String get boxRequestFailed;
+
+  /// Fehler im Browser: WebSocket zum Add-on geschlossen
+  ///
+  /// In de, this message translates to:
+  /// **'Die Verbindung zum Add-on ist getrennt.'**
+  String get addonDisconnected;
+
+  /// Fehler im Browser: Sitzung abgelaufen
+  ///
+  /// In de, this message translates to:
+  /// **'Anmeldung an der Busclear Box nötig. Seite neu laden und mit dem Box-Passwort anmelden.'**
+  String get addonLoginNeeded;
+
+  /// Fehler im Browser: 403 von der Box
+  ///
+  /// In de, this message translates to:
+  /// **'Die Busclear Box hat den Zugriff abgelehnt.'**
+  String get addonAccessDenied;
+
+  /// Fehler im Browser: WebSocket zum Add-on kommt nicht zustande
+  ///
+  /// In de, this message translates to:
+  /// **'Der Add-on-Server ist nicht erreichbar.'**
+  String get addonUnreachable;
+
+  /// Fehler im Browser: Funktion gibt es nur in der installierten App
+  ///
+  /// In de, this message translates to:
+  /// **'Das geht nur in der App.'**
+  String get appOnly;
+
+  /// Fehler im Browser: KNX-Routing
+  ///
+  /// In de, this message translates to:
+  /// **'Routing ist im Browser nicht möglich – das Add-on hält die Verbindung.'**
+  String get webNoRouting;
+
+  /// Fehler im Browser: TCP-Tunnel
+  ///
+  /// In de, this message translates to:
+  /// **'TCP ist im Browser nicht möglich – das Add-on hält die Verbindung.'**
+  String get webNoTcp;
+
+  /// Kauf fehlgeschlagen, Ursache unbekannt
+  ///
+  /// In de, this message translates to:
+  /// **'Der Kauf hat nicht geklappt. Versuch es noch einmal.'**
+  String get planBuyFailedPlain;
+
+  /// Kauf fehlgeschlagen: Netz
+  ///
+  /// In de, this message translates to:
+  /// **'Der Store ist gerade nicht erreichbar. Internetverbindung prüfen und noch einmal versuchen.'**
+  String get planBuyNetwork;
+
+  /// Kauf fehlgeschlagen: Käufe gesperrt
+  ///
+  /// In de, this message translates to:
+  /// **'Käufe sind auf diesem Gerät nicht erlaubt. In den Einstellungen des Geräts prüfen.'**
+  String get planBuyNotAllowed;
+
+  /// Kauf fehlgeschlagen: Problem beim Store
+  ///
+  /// In de, this message translates to:
+  /// **'Der Store meldet ein Problem. Versuch es später noch einmal.'**
+  String get planBuyStore;
+
+  /// Rückfrage vor dem Vergessen einer gekoppelten Box
+  ///
+  /// In de, this message translates to:
+  /// **'Kopplung mit „{box}“ löschen?'**
+  String boxForgetTitle(String box);
+
+  /// Erklärung in der Rückfrage vor dem Vergessen einer Box
+  ///
+  /// In de, this message translates to:
+  /// **'Die App kennt diese Box danach nicht mehr. Neu koppeln geht nur mit dem QR-Code oder dem Box-Passwort.'**
+  String get boxForgetBody;
+
+  /// Meldung nach dem Entfernen einer eigenen Diagrammvorlage, mit Rückgängig
+  ///
+  /// In de, this message translates to:
+  /// **'Vorlage „{name}“ entfernt.'**
+  String chartTemplateRemoved(String name);
+
+  /// Meldung nach dem Entfernen eines Exports aus der Liste, mit Rückgängig
+  ///
+  /// In de, this message translates to:
+  /// **'„{name}“ aus der Liste entfernt.'**
+  String exportsRemoved(String name);
+
+  /// Meldung nach dem Löschen eines gespeicherten Filters, mit Rückgängig
+  ///
+  /// In de, this message translates to:
+  /// **'Filter gelöscht.'**
+  String get filterDeleted;
+
+  /// Screenreader-Text des Zählers am Pause-Knopf: Telegramme, die während der Pause eingegangen sind
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Telegramm wartet} other{{count} Telegramme warten}}'**
+  String monitorPendingCount(int count);
+
+  /// Screenreader-Text des Kantenbilds der Kommunikationskarte
+  ///
+  /// In de, this message translates to:
+  /// **'Verbindungslinien: {left} Einträge links und {right} rechts führen zur Mitte.'**
+  String mapEdgesSemantics(int left, int right);
+
+  /// Screenreader-Text des Buslast-Verlaufs im Busmonitor
+  ///
+  /// In de, this message translates to:
+  /// **'Verlauf der Buslast.'**
+  String get busmonLoadChartSemantics;
+
+  /// Screenreader-Text der Diagrammfläche
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{Diagramm mit 1 Reihe} other{Diagramm mit {count} Reihen}}: {names}. Zeitraum {from} bis {to}. Tippen setzt das Fadenkreuz.'**
+  String chartsAreaSemantics(int count, String names, String from, String to);
+
+  /// Satz unter einem Ladekreisel, wenn nichts Genaueres bekannt ist
+  ///
+  /// In de, this message translates to:
+  /// **'Wird geladen …'**
+  String get commonLoading;
+
+  /// Satz unter dem Ladekreisel der Projektprüfung
+  ///
+  /// In de, this message translates to:
+  /// **'Das Projekt wird geprüft …'**
+  String get projectCheckRunning;
+
+  /// Box settings: clock was set far ahead by an untrusted source
+  ///
+  /// In de, this message translates to:
+  /// **'Uhrzeit weit vorgestellt, aber nicht bestätigt. Bis „Mit diesem Gerät stellen“ sie bestätigt, löscht die Box keinen alten Verlauf.'**
+  String get boxClockUnconfirmed;
+
+  /// Box settings: retention not confirmed after lost server.json
+  ///
+  /// In de, this message translates to:
+  /// **'Einstellungen der Box gingen verloren. Bis die Aufbewahrung neu festgelegt ist, löscht die Box keinen alten Verlauf.'**
+  String get boxRetentionUnconfirmed;
+
+  /// Message when a recording is stopped at its size limit
+  ///
+  /// In de, this message translates to:
+  /// **'Aufnahme beendet und gesichert: Sie hat die Obergrenze von {count} Telegrammen erreicht.'**
+  String recordingFull(String count);
+
+  /// Short issue label: plain telegram on a Data Secure address
+  ///
+  /// In de, this message translates to:
+  /// **'Klartext'**
+  String get issuePlainOnSecuredLabel;
+
+  /// Hint for plain telegram on a Data Secure address
+  ///
+  /// In de, this message translates to:
+  /// **'Unverschlüsselt auf einer Adresse mit Data-Secure-Schlüssel: Die Geräte verwerfen es. Kommt es nicht von einem bekannten Gerät, prüfen, wer es sendet.'**
+  String get issuePlainOnSecuredHint;
+
+  /// Monitor notice: routing lost message count
+  ///
+  /// In de, this message translates to:
+  /// **'Der KNX-Router meldet {count} Telegramme, die er nicht weitergeben konnte. Sie fehlen in der Liste; meist ist die Linie oder der Router überlastet.'**
+  String routingLost(String count);
+
+  /// Connect screen: shown instead of the button while connecting
+  ///
+  /// In de, this message translates to:
+  /// **'Verbindet mit dem Gateway …'**
+  String get connectConnecting;
+
+  /// Menu: page that gathers the single checks
+  ///
+  /// In de, this message translates to:
+  /// **'Prüfungen'**
+  String get menuHubChecks;
+
+  /// Menu: hint of the checks page
+  ///
+  /// In de, this message translates to:
+  /// **'Räume, Sperren, Heizung, Beleuchtung, Sicherheit: je eine Prüfung für einen Teil der Anlage.'**
+  String get menuHubChecksHint;
+
+  /// Menu: page for everything around a fault
+  ///
+  /// In de, this message translates to:
+  /// **'Fehlersuche'**
+  String get menuHubTroubleshooting;
+
+  /// Menu: hint of the troubleshooting page
+  ///
+  /// In de, this message translates to:
+  /// **'Wenn etwas nicht stimmt: eingrenzen, festhalten und melden.'**
+  String get menuHubTroubleshootingHint;
+
+  /// Menu: page with what the customer gets on paper
+  ///
+  /// In de, this message translates to:
+  /// **'Unterlagen'**
+  String get menuHubPapers;
+
+  /// Menu: hint of the papers page
+  ///
+  /// In de, this message translates to:
+  /// **'Was der Kunde bekommt: Akte, Berichte, Übergabe und Handbuch.'**
+  String get menuHubPapersHint;
+
+  /// Menu: page with what is set up once
+  ///
+  /// In de, this message translates to:
+  /// **'Einrichtung'**
+  String get menuHubSetup;
+
+  /// Menu: hint of the setup page
+  ///
+  /// In de, this message translates to:
+  /// **'Was einmal eingerichtet wird: Projekt, Anbindung, Sicherung.'**
+  String get menuHubSetupHint;
+
+  /// Setup page: ETS project row
+  ///
+  /// In de, this message translates to:
+  /// **'ETS-Projekt laden oder wechseln: Namen, Datentypen und Geräte.'**
+  String get menuProjectHint;
+
+  /// Setup page: backup row
+  ///
+  /// In de, this message translates to:
+  /// **'Alles von diesem Gerät in eine Datei sichern oder daraus zurückholen.'**
+  String get menuBackupHint;
+
+  /// Setup page: app lock row
+  ///
+  /// In de, this message translates to:
+  /// **'Die App mit Code oder Biometrie sperren.'**
+  String get menuAppLockHint;
+
+  /// Troubleshooting page: diagnostics package row
+  ///
+  /// In de, this message translates to:
+  /// **'Was zur Fehlersuche gebraucht wird, in einer Datei zum Weitergeben.'**
+  String get menuDiagHint;
+
+  /// Diagnostics wizard: step 1
+  ///
+  /// In de, this message translates to:
+  /// **'Beschreiben'**
+  String get diagStepDescribe;
+
+  /// Diagnostics wizard: step 2
+  ///
+  /// In de, this message translates to:
+  /// **'Aufzeichnung'**
+  String get diagStepData;
+
+  /// Diagnostics wizard: step 2 hint
+  ///
+  /// In de, this message translates to:
+  /// **'Welche Aufzeichnung und welcher Zeitraum ins Paket kommen, und ob Namen dabei sind.'**
+  String get diagStepDataHint;
+
+  /// Diagnostics wizard: step 3
+  ///
+  /// In de, this message translates to:
+  /// **'Inhalt prüfen'**
+  String get diagStepContents;
+
+  /// Diagnostics wizard: step 3 hint
+  ///
+  /// In de, this message translates to:
+  /// **'Das steht im Paket, bevor es dieses Gerät verlässt.'**
+  String get diagStepContentsHint;
+
+  /// Diagnostics wizard: step after a crash
+  ///
+  /// In de, this message translates to:
+  /// **'Melden'**
+  String get diagStepReport;
+
+  /// Diagnostics wizard: report step hint
+  ///
+  /// In de, this message translates to:
+  /// **'Das Paket ist draußen. Den Absturz kannst du jetzt öffentlich melden; das Paket hängst du selbst an.'**
+  String get diagStepReportHint;
+
+  /// Wizard: position of the current step
+  ///
+  /// In de, this message translates to:
+  /// **'Schritt {step} von {total}'**
+  String wizardStepOf(int step, int total);
+
+  /// Backup wizard: save dialog cancelled
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht gespeichert: Es wurde kein Ort für die Datei gewählt.'**
+  String get backupNotSaved;
+
+  /// Backup wizard: password step
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne dieses Passwort kommt niemand an den Inhalt, auch du nicht. Mindestens 12 Zeichen.'**
+  String get backupPasswordHint;
+
+  /// Restore wizard: file step
+  ///
+  /// In de, this message translates to:
+  /// **'Die Datei einer Sicherung von diesem oder einem anderen Gerät.'**
+  String get backupRestoreFileHint;
+
+  /// Restore wizard: pick button
+  ///
+  /// In de, this message translates to:
+  /// **'Datei wählen'**
+  String get backupPickFile;
+
+  /// Restore wizard: password step
+  ///
+  /// In de, this message translates to:
+  /// **'Das Passwort, mit dem die Sicherung erstellt wurde.'**
+  String get backupRestorePasswordHint;
+
+  /// Backup wizard: finish button
+  ///
+  /// In de, this message translates to:
+  /// **'Erstellen'**
+  String get backupCreateShort;
+
+  /// Restore wizard: finish button
+  ///
+  /// In de, this message translates to:
+  /// **'Einspielen'**
+  String get backupRestoreShort;
+
+  /// Handover wizard: finish button
+  ///
+  /// In de, this message translates to:
+  /// **'Erstellen'**
+  String get handoverCreateShort;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -144,7 +144,7 @@ class _Figure extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (status != null) ...[
-                Icon(status.icon, size: 16, color: status.color(hz)),
+                Icon(status.icon, size: HzIconSize.inline, color: status.color(hz)),
                 const SizedBox(width: HzSpace.s4),
               ],
               Text(figure.value, style: status == null ? style : style.copyWith(color: status.color(hz))),
@@ -281,6 +281,7 @@ class CardRow extends StatelessWidget {
     this.address,
     this.enabled = true,
     this.value,
+    this.badge,
     this.trailing,
     this.onTap,
     this.onLongPress,
@@ -299,6 +300,9 @@ class CardRow extends StatelessWidget {
 
   /// Value on the right, muted.
   final String? value;
+
+  /// Small mark before the trailing part, e.g. the tier badge of a locked entry.
+  final Widget? badge;
   final Widget? trailing;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
@@ -314,6 +318,7 @@ class CardRow extends StatelessWidget {
     final metaStyle = theme.textTheme.bodySmall?.copyWith(color: hz.textFaint);
     final arrow = chevron ?? (onTap != null && this.trailing == null);
     final value = this.value;
+    final badge = this.badge;
     final trailing = this.trailing;
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -333,7 +338,7 @@ class CardRow extends StatelessWidget {
         final meta? => Text(meta, style: metaStyle),
         null => null,
       },
-      trailing: value == null && trailing == null && !arrow
+      trailing: value == null && badge == null && trailing == null && !arrow
           ? null
           : Row(
               mainAxisSize: MainAxisSize.min,
@@ -348,6 +353,7 @@ class CardRow extends StatelessWidget {
                       style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted),
                     ),
                   ),
+                ?badge,
                 ?trailing,
                 if (arrow) Icon(AppIcons.next, size: HzIconSize.row, color: hz.textMuted),
               ],

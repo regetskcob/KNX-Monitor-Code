@@ -249,6 +249,34 @@ void main() {
       });
     });
 
+    test('Diagramme ohne gespeichertes „allowed“: ein Gerät sperrt die Karte des Admins nicht', () async {
+      // Datei aus der Zeit vor dem Feld: fehlt es, liest der Server „frei“.
+      await File('${data.path}/charts.json').writeAsString(
+        jsonEncode({
+          'charts': [
+            {'name': 'Strom', 'series': <Object?>[]},
+          ],
+        }),
+      );
+      await send('charts.json', method: 'PUT', owner: 'A', body: '{"charts":[{"name":"Temperatur"}]}');
+      final after = await stored('charts.json');
+      expect(after.containsKey('allowed'), isFalse);
+      expect((after['charts']! as List), hasLength(2));
+    });
+
+    test('höchstens $maxDeviceEntries Einträge je Gerät', () async {
+      String rules(int n) => jsonEncode({
+        'rules': [
+          for (var i = 0; i < n; i++) {'id': 'r$i'},
+        ],
+      });
+      expect((await send('watch_rules.json', method: 'PUT', owner: 'A', body: rules(maxDeviceEntries))).$1, 204);
+      expect((await send('watch_rules.json', method: 'PUT', owner: 'A', body: rules(maxDeviceEntries + 1))).$1, 400);
+      expect(((await stored('watch_rules.json'))['rules']! as List), hasLength(maxDeviceEntries));
+      // Ein zweites Gerät hat sein eigenes Kontingent.
+      expect((await send('watch_rules.json', method: 'PUT', owner: 'B', body: rules(3))).$1, 204);
+    });
+
     test('nur zum Ansehen: schreibt gar nichts', () async {
       for (final name in ['charts.json', 'watch_rules.json', 'catalog.json']) {
         expect(

@@ -7,6 +7,7 @@ import 'package:horizont/horizont.dart';
 import '../model/customer.dart';
 import '../model/app_lock.dart';
 import '../knx/knx_tunnel.dart';
+import '../knx/routing_tunnel.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
 import '../theme/tokens.dart';
@@ -69,7 +70,6 @@ import 'app_lock_screen.dart';
 import 'full_backup_screen.dart';
 import 'annotations.dart';
 import 'annotations_screen.dart';
-import 'data_export_screen.dart';
 import 'plant_report_screen.dart';
 import 'report_flow.dart';
 import 'support_package_screen.dart';
@@ -109,6 +109,13 @@ class MonitorScreen extends StatefulWidget {
 class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserver {
   late final _model = MonitorModel(widget.tunnel);
   late final StreamSubscription<Recording> _triggerSub;
+  late final StreamSubscription<Recording> _fullSub;
+
+  /// Saves a running recording every few minutes, so a crash costs at most that much.
+  Timer? _snapshotTimer;
+  int _snapshotSize = 0;
+  int _snapshotTick = 0;
+  DateTime? _snapshotOf;
   late final StreamSubscription<Telegram> _historySub;
   late final _background = BackgroundController(_model);
   late final _auto = AutoReconnect(widget.tunnel);
@@ -128,6 +135,23 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
     SendScheduler.instance.attach(_tunnel);
     activeTunnel.value = _tunnel;
     _triggerSub = _model.triggeredRecordings.listen(_onTriggered);
+    _fullSub = _model.fullRecordings.listen(_onFull);
+    _snapshotTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      final r = _model.recorder;
+      if (r == null) return;
+      // Each copy writes the whole recording again: only when it grew, and a large one less
+      // often, so a long recording does not stall the monitor every few minutes.
+      final size = r.telegrams.length;
+      if (_snapshotOf != r.started) {
+        _snapshotOf = r.started;
+        _snapshotSize = 0;
+        _snapshotTick = 0;
+      }
+      _snapshotTick++;
+      if (size == _snapshotSize || (size > 100000 && _snapshotTick % 6 != 0)) return;
+      _snapshotSize = size;
+      _saveRunning(_model.snapshotRecording(name: _defaultName(r.started)));
+    });
     // Comment on a fresh telegram: offer a recording with lead time.
     // Only offer what works: expert mode, no running recording and room for
     // another one (Free stores one).
@@ -247,7 +271,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
               padding: const EdgeInsets.symmetric(horizontal: HzSpace.s16, vertical: HzSpace.s12),
               child: Row(
                 children: [
-                  const Icon(AppIcons.watch, size: 18),
+                  const Icon(AppIcons.watch, size: HzIconSize.row),
                   const SizedBox(width: HzSpace.s8),
                   Expanded(child: Text(s.watchHit(what))),
                 ],
@@ -286,11 +310,22 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
     _daliAlarms.dispose();
     DaliAccess.detach(_tunnel);
     _triggerSub.cancel();
+    _fullSub.cancel();
+    _snapshotTimer?.cancel();
     _historySub.cancel();
     HistoryStore.instance.flush();
     _background.dispose();
+    // A running recording lives only in memory: keep it when the monitor closes.
+    _saveRunning(_model.finishRunningRecording(name: _defaultName(_model.recorder?.started ?? DateTime.now())));
     _model.dispose();
     super.dispose();
+  }
+
+  static void _saveRunning(Recording? recording) {
+    if (recording == null) return;
+    unawaited(
+      RecordingStore.instance.save(recording).catchError((Object e) => debugPrint('Aufnahme nicht gesichert: $e')),
+    );
   }
 
   /// Background: grace period (see [BackgroundController]); reconnects on
@@ -300,6 +335,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
     switch (state) {
       case AppLifecycleState.paused:
         HistoryStore.instance.flush();
+        _saveRunning(_model.snapshotRecording(name: _defaultName(_model.recorder?.started ?? DateTime.now())));
         _background.onBackground();
       case AppLifecycleState.resumed:
         _background.onForeground();
@@ -377,6 +413,19 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
       ),
     ),
   );
+
+  /// Recording reached its upper limit: saved under its usual name, and said so.
+  Future<void> _onFull(Recording recording) async {
+    final named = recording.copyWith(name: _defaultName(recording.started));
+    await RecordingStore.instance.save(named);
+    if (!mounted) return;
+    showHorizontMessage(
+      context,
+      s.recordingFull(formatInt(MonitorModel.recordingLimit)),
+      status: HorizontStatus.warning,
+      action: SnackBarAction(label: s.recordingView, onPressed: () => openRecording(context, named.id)),
+    );
+  }
 
   /// Trigger recording finished: save and report.
   Future<void> _onTriggered(Recording recording) async {
@@ -528,6 +577,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
               ),
             ),
             _TapBanner(tunnel: _tunnel),
+            if (_tunnel case final RoutingTunnel routing) _RoutingLostBanner(tunnel: routing),
             TapStrip(tunnel: _tunnel, log: _model),
             const _SecureBanner(),
             const _AckBanner(),
@@ -562,6 +612,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             icon: AppIcons.diagnostics,
             expertOnly: true,
             title: s.diagnosticsTitle,
+            hub: ToolHub.troubleshooting,
             feature: Feature.diagnostics,
             subtitle: s.toolDiagnostics,
             group: ToolGroup.check,
@@ -593,6 +644,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
           ToolEntry(
             icon: AppIcons.report,
             title: s.reportTitle,
+            hub: ToolHub.troubleshooting,
             subtitle: s.reportTool,
             group: ToolGroup.check,
             order: -1,
@@ -620,6 +672,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
           ToolEntry(
             icon: AppIcons.teachIn,
             title: s.learnTitle,
+            hub: ToolHub.setup,
             subtitle: s.learnTool,
             group: ToolGroup.data,
             order: -1,
@@ -646,6 +699,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             ToolEntry(
               icon: AppIcons.light,
               title: s.daliTitle,
+              hub: ToolHub.checks,
               subtitle: s.daliTool,
               group: ToolGroup.check,
               order: 2,
@@ -656,6 +710,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             ToolEntry(
               icon: AppIcons.objects,
               title: s.roomsTitle,
+              hub: ToolHub.checks,
               subtitle: s.roomsTool,
               group: ToolGroup.check,
               order: 1,
@@ -665,6 +720,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
           ToolEntry(
             icon: AppIcons.cycle,
             title: s.snapTitle,
+            hub: ToolHub.checks,
             subtitle: s.snapTool,
             group: ToolGroup.check,
             order: 2,
@@ -675,6 +731,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             ToolEntry(
               icon: AppIcons.locked,
               title: s.locksTitle,
+              hub: ToolHub.checks,
               subtitle: s.locksTool,
               group: ToolGroup.check,
               order: 1,
@@ -685,6 +742,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             ToolEntry(
               icon: AppIcons.thermostat,
               title: s.heatTitle,
+              hub: ToolHub.checks,
               subtitle: s.heatTool,
               group: ToolGroup.check,
               order: 1,
@@ -724,6 +782,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
               icon: AppIcons.hunt,
               expertOnly: true,
               title: s.huntTitle,
+              hub: ToolHub.troubleshooting,
               feature: Feature.faultHunt,
               subtitle: Addon.onBox ? s.huntTool : s.huntToolAddon,
               group: ToolGroup.record,
@@ -736,24 +795,14 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
               icon: AppIcons.report,
               expertOnly: true,
               title: s.plantTitle,
+              hub: ToolHub.papers,
               feature: Feature.plantReport,
               subtitle: s.plantTool,
               group: ToolGroup.documents,
               order: 4,
               open: (_) => pushTool<void>(context, (_) => const PlantReportScreen()),
             ),
-          // Data export: runs on the box or add-on. No tier of its own:
-          // the add-on is free, the app on the box is Pro.
-          if (Addon.available)
-            ToolEntry(
-              icon: AppIcons.chart,
-              expertOnly: true,
-              title: s.dataExportTitle,
-              subtitle: s.dataExportTool,
-              group: ToolGroup.record,
-              order: 5,
-              open: (_) => pushTool<void>(context, (_) => const DataExportScreen()),
-            ),
+          // The data export (box or add-on) is listed under "Exporte", not in the menu.
           // Watcher (Plus): also without expert mode, for everyday use and troubleshooting.
           ToolEntry(
             icon: AppIcons.watch,
@@ -780,6 +829,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             ToolEntry(
               icon: AppIcons.fileCode,
               title: s.haTitle,
+              hub: ToolHub.setup,
               subtitle: s.haTool,
               group: ToolGroup.data,
               order: 3,
@@ -799,6 +849,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
           ToolEntry(
             icon: AppIcons.secure,
             title: s.secTitle,
+            hub: ToolHub.checks,
             subtitle: s.secTool,
             group: ToolGroup.check,
             order: 3,
@@ -820,6 +871,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             ToolEntry(
               icon: AppIcons.homePlan,
               title: s.hpaTab,
+              hub: ToolHub.checks,
               subtitle: s.floorPlanTool,
               group: ToolGroup.check,
               order: 4,
@@ -833,6 +885,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             ToolEntry(
               icon: AppIcons.report,
               title: s.faultReportTo(origin.contact.name.isEmpty ? s.handoverUnknownCompany : origin.contact.name),
+              hub: ToolHub.troubleshooting,
               subtitle: s.faultReportTool,
               group: ToolGroup.check,
               open: (_) => pushTool<void>(
@@ -844,16 +897,18 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             icon: AppIcons.handover,
             expertOnly: true,
             title: s.handoverTitle,
+            hub: ToolHub.papers,
             subtitle: s.handoverTool,
             group: ToolGroup.documents,
             order: 2,
             feature: Feature.handover,
-            open: (_) => pushTool<void>(context, (_) => const HandoverScreen()),
+            open: (_) => unawaited(showHandover(context)),
           ),
           ToolEntry(
             icon: AppIcons.customers,
             expertOnly: true,
             title: s.customerTitle,
+            hub: ToolHub.papers,
             subtitle: s.customerTool,
             group: ToolGroup.documents,
             // Existing records stay readable after the subscription ends.
@@ -864,6 +919,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             icon: AppIcons.serviceReport,
             expertOnly: true,
             title: s.srTitle,
+            hub: ToolHub.papers,
             subtitle: s.srTool,
             group: ToolGroup.documents,
             order: 1,
@@ -887,6 +943,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             icon: AppIcons.qrCode,
             expertOnly: true,
             title: s.siteDocsTitle,
+            hub: ToolHub.papers,
             subtitle: s.siteDocsTool,
             group: ToolGroup.documents,
             order: 2,
@@ -897,6 +954,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             icon: AppIcons.manual,
             expertOnly: true,
             title: s.manualTitle,
+            hub: ToolHub.papers,
             subtitle: s.manualTool,
             group: ToolGroup.documents,
             order: 3,
@@ -907,6 +965,7 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             icon: AppIcons.company,
             expertOnly: true,
             title: s.companyTitle,
+            hub: ToolHub.setup,
             subtitle: s.companyTool,
             group: ToolGroup.documents,
             order: 9,
@@ -919,6 +978,8 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             MenuAction(
               icon: AppIcons.locked,
               title: s.appLockSettings,
+              hub: ToolHub.setup,
+              subtitle: s.menuAppLockHint,
               onTap: () =>
                   Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AppLockSettingsScreen())),
             ),
@@ -926,6 +987,8 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
             MenuAction(
               icon: AppIcons.supportPackage,
               title: s.backupTitle,
+              hub: ToolHub.setup,
+              subtitle: s.menuBackupHint,
               onTap: () =>
                   Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FullBackupScreen())),
             ),
@@ -948,6 +1011,8 @@ class _MonitorScreenState extends State<MonitorScreen> with WidgetsBindingObserv
           MenuAction(
             icon: AppIcons.supportPackage,
             title: s.diagTitle,
+            hub: ToolHub.troubleshooting,
+            subtitle: s.menuDiagHint,
             onTap: () => showSupportPackage(context, tunnel: _tunnel, log: _model, session: _model.session),
           ),
           MenuAction(
@@ -1067,7 +1132,7 @@ class _BlinkingDotState extends State<_BlinkingDot> with SingleTickerProviderSta
   @override
   Widget build(BuildContext context) => FadeTransition(
     opacity: Tween(begin: 1.0, end: 0.35).animate(CurvedAnimation(parent: _c, curve: Motion.curve)),
-    child: const Icon(AppIcons.stop, size: 18),
+    child: const Icon(AppIcons.stop, size: HzIconSize.row),
   );
 }
 
@@ -1194,7 +1259,12 @@ class _Title extends StatelessWidget {
               Flexible(
                 child: ExcludeSemantics(
                   child: Text(
-                    '$place${tunnel.deviceName.value ?? appName} · $word'.toUpperCase(),
+                    // A problem leads: with a long name or large text the line is cut at the
+                    // end, and "connecting"/"disconnected" must not be what falls away.
+                    (status == HorizontStatus.positive
+                            ? '$place${tunnel.deviceName.value ?? appName} · $word'
+                            : '$word · $place${tunnel.deviceName.value ?? appName}')
+                        .toUpperCase(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: context
@@ -1221,27 +1291,52 @@ class _PauseButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final hz = context.hz;
     final paused = model.paused;
-    return Badge(
-      isLabelVisible: model.pending > 0,
-      label: Text(model.pending > 999 ? '999+' : '${model.pending}'),
-      offset: const Offset(-4, -2),
-      // Only an icon, same height as "Schreiben" (write) (phone 56, otherwise 48);
-      // secondary with an outline, tinted with the selection color when paused.
-      child: SizedBox.square(
-        dimension: MediaQuery.sizeOf(context).width < Breakpoints.medium ? HzSpace.s48 + HzSpace.s8 : HzSpace.s48,
-        child: FloatingActionButton(
-          heroTag: 'pause',
-          tooltip: paused ? s.monitorResume : s.monitorPause,
-          onPressed: () => model.setPaused(!paused),
-          backgroundColor: paused ? hz.accentTint : hz.surface,
-          foregroundColor: paused ? hz.accentText : hz.text,
-          shape: RoundedRectangleBorder(
-            borderRadius: Radii.card,
-            side: BorderSide(color: hz.line, width: Lines.hairline),
+    final pending = model.pending;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Only an icon, same height as "Schreiben" (write) (phone 56, otherwise 48);
+        // secondary with an outline, tinted with the selection color when paused.
+        SizedBox.square(
+          dimension: MediaQuery.sizeOf(context).width < Breakpoints.medium ? HzSpace.s48 + HzSpace.s8 : HzSpace.s48,
+          child: FloatingActionButton(
+            heroTag: 'pause',
+            tooltip: paused ? s.monitorResume : s.monitorPause,
+            onPressed: () => model.setPaused(!paused),
+            backgroundColor: paused ? hz.accentTint : hz.surface,
+            foregroundColor: paused ? hz.accentText : hz.text,
+            shape: RoundedRectangleBorder(
+              borderRadius: Radii.card,
+              side: BorderSide(color: hz.line, width: Lines.hairline),
+            ),
+            child: Icon(paused ? AppIcons.play : AppIcons.pause, key: ValueKey(paused)),
           ),
-          child: Icon(paused ? AppIcons.play : AppIcons.pause, key: ValueKey(paused)),
         ),
-      ),
+        // Waiting telegrams are a count, not an error: Horizont's counter on a lined surface
+        // instead of Material's red pill.
+        if (pending > 0)
+          PositionedDirectional(
+            top: -HzSpace.s8,
+            end: -HzSpace.s8,
+            child: IgnorePointer(
+              child: Semantics(
+                label: s.monitorPendingCount(pending),
+                excludeSemantics: true,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: hz.surface,
+                    borderRadius: Radii.row,
+                    border: Border.all(color: hz.lineStrong, width: Lines.hairline),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: HzSpace.s4, vertical: HzSpace.s2),
+                    child: Text(pending > 999 ? '999+' : '$pending', style: context.hzTheme.count),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -1298,9 +1393,25 @@ class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixi
       animation: _controller,
       builder: (context, child) =>
           Opacity(opacity: 0.4 + 0.6 * Motion.curve.transform(_controller.value), child: child),
-      child: Icon(widget.icon, size: 14, color: widget.color),
+      child: Icon(widget.icon, size: HzIconSize.badge, color: widget.color),
     );
   }
+}
+
+/// The router reported telegrams it could not forward (ROUTING_LOST_MESSAGE): the list misses
+/// them, usually because the line or the router is overloaded.
+class _RoutingLostBanner extends StatelessWidget {
+  const _RoutingLostBanner({required this.tunnel});
+
+  final RoutingTunnel tunnel;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<int>(
+    valueListenable: tunnel.lostByRouter,
+    builder: (context, lost, _) => lost == 0
+        ? const SizedBox.shrink()
+        : _Banner(status: HorizontStatus.warning, text: s.routingLost(formatInt(lost))),
+  );
 }
 
 /// One tap point dropped while others keep running (issue #8). The overall connection banner
@@ -1435,7 +1546,7 @@ class _SecureBannerState extends State<_SecureBanner> {
                     IconButton(
                       tooltip: s.commonDismiss,
                       onPressed: () => setState(() => _dismissed = true),
-                      icon: Icon(AppIcons.close, size: 18, color: context.hz.textMuted),
+                      icon: Icon(AppIcons.close, size: HzIconSize.row, color: context.hz.textMuted),
                     ),
                   ],
                 ),
@@ -1514,7 +1625,8 @@ class _ConnectionBannerState extends State<_ConnectionBanner> {
               : _Banner(
                   status: HorizontStatus.critical,
                   text: [
-                    tunnel.error.value ?? s.monitorConnectionLost,
+                    // Plain words in the banner; the raw text goes into the diagnostics package.
+                    tunnel.error.value == null ? s.monitorConnectionLost : tapErrorText(tunnel.error.value),
                     if (seconds != null) s.monitorRetryIn(seconds.clamp(0, 999)),
                   ].join(' · '),
                   actions: [

@@ -46,6 +46,9 @@ Future<void> writeProject(Directory root) => File('${root.path}/catalog.json').w
 
 /// One run of the health check over the history in [root], measured.
 Future<HealthBench> measureHealth(Directory root, {required DateTime now}) async {
+  // The history is dated around [now], the recorder cleans up by the real clock: without a long
+  // retention the days would be deleted at start once the real date has moved on.
+  File('${root.path}/server.json').writeAsStringSync(jsonEncode({'retentionDays': 3650}));
   final bus = BusService(root, describe: (_, _) async => null);
   await bus.start();
   final cycles = CycleWatch(() => bus, clock: () => now);

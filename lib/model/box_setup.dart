@@ -151,15 +151,48 @@ class BoxSetup extends ChangeNotifier {
         // One-time code from the box's pairing page: the rights were chosen there.
         final key = await Addon.claimBox(link, deviceName, app: await AppInstance.id());
         await BoxConnection.instance.use(link.paired(key));
+        await _pinCertificate();
         return _set(BoxSetupStep.pair, BoxStepState.done);
       }
       final key = await Addon.pairBox(link, link.password, deviceName, app: await AppInstance.id());
       await BoxConnection.instance.use(link.paired(key));
+      await _pinCertificate();
       await _ownPassword();
       _set(BoxSetupStep.pair, BoxStepState.done);
     } on AddonException catch (e) {
       _fail(BoxSetupStep.pair, e.message);
     }
+  }
+
+  /// Paired over plain HTTP (an address typed by hand, an older link without `fp`): if the box
+  /// reports a certificate, the app switches to HTTPS with exactly that one, so the device key
+  /// and everything after it no longer cross the network readably and another device under the
+  /// same address cannot answer in its place. Kept only if a pinned request succeeds; otherwise
+  /// the box stays on HTTP as before (Docker without certificate, older boxes).
+  Future<void> _pinCertificate() async {
+    final current = BoxConnection.instance.saved;
+    if (current == null || current.encrypted) return;
+    final Map<String, Object?> info;
+    try {
+      info = await Addon.boxInfo();
+    } on AddonException {
+      return;
+    }
+    final tls = info['tls'];
+    if (tls is! Map) return;
+    final fingerprint = tls['fingerprint'];
+    final port = tls['port'];
+    final pinned = fingerprint is String ? current.withTls(fingerprint, port: port is int ? port : null) : null;
+    if (pinned == null) return;
+    final previous = Addon.box;
+    Addon.box = pinned;
+    try {
+      await Addon.boxInfo();
+    } on Object {
+      Addon.box = previous;
+      return;
+    }
+    await BoxConnection.instance.use(pinned);
   }
 
   /// New box: as long as the sticker password is valid, nothing works except changing it.

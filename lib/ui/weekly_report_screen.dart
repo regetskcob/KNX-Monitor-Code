@@ -264,7 +264,7 @@ class WeeklyReportScreen extends StatelessWidget {
                           Navigator.of(context).pop();
                           onOpenHealth!();
                         },
-                        icon: const Icon(AppIcons.health, size: 18),
+                        icon: const Icon(AppIcons.health, size: HzIconSize.row),
                         label: Text(s.weekOpenHealth),
                       ),
                     ),

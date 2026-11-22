@@ -713,9 +713,12 @@ If a new version misbehaves, restore that backup (Settings → System → Backup
 it brings back the previous version together with its data. Recordings and
 settings live in the add-on's data folder and survive normal updates.
 
-The **Watchdog** switch on the add-on's Info page is off by default. Turned on, Home
-Assistant restarts the add-on when its server stops responding. A missing gateway does
-not count: the bus reconnects by itself.
+The **Watchdog** switch on the add-on's Info page is off by default. **Turn it on:**
+Home Assistant then restarts the add-on when its server stops responding or stops
+recording although it still runs. Without it an add-on that ended after an internal
+error stays off until someone starts it by hand, and nothing is recorded meanwhile. A
+missing gateway does not count, and neither does a full disk: the bus reconnects by
+itself, and a restart frees no space.
 
 ## Support
 

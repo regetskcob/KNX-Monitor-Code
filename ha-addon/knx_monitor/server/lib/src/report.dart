@@ -77,13 +77,16 @@ class ReportSettings {
 
   static DateTime? _time(Object? v) => v is int ? DateTime.fromMillisecondsSinceEpoch(v) : null;
 
-  Map<String, Object?> toJson({bool secrets = true}) => {
+  /// [secrets]: with the token (for the file). [targets]: with the address
+  /// and topic the notification goes to. With ntfy the topic is the secret,
+  /// with a webhook it is usually part of the URL: whoever knows them reads
+  /// along and can send the owner messages, so only an admin gets them.
+  Map<String, Object?> toJson({bool secrets = true, bool targets = true}) => {
     'enabled': enabled,
     'period': period,
     'since': since?.millisecondsSinceEpoch,
     'notifyKind': notifyKind,
-    'notifyUrl': notifyUrl,
-    'notifyTopic': notifyTopic,
+    if (targets) ...{'notifyUrl': notifyUrl, 'notifyTopic': notifyTopic} else 'hasNotifyTarget': notifyUrl.isNotEmpty,
     if (secrets) 'notifyToken': notifyToken else 'hasNotifyToken': notifyToken.isNotEmpty,
     'notifyReady': notifyReady,
     'notifyUrgent': notifyUrgent,
@@ -1036,8 +1039,8 @@ class ReportService {
     return result;
   }
 
-  Map<String, Object?> status() => {
-    'settings': settings.toJson(secrets: false),
+  Map<String, Object?> status({bool admin = true}) => {
+    'settings': settings.toJson(secrets: false, targets: admin),
     'canHomeAssistant': homeAssistant != null,
     'lastRun': lastRun?.millisecondsSinceEpoch,
     'lastError': lastError,
@@ -1048,7 +1051,8 @@ class ReportService {
 
 /// `/api/report…`; `true` if [request] has been answered.
 ///
-/// - `GET /api/report` → status, settings (without token) and list
+/// - `GET /api/report` → status, settings (without token; address and topic of the
+///   notification for [admin] only) and list
 /// - `PUT /api/report` → change settings ([admin] only)
 /// - `GET /api/report/<id>` → one report
 /// - `POST /api/report/generate` → interim report of the current period ([admin] only)
@@ -1076,7 +1080,8 @@ Future<bool> serveReports(HttpRequest request, ReportService service, {required 
     }
   }
 
-  Future<void> overview() async => sendJson(response, {...service.status(), 'reports': await service.list()});
+  Future<void> overview() async =>
+      sendJson(response, {...service.status(admin: admin), 'reports': await service.list()});
 
   if (rest.isEmpty && method == 'GET') {
     await overview();

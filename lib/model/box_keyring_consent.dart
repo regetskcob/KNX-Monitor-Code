@@ -4,7 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../platform/box_link.dart';
 
 /// Whether the keyring may go to this box. A separate question per address and certificate: the keys
-/// of a KNX Secure installation never go to a box without asking. Without a UI ([ask] empty)
+/// of a KNX Secure installation never go to a box without asking, and never over plain HTTP
+/// ([BoxLink.plainOverNetwork]): there the answer is no without a question. Without a UI ([ask] empty)
 /// the keyring stays here. The answer never comes from a backup
 /// (`FullBackup.keepsOut`).
 abstract final class BoxKeyringConsent {
@@ -15,11 +16,25 @@ abstract final class BoxKeyringConsent {
 
   static String _key(BoxLink box) => '$_prefix${box.url}${box.fp.isEmpty ? '' : '#${box.fp}'}';
 
+  /// Tells the user that the keyring stays here because the connection to [box] is not encrypted.
+  /// Set by the UI; called once per box and run.
+  static void Function(BoxLink box)? tellPlain;
+
+  static final _toldPlain = <String>{};
+
   /// Several syncs at the same time: only one question.
   static final _asking = <String, Future<bool>>{};
 
   static Future<bool> allowed(BoxLink box) async {
     final key = _key(box);
+    // Plain HTTP: anyone under the same address would receive the keys (another network, a
+    // device that took over the address), and everyone on the way reads them. An earlier yes
+    // does not count either: it was given to an address, not to a box that can be recognised.
+    if (box.plainOverNetwork) {
+      if (tellPlain case final tell? when _toldPlain.add(key)) tell(box);
+      debugPrint('Box: Keyring bleibt hier, ${box.address} ist unverschlüsselt');
+      return false;
+    }
     final prefs = await SharedPreferences.getInstance();
     final known = prefs.getBool(key);
     if (known != null) return known;
@@ -37,7 +52,10 @@ abstract final class BoxKeyringConsent {
   }
 
   /// Newly paired: ask again.
-  static Future<void> forget(BoxLink box) async => (await SharedPreferences.getInstance()).remove(_key(box));
+  static Future<void> forget(BoxLink box) async {
+    _toldPlain.remove(_key(box));
+    await (await SharedPreferences.getInstance()).remove(_key(box));
+  }
 }
 
 /// Whether the project may go to this box: the ETS project, the installation's name and gateway,

@@ -75,8 +75,12 @@ class BusLoadCard extends StatelessWidget {
           SizedBox(
             height: HzSpace.s48 + HzSpace.s8,
             width: double.infinity,
-            child: CustomPaint(
-              painter: _LoadPainter(history, color: hz.textFaint, warn: hz.warning, idle: hz.line),
+            child: Semantics(
+              image: true,
+              label: s.busmonLoadChartSemantics,
+              child: CustomPaint(
+                painter: _LoadPainter(history, color: hz.textFaint, warn: hz.warning, idle: hz.line),
+              ),
             ),
           ),
           const SizedBox(height: Gap.item),
@@ -190,7 +194,7 @@ class SendersCard extends StatelessWidget {
                         ),
                         const SizedBox(width: Gap.item),
                         if (st.problems > 0) ...[
-                          Icon(HorizontStatus.warning.icon, size: 14, color: hz.warning),
+                          Icon(HorizontStatus.warning.icon, size: HzIconSize.badge, color: hz.warning),
                           const SizedBox(width: HzSpace.s4),
                         ],
                         Text(
@@ -328,7 +332,7 @@ class BusmonFrameDetails extends StatelessWidget {
                     child: Text(label, style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted)),
                   ),
                   if (warn) ...[
-                    Icon(HorizontStatus.warning.icon, size: 16, color: hz.warning),
+                    Icon(HorizontStatus.warning.icon, size: HzIconSize.inline, color: hz.warning),
                     const SizedBox(width: HzSpace.s4),
                   ],
                   Expanded(

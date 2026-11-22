@@ -450,6 +450,83 @@ void main() {
     expect((await send('/api/bus', auth: 'Bearer $normal')).$2, 'ok device');
   });
 
+  // docs/security.md: a lost admin tablet or a borrowed browser session must
+  // not mint a lasting admin device, nor lock the owner's devices out.
+  group('admin token without the password', () {
+    late String admin;
+
+    setUp(() async => admin = await pairDevice('Tablet', '&admin=1'));
+
+    test('no new admin device, neither as key nor as code', () async {
+      for (final form in ['name=x&admin=1&direct=1', 'name=x&admin=1']) {
+        final (status, html, _) = await send('/pair', method: 'POST', auth: 'Bearer $admin', body: form);
+        expect(status, 200);
+        expect(html, contains('bitte das aktuelle Passwort'));
+        expect(html, isNot(contains('knxmonitor://')));
+      }
+      expect(access.devices, hasLength(1));
+      // A wrong password counts as a failed attempt and mints nothing.
+      final (_, wrong, _) = await send(
+        '/pair',
+        method: 'POST',
+        auth: 'Bearer $admin',
+        body: 'name=x&admin=1&direct=1&current=falsch123',
+      );
+      expect(wrong, isNot(contains('knxmonitor://')));
+      expect(access.devices, hasLength(1));
+    });
+
+    test('with the current password it works, a device without admin rights needs none', () async {
+      final (_, html, _) = await send(
+        '/pair',
+        method: 'POST',
+        auth: 'Bearer $admin',
+        body: 'name=HA&admin=1&direct=1&current=richtig123',
+      );
+      expect(linkOf(html).queryParameters['key'], isNotNull);
+      expect(access.devices.last.admin, isTrue);
+      final (_, plain, _) = await send('/pair', method: 'POST', auth: 'Bearer $admin', body: 'name=Flur');
+      expect(linkOf(plain).queryParameters['code'], isNotNull);
+    });
+
+    test('another admin device is revoked only with the password, an ordinary one and oneself without', () async {
+      final other = await pairDevice('Zweites', '&admin=1');
+      final plain = await pairDevice('Flur');
+      String idOf(String name) => access.devices.firstWhere((d) => d.name == name).id;
+      Future<int> revoke(String id, {String? current, String? auth}) async {
+        final request = await client.openUrl('POST', url('/api/box/devices/revoke'));
+        request.headers
+          ..set(HttpHeaders.authorizationHeader, auth ?? 'Bearer $admin')
+          ..contentType = ContentType.json;
+        request.write(jsonEncode({'id': id, 'current': ?current}));
+        final response = await request.close();
+        await response.drain<void>();
+        return response.statusCode;
+      }
+
+      expect(await revoke(idOf('Zweites')), 403);
+      final (_, page, _) = await send(
+        '/pair/revoke',
+        method: 'POST',
+        auth: 'Bearer $admin',
+        body: 'id=${idOf('Zweites')}',
+      );
+      expect(page, contains('nur mit dem aktuellen Passwort'));
+      expect((await send('/api/bus', auth: 'Bearer $other')).$1, 200);
+
+      expect(await revoke(idOf('Flur')), 200);
+      expect((await send('/api/bus', auth: 'Bearer $plain')).$1, 401);
+      expect(await revoke(idOf('Zweites'), current: 'richtig123'), 200);
+      expect((await send('/api/bus', auth: 'Bearer $other')).$1, 401);
+      // With the password itself, as the pairing page in the browser sends it.
+      final third = await pairDevice('Drittes', '&admin=1');
+      expect(await revoke(idOf('Drittes'), auth: basic('richtig123')), 200);
+      expect((await send('/api/bus', auth: 'Bearer $third')).$1, 401);
+      // Giving up one's own access stays possible.
+      expect(await revoke(idOf('Tablet')), 200);
+    });
+  });
+
   test('Gerätezugang: kein Roh-Relay, kein Koppeln', () async {
     final key = await pairDevice();
     expect((await send('/ws', auth: 'Bearer $key')).$1, 403);

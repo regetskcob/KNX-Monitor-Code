@@ -163,7 +163,7 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
         future: _loading,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator.adaptive());
+            return const LoadingHint();
           }
           return ListenableBuilder(
             listenable: _store,
@@ -476,6 +476,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
             icon: AppIcons.send,
             title: s.replayMenu,
             danger: true,
+            feature: Feature.busReplay,
             enabled: _replayTunnel != null,
             onTap: _replay,
           ),
@@ -625,7 +626,7 @@ class PlayerBar extends StatelessWidget {
                     message: s.playerSpeed,
                     child: ActionChip(
                       onPressed: player.cycleSpeed,
-                      avatar: const Icon(AppIcons.forward, size: 18),
+                      avatar: const Icon(AppIcons.forward, size: HzIconSize.row),
                       label: Text('${speed == speed.roundToDouble() ? speed.toInt() : speed}×', style: data),
                     ),
                   ),
@@ -853,7 +854,9 @@ class _HistoryCardState extends State<_HistoryCard> {
                   showCheckmark: false,
                   label: Text(d == 0 ? s.historyOff : s.historyDays(d)),
                   // Longer periods belong to Plus: a lock instead of hiding them.
-                  avatar: d > Plan.instance.maxHistoryDays ? const Icon(AppIcons.locked, size: 16) : null,
+                  avatar: d > Plan.instance.maxHistoryDays
+                      ? const Icon(AppIcons.locked, size: HzIconSize.inline)
+                      : null,
                   selected: _history.retentionDays == d,
                   onSelected: (_) async {
                     final plan = Plan.instance;
@@ -1014,7 +1017,7 @@ class _HistoryCardState extends State<_HistoryCard> {
                                     return Row(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Icon(status.icon, size: 14, color: color),
+                                        Icon(status.icon, size: HzIconSize.badge, color: color),
                                         const SizedBox(width: HzSpace.s4),
                                         Expanded(
                                           child: Text(

@@ -25,6 +25,7 @@ import 'model/watch_rules.dart';
 import 'model/weekly_report.dart';
 import 'knx/demo_tunnel.dart';
 import 'knx/routing_tunnel.dart';
+import 'knx/multi_tunnel.dart';
 import 'knx/shared_tunnel.dart';
 
 /// Live monitor: listens on the tunnel from connecting on, keeps the bus activity of the last 60 s
@@ -174,11 +175,11 @@ class MonitorModel extends TelegramLog {
     final (sent, repeated) = (sentCount, repeatedCount);
     // Paused: what was visible stays visible (including the gap if it lies before).
     final shown = visibleLog.length;
-    rebuild([
-      ...live.sublist(0, split),
-      ...gap,
-      ...live.sublist(split),
-    ], frozen: shown + (split < shown ? gap.length : 0));
+    rebuild(
+      [...live.sublist(0, split), ...gap, ...live.sublist(split)],
+      frozen: shown + (split < shown ? gap.length : 0),
+      added: gap,
+    );
     for (final t in gap) {
       counts[t.type] = counts[t.type]! + 1;
     }
@@ -193,7 +194,8 @@ class MonitorModel extends TelegramLog {
     final live = List.of(log);
     final (sent, repeated) = (sentCount, repeatedCount);
     final keep = maxEntries == null ? earlier.length : (maxEntries! - live.length).clamp(0, earlier.length);
-    rebuild([...earlier.sublist(earlier.length - keep), ...live], frozen: visibleLog.length + keep);
+    final kept = earlier.sublist(earlier.length - keep);
+    rebuild([...kept, ...live], frozen: visibleLog.length + keep, added: kept);
     sentCount = sent;
     repeatedCount = repeated;
   }
@@ -232,11 +234,25 @@ class MonitorModel extends TelegramLog {
 
   int? _postLeft;
   DateTime? _firedAt;
+
+  /// The condition that started the running trigger recording. Kept apart from
+  /// [trigger]: disarming during the post-trigger time must not break the end
+  /// of the recording.
+  TriggerConfig? _firedConfig;
   final _checkedReads = Expando<bool>();
 
   /// Finished trigger recordings – the UI saves and reports them.
   final _triggered = StreamController<Recording>.broadcast();
   Stream<Recording> get triggeredRecordings => _triggered.stream;
+
+  /// Upper limit for one recording: it lives in memory until it is saved, and a recording left
+  /// running for days would otherwise grow without end.
+  static int recordingLimit = 500000;
+
+  final _full = StreamController<Recording>.broadcast();
+
+  /// Recordings ended because they reached [recordingLimit] (not yet saved).
+  Stream<Recording> get fullRecordings => _full.stream;
 
   void armTrigger(TriggerConfig? config) {
     trigger = config;
@@ -305,6 +321,10 @@ class MonitorModel extends TelegramLog {
   /// Display name of the gateway, e.g. "Gira X1 · 192.168.1.22".
   String get gatewayLabel => [?tunnel.deviceName.value, tunnel.host].join(' · ');
 
+  // Only a direct connection decrypts here and marks what arrived secured (see SecurityCheck).
+  @override
+  bool get secureMarked => tunnel is! SharedTunnel && tunnel is! DemoTunnel && tunnel is! MultiTunnel;
+
   /// Upper limit for [session] (protects memory when running for days).
   static const sessionLimit = 200000;
 
@@ -319,7 +339,13 @@ class MonitorModel extends TelegramLog {
     if (session.length > sessionLimit + sessionLimit ~/ 20) {
       session.removeRange(0, session.length - sessionLimit);
     }
-    recorder?.telegrams.add(t);
+    if (recorder case final r?) {
+      r.telegrams.add(t);
+      if (r.telegrams.length >= recordingLimit) {
+        final full = finishRunningRecording(name: r.started.toIso8601String());
+        if (full != null) _full.add(full);
+      }
+    }
     activity[activity.length - 1]++;
     final alarm = activeAlarm(t) != null;
     if (alarm) alarmActivity[alarmActivity.length - 1]++;
@@ -349,6 +375,7 @@ class MonitorModel extends TelegramLog {
   /// Starts the trigger recording with pre-roll from the history.
   void _fireTrigger(TriggerConfig config) {
     _firedAt = DateTime.now();
+    _firedConfig = config;
     final r = Recorder(
       gateway: gatewayLabel,
       project: CatalogStore.instance.catalog.projectName,
@@ -363,8 +390,12 @@ class MonitorModel extends TelegramLog {
   }
 
   void _finishTrigger() {
-    final config = trigger!;
-    final fired = _firedAt!;
+    // Reset first: whatever fails below must not repeat on every telegram.
+    _postLeft = null;
+    final config = _firedConfig;
+    final fired = _firedAt;
+    _firedConfig = null;
+    if (config == null || fired == null) return;
     final name = s.triggerRecordingName(config.describe());
     final note = s.triggerNote(
       config.describe(),
@@ -374,8 +405,9 @@ class MonitorModel extends TelegramLog {
       config.post,
     );
     final r = stopRecording(name: name, note: note);
-    _postLeft = null;
-    if (!config.rearm) trigger = null;
+    // Only the condition that fired is used up; one armed (or released) in the
+    // meantime stays as it is.
+    if (!config.rearm && identical(trigger, config)) trigger = null;
     if (r != null) _triggered.add(r);
     notifyListeners();
   }
@@ -435,6 +467,21 @@ class MonitorModel extends TelegramLog {
     return r;
   }
 
+  /// The running recording as it stands, without ending it: a safety copy for
+  /// the moment the app goes to the background and may be killed there. It has
+  /// the id of the final recording, which later overwrites it.
+  Recording? snapshotRecording({required String name}) => recorder?.stop(name: name);
+
+  /// Ends whatever recording is running, also one in its post-trigger time,
+  /// and returns it (not yet saved). For leaving the monitor: the recording
+  /// lives only in memory until then.
+  Recording? finishRunningRecording({required String name}) {
+    if (recorder == null) return null;
+    _postLeft = null;
+    _firedConfig = null;
+    return stopRecording(name: name);
+  }
+
   void _tick() {
     _checkUnanswered();
     if (++_ticks % 60 == 0) {
@@ -464,6 +511,7 @@ class MonitorModel extends TelegramLog {
     tunnel.gatewayInfo.removeListener(_rememberGateway);
     tunnel.state.removeListener(_followConnection);
     _triggered.close();
+    _full.close();
     _sub.cancel();
     _watchSub?.cancel();
     _ticker.cancel();

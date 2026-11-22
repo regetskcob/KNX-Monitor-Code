@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../platform/addon.dart';
+import '../platform/box_link.dart';
 import 'installation.dart';
 
 enum BoxShareOutcome {
@@ -22,6 +23,9 @@ enum BoxShareOutcome {
 /// Syncs files with the box. There are no versions or timestamps there, so it
 /// is a three-way comparison of content hashes: here, on the box, and what was
 /// last provably on both. Only the hash is remembered, never the content.
+///
+/// Over an unencrypted connection ([BoxLink.plainOverNetwork]) the last shared state also serves
+/// to recognise the box: a file that was shared and is gone is not put there again without asking.
 abstract final class BoxShare {
   static String _hash(List<int> bytes) => sha256.convert(bytes).toString();
 
@@ -53,8 +57,16 @@ abstract final class BoxShare {
       await prefs.setString(key, boxHash!);
       return BoxShareOutcome.same;
     }
-    if (boxHash != null && boxHash != prefs.getString(key)) {
+    final shared = prefs.getString(key);
+    if (boxHash != null && boxHash != shared) {
       debugPrint('Box: $path unterscheidet sich, bleibt unverändert');
+      return BoxShareOutcome.boxDiffers;
+    }
+    // Over plain HTTP nothing proves that the paired box answers. What it holds of the last
+    // shared state is the only sign: a box that had the file and now reports none may be another
+    // device under the same address (a foreign network), so the file waits for the user's yes.
+    if (boxHash == null && shared != null && (Addon.box?.plainOverNetwork ?? false)) {
+      debugPrint('Box: $path fehlt auf der unverschlüsselten Box, bleibt hier');
       return BoxShareOutcome.boxDiffers;
     }
     await writeBox(bytes);

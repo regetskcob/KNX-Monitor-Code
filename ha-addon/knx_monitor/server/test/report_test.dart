@@ -512,6 +512,23 @@ void main() {
       expect(((jsonDecode(cleared) as Map)['settings'] as Map)['hasNotifyToken'], isFalse);
     });
 
+    test('Adresse und Topic der Mitteilung sieht nur ein Admin', () async {
+      await call('PUT', 'api/report', {
+        'notifyKind': 'ntfy',
+        'notifyUrl': 'http://192.168.1.2',
+        'notifyTopic': 'geheimes-topic',
+      });
+      expect((await call('GET', 'api/report')).$2, contains('geheimes-topic'));
+      admin = false;
+      final (status, text) = await call('GET', 'api/report');
+      expect(status, 200);
+      expect(text, isNot(contains('geheimes-topic')));
+      expect(text, isNot(contains('192.168.1.2')));
+      final settings = (jsonDecode(text) as Map)['settings'] as Map;
+      expect(settings['hasNotifyTarget'], isTrue);
+      expect(settings['notifyKind'], 'ntfy');
+    });
+
     test('neues Ziel ohne neues Token: das alte Token geht nicht mit', () async {
       bool hasToken(String text) => ((jsonDecode(text) as Map)['settings'] as Map)['hasNotifyToken'] == true;
       final first = {'notifyKind': 'webhook', 'notifyUrl': 'http://192.168.1.2/hook', 'notifyToken': 'tk_secret'};

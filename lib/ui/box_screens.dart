@@ -510,13 +510,58 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
     await _load();
   }
 
-  Future<void> _revoke(String id) async {
+  Future<void> _revoke(Map<String, Object?> device) async {
+    String? current;
+    // The box asks for its password before another admin device is blocked.
+    if (device['admin'] == true) {
+      current = await _askPassword();
+      if (current == null || !mounted) return;
+    }
     try {
-      await Addon.revokeDevice(id);
+      await Addon.revokeDevice(device['id']! as String, current: current);
     } on AddonException catch (e) {
       if (mounted) setState(() => _error = e.message);
     }
     await _load();
+  }
+
+  Future<String?> _askPassword() async {
+    final controller = TextEditingController();
+    try {
+      return await showAdaptiveDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog.adaptive(
+          title: Text(s.boxDeviceRevoke),
+          content: Material(
+            type: MaterialType.transparency,
+            child: HorizontField(
+              label: s.boxPasswordCurrent,
+              child: TextField(
+                controller: controller,
+                autofocus: true,
+                obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                autofillHints: const [AutofillHints.password],
+                onSubmitted: (value) => Navigator.pop(context, value),
+              ),
+            ),
+          ),
+          actions: [
+            horizontDialogAction(context, label: s.commonCancel, onPressed: () => Navigator.pop(context)),
+            horizontDialogAction(
+              context,
+              label: s.boxDeviceRevoke,
+              primary: true,
+              destructive: true,
+              onPressed: () => Navigator.pop(context, controller.text),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
   }
 
   Future<void> _setLanAccess(bool enabled) async {
@@ -676,6 +721,18 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
                     synced ? HorizontStatus.positive : HorizontStatus.warning,
                     clockSourceText(clock['source'] as String?),
                   ),
+                  // Set far ahead by a source anyone can be: the box keeps every day until an
+                  // admin (this button), NTP or a battery clock confirms the time.
+                  if (clock['unconfirmed'] == true)
+                    Padding(
+                      padding: const EdgeInsets.only(top: HzSpace.s4),
+                      child: HorizontStatusLine(HorizontStatus.warning, s.boxClockUnconfirmed),
+                    ),
+                  if (_info?['retentionUnconfirmed'] == true)
+                    Padding(
+                      padding: const EdgeInsets.only(top: HzSpace.s4),
+                      child: HorizontStatusLine(HorizontStatus.warning, s.boxRetentionUnconfirmed),
+                    ),
                   for (final MapEntry(:key, :value) in offsets.entries)
                     Padding(
                       padding: const EdgeInsets.only(top: HzSpace.s4),
@@ -693,7 +750,7 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
                   Align(
                     alignment: AlignmentDirectional.centerStart,
                     child: OutlinedButton.icon(
-                      icon: const Icon(AppIcons.dateTime, size: 18),
+                      icon: const Icon(AppIcons.dateTime, size: HzIconSize.row),
                       label: Text(s.boxClockSetNow),
                       onPressed: _info == null ? null : _setTime,
                     ),
@@ -739,7 +796,7 @@ class _BoxSettingsScreenState extends State<BoxSettingsScreen> {
                       ),
                       trailing: d['self'] == true
                           ? null
-                          : TextButton(onPressed: () => _revoke(d['id']! as String), child: Text(s.boxDeviceRevoke)),
+                          : TextButton(onPressed: () => _revoke(d), child: Text(s.boxDeviceRevoke)),
                     ),
                 if (_admin) ...[
                   const SizedBox(height: Gap.section),

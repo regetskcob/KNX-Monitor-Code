@@ -1,0 +1,12 @@
+# Every two minutes; the first check leaves the server time to read its
+# history after boot.
+[Unit]
+Description=Busclear Box: Server regelmäßig prüfen
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=2min
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

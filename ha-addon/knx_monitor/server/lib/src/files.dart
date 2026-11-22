@@ -49,6 +49,11 @@ const _appendOnly = 'dali_tests';
 
 const _deviceWritable = {'charts.json': ('charts', 'name'), 'watch_rules.json': ('rules', 'id')};
 
+/// Most entries (charts, watchers) one device without admin rights may store.
+/// Every watcher is checked against every telegram and can raise events and
+/// notifications; the file size alone would allow thousands.
+const maxDeviceEntries = 100;
+
 /// Field in which the server notes which paired device created an entry of a
 /// [_deviceWritable] file. Entries without it belong to the admin.
 const ownerField = 'owner';
@@ -335,11 +340,14 @@ Future<Object?> _readJson(File file) async {
 /// (without [ownerField]), stay as they are, also when [incoming] leaves them
 /// out or brings an entry with the same key. The device's entries are marked
 /// with its id. All other fields (such as `allowed`, the unlock of the
-/// dashboard card) keep their stored value; `allowed` is `false` as long as
-/// none is stored, so a device cannot unlock the card.
+/// dashboard card) keep their stored value. Where no `allowed` is stored, a
+/// device cannot unlock the card: it becomes `false`, unless the file already
+/// holds entries of others without it (written before the field existed, read
+/// as unlocked by [ChartService]); then it stays absent, so a device cannot
+/// lock the admin's card either.
 ///
-/// `null` if [incoming] is not an object, or its list is not a list of
-/// objects with a text [key].
+/// `null` if [incoming] is not an object, its list is not a list of objects
+/// with a text [key], or it holds more than [maxDeviceEntries] entries.
 Map<String, Object?>? mergeDeviceEntries(
   Object? stored,
   Object? incoming, {
@@ -359,14 +367,23 @@ Map<String, Object?>? mergeDeviceEntries(
     for (final e in before[list] is List ? before[list] as List : const [])
       if (e is Map && e[ownerField] != owner) e.cast<String, Object?>(),
   ];
+  // More than the limit only while it gets fewer: a device that stored more before the limit
+  // existed must still be able to delete.
+  final had = [
+    for (final e in before[list] is List ? before[list] as List : const [])
+      if (e is Map && e[ownerField] == owner) e,
+  ].length;
+  if (entries.length > maxDeviceEntries && entries.length >= had) return null;
   final taken = {for (final e in others) e[key]};
   return {
     for (final MapEntry(key: field, :value) in incoming.cast<String, Object?>().entries)
       if (field != list && field != 'allowed') field: value,
     for (final MapEntry(key: field, :value) in before.entries)
       if (field != list && field != 'allowed') field: value,
-    if (list == 'charts') 'allowed': before['allowed'] == true,
-    if (list != 'charts' && before.containsKey('allowed')) 'allowed': before['allowed'],
+    if (before.containsKey('allowed'))
+      'allowed': list == 'charts' ? before['allowed'] == true : before['allowed']
+    else if (list == 'charts' && others.isEmpty)
+      'allowed': false,
     list: [
       ...others,
       for (final e in entries)

@@ -262,7 +262,7 @@ class _InventoryCardState extends State<InventoryCard> {
                   child: Builder(
                     builder: (buttonContext) => OutlinedButton.icon(
                       onPressed: () => _share(buttonContext, run),
-                      icon: const Icon(AppIcons.table, size: 18),
+                      icon: const Icon(AppIcons.table, size: HzIconSize.row),
                       label: Text(s.invShare),
                     ),
                   ),

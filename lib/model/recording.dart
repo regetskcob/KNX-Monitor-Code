@@ -187,6 +187,37 @@ class RecordingSummary {
   final ImportOrigin? imported;
 
   Duration get duration => ended.difference(started);
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'name': name,
+    'note': ?note,
+    'started': started.microsecondsSinceEpoch,
+    'ended': ended.microsecondsSinceEpoch,
+    'count': count,
+    'gateway': ?gateway,
+    'project': ?project,
+    'installation': ?installation,
+    'annotations': annotations,
+    'diagnostics': diagnostics,
+    'imported': ?imported?.toJson(),
+  };
+
+  /// Throws on anything unexpected; the caller then reads the recording itself.
+  factory RecordingSummary.fromJson(Map<String, Object?> j) => RecordingSummary(
+    id: j['id']! as String,
+    name: j['name']! as String,
+    note: j['note'] as String?,
+    started: DateTime.fromMicrosecondsSinceEpoch(j['started']! as int),
+    ended: DateTime.fromMicrosecondsSinceEpoch(j['ended']! as int),
+    count: j['count']! as int,
+    gateway: j['gateway'] as String?,
+    project: j['project'] as String?,
+    installation: j['installation'] as String?,
+    annotations: j['annotations'] as int? ?? 0,
+    diagnostics: j['diagnostics'] == true,
+    imported: ImportOrigin.fromJson(j['imported']),
+  );
 }
 
 /// Running recording: collects telegrams until [stop] returns a [Recording].
@@ -280,20 +311,81 @@ class RecordingStore extends ChangeNotifier {
   static String _path(String id) => '$_dir/$id.json';
   AppStorage get _storage => AppStorage.instance;
 
-  /// Loads the header data of all recordings, newest first.
+  /// Header data by file name with the file size it was read at. Decrypting and parsing a whole
+  /// recording only for its name made the list slower with every large recording.
+  static const _indexPath = '$_dir/index';
+  var _index = <String, ({int size, RecordingSummary summary})>{};
+
+  /// Loads the header data of all recordings, newest first. A recording is only read when the
+  /// index does not know it at its current size.
   Future<void> load() async {
-    final result = <RecordingSummary>[];
+    final known = await _readIndex();
+    final index = <String, ({int size, RecordingSummary summary})>{};
+    var changed = false;
     for (final f in await _storage.list(_dir)) {
       if (!f.name.endsWith('.json')) continue;
+      if (known[f.name] case final hit? when hit.size == f.size) {
+        index[f.name] = hit;
+        continue;
+      }
+      changed = true;
       try {
         final json = await _storage.read('$_dir/${f.name}');
-        if (json != null) result.add(_summary(Recording.fromJson(jsonDecode(json) as Map<String, Object?>)));
+        if (json != null) {
+          final summary = _summary(Recording.fromJson(jsonDecode(json) as Map<String, Object?>));
+          index[f.name] = (size: f.size, summary: summary);
+        }
       } on Object catch (e) {
         debugPrint('Aufnahme ${f.name} nicht lesbar: $e');
       }
     }
-    summaries = result..sort((a, b) => b.started.compareTo(a.started));
+    _index = index;
+    if (changed || known.length != index.length) await _writeIndex();
+    summaries = [for (final e in index.values) e.summary]..sort((a, b) => b.started.compareTo(a.started));
     notifyListeners();
+  }
+
+  Future<Map<String, ({int size, RecordingSummary summary})>> _readIndex() async {
+    try {
+      final text = await _storage.read(_indexPath);
+      if (text == null) return {};
+      return {
+        for (final MapEntry(:key, :value) in (jsonDecode(text) as Map<String, Object?>).entries)
+          if (value case {'size': final int size, 'summary': final Map<String, Object?> summary})
+            key: (size: size, summary: RecordingSummary.fromJson(summary)),
+      };
+    } on Object catch (e) {
+      // Only a cache: unreadable means reading the recordings once more.
+      debugPrint('Aufnahmen-Index nicht lesbar: $e');
+      return {};
+    }
+  }
+
+  Future<void> _writeIndex() async {
+    try {
+      await _storage.write(
+        _indexPath,
+        jsonEncode({
+          for (final MapEntry(:key, :value) in _index.entries)
+            key: {'size': value.size, 'summary': value.summary.toJson()},
+        }),
+      );
+    } on Object catch (e) {
+      debugPrint('Aufnahmen-Index nicht geschrieben: $e');
+    }
+  }
+
+  /// Notes the file of [id] in the index at its size on disk; without a summary, removes it.
+  Future<void> _reindex(String id, RecordingSummary? summary) async {
+    final name = '$id.json';
+    if (summary == null) {
+      _index.remove(name);
+    } else {
+      final size = (await _storage.list(_dir)).where((f) => f.name == name).firstOrNull?.size;
+      if (size == null) return;
+      _index[name] = (size: size, summary: summary);
+    }
+    await _writeIndex();
   }
 
   /// Number of saved recordings, without reading them.
@@ -304,7 +396,9 @@ class RecordingStore extends ChangeNotifier {
 
   Future<void> save(Recording r) async {
     await _storage.write(_path(r.id), jsonEncode(r.toJson()));
-    summaries = [_summary(r), ...summaries.where((s) => s.id != r.id)]..sort((a, b) => b.started.compareTo(a.started));
+    final summary = _summary(r);
+    await _reindex(r.id, summary);
+    summaries = [summary, ...summaries.where((s) => s.id != r.id)]..sort((a, b) => b.started.compareTo(a.started));
     notifyListeners();
   }
 
@@ -322,6 +416,7 @@ class RecordingStore extends ChangeNotifier {
       debugPrint('Screenshots der Aufnahme $id nicht entfernt: $e');
     }
     await _storage.delete(_path(id));
+    await _reindex(id, null);
     summaries = summaries.where((s) => s.id != id).toList();
     notifyListeners();
   }

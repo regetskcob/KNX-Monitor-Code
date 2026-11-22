@@ -22,7 +22,7 @@ class _WebAddonSocket implements AddonSocket {
     }).toJS;
     _socket.onclose = ((web.Event _) {
       if (!_messages.isClosed) {
-        _messages.addError(const AddonException('Verbindung zum Add-on getrennt'));
+        _messages.addError(AddonException(s.addonDisconnected));
         _messages.close();
       }
     }).toJS;
@@ -61,11 +61,9 @@ Future<AddonSocket> openAddonBus() async {
     }
     if (status == 401) {
       loginIfExpired(status);
-      throw const AddonException(
-        'Anmeldung an der Busclear Box nötig. Seite neu laden und mit dem Box-Passwort anmelden.',
-      );
+      throw AddonException(s.addonLoginNeeded);
     }
-    if (status == 403) throw const AddonException('Zugriff von der Busclear Box abgelehnt.');
+    if (status == 403) throw AddonException(s.addonAccessDenied);
     if (status != 200) rethrow;
     return _openBus();
   }
@@ -78,12 +76,9 @@ Future<AddonSocket> _openBus() async {
   final opened = Completer<void>();
   socket.onopen = ((web.Event _) => opened.complete()).toJS;
   socket.onerror = ((web.Event _) {
-    if (!opened.isCompleted) opened.completeError(const AddonException('Add-on-Server nicht erreichbar'));
+    if (!opened.isCompleted) opened.completeError(AddonException(s.addonUnreachable));
   }).toJS;
-  await opened.future.timeout(
-    const Duration(seconds: 5),
-    onTimeout: () => throw const AddonException('Add-on-Server nicht erreichbar'),
-  );
+  await opened.future.timeout(const Duration(seconds: 5), onTimeout: () => throw AddonException(s.addonUnreachable));
   socket.onerror = null;
   return _WebAddonSocket(socket);
 }
@@ -91,7 +86,7 @@ Future<AddonSocket> _openBus() async {
 Future<Object?> _decode(http.Response r) {
   loginIfExpired(r.statusCode);
   if (r.statusCode >= 300) {
-    throw Addon.errorOf(r.bodyBytes) ?? AddonException('Add-on: HTTP ${r.statusCode}', status: r.statusCode);
+    throw Addon.errorOf(r.bodyBytes) ?? AddonException(s.boxRequestFailed, status: r.statusCode);
   }
   return Future.value(r.bodyBytes.isEmpty ? null : jsonDecode(utf8.decode(r.bodyBytes)));
 }
@@ -145,7 +140,7 @@ Future<Uint8List?> addonDownload(String path, String fileName, {Duration? timeou
   if (probe.statusCode >= 300) {
     final text = utf8.decode(probe.bodyBytes, allowMalformed: true).trim();
     throw Addon.errorOf(probe.bodyBytes) ??
-        AddonException(text.isEmpty || text.length > 200 ? 'Add-on: HTTP ${probe.statusCode}' : text);
+        AddonException(text.isEmpty || text.length > 200 ? s.boxRequestFailed : text);
   }
   final link = web.HTMLAnchorElement()
     ..href = _api(path).toString()
@@ -161,10 +156,9 @@ Future<Uint8List?> addonDownload(String path, String fileName, {Duration? timeou
 Future<bool> addonReachable(BoxLink link) async => true;
 
 Future<String> addonPairBox(BoxLink link, String password, String deviceName, {String? app}) =>
-    throw const AddonException('Nur in der App');
+    throw AddonException(s.appOnly);
 
-Future<String> addonClaimBox(BoxLink link, String deviceName, {String? app}) =>
-    throw const AddonException('Nur in der App');
+Future<String> addonClaimBox(BoxLink link, String deviceName, {String? app}) => throw AddonException(s.appOnly);
 
 /// In the browser the app pairs with nothing: the page's own server is the only one it talks to.
 String? addonRefusal(BoxLink link) => null;

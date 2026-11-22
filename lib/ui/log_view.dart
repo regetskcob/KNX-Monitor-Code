@@ -609,11 +609,12 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
           listenable: Listenable.merge([_throttled, _searchBar]),
           builder: (context, _) => LayoutBuilder(
             builder: (context, constraints) {
-              // Horizont: below 600 a tab bar, from 600 a sidebar, inspector on
-              // the right as soon as the content next to it is still expanded-wide.
-              // From 600 the menu is a sidebar; on touch devices the views stay at
-              // the bottom (as on the phone), with a pointer at the top of the bar.
-              // The bar depends on the width alone, as on the tool pages.
+              // From the expanded width (840) the menu is a sidebar, below it a page of its own
+              // (also on an iPad in portrait, 744 to 834 pt); Horizont's docs name 600, the
+              // threshold here is 840. Inspector on the right as soon as the content next to it
+              // is still expanded-wide. On touch devices the views stay at the bottom (as on the
+              // phone), with a pointer at the top of the bar. The bar depends on the width alone,
+              // as on the tool pages.
               final sidebar = selection == null && constraints.maxWidth >= Breakpoints.expanded;
               final contentWidth = constraints.maxWidth - (sidebar ? Widths.sidebar : 0);
               // The column also stays on the iPad 11″ in landscape (940 next to the sidebar).
@@ -688,11 +689,19 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
                                   children: [
                                     // Hints, search and box belong to the overview; details and live open beside it.
                                     Expanded(
-                                      child: Column(
-                                        children: [
-                                          _contentHead(),
-                                          Expanded(child: _content(visible, twoPane: canSplit)),
-                                        ],
+                                      // The head never takes more than 60 % of the height: with
+                                      // large text on a small phone it scrolls, and the list below
+                                      // keeps its room instead of the column running over.
+                                      child: LayoutBuilder(
+                                        builder: (context, box) => Column(
+                                          children: [
+                                            ConstrainedBox(
+                                              constraints: BoxConstraints(maxHeight: box.maxHeight * 0.6),
+                                              child: SingleChildScrollView(child: _contentHead()),
+                                            ),
+                                            Expanded(child: _content(visible, twoPane: canSplit)),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                     // The detail column fades in as soon as an address is focused,
@@ -1018,9 +1027,7 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
     focusNode: _searchFocus,
     autocorrect: false,
     decoration: InputDecoration(
-      isDense: true,
-      constraints: const BoxConstraints.tightFor(height: _headControl),
-      contentPadding: const EdgeInsets.symmetric(horizontal: HzSpace.s16, vertical: HzSpace.s12),
+      // Height and padding come from the theme (control height, grows with the text).
       hintText: _store.catalog.isEmpty ? s.filterHint : s.filterHintProject,
       suffixIcon: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1065,10 +1072,16 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
                       title: Text(q, style: context.hzTheme.data),
                       trailing: IconButton(
                         tooltip: s.deleteFilter,
-                        icon: const Icon(AppIcons.delete, size: 18),
+                        icon: const Icon(AppIcons.delete, size: HzIconSize.row),
                         onPressed: () {
                           Navigator.pop(context);
+                          final before = _saved;
                           _storeSaved(_saved.where((x) => x != q).toList());
+                          showHorizontMessage(
+                            this.context,
+                            s.filterDeleted,
+                            action: SnackBarAction(label: s.commonUndo, onPressed: () => _storeSaved(before)),
+                          );
                         },
                       ),
                     ),
@@ -1106,60 +1119,18 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
     setState(() => _tab = _tabs[i]);
   }
 
-  /// Phone: views as a tab bar at the bottom, selection as a line above the target.
-  Widget _bottomTabs() {
-    final hz = context.hz;
-    final theme = Theme.of(context);
-    return Material(
-      color: hz.surface,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(color: hz.line, width: Lines.hairline),
-          ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(HzSpace.s8, HzSpace.s4, HzSpace.s8, HzSpace.s4),
-            child: Row(
-              spacing: HzSpace.s4,
-              children: [
-                for (final (i, tab) in _tabs.indexed)
-                  Expanded(
-                    child: Semantics(
-                      selected: tab == _tab,
-                      button: true,
-                      child: Material(
-                        color: tab == _tab ? hz.accentTint : Colors.transparent,
-                        borderRadius: Radii.tile,
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () => _selectTab(i),
-                          child: SizedBox(
-                            height: 44,
-                            child: Center(
-                              child: Text(
-                                _tabLabel(tab),
-                                maxLines: 1,
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: tab == _tab ? hz.accentText : hz.textMuted,
-                                  fontWeight: tab == _tab ? FontWeight.w600 : FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  static IconData _tabIcon(LogTab t) => switch (t) {
+    LogTab.overview => AppIcons.overview,
+    LogTab.objects => AppIcons.objects,
+    LogTab.live => AppIcons.live,
+  };
+
+  /// Phone: views as the tab bar of Horizont at the bottom (symbol and word, the target tinted).
+  Widget _bottomTabs() => HorizontTabBar(
+    destinations: [for (final tab in _tabs) HorizontDestination(icon: _tabIcon(tab), label: _tabLabel(tab))],
+    selectedIndex: _tabs.indexOf(_tab).clamp(0, _tabs.length - 1),
+    onSelected: _selectTab,
+  );
 
   /// Toolbar, selection as a tint.
   bool get _pointer => context.hzTheme.density == HorizontDensity.pointer;
@@ -1172,55 +1143,14 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
 
   double get _textScale => MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 4.0);
 
-  /// Height of the filter, switcher and "Schreiben" (write) in the header.
-  static const _headControl = 44.0;
-
-  /// Views as one control at field height, selection as a tinted surface.
-  Widget _viewSwitch() {
-    final hz = context.hz;
-    return Container(
-      key: const ValueKey('viewSwitch'),
-      height: _headControl,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: hz.surface,
-        borderRadius: Radii.tile,
-        border: Border.all(color: hz.line, width: Lines.hairline),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 2,
-        children: [
-          for (final t in _tabs)
-            Semantics(
-              button: true,
-              selected: t == _tab,
-              child: Material(
-                color: t == _tab ? hz.accentTint : Colors.transparent,
-                borderRadius: BorderRadius.circular(9),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: () => setState(() => _tab = t),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: HzSpace.s12),
-                    child: Center(
-                      widthFactor: 1,
-                      child: Text(
-                        _tabLabel(t),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: t == _tab ? hz.accentText : hz.textMuted,
-                          fontWeight: t == _tab ? FontWeight.w600 : FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+  /// Views as the segmented control of the theme (field height, selection tinted).
+  Widget _viewSwitch() => SegmentedButton<LogTab>(
+    key: const ValueKey('viewSwitch'),
+    showSelectedIcon: false,
+    segments: [for (final t in _tabs) ButtonSegment(value: t, label: Text(_tabLabel(t)))],
+    selected: {_tabs.contains(_tab) ? _tab : _tabs.first},
+    onSelectionChanged: (picked) => setState(() => _tab = picked.first),
+  );
 
   /// Quick filters as one "Filter" button with a drop-down menu (alarms,
   /// repeated, no response, not in project; in live mode also the context around
@@ -1279,7 +1209,7 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
             checked: !_filterOff,
             child: Row(
               children: [
-                Icon(AppIcons.search, size: 18, color: hz.textMuted),
+                Icon(AppIcons.search, size: HzIconSize.row, color: hz.textMuted),
                 const SizedBox(width: HzSpace.s8),
                 Flexible(
                   child: Text(query, style: context.hzTheme.data, overflow: TextOverflow.ellipsis),
@@ -1297,7 +1227,7 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
               message: tooltip ?? label,
               child: Row(
                 children: [
-                  Icon(icon, size: 18, color: f == QuickFilter.alarm ? hz.critical : hz.textMuted),
+                  Icon(icon, size: HzIconSize.row, color: f == QuickFilter.alarm ? hz.critical : hz.textMuted),
                   const SizedBox(width: HzSpace.s8),
                   Expanded(child: Text(label)),
                   if (counts[f]! > 0) Text('${counts[f]}', style: context.hzTheme.count),
@@ -1331,7 +1261,7 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
       ],
       // In the filter field; the icon counts active filters.
       child: SizedBox.square(
-        dimension: _headControl,
+        dimension: context.hzTheme.controlHeight,
         child: Center(
           child: active > 0
               ? Text(
@@ -1364,7 +1294,7 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
         Text(s.filterActive, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: context.hz.textMuted)),
         if (query.isNotEmpty)
           InputChip(
-            avatar: const Icon(AppIcons.search, size: 16),
+            avatar: const Icon(AppIcons.search, size: HzIconSize.inline),
             label: Text(query, style: context.hzTheme.data),
             tooltip: _filterOff ? s.filterOn : s.filterOff,
             selected: !_filterOff,
@@ -1503,6 +1433,7 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
       icon: AppIcons.projectCheck,
       expertOnly: true,
       title: s.checkTitle,
+      hub: ToolHub.checks,
       feature: Feature.projectCheck,
       subtitle: s.toolCheck,
       group: ToolGroup.check,
@@ -1593,6 +1524,8 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
       MenuAction(
         icon: _store.catalog.isEmpty ? AppIcons.noProject : AppIcons.project,
         title: s.projectMenu,
+        hub: ToolHub.setup,
+        subtitle: s.menuProjectHint,
         onTap: () => showProjectSheet(context, onTeachIn: _teachIn),
       ),
       MenuAction(icon: AppIcons.share, title: s.exportsTitle, onTap: _openExports),
@@ -1728,7 +1661,7 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
           icon: const Icon(AppIcons.table),
         ),
         IconButton(
-          tooltip: s.exportEts,
+          tooltip: lockedLabel(s.exportEts, Feature.export),
           onPressed: selection.isEmpty ? null : () => _saveEts(selection.toList()),
           icon: const Icon(AppIcons.fileCode),
         ),
@@ -1747,7 +1680,12 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
               : () => setState(() => all ? selection.removeAll(visible) : selection.addAll(visible)),
           child: Text(all ? s.selectNone : s.selectAll),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: HzSpace.s8),
+        if (selection.isNotEmpty)
+          Builder(
+            builder: (barContext) =>
+                Row(mainAxisSize: MainAxisSize.min, children: _exportAction(selection, barContext).toolbar(barContext)),
+          ),
       ],
     );
   }
@@ -1757,7 +1695,7 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
     valueListenable: tunnel.state,
     builder: (context, state, _) => FilledButton(
       onPressed: state == TunnelState.connected ? () => showSendSheet(context, tunnel) : null,
-      style: FilledButton.styleFrom(minimumSize: const Size(0, _headControl)),
+      style: FilledButton.styleFrom(minimumSize: Size(0, context.hzTheme.controlHeight)),
       child: Text(s.writeButton),
     ),
   );
@@ -1799,16 +1737,19 @@ class _LogViewState extends State<LogView> with SingleTickerProviderStateMixin {
   Widget? _fab(Set<Telegram>? selection) {
     if (selection != null) {
       if (selection.isEmpty) return null;
-      return Builder(
-        builder: (fabContext) => FloatingActionButton.extended(
-          onPressed: () => _export(selection.toList(), rectOf(fabContext)),
-          icon: const Icon(AppIcons.pdf),
-          label: Text(s.selectExport(selection.length)),
-        ),
-      );
+      // With a pointer the main action sits in the selection bar instead.
+      if (HorizontPrimaryAction.inToolbar(context)) return null;
+      return Builder(builder: (fabContext) => _exportAction(selection, fabContext).fab(fabContext)!);
     }
     return null;
   }
+
+  /// The main action of a selection: export as PDF. FAB on touch, button in the bar with a pointer.
+  HorizontPrimaryAction _exportAction(Set<Telegram> selection, BuildContext origin) => HorizontPrimaryAction(
+    icon: AppIcons.pdf,
+    label: s.selectExport(selection.length),
+    onPressed: () => _export(selection.toList(), rectOf(origin)),
+  );
 }
 
 /// Forwards changes of [source] throttled: at most every [intervalMs]

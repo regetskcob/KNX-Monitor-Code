@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:knx_monitor/l10n/app_localizations.dart';
 import 'package:knx_monitor/model/box_connection.dart';
 import 'package:knx_monitor/model/box_keyring_consent.dart';
+import 'package:knx_monitor/model/expert_mode.dart';
 import 'package:knx_monitor/platform/addon.dart';
 import 'package:knx_monitor/platform/box_link.dart';
 import 'package:knx_monitor/platform/storage.dart';
@@ -160,6 +161,51 @@ void main() {
     await tester.tap(find.text('Noch nicht'));
     await tester.pumpAndSettle();
     expect(await BoxProjectConsent.pending(box), isTrue);
+  });
+
+  testWidgets('in der App eingegebener Link mit Fingerabdruck: Rückfrage mit Adresse und Projekt-Hinweis', (
+    tester,
+  ) async {
+    await tester.runAsync(() => ExpertMode.instance.set(true));
+    addTearDown(() => ExpertMode.instance.set(false));
+    await open(tester);
+    await tester.ensureVisible(find.text('Busclear Box hinzufügen'));
+    await tester.tap(find.text('Busclear Box hinzufügen'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextField).first,
+      'knxmonitor://box?url=http://10.42.0.1/&name=Meine%20Box&fp=${'A' * 43}',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.go);
+    await tester.pumpAndSettle();
+    // Not paired silently: the address and what the box gets, with a way out.
+    expect(find.text('Mit Busclear Box verbinden?'), findsOneWidget);
+    expect(find.text('10.42.0.1'), findsOneWidget);
+    expect(find.textContaining('bekommt die Box dein Projekt'), findsOneWidget);
+    await tester.tap(find.text('Abbrechen'));
+    await tester.pumpAndSettle();
+    expect(BoxConnection.instance.saved, isNull);
+  });
+
+  testWidgets('Link von außen: die Rückfrage verspricht das Projekt nicht', (tester) async {
+    await open(tester);
+    BoxConnection.instance.incoming.value = BoxLink.parse('knxmonitor://box?url=http://10.42.0.1/');
+    await tester.pumpAndSettle();
+    expect(find.text('Mit Busclear Box verbinden?'), findsOneWidget);
+    expect(find.textContaining('bekommt die Box dein Projekt'), findsNothing);
+    await tester.tap(find.text('Abbrechen'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('unverschlüsselte Box: Hinweis, dass der Keyring hier bleibt', (tester) async {
+    await open(tester);
+    BoxKeyringConsent.tellPlain!(BoxLink(url: Uri.parse('http://192.168.1.50/')));
+    await tester.pumpAndSettle();
+    expect(find.text('Keyring bleibt auf diesem Gerät'), findsOneWidget);
+    expect(find.textContaining('192.168.1.50'), findsOneWidget);
+    await tester.tap(find.text('Schließen'));
+    await tester.pumpAndSettle();
+    expect(find.text('Keyring bleibt auf diesem Gerät'), findsNothing);
   });
 
   testWidgets('Keyring: eigene Frage nennt die Adresse', (tester) async {

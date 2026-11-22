@@ -224,6 +224,7 @@ to start until that file exists.
 | `LAN_ACCESS` | `no` | `yes`/`no` | `yes`: web app and API also reachable over Ethernet. Can be changed later in the app |
 | `READ_ONLY` | `no` | `yes`/`no` | `yes`: the server sends nothing to the bus, not even read requests; recording continues |
 | `HEALTH_CHECK` | `no` | `yes`/`no` | `yes`: the server's health check for Home Assistant ([health-check.md](health-check.md)): once a day and on request, from the history only, nothing is sent |
+| `TIMEZONE` | `Europe/Berlin` | a name from the zone database, e.g. `Europe/Vienna` | Time zone of the site: day change of history and retention. Unknown names fall back to the default |
 | `SSH_PUBKEY` | empty | `ssh-ed25519`, `ecdsa-sha2-nistp256` or `ssh-rsa` key, optional comment, no options | Enables SSH for `knxadmin` with this key only |
 
 Random values use the alphabet `abcdefghjkmnpqrstuvwxyz23456789` (no `0/O`,
@@ -405,6 +406,13 @@ sudo mkfs.ext4 -L KNXBOXDATA /dev/sda1   # erases that partition
    higher keeps the data on the SD card.
 4. Mount with `noatime,commit=5,nosuid,nodev,noexec`. On failure, keep the data
    on the SD card.
+
+After the first successful mount the box remembers it (`/etc/knx-box/data-on-ssd`).
+From then on it waits up to 60 s for the drive, and a missing, damaged or
+unmountable partition makes `knx-box-data.service` fail with a message in the
+journal: the server still starts, but on the SD card, with the password, paired
+devices and history found there, not those of the drive. To move a box back to the
+SD card on purpose, remove the mark: `sudo rm /etc/knx-box/data-on-ssd`.
 
 Whoever plugs in a drive labelled `KNXBOXDATA` decides what the server reads
 at the next boot, just like whoever holds the SD card; the mount options only
@@ -774,6 +782,7 @@ All units are in `box/files/` and installed to `/etc/systemd/system/` by `setup.
 | `knx-box-lan.service` + `.path` | oneshot | LAN access on boot and on every change of `lan-access` |
 | `knx-box-time.service` + `.path` | oneshot | Sets the clock on every change of `time-request.json` |
 | `knx-box-clock-save.service` + `.timer` | oneshot | Every 15 minutes: remembers the time for the next boot (see [Start time after a power cut](#start-time-after-a-power-cut)) |
+| `knx-box-health.service` + `.timer` | oneshot | Every 2 minutes: asks `/healthz` (`health.sh`); after three checks without an answer (or with a 5xx) it restarts the server, since `Restart=always` only sees a process that ended |
 | `knx-box-secrets.service` + `.path` | oneshot | New Wi-Fi password, boot partition scrub |
 | `knx-box-reset.service` | oneshot | Password reset from `knx-box-reset.txt`, only when that file exists |
 

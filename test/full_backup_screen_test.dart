@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:horizont/horizont.dart';
 import 'package:knx_monitor/platform/storage.dart';
-import 'package:knx_monitor/ui/figure_box.dart';
 import 'package:knx_monitor/ui/full_backup_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,52 +14,63 @@ void main() {
     AppStorage.instance = MemoryStorage();
   });
 
-  testWidgets('1400 pt: Datei mit Passwort und beiden Knöpfen links, Stand und Inhalt rechts daneben', (tester) async {
+  testWidgets('Übersicht: Stand des Geräts, Inhalt und beide Aufgaben, kein Passwortfeld', (tester) async {
     await pumpWindow(tester, const FullBackupScreen(), wideWindow);
     await tester.pumpAndSettle();
-    expect(columnsOf(tester, find.byType(SectionHead)), hasLength(2));
-    final file = tester.getTopLeft(find.text('Sicherungsdatei'));
-    final device = tester.getTopLeft(find.text('Auf diesem Gerät'));
-    expect(device.dx, greaterThan(wideWindow.width / 2));
-    expect(device.dy, file.dy, reason: 'beide Spalten beginnen oben');
-    expect(tester.getTopLeft(find.text('Inhalt')).dx, device.dx);
+    expect(find.text('Auf diesem Gerät'), findsOneWidget);
+    expect(find.text('Inhalt'), findsOneWidget);
     expect(find.text('02.11.2026'), findsOneWidget);
-    // Every field has its label above it, not just as a placeholder.
-    final fields = find.byType(TextField);
-    expect(fields, findsNWidgets(2));
-    for (final (i, label) in ['Passwort der Sicherung', 'Passwort wiederholen'].indexed) {
-      expect(tester.getTopLeft(find.text(label)).dy, lessThan(tester.getTopLeft(fields.at(i)).dy));
-      expect(tester.widget<TextField>(fields.at(i)).decoration?.hintText, isNull);
-    }
-    // Create and restore both stand in the card on the left and do not stretch across the column.
+    expect(find.textContaining('Nicht enthalten'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    // Both tasks stand side by side and do not stretch across the page.
     for (final label in ['Sicherung erstellen', 'Sicherung einspielen']) {
       final button = find.ancestor(of: find.text(label), matching: find.bySubtype<ButtonStyleButton>());
-      expect(tester.getTopRight(button).dx, lessThan(wideWindow.width / 2));
       expect(tester.getSize(button).width, lessThan(wideWindow.width / 3));
     }
-    // What otherwise hides behind the info symbol fills the right column.
-    expect(find.textContaining('Nicht enthalten'), findsOneWidget);
-
-    await tester.tap(find.text('Sicherung erstellen'));
-    await tester.pump();
-    expect(find.text('Mindestens 12 Zeichen.'), findsOneWidget);
   });
 
-  testWidgets('Telefon: eine Liste wie bisher', (tester) async {
+  Finder wizardButton() => find.descendant(of: find.byType(HorizontWizard), matching: find.bySubtype<FilledButton>());
+
+  for (final (name, window) in [('Dialog', wideWindow), ('Telefon', phoneWindow)]) {
+    testWidgets('Erstellen als Wizard ($name): Inhalt, dann Passwort mit Etiketten und Prüfung', (tester) async {
+      await pumpWindow(tester, const FullBackupScreen(), window);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Sicherung erstellen'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sicherung erstellen'));
+      await tester.pumpAndSettle();
+      expect(find.byType(HorizontWizard), findsOneWidget);
+      expect(find.textContaining('Nicht enthalten'), findsWidgets);
+
+      await tester.tap(wizardButton());
+      await tester.pumpAndSettle();
+      // Every field has its label above it, not just as a placeholder.
+      final fields = find.byType(TextField);
+      expect(fields, findsNWidgets(2));
+      for (final (i, label) in ['Passwort der Sicherung', 'Passwort wiederholen'].indexed) {
+        expect(tester.getTopLeft(find.text(label).last).dy, lessThan(tester.getTopLeft(fields.at(i)).dy));
+      }
+      // Empty fields: the last step cannot run.
+      expect(tester.widget<FilledButton>(wizardButton()).onPressed, isNull);
+      await tester.enterText(fields.at(0), 'geheim');
+      await tester.enterText(fields.at(1), 'geheim');
+      await tester.pump();
+      await tester.tap(wizardButton());
+      await tester.pumpAndSettle();
+      expect(find.text('Mindestens 12 Zeichen.'), findsOneWidget);
+      expect(find.byType(HorizontWizard), findsOneWidget, reason: 'bleibt offen, bis die Sicherung liegt');
+    });
+  }
+
+  testWidgets('Einspielen als Wizard: ohne Datei geht es nicht weiter', (tester) async {
     await pumpWindow(tester, const FullBackupScreen(), phoneWindow);
     await tester.pumpAndSettle();
-    expect(find.byType(SectionHead), findsNothing);
-    expect(find.textContaining('Nicht enthalten'), findsNothing);
-    expect(
-      tester.getTopLeft(find.text('Sicherung einspielen')).dy,
-      greaterThan(tester.getTopLeft(find.text('Sicherung erstellen')).dy),
-    );
-    expect(find.text('02.11.2026'), findsOneWidget);
-    // Jedes Passwortfeld trägt sein Etikett über dem Feld, auch während der Eingabe.
-    await tester.enterText(find.byType(TextField).first, 'geheim');
-    await tester.pump();
-    expect(find.text('Passwort der Sicherung'), findsOneWidget);
-    expect(find.text('Passwort wiederholen'), findsOneWidget);
+    await tester.ensureVisible(find.text('Sicherung einspielen'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sicherung einspielen'));
+    await tester.pumpAndSettle();
+    expect(find.text('Datei wählen'), findsOneWidget);
+    expect(tester.widget<FilledButton>(wizardButton()).onPressed, isNull);
   });
 
   testWidgets('Telefon mit doppelter Schrift: Kennzahlen untereinander, kein Überlauf', (tester) async {

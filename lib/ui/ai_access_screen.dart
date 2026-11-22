@@ -1,9 +1,13 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:horizont/horizont.dart';
 
 import '../l10n/locale_controller.dart';
 import '../platform/addon.dart';
+import '../platform/secret_clipboard.dart';
 import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
@@ -60,29 +64,50 @@ class _AiAccessScreenState extends State<AiAccessScreen> {
         setState(() {
           _settings = settings;
           _endpoint = endpoint;
+          _error = null;
         });
       }
     } on Object catch (e) {
-      if (mounted) setState(() => _error = '$e');
+      if (mounted) setState(() => _error = _errorText(e));
     }
+  }
+
+  /// What the server said in words (no access, box unreachable); anything else, an HTTP status
+  /// or an exception of the platform, is no text for a person and goes to the log.
+  static String _errorText(Object e) {
+    if (e is AddonException && !e.message.startsWith('Box: HTTP')) return e.message;
+    debugPrint('KI-Zugriff: $e');
+    return s.actionFailed;
   }
 
   Future<void> _change({bool? enabled, bool renew = false}) async {
     setState(() => _busy = true);
     try {
       final settings = await widget.client.configure(enabled: enabled, renew: renew);
-      if (mounted) setState(() => _settings = settings);
+      if (mounted) {
+        setState(() {
+          _settings = settings;
+          _error = null;
+        });
+      }
     } on Object catch (e) {
-      if (mounted) setState(() => _error = '$e');
+      if (mounted) setState(() => _error = _errorText(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  void _copy(String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    showHorizontMessage(context, s.aiAccessCopied);
+  /// [secret]: the token or the command that contains it. It leaves the clipboard again after a
+  /// minute and does not travel to other devices ([copySecret]).
+  void _copy(String text, {bool secret = false}) {
+    unawaited(secret ? copySecret(text) : Clipboard.setData(ClipboardData(text: text)));
+    // In the browser a copied secret stays: clearing it would mean reading the clipboard.
+    showHorizontMessage(context, secret && !kIsWeb ? s.aiAccessCopiedSecret : s.aiAccessCopied);
   }
+
+  /// The address is plain HTTP (add-on, box without certificate): the token crosses the network
+  /// readable with every request of the AI tool.
+  static bool _plain(String? endpoint) => endpoint != null && endpoint.startsWith('http://');
 
   @override
   Widget build(BuildContext context) {
@@ -124,15 +149,27 @@ class _AiAccessScreenState extends State<AiAccessScreen> {
                       contentPadding: EdgeInsets.zero,
                       title: Text(s.aiAccessEndpoint),
                       subtitle: SelectableText(endpoint),
-                      trailing: IconButton(icon: const Icon(AppIcons.copy), onPressed: () => _copy(endpoint)),
+                      trailing: IconButton(
+                        tooltip: MaterialLocalizations.of(context).copyButtonLabel,
+                        icon: const Icon(AppIcons.copy),
+                        onPressed: () => _copy(endpoint),
+                      ),
                     ),
                   if (token != null)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(s.aiAccessToken),
                       subtitle: Text('${token.substring(0, 6)}…'),
-                      trailing: IconButton(icon: const Icon(AppIcons.copy), onPressed: () => _copy(token)),
+                      trailing: IconButton(
+                        tooltip: MaterialLocalizations.of(context).copyButtonLabel,
+                        icon: const Icon(AppIcons.copy),
+                        onPressed: () => _copy(token, secret: true),
+                      ),
                     ),
+                  if (_plain(endpoint)) ...[
+                    const SizedBox(height: Gap.inner),
+                    HorizontNotice(HorizontStatus.warning, child: Text(s.aiAccessPlain)),
+                  ],
                   if (command != null) ...[
                     const SizedBox(height: Gap.inner),
                     Text(s.aiAccessCommand, style: theme.textTheme.titleSmall),
@@ -140,7 +177,10 @@ class _AiAccessScreenState extends State<AiAccessScreen> {
                     SelectableText(command, style: context.mono(theme.textTheme.bodySmall)),
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: TextButton(onPressed: () => _copy(command), child: Text(s.aiAccessCopyCommand)),
+                      child: TextButton(
+                        onPressed: () => _copy(command, secret: true),
+                        child: Text(s.aiAccessCopyCommand),
+                      ),
                     ),
                   ],
                   const SizedBox(height: Gap.inner),
@@ -164,10 +204,10 @@ class _AiAccessScreenState extends State<AiAccessScreen> {
   /// and, while access is on, address, token and the command for an AI tool.
   Widget _wide(BuildContext context, bool enabled, String? endpoint, String? token, String? command) {
     final theme = Theme.of(context);
-    Widget copy(String text) => IconButton(
+    Widget copy(String text, {bool secret = false}) => IconButton(
       tooltip: MaterialLocalizations.of(context).copyButtonLabel,
       icon: const Icon(AppIcons.copy),
-      onPressed: () => _copy(text),
+      onPressed: () => _copy(text, secret: secret),
     );
     return FormColumns(
       intro: [
@@ -200,6 +240,7 @@ class _AiAccessScreenState extends State<AiAccessScreen> {
           // Before switching on as well: who allows access should know what the token opens.
           if (_settings != null) HorizontNotice(HorizontStatus.warning, child: Text(s.aiAccessPrivacy)),
           if (enabled) ...[
+            if (_plain(endpoint)) HorizontNotice(HorizontStatus.warning, child: Text(s.aiAccessPlain)),
             SectionHead(s.factConnection),
             RowCard(
               children: [
@@ -210,7 +251,7 @@ class _AiAccessScreenState extends State<AiAccessScreen> {
                     title: s.aiAccessToken,
                     meta: '${token.substring(0, 6)}…',
                     metaAddress: true,
-                    trailing: copy(token),
+                    trailing: copy(token, secret: true),
                   ),
               ],
             ),
@@ -227,7 +268,7 @@ class _AiAccessScreenState extends State<AiAccessScreen> {
                   children: [
                     SelectableText(command, style: context.mono(theme.textTheme.bodySmall)),
                     const SizedBox(height: Gap.inner),
-                    OutlinedButton(onPressed: () => _copy(command), child: Text(s.aiAccessCopyCommand)),
+                    OutlinedButton(onPressed: () => _copy(command, secret: true), child: Text(s.aiAccessCopyCommand)),
                   ],
                 ),
               ),

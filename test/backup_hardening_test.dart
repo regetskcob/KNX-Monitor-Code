@@ -78,6 +78,12 @@ void main() {
   Future<int> restore(Uint8List file, MemoryStorage target) =>
       FullBackup(storage: target, paths: () async => [], keyrings: _Rings()).restore(file, 'richtig123456');
 
+  test('Adresse des XKNX Editors bleibt beim Gerät: sein Token liegt im Schlüsselbund', () {
+    // A restored file must not point the stored token at another server.
+    expect(FullBackup.keepsOut('xknx_editor_endpoint'), isTrue);
+    expect(FullBackup.keepsOut('flutter.xknx_editor_endpoint'), isTrue);
+  });
+
   group('Kauf und Freischaltung', () {
     test('kein Schlüssel davon geht in die Datei', () async {
       for (final key in [

@@ -13,6 +13,10 @@ enum ForumFormat { bbcode, markdown }
 /// Never included: passwords, keys, IP addresses, host names, serial numbers (free text goes
 /// through [Scrubber]). With [pseudonymize], neutral names replace project and device names;
 /// addresses and DPTs remain, because nobody in the forum can help without them.
+///
+/// Telegrams to group addresses secured with Data Secure keep time, sender, address and type, but
+/// not their value: a forum is public, and the value was encrypted on the bus (the same rule as in
+/// the diagnostics package).
 abstract final class ForumPackage {
   /// Nobody in a forum reads more rows; the first [maxRows] are included.
   static const maxRows = 60;
@@ -26,12 +30,14 @@ abstract final class ForumPackage {
     String? appVersion,
     String Function(Telegram)? value,
     Dpt? Function(int)? dptOf,
+    Set<int> secureAddresses = const {},
   }) {
     final scrub = Scrubber(known: [?catalog.projectName]);
     final list = [...telegrams]..sort((a, b) => a.time.compareTo(b.time));
     final shown = list.take(maxRows).toList();
     Dpt? dpt(int ga) => dptOf?.call(ga) ?? catalog[ga]?.dpt;
-    String valueOf(Telegram t) => scrub((value ?? (t) => t.valueText)(t));
+    String valueOf(Telegram t) =>
+        secureAddresses.contains(t.destination) ? s.forumSecureValue : scrub((value ?? (t) => t.valueText)(t));
 
     // Neutral names in order of first appearance.
     final groupNames = <int, String>{};

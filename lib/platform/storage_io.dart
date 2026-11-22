@@ -308,6 +308,13 @@ class IoStorage implements AppStorage {
   @override
   Future<void> append(String path, String text) async {
     final file = await _file(path);
+    // In turn with writes, other appends and the migration of old plain files: two appends to a
+    // new file would both write the header, and one running into the encryption of the file
+    // would be overwritten by its result.
+    return _oneAtATime(file.path, () => _append(file, path, text));
+  }
+
+  Future<void> _append(File file, String path, String text) async {
     final key = await _keyNow();
     final encrypted = await _startsEncrypted(file);
     if (key == null) {

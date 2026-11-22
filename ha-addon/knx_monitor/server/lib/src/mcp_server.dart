@@ -65,6 +65,16 @@ class McpService {
 
   Future<void> _save() => writeAtomic(_file, text: jsonEncode({'enabled': _enabled, 'token': ?_token}));
 
+  /// Switches the access off and forgets the token: after "lock out all" or
+  /// a password change nothing handed out before may stay in. Switching it
+  /// on again gives a new token.
+  Future<void> revoke() async {
+    if (!_enabled && _token == null) return;
+    _enabled = false;
+    _token = null;
+    await _save();
+  }
+
   String _newToken() => base64Url.encode(List.generate(32, (_) => _random.nextInt(256))).replaceAll('=', '');
 
   /// Whether [request] is a call of a client with the token (only while switched on).

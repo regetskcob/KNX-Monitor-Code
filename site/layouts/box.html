@@ -48,7 +48,7 @@
 <main id="main" class="tz-main">
 {{- $n := 1 }}
 {{ partial "horizont/feld/hero.html" (dict
-    "kennung" (printf "01 — %s" $b.hero.kennung)
+    "kennung" $b.hero.kennung
     "title" $b.hero.title
     "text" $b.hero.lead
     "primary" (dict "label" $b.hero.primary "url" site.Params.boxUrl)
@@ -59,7 +59,7 @@
 {{- $need := slice }}
 {{- range .points }}{{ $need = $need | append (dict "term" .term "value" .value) }}{{ end }}
 <section class="hz-feld-section tz-section tz-section--read" id="need">
-  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n .label) }}
+  {{ partial "horizont/kennung.html" .label }}
   <div><h2>{{ .title }}</h2>{{ with .text }}<p>{{ . | markdownify }}</p>{{ end }}</div>
   {{ partial "horizont/facts.html" (dict "items" $need) }}
 </section>
@@ -69,7 +69,7 @@
 {{- $facts = $facts | append (dict "term" (cond $de "Ohne App" "Without app") "value" $b.setup.alt) }}
 {{- $n = add $n 1 }}
 <section class="hz-feld-section tz-section tz-section--read" id="setup">
-  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n $b.setup.label) }}
+  {{ partial "horizont/kennung.html" $b.setup.label }}
   <div>
     <h2>{{ $b.setup.title }}</h2><p>{{ $b.setup.text | markdownify }}</p>
     {{- /* The setup in the app on a phone, the top of its screen (the rest is
@@ -89,7 +89,7 @@
 {{- $facts = slice }}
 {{- range $s.points }}{{ $facts = $facts | append (dict "term" .term "value" (partial "live.html" (dict "ctx" . "key" "value"))) }}{{ end }}
 <section class="hz-feld-section tz-section tz-section--read" id="{{ $key }}">
-  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n $s.label) }}
+  {{ partial "horizont/kennung.html" $s.label }}
   <div>
     <h2>{{ $s.title }}</h2>{{ with $s.text }}<p>{{ . | markdownify }}</p>{{ end }}
     {{- if eq $key "recording" }}
@@ -104,7 +104,7 @@
 {{- end }}
 {{- $n = add $n 1 }}
 <section class="hz-feld-section tz-section tz-section--read tz-section--faq" id="faq">
-  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n $b.faq.label) }}
+  {{ partial "horizont/kennung.html" $b.faq.label }}
   <div>
     <h2>{{ $b.faq.title }}</h2>
     <div class="tz-faq">

@@ -31,6 +31,9 @@ READ_ONLY=no
 # Verkehr einmal täglich und auf Wunsch der Busclear-Integration. Sie liest nur
 # den Verlauf und sendet nichts auf den Bus.
 HEALTH_CHECK=no
+# Zeitzone des Standorts, z. B. Europe/Vienna oder America/New_York: Tageswechsel
+# von Verlauf und Aufbewahrung (leer = Europe/Berlin)
+TIMEZONE=
 # Öffentlicher SSH-Schlüssel für die Wartung als knxadmin, mit sudo
 # (leer = SSH bleibt aus)
 SSH_PUBKEY=

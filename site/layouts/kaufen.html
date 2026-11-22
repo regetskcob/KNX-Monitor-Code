@@ -7,7 +7,10 @@
   (privacy policy). Paddle (merchant of record) handles payment, VAT and
   invoice; after the purchase the function paddle-webhook sends the licence by mail.
   With an account (switch BETRIEB) #user=<account ID>&email=… is added, then the purchase
-  reaches the account via RevenueCat's Paddle integration.
+  reaches the account via RevenueCat's Paddle integration. Anyone can build such a link
+  for their own account and send it to someone else, so with an account the page never
+  opens the checkout by itself: it first says which account receives the purchase and
+  only accepts an account ID in the form the app sends (a UUID).
   Offers and price IDs: static/kaufen/angebote.json (the app reads it too).
 */ -}}
 {{- $de := eq site.Language.Lang "de" -}}
@@ -22,6 +25,7 @@
   <div class="knx-prose t-reading">
     <div id="knx-shop" data-token="{{ $p.clientToken }}" data-env="{{ $p.environment }}" data-key="{{ $p.customDataKey }}" data-lang="{{ site.Language.Lang }}" data-offers="{{ "kaufen/angebote.json" | absURL }}">
       <p id="knx-shop-state">{{ cond $de "Lädt …" "Loading …" }}</p>
+      <p id="knx-shop-account" hidden style="font-weight:600"></p>
       <ul id="knx-shop-offers" class="knx-shop-offers"></ul>
     </div>
     <h2>{{ cond $de "So geht es" "How it works" }}</h2>
@@ -41,6 +45,9 @@
   const de = root.dataset.lang === 'de';
   const q = new URLSearchParams(location.hash.slice(1) || location.search);
   if (location.hash || location.search) history.replaceState(null, '', location.pathname);
+  // Only an account ID as the app sends it; anything else is dropped, the purchase then
+  // works like one without an account (licence by mail).
+  if (q.get('user') && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(q.get('user')) && !q.get('done')) q.delete('user');
   const say = (deText, enText) => { state.textContent = de ? deText : enText; };
   if (q.get('done')) return say(q.get('user') ? 'Danke! Tippe jetzt in der App auf „Käufe wiederherstellen“.' : 'Danke! Deine Lizenz kommt gleich per Mail. Falls nicht: Spam-Ordner prüfen oder an support@busclear.de schreiben.', q.get('user') ? 'Thank you! Now tap “Restore purchases” in the app.' : 'Thank you! Your license is on its way by email. If it does not arrive, check your spam folder or write to support@busclear.de.');
   if (!root.dataset.token) return say('Der Kauf für Windows ist bald verfügbar.', 'Buying for Windows is coming soon.');
@@ -69,6 +76,16 @@ function start(q, say) {
     const usable = offers.filter((o) => o.paddlePriceId);
     if (!usable.length) return say('Der Kauf für Windows ist bald verfügbar.', 'Buying for Windows is coming soon.');
     state.textContent = '';
+    if (q.get('user')) {
+      // The link decides who gets the purchase: say so before anything is paid.
+      const account = document.getElementById('knx-shop-account');
+      const id = q.get('user');
+      const who = q.get('email') ? `${q.get('email')} (${de ? 'Konto' : 'account'} …${id.slice(-6)})` : `…${id.slice(-6)}`;
+      account.textContent = de
+        ? `Dieser Kauf wird dem Busclear-Konto ${who} gutgeschrieben. Öffne die Seite nur über „Plus und Pro“ in deiner App; kam der Link von jemand anderem, kaufe hier nicht.`
+        : `This purchase is credited to the Busclear account ${who}. Only open this page from “Plus and Pro” in your app; if the link came from someone else, do not buy here.`;
+      account.hidden = false;
+    }
     for (const o of usable) {
       const li = document.createElement('li');
       const b = document.createElement('button');
@@ -80,7 +97,9 @@ function start(q, say) {
       list.appendChild(li);
     }
     const chosen = usable.find((o) => o.id === q.get('product'));
-    if (chosen) open(chosen);
+    // Straight to the checkout only without an account: with one, the buyer first reads
+    // the line above and chooses the offer.
+    if (chosen && !q.get('user')) open(chosen);
   });
 }
 </script>

@@ -430,6 +430,17 @@ void main() {
       expect((await post({'jsonrpc': '2.0', 'id': 1, 'method': 'ping'}, token: renewed! as String)).$1, 403);
     });
 
+    test('revoke: aus, Token weg, auch nach dem Neustart; Einschalten gibt einen neuen', () async {
+      final token = (await settings({'enabled': true}))['token']! as String;
+      await mcp.revoke();
+      expect((await post({'jsonrpc': '2.0', 'id': 1, 'method': 'ping'}, token: token)).$1, 403);
+      expect(await settings(null), {'enabled': false, 'token': null, 'path': McpService.path});
+      final again = McpService(data, () => tools.source);
+      await again.load();
+      expect(again.enabled, isFalse);
+      expect((await settings({'enabled': true}))['token'], isNot(token));
+    });
+
     test('Härtung: Größe, Batch, neuer Token beim Einschalten, nur HTTPS wo möglich', () async {
       final token = (await settings({'enabled': true}))['token']! as String;
       final big = {'jsonrpc': '2.0', 'id': 1, 'method': 'ping', 'pad': 'x' * (McpService.maxBody + 1)};

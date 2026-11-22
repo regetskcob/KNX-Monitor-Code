@@ -8208,6 +8208,20 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get secPlainOnSecuredTitle => 'Ungesicherte Telegramme auf gesicherten Adressen';
+
+  @override
+  String secPlainOnSecuredText(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Telegramme kamen',
+      one: '1 Telegramm kam',
+    );
+    return '$_temp0 unverschlüsselt auf Gruppenadressen an, die im Keyring gesichert sind. Die Geräte verwerfen solche Telegramme; Anzeige, Verlauf und Wächter haben sie trotzdem übernommen. Absender in der Liste prüfen.';
+  }
+
+  @override
   String get secRejectedTitle => 'Ungültige gesicherte Telegramme';
 
   @override
@@ -12929,4 +12943,255 @@ class AppLocalizationsDe extends AppLocalizations {
   String snapBeforeAfter(String before, String after) {
     return 'vorher $before · jetzt $after';
   }
+
+  @override
+  String get boxKeyringPlainTitle => 'Keyring bleibt auf diesem Gerät';
+
+  @override
+  String boxKeyringPlainBody(String address) {
+    return 'Die Verbindung zur Box unter $address ist nicht verschlüsselt. Deshalb gehen Keyring und IP-Secure-Zugangsdaten nicht dorthin: Im Netz könnte jemand mitlesen, und unter derselben Adresse könnte ein anderes Gerät antworten. Der Monitor läuft weiter; gesicherte Telegramme zeichnet die Box nur mit dem Keyring auf, den sie schon hat. Für die verschlüsselte Verbindung auf der Seite /pair der Box einen neuen QR-Code erzeugen und scannen. Kann die Box kein HTTPS, lässt sich der Keyring in ihrer Weboberfläche hinterlegen.';
+  }
+
+  @override
+  String get boxPairSharesProject =>
+      'Nach dem Koppeln bekommt die Box dein Projekt: das ETS-Projekt mit allen Adressen und Namen, den Namen der Anlage und die Gateway-Adresse.';
+
+  @override
+  String get aiAccessPlain =>
+      'Diese Adresse ist unverschlüsselt (HTTP): Der Token geht bei jeder Anfrage des KI-Werkzeugs im Klartext durchs Netz. Nur im eigenen Netz verwenden.';
+
+  @override
+  String get aiAccessCopiedSecret => 'Kopiert. Verschwindet nach einer Minute aus der Zwischenablage.';
+
+  @override
+  String get forumSecureValue => 'gesichert';
+
+  @override
+  String handoverUpdateCompany(String before, String company) {
+    return 'Das frühere Paket kam von $before, dieses von $company. Nur aktualisieren, wenn du diesen Absender kennst.';
+  }
+
+  @override
+  String handoverUpdateGateway(String before, String after) {
+    return 'Das Gateway ändert sich: bisher $before, danach $after. Die App verbindet sich dann mit der neuen Adresse.';
+  }
+
+  @override
+  String handoverUpdateGatewayNew(String after) {
+    return 'Das Paket setzt das Gateway auf $after. Die App verbindet sich dann mit dieser Adresse.';
+  }
+
+  @override
+  String get boxRequestFailed =>
+      'Die Box hat die Anfrage nicht verarbeitet. Versuch es noch einmal; bleibt es dabei, hilft das Diagnosepaket.';
+
+  @override
+  String get addonDisconnected => 'Die Verbindung zum Add-on ist getrennt.';
+
+  @override
+  String get addonLoginNeeded =>
+      'Anmeldung an der Busclear Box nötig. Seite neu laden und mit dem Box-Passwort anmelden.';
+
+  @override
+  String get addonAccessDenied => 'Die Busclear Box hat den Zugriff abgelehnt.';
+
+  @override
+  String get addonUnreachable => 'Der Add-on-Server ist nicht erreichbar.';
+
+  @override
+  String get appOnly => 'Das geht nur in der App.';
+
+  @override
+  String get webNoRouting => 'Routing ist im Browser nicht möglich – das Add-on hält die Verbindung.';
+
+  @override
+  String get webNoTcp => 'TCP ist im Browser nicht möglich – das Add-on hält die Verbindung.';
+
+  @override
+  String get planBuyFailedPlain => 'Der Kauf hat nicht geklappt. Versuch es noch einmal.';
+
+  @override
+  String get planBuyNetwork =>
+      'Der Store ist gerade nicht erreichbar. Internetverbindung prüfen und noch einmal versuchen.';
+
+  @override
+  String get planBuyNotAllowed => 'Käufe sind auf diesem Gerät nicht erlaubt. In den Einstellungen des Geräts prüfen.';
+
+  @override
+  String get planBuyStore => 'Der Store meldet ein Problem. Versuch es später noch einmal.';
+
+  @override
+  String boxForgetTitle(String box) {
+    return 'Kopplung mit „$box“ löschen?';
+  }
+
+  @override
+  String get boxForgetBody =>
+      'Die App kennt diese Box danach nicht mehr. Neu koppeln geht nur mit dem QR-Code oder dem Box-Passwort.';
+
+  @override
+  String chartTemplateRemoved(String name) {
+    return 'Vorlage „$name“ entfernt.';
+  }
+
+  @override
+  String exportsRemoved(String name) {
+    return '„$name“ aus der Liste entfernt.';
+  }
+
+  @override
+  String get filterDeleted => 'Filter gelöscht.';
+
+  @override
+  String monitorPendingCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Telegramme warten',
+      one: '1 Telegramm wartet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String mapEdgesSemantics(int left, int right) {
+    return 'Verbindungslinien: $left Einträge links und $right rechts führen zur Mitte.';
+  }
+
+  @override
+  String get busmonLoadChartSemantics => 'Verlauf der Buslast.';
+
+  @override
+  String chartsAreaSemantics(int count, String names, String from, String to) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Diagramm mit $count Reihen',
+      one: 'Diagramm mit 1 Reihe',
+    );
+    return '$_temp0: $names. Zeitraum $from bis $to. Tippen setzt das Fadenkreuz.';
+  }
+
+  @override
+  String get commonLoading => 'Wird geladen …';
+
+  @override
+  String get projectCheckRunning => 'Das Projekt wird geprüft …';
+
+  @override
+  String get boxClockUnconfirmed =>
+      'Uhrzeit weit vorgestellt, aber nicht bestätigt. Bis „Mit diesem Gerät stellen“ sie bestätigt, löscht die Box keinen alten Verlauf.';
+
+  @override
+  String get boxRetentionUnconfirmed =>
+      'Einstellungen der Box gingen verloren. Bis die Aufbewahrung neu festgelegt ist, löscht die Box keinen alten Verlauf.';
+
+  @override
+  String recordingFull(String count) {
+    return 'Aufnahme beendet und gesichert: Sie hat die Obergrenze von $count Telegrammen erreicht.';
+  }
+
+  @override
+  String get issuePlainOnSecuredLabel => 'Klartext';
+
+  @override
+  String get issuePlainOnSecuredHint =>
+      'Unverschlüsselt auf einer Adresse mit Data-Secure-Schlüssel: Die Geräte verwerfen es. Kommt es nicht von einem bekannten Gerät, prüfen, wer es sendet.';
+
+  @override
+  String routingLost(String count) {
+    return 'Der KNX-Router meldet $count Telegramme, die er nicht weitergeben konnte. Sie fehlen in der Liste; meist ist die Linie oder der Router überlastet.';
+  }
+
+  @override
+  String get connectConnecting => 'Verbindet mit dem Gateway …';
+
+  @override
+  String get menuHubChecks => 'Prüfungen';
+
+  @override
+  String get menuHubChecksHint =>
+      'Räume, Sperren, Heizung, Beleuchtung, Sicherheit: je eine Prüfung für einen Teil der Anlage.';
+
+  @override
+  String get menuHubTroubleshooting => 'Fehlersuche';
+
+  @override
+  String get menuHubTroubleshootingHint => 'Wenn etwas nicht stimmt: eingrenzen, festhalten und melden.';
+
+  @override
+  String get menuHubPapers => 'Unterlagen';
+
+  @override
+  String get menuHubPapersHint => 'Was der Kunde bekommt: Akte, Berichte, Übergabe und Handbuch.';
+
+  @override
+  String get menuHubSetup => 'Einrichtung';
+
+  @override
+  String get menuHubSetupHint => 'Was einmal eingerichtet wird: Projekt, Anbindung, Sicherung.';
+
+  @override
+  String get menuProjectHint => 'ETS-Projekt laden oder wechseln: Namen, Datentypen und Geräte.';
+
+  @override
+  String get menuBackupHint => 'Alles von diesem Gerät in eine Datei sichern oder daraus zurückholen.';
+
+  @override
+  String get menuAppLockHint => 'Die App mit Code oder Biometrie sperren.';
+
+  @override
+  String get menuDiagHint => 'Was zur Fehlersuche gebraucht wird, in einer Datei zum Weitergeben.';
+
+  @override
+  String get diagStepDescribe => 'Beschreiben';
+
+  @override
+  String get diagStepData => 'Aufzeichnung';
+
+  @override
+  String get diagStepDataHint => 'Welche Aufzeichnung und welcher Zeitraum ins Paket kommen, und ob Namen dabei sind.';
+
+  @override
+  String get diagStepContents => 'Inhalt prüfen';
+
+  @override
+  String get diagStepContentsHint => 'Das steht im Paket, bevor es dieses Gerät verlässt.';
+
+  @override
+  String get diagStepReport => 'Melden';
+
+  @override
+  String get diagStepReportHint =>
+      'Das Paket ist draußen. Den Absturz kannst du jetzt öffentlich melden; das Paket hängst du selbst an.';
+
+  @override
+  String wizardStepOf(int step, int total) {
+    return 'Schritt $step von $total';
+  }
+
+  @override
+  String get backupNotSaved => 'Nicht gespeichert: Es wurde kein Ort für die Datei gewählt.';
+
+  @override
+  String get backupPasswordHint =>
+      'Ohne dieses Passwort kommt niemand an den Inhalt, auch du nicht. Mindestens 12 Zeichen.';
+
+  @override
+  String get backupRestoreFileHint => 'Die Datei einer Sicherung von diesem oder einem anderen Gerät.';
+
+  @override
+  String get backupPickFile => 'Datei wählen';
+
+  @override
+  String get backupRestorePasswordHint => 'Das Passwort, mit dem die Sicherung erstellt wurde.';
+
+  @override
+  String get backupCreateShort => 'Erstellen';
+
+  @override
+  String get backupRestoreShort => 'Einspielen';
+
+  @override
+  String get handoverCreateShort => 'Erstellen';
 }

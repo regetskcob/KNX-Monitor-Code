@@ -71,9 +71,32 @@ const healthPath = '/healthz';
 
 /// Responds only while the event loop is running; a hung server shows up this
 /// way. Says nothing about the bus: a missing gateway must not trigger a
-/// restart.
-Future<void> answerHealth(HttpResponse response) async {
+/// restart. Neither does a full disk, which a restart does not cure. With
+/// [stalled] (the recorder's write queue hangs) the answer is 503: the process
+/// lives but records nothing, and a restart is what helps.
+Future<void> answerHealth(HttpResponse response, {bool stalled = false}) async {
   response.headers.contentType = ContentType.text;
-  response.write('ok');
+  if (stalled) response.statusCode = HttpStatus.serviceUnavailable;
+  response.write(stalled ? 'recorder stalled' : 'ok');
   await response.close();
+}
+
+/// `server healthcheck`: asks the running server for [healthPath] on this
+/// machine. `true` for an answer below 300 within [timeout]. For Docker's
+/// HEALTHCHECK and a systemd timer on the box, where no Supervisor watches.
+Future<bool> checkHealth(Map<String, String> env, {Duration timeout = const Duration(seconds: 5)}) async {
+  final port = int.tryParse(env['PORT'] ?? '') ?? 8765;
+  final bind = env['BIND'];
+  final host = bind == null || bind == '0.0.0.0' ? '127.0.0.1' : bind;
+  final client = HttpClient()..connectionTimeout = timeout;
+  try {
+    final request = await client.getUrl(Uri(scheme: 'http', host: host, port: port, path: healthPath)).timeout(timeout);
+    final response = await request.close().timeout(timeout);
+    await response.drain<void>().timeout(timeout);
+    return response.statusCode < 300;
+  } on Object {
+    return false;
+  } finally {
+    client.close(force: true);
+  }
 }

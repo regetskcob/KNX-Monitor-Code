@@ -213,7 +213,8 @@ class _TeachInScreenState extends State<TeachInScreen> {
     if (current != null && !_picked) _capture.passed(current);
     setState(() => _show(heard.event, picked: true));
     if (_scroll.hasClients) {
-      unawaited(_scroll.animateTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeOut));
+      // Token duration: zero with reduced motion.
+      unawaited(_scroll.animateTo(0, duration: Motion.of(context), curve: Motion.curve));
     }
   }
 

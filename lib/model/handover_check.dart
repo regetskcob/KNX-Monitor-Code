@@ -140,7 +140,9 @@ class HandoverCheckStore extends ChangeNotifier {
   String? _loadedFor;
 
   Future<void> load() async {
-    final id = InstallationStore.instance.active.id;
+    // The demo runs under the id of the active installation but keeps its own, unsaved state:
+    // what was loaded for one must not count as loaded for the other.
+    final id = '${InstallationStore.instance.active.id}${DemoTunnel.active ? '#demo' : ''}';
     if (_loadedFor == id) return;
     _loadedFor = id;
     check = HandoverCheck();

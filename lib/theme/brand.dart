@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:horizont/horizont.dart';
+
+import 'product.dart';
 
 /// Product name (not translated).
 const appName = 'Busclear';
 
 /// The brand: Busclear in Horizont, accent "Bus".
 abstract final class Brand {
-  /// The product whose accent, glyph and icon the app carries.
-  static const product = HorizontProduct.knx;
+  /// The product whose accent, glyph and icon the app carries, defined in `product.dart`.
+  static const product = busclear;
 
   /// The illustrated app icon (bus terminal on the bus cable), exported from Horizont
   /// (`icons/export/knx/`). Never redraw or scale.

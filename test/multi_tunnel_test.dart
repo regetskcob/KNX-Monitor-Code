@@ -99,6 +99,24 @@ void main() {
     m.dispose();
   });
 
+  test('own address is that of the sending tap point and follows a drop', () async {
+    final a = _Fake('a', address: 0x1101);
+    final b = _Fake('b', address: 0x1102);
+    final multi = MultiTunnel([a, b], names: const ['A', 'B']);
+    await multi.connect();
+    expect(multi.tunnelAddress, 0x1101);
+    a.drop();
+    expect(multi.tunnelAddress, 0x1102);
+    multi.dispose();
+  });
+
+  test('sending without a connected tap point fails as a future, not synchronously', () async {
+    final multi = MultiTunnel([_Fake('a'), _Fake('b')], names: const ['A', 'B']);
+    final cemi = Uint8List.fromList([0x11, 0x00, 0xBC, 0xE0, 0, 0, 0x0A, 0x03, 0x01, 0x00, 0x81]);
+    await expectLater(multi.sendFrame(cemi), throwsA(isA<KnxException>()));
+    multi.dispose();
+  });
+
   test('connect fails only if no tap point connects', () async {
     final a = _Fake('a', fail: true), b = _Fake('b');
     final m = MultiTunnel([a, b], names: ['A', 'B'], retryDelays: const [Duration(hours: 1)]);

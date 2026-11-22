@@ -129,4 +129,42 @@ void main() {
     expect(check.findings[1].text, contains('4 Telegramme'));
     expect(check.foreign, isEmpty);
   });
+
+  test('Klartext auf einer gesicherten Adresse: eigener Befund, zählt nicht als gesichert', () {
+    Telegram live(String ga, {bool secure = false}) {
+      final t = Telegram(
+        time: DateTime(2026, 10, 29),
+        source: _pa('1.1.10'),
+        destination: _ga(ga),
+        type: TelegramType.write,
+        data: Uint8List.fromList([1]),
+        isSmall: true,
+        raw: Uint8List.fromList([0x29, 0x00, _ga(ga) & 0xFF, secure ? 1 : 0]),
+      );
+      if (secure) markDataSecure(t);
+      return t;
+    }
+
+    SecurityCheck check({required bool marked}) => SecurityCheck.of(
+      SecurityInput(
+        link: LinkSecurity.plainTunnel,
+        catalog: _catalog,
+        telegrams: [live('6/0/0', secure: true), live('6/0/1'), live('6/0/1'), live('1/1/1')],
+        securedGroups: {_ga('6/0/0'), _ga('6/0/1')},
+        keyringLoaded: true,
+        secureMarked: marked,
+      ),
+    );
+
+    final direct = check(marked: true);
+    expect(direct.seenSecured, 1);
+    expect(direct.plainOnSecured, 2);
+    expect(direct.findings.map((f) => f.title), contains('Ungesicherte Telegramme auf gesicherten Adressen'));
+
+    // Server or file: no mark, no statement – counted as before.
+    final unknown = check(marked: false);
+    expect(unknown.seenSecured, 2);
+    expect(unknown.plainOnSecured, 0);
+    expect(unknown.findings.map((f) => f.title), isNot(contains('Ungesicherte Telegramme auf gesicherten Adressen')));
+  });
 }

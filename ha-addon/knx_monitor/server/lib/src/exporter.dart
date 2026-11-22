@@ -71,12 +71,14 @@ class ExportSettings {
     },
   );
 
-  Map<String, Object?> toJson({bool secrets = true}) => {
+  /// [secrets]: with the tokens (for the file). [targets]: with the InfluxDB
+  /// address, which may carry credentials; only an admin gets it.
+  Map<String, Object?> toJson({bool secrets = true, bool targets = true}) => {
     'includeValues': includeValues,
     'prometheus': prometheus,
     'prometheusPort': prometheusPort,
     'influx': influx,
-    'influxUrl': influxUrl,
+    if (targets) 'influxUrl': influxUrl else 'hasInfluxUrl': influxUrl.isNotEmpty,
     'influxOrg': influxOrg,
     'influxBucket': influxBucket,
     'influxDatabase': influxDatabase,
@@ -237,6 +239,19 @@ class DataExporter {
     await writeAtomic(_file, text: jsonEncode(settings.toJson()));
     await _apply();
     return generated;
+  }
+
+  /// Switches `/metrics` off and forgets its token (after "lock out all" or a
+  /// password change on the box); switching it on again generates a new one.
+  Future<void> revokeTokens() async {
+    if (settings.prometheusToken.isEmpty && !settings.prometheus) return;
+    settings = ExportSettings.fromJson(
+      settings.toJson()
+        ..['prometheus'] = false
+        ..['prometheusToken'] = '',
+    );
+    await writeAtomic(_file, text: jsonEncode(settings.toJson()));
+    await _apply();
   }
 
   // --- Telegrams ----------------------------------------------------------------
@@ -480,10 +495,10 @@ class DataExporter {
   /// the last run, shown on the app's data export page. `null` where there is no `/api/ha/`.
   Map<String, Object?>? Function()? healthCheck;
 
-  Map<String, Object?> status() => {
+  Map<String, Object?> status({bool admin = true}) => {
     'mqttTelegrams': ?mqttTelegrams?.call(),
     'healthCheck': ?healthCheck?.call(),
-    'settings': settings.toJson(secrets: false),
+    'settings': settings.toJson(secrets: false, targets: admin),
     'prometheusRunning': _metrics != null,
     'prometheusError': prometheusError,
     'influxError': influxError,
@@ -495,7 +510,8 @@ class DataExporter {
 
 /// `/api/export…`; `true` if [request] has been answered.
 ///
-/// - `GET /api/export` → status and settings (without tokens)
+/// - `GET /api/export` → status and settings (without tokens; the InfluxDB address for
+///   [admin] only)
 /// - `PUT /api/export` → change ([admin] only); `generatedToken` exactly once
 /// - `PUT /api/export/mqtt` → change the MQTT telegram stream or `{"reset": true}` ([admin] only)
 /// - `POST /api/export/test` → sample to InfluxDB ([admin] only)
@@ -516,7 +532,7 @@ Future<bool> serveExport(HttpRequest request, DataExporter exporter, {required b
     return true;
   }
   if (path == '/api/export' && method == 'GET') {
-    await sendJson(response, exporter.status());
+    await sendJson(response, exporter.status(admin: admin));
     return true;
   }
   if (!admin) {

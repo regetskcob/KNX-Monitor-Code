@@ -7,6 +7,19 @@ slug: "changelog"
 ---
 What the latest versions of Busclear brought, newest first. App, Home Assistant add-on and Busclear Box share one version number. Every version is on [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant the add-on shows the same notes before an update.
 
+## 1.13.0 – 22 Nov 2026
+
+- Operate from the device drawing: an "Operate" switch above actuator and push button drawings arms sending, a tap on a channel or key sends like a push button. Switching counts as done only when the feedback follows; gates, doors, locks, alarms and central functions ask every time.
+- New checks: a channel check for installers (switches each channel, checks the feedback, asks what reacted), a heating check per room in plain words, a handover check with the nine things the electrician hands over, locks (what is locked, by whom and since when), rooms with a switch per function, and before/after to see what changed on the bus.
+- Teach-in: every address heard without a name is listed and can be named directly, also with an outdated project; name, room and device are prefilled from what is known.
+- A tidier menu: checks, troubleshooting, papers and setup each have a page of their own. Diagnostics package, backup and handover package go step by step.
+- Acceptance protocol: records the project state the installation was checked against, and the channel check per device.
+- Filter with regular expressions (`re:`); the object list shows the last telegram per object.
+- Safer recordings: a running recording is saved in the background and when leaving the monitor, and ends with a save at 500,000 telegrams.
+- Security and robustness: managing admin devices on `/pair` needs the box password, keys never go to a box over plain HTTP, after pairing the app switches to HTTPS with the box's pinned certificate, routing losses show as a notice, connecting can be cancelled.
+- Box and Docker: a check restarts a hung server; a server that is still tidying up its history before it starts is left alone.
+- Fixed: the demo could replace saved results of the real installation in the channel, handover and lock checks; underfloor heating counted as a floor sensor; gates such as "Hallentor" did not ask before switching; an empty bus monitor frame raised an error.
+
 ## 1.12.0 – 12 Nov 2026
 
 - DALI through KNX ([#6](https://github.com/regetskcob/KNX-Monitor/issues/6)): Busclear shows what a KNX-DALI gateway reports on the bus: faults per luminaire, the state of emergency converters and their test results, with profiles for ABB and MDT gateways. Faults raise alarms, and the test log of the emergency lighting is available as a PDF. Busclear only listens; it never addresses or commissions DALI devices.

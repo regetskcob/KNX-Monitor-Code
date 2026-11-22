@@ -62,7 +62,7 @@ class FullBackup {
   static final _purchase = RegExp(r'(^|[.:_])(plan_|rc_|revenuecat|purchase|entitlement)', caseSensitive: false);
 
   /// Stays on the device: sign-in, lock, device ID, purchase state, keyring and
-  /// project consent for a box. A file must not set any of these: otherwise it would grant Pro
+  /// project consent for a box, the address the XKNX Editor's token is sent to. A file must not set any of these: otherwise it would grant Pro
   /// permanently or release the keyring to a foreign box.
   @visibleForTesting
   static bool keepsOut(String key) =>
@@ -77,6 +77,9 @@ class FullBackup {
       key.startsWith('flutter.cloud_sync_') ||
       key.contains('box_keyring_') ||
       key.contains('box_project_') ||
+      // Where the XKNX Editor's token goes. The token stays in the keychain, so its address
+      // stays with it: a restored file could otherwise point it at a foreign server.
+      key.contains('xknx_editor_endpoint') ||
       _purchase.hasMatch(key) ||
       key.startsWith('backup_') ||
       key.startsWith('flutter.backup_');

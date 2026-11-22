@@ -44,26 +44,25 @@ Future<void> showSupportPackage(
   DateTime? occurred,
   DateTime? since,
   bool crash = false,
-}) => Navigator.of(context).push(
-  MaterialPageRoute<void>(
-    settings: const RouteSettings(name: SupportPackageScreen.routeName),
-    builder: (_) => SupportPackageScreen(
-      tunnel: tunnel,
-      log: log,
-      session: session,
-      error: error,
-      occurred: occurred,
-      since: since,
-      crash: crash,
-    ),
+}) => showHorizontWizard(
+  context,
+  SupportPackageScreen(
+    tunnel: tunnel,
+    log: log,
+    session: session,
+    error: error,
+    occurred: occurred,
+    since: since,
+    crash: crash,
   ),
 );
 
 /// Time span of the recording around the error; `null` = everything.
 const _ranges = <int?>[null, 5, 15, 60];
 
-/// Diagnostics package for support: describe the problem, choose the recording
-/// and time span, see what is inside (and remove names if needed), share.
+/// Diagnostics package for support as a wizard ([HorizontWizard]): describe the problem, choose
+/// the recording and time span, see what is inside (and remove names if needed), share. After a
+/// crash a last step leads to the public issue.
 class SupportPackageScreen extends StatefulWidget {
   const SupportPackageScreen({
     super.key,
@@ -78,8 +77,8 @@ class SupportPackageScreen extends StatefulWidget {
     this.openUrl,
   });
 
-  /// Name of its route: the crash banner stays away from it.
-  static const routeName = 'diagnostics';
+  /// How many are open: the crash banner stays away while one is.
+  static final open = ValueNotifier<int>(0);
 
   /// After an unexpected end of the app ([occurred] = last in the foreground).
   final bool crash;
@@ -164,6 +163,8 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
   @override
   void initState() {
     super.initState();
+    // Not during the build: the crash banner above the navigator listens to it.
+    scheduleMicrotask(() => SupportPackageScreen.open.value++);
     widget.log?.addListener(_grew);
     _loadSources();
     if (widget.crash) unawaited(_findSystemReport());
@@ -207,6 +208,7 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
 
   @override
   void dispose() {
+    scheduleMicrotask(() => SupportPackageScreen.open.value--);
     widget.log?.removeListener(_grew);
     _grow?.cancel();
     for (final id in _shots) {
@@ -341,13 +343,14 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
   }
 
   /// Share menu (iOS, iPadOS, Android), otherwise a save dialog or download.
-  Future<void> _export(Rect? origin) async {
+  /// Returns what went wrong, for the wizard's status line; `null` when the package is out.
+  Future<String?> _export(Rect? origin) async {
     setState(() => _busy = true);
     try {
       final package = _build(await _technical, shots: await _shotBytes());
       final bytes = package.toZip();
       final name = fileName('KNX-Diagnose', 'zip');
-      if (!mounted) return;
+      if (!mounted) return null;
       // Large packages often do not fit into an email as an attachment.
       if (bytes.length > 20 * 1024 * 1024) {
         showHorizontMessage(context, s.diagLarge((bytes.length / 1024 / 1024).round()), status: HorizontStatus.warning);
@@ -365,9 +368,10 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
         await saveBytes(context, bytes, name, mimeType: 'application/zip');
       }
       if (mounted) setState(() => _exported = true);
+      return null;
     } on Exception catch (e) {
       debugPrint('Diagnosepaket: $e');
-      if (mounted) showHorizontMessage(context, s.exportFailedGeneric, status: HorizontStatus.critical);
+      return s.exportFailedGeneric;
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -448,20 +452,18 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
     final theme = Theme.of(context);
     final muted = theme.textTheme.bodySmall?.copyWith(color: hz.textMuted);
     final examples = _exampleNames();
-    final width = MediaQuery.sizeOf(context).width;
-    final gutter = Gap.gutterFor(width);
-    // Two columns as soon as two card columns fit (iPad landscape, Mac): the
-    // description on the left, recording, content and sharing on the right.
-    final columns = width.clamp(0, Widths.wide + 2 * gutter) - 2 * gutter >= 2 * Widths.column + Gap.section * 2;
-    final side =
-        gutter + ((width - 2 * gutter - (columns ? Widths.wide : Widths.reading)) / 2).clamp(0, double.infinity);
-    return Scaffold(
-      appBar: AppBar(title: Text(s.diagTitle)),
-      body: FutureBuilder(
+    // A Material of its own: the wizard also stands alone as a page (tests), not only in the dialog.
+    return Material(
+      color: hz.surface,
+      child: FutureBuilder(
         future: _technical,
         builder: (context, snapshot) {
           final package = snapshot.data == null ? null : _previewOf(snapshot.data!);
           final describe = <Widget>[
+            if (widget.error case final error?) ...[
+              HorizontNotice(HorizontStatus.critical, child: Text(error)),
+              const SizedBox(height: Gap.section),
+            ],
             HorizontField(
               label: s.diagProblemLabel,
               child: TextField(
@@ -494,7 +496,7 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
               SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
                 title: Text(s.diagShotsTitle),
-                subtitle: Text(s.diagShotsHint),
+                subtitle: SwitchHint(s.diagShotsHint),
                 value: _includeShots,
                 onChanged: (v) => setState(() => _includeShots = v),
               ),
@@ -584,13 +586,14 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               title: Text(s.diagNamesTitle),
-              subtitle: Text(
+              subtitle: SwitchHint(
                 examples.isEmpty ? s.diagNamesHintEmpty : s.diagNamesHint(examples.map((n) => '„$n“').join(', ')),
               ),
               value: _keepNames,
               onChanged: (v) => setState(() => _keepNames = v),
             ),
-            const SizedBox(height: Gap.section),
+          ];
+          final contents = <Widget>[
             SectionCard(
               title: s.diagContents,
               soft: true,
@@ -609,50 +612,36 @@ class _SupportPackageScreenState extends State<SupportPackageScreen> {
               alignment: AlignmentDirectional.centerStart,
               child: TextButton(onPressed: package == null ? null : _showFile, child: Text(s.diagShowFile)),
             ),
-            const SizedBox(height: Gap.section),
-            Builder(
-              builder: (buttonContext) {
-                final onPressed = package == null || _busy ? null : () => _export(rectOf(buttonContext));
-                final icon = Icon(_shares ? AppIcons.share : AppIcons.save);
-                final label = Text(_shares ? s.diagShare : (kIsWeb ? s.diagDownload : s.diagSave));
-                // After a crash and once shared, the issue is the next step.
-                return widget.crash && _exported
-                    ? OutlinedButton.icon(onPressed: onPressed, icon: icon, label: label)
-                    : FilledButton.icon(onPressed: onPressed, icon: icon, label: label);
-              },
-            ),
-            if (widget.crash && _exported && snapshot.data != null) ...[
-              const SizedBox(height: Gap.section),
-              CrashIssueCard(issue: _issue(snapshot.data!), onReport: _reportIssue),
-            ],
           ];
-          return ListView(
-            padding: EdgeInsets.fromLTRB(side, Gap.page.top, side, Gap.page.bottom),
-            children: [
-              Text(s.diagIntro, style: theme.textTheme.bodyMedium),
-              if (widget.error case final error?) ...[
-                const SizedBox(height: Gap.section),
-                HorizontNotice(HorizontStatus.critical, child: Text(error)),
-              ],
-              const SizedBox(height: Gap.section),
-              if (columns)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: Gap.section * 2,
-                  children: [
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: describe),
-                    ),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: data),
-                    ),
-                  ],
-                )
-              else ...[
-                ...describe,
-                const SizedBox(height: HzSpace.s24),
-                ...data,
-              ],
+          Widget column(List<Widget> children) =>
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
+          return HorizontWizard(
+            title: s.diagTitle,
+            finishLabel: widget.crash ? s.tourDone : (_shares ? s.diagShare : (kIsWeb ? s.diagDownload : s.diagSave)),
+            stepOf: s.wizardStepOf,
+            steps: [
+              HorizontWizardStep(title: s.diagStepDescribe, subtitle: s.diagIntro, content: column(describe)),
+              HorizontWizardStep(title: s.diagStepData, subtitle: s.diagStepDataHint, content: column(data)),
+              HorizontWizardStep(
+                title: s.diagStepContents,
+                subtitle: s.diagStepContentsHint,
+                content: column(contents),
+                canContinue: package != null && !_busy,
+                // After a crash the package goes out here and the issue follows; otherwise this
+                // is the last step and its button shares.
+                continueLabel: widget.crash ? (_shares ? s.diagShare : (kIsWeb ? s.diagDownload : s.diagSave)) : null,
+                onContinue: () => _export(rectOf(context)),
+              ),
+              if (widget.crash)
+                HorizontWizardStep(
+                  title: s.diagStepReport,
+                  subtitle: s.diagStepReportHint,
+                  // The package is out: no way back to change what was shared.
+                  canGoBack: false,
+                  content: snapshot.data == null || !_exported
+                      ? const SizedBox.shrink()
+                      : CrashIssueCard(issue: _issue(snapshot.data!), onReport: _reportIssue),
+                ),
             ],
           );
         },
@@ -686,7 +675,7 @@ class _Contents extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: hz.textMuted),
+          Icon(icon, size: HzIconSize.row, color: hz.textMuted),
           const SizedBox(width: HzSpace.s8),
           Expanded(child: Text(text, style: theme.textTheme.bodyMedium)),
         ],

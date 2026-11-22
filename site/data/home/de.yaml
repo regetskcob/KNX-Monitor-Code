@@ -1,6 +1,6 @@
 hero:
   tagline: "KNX-Busmonitor & Diagnose"
-  kennung: "01 — Busmonitor & Diagnose · iPhone · iPad · Android · Mac · Windows · Linux · Home Assistant"
+  kennung: "Busmonitor & Diagnose · iPhone · iPad · Android · Mac · Windows · Linux · Home Assistant"
   title: "Sieh, was auf deinem KNX-Bus passiert."
   lead: "Busclear zeigt jedes Telegramm, ordnet es mit deinem ETS-Projekt ein und prüft deine Anlage auf stille Sensoren, falsche Datentypen und Busprobleme. Auf iPhone, iPad, Android, am Desktop und in Home Assistant."
   note: "Verbindet sich per KNXnet/IP mit deiner IP-Schnittstelle oder deinem IP-Router, auch mit KNX Secure. Du brauchst kein Konto, und deine Anlagendaten verlassen dein Netzwerk nur, wenn du sie selbst teilst."
@@ -178,13 +178,16 @@ privacy:
   title: "Deine Daten gehören dir."
   text: "Busclear arbeitet in deinem Netz und speichert auf deinen Geräten. Wir haben die Systeme deutlich gehärtet, die Kontrolle bleibt bei dir: Du brauchst kein Konto, und die App schickt Projekt, Telegramme und Schlüssel von sich aus an niemanden. In den Store-Versionen fragt sie RevenueCat nach deinem Kaufstand, auch wenn du nichts gekauft hast; das Konto gibt es für Käufe, nicht für deine Anlage."
   text_live: "Busclear arbeitet in deinem Netz und speichert auf deinen Geräten. Wir haben die Systeme deutlich gehärtet, die Kontrolle bleibt bei dir: Du brauchst kein Konto, und die App schickt Projekt, Telegramme und Schlüssel von sich aus an niemanden."
+  # Home page only: short.
+  home_text: "Busclear arbeitet in deinem Netz und speichert auf deinen Geräten, ohne Konto und ohne Tracking. In den Store-Versionen fragt die App RevenueCat nach deinem Kaufstand."
+  home_text_live: "Busclear arbeitet in deinem Netz und speichert auf deinen Geräten, ohne Konto und ohne Tracking."
   points:
-    - { term: "Lokal", value: "Projekt, Telegramme, Aufnahmen und Schlüssel liegen auf deinem Gerät, deiner Box oder deinem Home Assistant, nicht bei uns. Das Passwort deines ETS-Projekts wird nicht gespeichert", home: true }
-    - { term: "Tracking", value: "Keine Analyse- und Werbebibliotheken, kein Tracking", home: true }
+    - { term: "Lokal", short: "Projekt, Telegramme und Schlüssel bleiben bei dir", value: "Projekt, Telegramme, Aufnahmen und Schlüssel liegen auf deinem Gerät, deiner Box oder deinem Home Assistant, nicht bei uns. Das Passwort deines ETS-Projekts wird nicht gespeichert", home: true }
+    - { term: "Tracking", short: "Keine Analyse- und Werbebibliotheken", value: "Keine Analyse- und Werbebibliotheken, kein Tracking", home: true }
     - { term: "Verschlüsselt", value: "Ab Version 1.9.1 verschlüsseln die Apps ihre Dateien mit AES-256-GCM, der Schlüssel liegt im Schlüsselbund des Systems. Ohne nutzbaren Schlüsselbund (Linux ohne libsecret) und bei Einstellungen wie dem Gateway bleibt es unverschlüsselt; Add-on und Box verschlüsseln ihre Dateien nicht selbst" }
     - { term: "App-Sperre", value: "Auf Wunsch mit Face ID, Fingerabdruck, Windows Hello, Gerätecode oder App-Passwort samt Notfallschlüssel als PDF. Das hilft, wenn das Gerät in falsche Hände gerät, nicht gegen Schadsoftware unter deinem Benutzerkonto" }
     - { term: "Sicherung", value: "In den Apps in jeder Stufe: alles in eine Datei mit eigenem Passwort, das Format ist offen beschrieben. Das Passwort kann niemand zurücksetzen, auch wir nicht", value_live: "In den Apps: alles in eine Datei mit eigenem Passwort, das Format ist offen beschrieben. Das Passwort kann niemand zurücksetzen, auch wir nicht" }
-    - { term: "Ohne Internet", value: "Add-on und Box brauchen kein Internet. Daten gehen nur an Ziele, die du selbst einrichtest", home: true }
+    - { term: "Ohne Internet", short: "Add-on und Box brauchen keins", value: "Add-on und Box brauchen kein Internet. Daten gehen nur an Ziele, die du selbst einrichtest", home: true }
     - { term: "Netzwerk", value: "Die App spricht mit deinem Gateway und deiner Busclear Box. Ausnahmen: Käufe (App Store bzw. Google Play und RevenueCat, mit zufälliger Kennung) und der QR-Scanner unter Android (technische Daten an Google ML Kit)", value_live: "Die App spricht mit deinem Gateway und deiner Busclear Box. Ausnahme: Der QR-Scanner unter Android sendet technische Daten an Google ML Kit, nie das Kamerabild" }
   more: "Datenschutzerklärung lesen"
 
@@ -227,7 +230,7 @@ faq:
     - q: "Wie bekomme ich die Desktop-Version?"
       a: "Linux kann dasselbe wie die App auf dem iPad. Den Download findest du im [Release auf GitHub](https://github.com/regetskcob/KNX-Monitor/releases/latest). Windows folgt in den nächsten Wochen, für den Mac kommt Busclear über den App Store."
     - q: "Was brauche ich für die Busclear Box?"
-      a: "Einen Raspberry Pi 4 (getestet) oder 5, am besten mit USB-SSD und Echtzeituhr (Pi 5: Akku), dazu ein IP-Gateway oder das Aufsteckmodul kBerry und die App: auf iPhone, iPad und Android derzeit als Beta, für Linux schon heute. Die Uhr stellt die Box auch nach dem iPhone oder dem KNX-Zeitgeber. Das fertige Image findest du in den [Releases auf GitHub](https://github.com/regetskcob/KNX-Monitor/releases), alles Weitere auf der [Seite zur Busclear Box](https://busclear.de/box/)."
+      a: "Einen Raspberry Pi 4 (getestet) oder 5, am besten mit USB-SSD und Echtzeituhr (Pi 5: Akku), dazu ein IP-Gateway oder das Aufsteckmodul kBerry und die App: auf iPhone, iPad, Android oder Linux. Die Uhr stellt die Box auch nach dem iPhone oder dem KNX-Zeitgeber. Das fertige Image findest du in den [Releases auf GitHub](https://github.com/regetskcob/KNX-Monitor/releases), alles Weitere auf der [Seite zur Busclear Box](https://busclear.de/box/)."
 
 get:
   label: "Laden"

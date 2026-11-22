@@ -2,7 +2,7 @@
 # Uploads a built static site to the webspace at do.de over FTPS (explicit TLS)
 # and sends only what changed since the last upload.
 #
-#   tool/site_ftps.sh <built folder> <keychain service> [--keep <dir>]... [--dry-run]
+#   tool/site_ftps.sh <built folder> <keychain service> [--keep <dir>]... [--dry-run] [--first]
 #
 # Access comes from the login keychain, never from the repository or the shell
 # history. One item per FTP user, the host in its comment:
@@ -14,6 +14,12 @@
 # hash differs are uploaded, files no longer built are deleted. A folder named
 # with --keep stays on the server when this build has none of its own (the social
 # page, built only in the main checkout from the private store/).
+#
+# If the manifest cannot be fetched for any other reason than "no such file",
+# the upload stops: treating a failed request as an empty server would upload
+# everything, delete nothing and write a manifest that no longer knows the pages
+# removed since, so they would stay online for good. --first says the server
+# really is empty (or its manifest lost) and skips the fetch.
 #
 # --dry-run prints the plan against the manifest on the server, or against an
 # empty server with DRY_RUN_OFFLINE=1, and changes nothing.
@@ -27,10 +33,12 @@ service=${2:?keychain service}
 shift 2
 keep=()
 dry=false
+first=false
 while [ $# -gt 0 ]; do
   case "$1" in
     --keep) keep+=("${2:?folder}"); shift 2 ;;
     --dry-run) dry=true; shift ;;
+    --first) first=true; shift ;;
     *) echo "site_ftps: unknown option $1" >&2; exit 2 ;;
   esac
 done
@@ -72,9 +80,17 @@ EOF
 
 # Manifest on the server (empty on the first upload).
 : >"$work/remote"
-if [ -z "$offline" ]; then
+if [ -z "$offline" ] && ! $first; then
   { settings; echo "get .deploy-manifest -o $work/remote"; } >"$work/fetch.lftp"
-  if lftp -f "$work/fetch.lftp" >/dev/null 2>&1; then :; else : >"$work/remote"; fi
+  if ! lftp -f "$work/fetch.lftp" >"$work/fetch.out" 2>&1; then
+    : >"$work/remote"
+    # Only a missing file means "first upload" (ProFTPD: 550 … No such file or directory).
+    if ! grep -q -i -E '(^|[^0-9])550([^0-9]|$)|no such file|not found' "$work/fetch.out"; then
+      cat "$work/fetch.out" >&2
+      echo "site_ftps: could not read .deploy-manifest from $host – nothing uploaded. Try again, or pass --first if the server is empty." >&2
+      exit 1
+    fi
+  fi
 fi
 
 # Folders to keep: their server entries go into the new manifest unchanged.

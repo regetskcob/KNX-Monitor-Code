@@ -61,17 +61,32 @@ read_only=$(get READ_ONLY)
 health_check=$(get HEALTH_CHECK)
 [ "$health_check" = yes ] || health_check=no
 ssh_key=$(get SSH_PUBKEY)
+# Time zone of the site: day files, retention and the heat map change at its
+# midnight. Only names that exist in the zone database; default Europe/Berlin
+# (knx-box.service).
+timezone=$(get TIMEZONE)
+if ! [[ "$timezone" =~ ^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+){0,2}$ ]] || [ ! -f "$ROOT/usr/share/zoneinfo/$timezone" ]; then
+  timezone=Europe/Berlin
+fi
 
 # --- Server -------------------------------------------------------------------
+# /etc/knx-box/env marks the first boot as done (ConditionPathExists in
+# knx-box-firstboot.service and knx-box.service). It is written next to its
+# final name and only renamed as the very last step: after a power cut or an
+# error in between, the next boot runs this script again from the start instead
+# of leaving a box whose passwords were never written back to knx-box.txt.
 install -d -m 0700 "$ENV_DIR"
 umask 077
-cat >"$ENV_DIR/env" <<EOF
+rm -f "$ENV_DIR/env.new"
+cat >"$ENV_DIR/env.new" <<EOF
 BOX_NAME="$name"
 BOX_PASSWORD="$box_password"
 LAN_ACCESS="$lan"
 EOF
-[ "$read_only" = no ] || echo 'READ_ONLY="1"' >>"$ENV_DIR/env"
-[ "$health_check" = no ] || echo 'HEALTH_CHECK="true"' >>"$ENV_DIR/env"
+[ "$read_only" = no ] || echo 'READ_ONLY="1"' >>"$ENV_DIR/env.new"
+[ "$health_check" = no ] || echo 'HEALTH_CHECK="true"' >>"$ENV_DIR/env.new"
+# EnvironmentFile= wins over the TZ in knx-box.service.
+[ "$timezone" = Europe/Berlin ] || echo "TZ=\"$timezone\"" >>"$ENV_DIR/env.new"
 
 # --- Wi-Fi hotspot ------------------------------------------------------------
 # Without a country code Wi-Fi stays blocked on the Pi.
@@ -108,7 +123,7 @@ method=disabled
 EOF
 chmod 0600 "$AP"
 if systemctl is-active --quiet NetworkManager; then
-  nmcli connection reload
+  nmcli connection reload || log "Hotspot-Profil wird beim nächsten Neustart gelesen"
   nmcli connection up knx-box-ap || log "Hotspot startet beim nächsten Neustart"
 fi
 
@@ -122,7 +137,9 @@ if [[ "$ssh_key" =~ ^(ssh-ed25519|ecdsa-sha2-nistp256|ssh-rsa)\ [A-Za-z0-9+/=]+(
   if [ -n "$user" ]; then
     home=$(getent passwd "$user" | cut -d: -f6)
     install -d -m 0700 -o "$user" -g "$user" "$home/.ssh"
-    printf '%s\n' "$ssh_key" >>"$home/.ssh/authorized_keys"
+    # Not twice: after an interrupted first boot this script runs again.
+    grep -qxF -- "$ssh_key" "$home/.ssh/authorized_keys" 2>/dev/null ||
+      printf '%s\n' "$ssh_key" >>"$home/.ssh/authorized_keys"
     chown "$user:$user" "$home/.ssh/authorized_keys"
     chmod 0600 "$home/.ssh/authorized_keys"
     # Keys only, no passwords.
@@ -145,8 +162,10 @@ if command -v openssl >/dev/null; then
 fi
 
 # --- Write back ---------------------------------------------------------------
+# Next to the file first and then renamed: a power cut never leaves a half
+# written knx-box.txt, which the next run would read as "everything empty".
 umask 022
-cat >"$CONF" <<EOF
+cat >"$CONF.new" <<EOF
 # Busclear Box – eingerichtet am $(date '+%d.%m.%Y %H:%M')
 #
 # Diese Werte gelten jetzt. Änderungen hier wirken nicht mehr. Beim ersten
@@ -171,10 +190,15 @@ INTERNET_SHARING=$sharing
 LAN_ACCESS=$lan
 READ_ONLY=$read_only
 HEALTH_CHECK=$health_check
+TIMEZONE=$timezone
 SSH_PUBKEY=$ssh_key
 EOF
+mv -f "$CONF.new" "$CONF"
 # Setup link for the app: Wi-Fi, box password, fixed address in the box Wi-Fi.
 # As a QR code for the sticker and as text for pasting on the desktop.
 write_boot_files "$BOOT" "$ROOT/opt/knx-box/server" "$name" "$ssid" "$wlan_password" "$box_password" "$lan" "$fingerprint"
+# The values are on the card: only now is the first boot done.
+sync
+mv -f "$ENV_DIR/env.new" "$ENV_DIR/env"
 sync
 log "eingerichtet: $name, WLAN $ssid"

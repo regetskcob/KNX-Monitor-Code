@@ -74,6 +74,14 @@ void main() {
     expect((await get('')).$1, HttpStatus.forbidden);
   }, timeout: const Timeout(Duration(minutes: 2)));
 
+  test('server healthcheck: 0 solange der Server antwortet, sonst 1', () async {
+    Future<int> check() async =>
+        (await Process.run('dart', ['run', 'bin/server.dart', 'healthcheck'], environment: {'PORT': '$port'})).exitCode;
+    expect(await check(), 1, reason: 'nichts lauscht');
+    await start();
+    expect(await check(), 0);
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
   test('Box: Lebenszeichen ohne Anmeldung und ohne Daten, sonst bleibt alles gesperrt', () async {
     await start(env: {'BOX': '1', 'BOX_PASSWORD': 'test-pass', 'LAN_ACCESS': 'yes'});
     expect(await get('healthz'), (200, 'ok'));
@@ -112,6 +120,33 @@ void main() {
       final paired = (await call('POST', 'api/box/pair', password, body: '{"name":"App"}')).$2;
       admin = 'Bearer ${(jsonDecode(paired) as Map)['key']}';
     });
+
+    test('„Alle sperren“ und ein neues Passwort nehmen auch den MCP-Token mit', () async {
+      Future<int> ping(String token) async =>
+          (await call('POST', 'api/mcp', 'Bearer $token', body: '{"jsonrpc":"2.0","id":1,"method":"ping"}')).$1;
+      Future<String> switchOn(String auth) async =>
+          (jsonDecode((await call('PUT', 'api/mcp/settings', auth, body: '{"enabled":true}')).$2) as Map)['token']
+              as String;
+
+      final first = await switchOn(password);
+      expect(await ping(first), 200);
+      final locked = await call('POST', 'api/box/devices/revoke', password, body: '{"id":"*","current":"test-pass"}');
+      expect(locked.$1, 200, reason: locked.$2);
+      expect(await ping(first), isNot(200));
+      expect((await call('GET', 'api/mcp/settings', password)).$2, contains('"enabled":false'));
+
+      final second = await switchOn(password);
+      expect(second, isNot(first));
+      expect(await ping(second), 200);
+      final changed = await call(
+        'POST',
+        'api/box/password',
+        password,
+        body: '{"password":"neues-passwort","current":"test-pass"}',
+      );
+      expect(changed.$1, 200, reason: changed.$2);
+      expect(await ping(second), isNot(200));
+    }, timeout: const Timeout(Duration(minutes: 2)));
 
     test('Busverbindung ändern nur mit Admin-Recht, Unverändertes geht durch', () async {
       expect((await call('GET', 'api/bus', device)).$1, 200);
@@ -564,6 +599,26 @@ void main() {
     final answer = await time.close();
     await answer.drain<void>();
     expect(answer.statusCode, 404);
+    // The MCP token opens nothing where the box would not even ask for the
+    // password: under a foreign host name (DNS rebinding).
+    final basic = 'Basic ${base64.encode(utf8.encode('x:datei-pass'))}';
+    final on = await client.putUrl(Uri.parse('http://127.0.0.1:$port/api/mcp/settings'));
+    on.headers.set(HttpHeaders.authorizationHeader, basic);
+    on.write('{"enabled":true}');
+    final token = (jsonDecode(await utf8.decodeStream(await on.close())) as Map)['token'] as String;
+    Future<int> ping(String host) async {
+      final request = await client.postUrl(Uri.parse('http://127.0.0.1:$port/api/mcp'));
+      request.headers
+        ..set(HttpHeaders.authorizationHeader, 'Bearer $token')
+        ..set(HttpHeaders.hostHeader, host);
+      request.write('{"jsonrpc":"2.0","id":1,"method":"ping"}');
+      final response = await request.close();
+      await response.drain<void>();
+      return response.statusCode;
+    }
+
+    expect(await ping('localhost:$port'), 200);
+    expect(await ping('angreifer.example:$port'), 403);
   }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('X-Ingress-Path nur vom Ingress-Proxy', () async {

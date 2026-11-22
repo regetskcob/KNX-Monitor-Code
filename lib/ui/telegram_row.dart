@@ -496,7 +496,7 @@ class _Hop extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(HorizontStatus.warning.icon, size: 14, color: hz.warning),
+          Icon(HorizontStatus.warning.icon, size: HzIconSize.badge, color: hz.warning),
           const SizedBox(width: HzSpace.s4),
           text,
         ],

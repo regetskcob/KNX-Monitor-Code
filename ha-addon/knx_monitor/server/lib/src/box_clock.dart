@@ -32,9 +32,18 @@ enum ClockSource {
 /// - Otherwise only if the source is more trustworthy than the previous one
 ///   and deviates by at most [maxAutoStep], or if the app explicitly asks for
 ///   it (`force`). Otherwise the deviation is reported.
+///
+/// A box without battery clock and internet takes the first time it is
+/// offered, also from a device without admin rights or from the bus. Retention
+/// deletes by age, so a time far ahead would empty the history. A step of more
+/// than [maxUnconfirmedStep] forward from such a source is therefore applied but
+/// marked [unconfirmed] ([stateFile], survives restarts) until NTP, an RTC or
+/// an admin agrees; meanwhile nothing is deleted by age.
 class BoxClock {
   BoxClock({
     this.requestFile,
+    this.stateFile,
+    this.maxUnconfirmedStep = const Duration(hours: 24),
     Future<ClockSource> Function()? probe,
     DateTime Function()? system,
     Stopwatch? monotonic,
@@ -46,6 +55,10 @@ class BoxClock {
 
   /// Time request to the host; `null` where the clock cannot be set.
   final File? requestFile;
+
+  /// Remembers [unconfirmed] across restarts; `null`: only in memory.
+  final File? stateFile;
+  final Duration maxUnconfirmedStep;
   final Future<ClockSource> Function() _probe;
   final DateTime Function() _system;
   final Stopwatch _mono;
@@ -67,10 +80,37 @@ class BoxClock {
 
   bool get synced => source != ClockSource.none;
 
+  bool _unconfirmed = false;
+
+  /// The time in effect was set far ahead by a source anyone on the network
+  /// or the bus can be: what counts as "old" is not certain yet.
+  bool get unconfirmed => _unconfirmed && source != ClockSource.ntp && source != ClockSource.rtc;
+
+  Future<void> _setUnconfirmed(bool value) async {
+    if (_unconfirmed == value) return;
+    _unconfirmed = value;
+    final file = stateFile;
+    if (file == null) return;
+    try {
+      if (value) {
+        await file.writeAsString(jsonEncode({'unconfirmed': true}), flush: true);
+      } else if (await file.exists()) {
+        await file.delete();
+      }
+    } on FileSystemException catch (e) {
+      stderr.writeln('Uhr merken: $e');
+    }
+  }
+
   /// Microseconds since start, independent of time jumps.
   int get monoMicros => _mono.elapsedMicroseconds;
 
   Future<void> init() async {
+    try {
+      if (await stateFile?.exists() ?? false) _unconfirmed = true;
+    } on FileSystemException {
+      // not readable: as if nothing was remembered
+    }
     try {
       source = await _probe();
     } on Object catch (e) {
@@ -92,12 +132,15 @@ class BoxClock {
   }
 
   /// Offers a time from [from]. Result: `set`, `ok`, `differs` or
-  /// `unsupported` (no host that can set the clock).
-  Future<String> offer(DateTime time, ClockSource from, {bool force = false}) async {
+  /// `unsupported` (no host that can set the clock). [trusted]: the offer
+  /// comes from an admin (or from NTP); it confirms a time it agrees with or sets.
+  Future<String> offer(DateTime time, ClockSource from, {bool force = false, bool trusted = false}) async {
     final diff = time.difference(now());
+    trusted = trusted || from == ClockSource.ntp || from == ClockSource.rtc;
     if (synced && diff.abs() < tolerance) {
       offsets.remove(from);
       if (from.index > source.index) source = from;
+      if (trusted) await _setUnconfirmed(false);
       return 'ok';
     }
     final allowed = !synced || force || (from.index > source.index && diff.abs() <= maxAutoStep);
@@ -106,6 +149,11 @@ class BoxClock {
       return 'differs';
     }
     if (requestFile == null) return 'unsupported';
+    if (trusted) {
+      await _setUnconfirmed(false);
+    } else if (diff > maxUnconfirmedStep) {
+      await _setUnconfirmed(true);
+    }
     final mono = monoMicros;
     await requestFile!.writeAsString(jsonEncode({'epochMs': time.millisecondsSinceEpoch}), flush: true);
     _anchor = (time: time, mono: mono);
@@ -122,6 +170,7 @@ class BoxClock {
     'time': now().millisecondsSinceEpoch,
     if (setAt != null) 'setAt': setAt!.millisecondsSinceEpoch,
     'settable': requestFile != null,
+    if (unconfirmed) 'unconfirmed': true,
     if (offsets.isNotEmpty) 'offsets': {for (final e in offsets.entries) e.key.name: e.value},
   };
 }

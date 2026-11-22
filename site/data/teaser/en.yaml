@@ -1,10 +1,11 @@
 tagline: "KNX bus monitor & diagnostics"
-# Je nach offenen Betas (hugo.toml betaIos/betaAndroid): none, ios, android, both.
+# Je nach offenen Betas (hugo.toml betaIos/betaAndroid): none, ios, android, both; live with params.stores.
 description:
   none: "KNX bus monitor and diagnostics for Home Assistant and Linux, soon on iPhone, iPad, Android, Mac and Windows. Reads ETS projects, data stays local."
   ios: "KNX bus monitor and diagnostics for Home Assistant and Linux, in beta for iPhone, iPad and Mac, soon on Android and Windows. Reads ETS projects, data stays local."
   android: "KNX bus monitor and diagnostics for Home Assistant and Linux, in beta for Android, soon on iPhone, iPad, Mac and Windows. Reads ETS projects, data stays local."
   both: "KNX bus monitor and diagnostics for Home Assistant and Linux, in beta for iPhone, iPad, Mac and Android, soon on Windows. Reads ETS projects, data stays local."
+  live: "KNX bus monitor and diagnostics for iPhone, iPad, Mac, Android, Linux and Home Assistant, soon on Windows. Reads ETS projects, data stays local."
 kennung: "Bus monitor & diagnostics for KNX"
 title: "Every telegram in view, at home and on the building site."
 lead: "Made sense of with your ETS project: devices, rooms and values instead of columns of hex. Plus a check of your installation for silent sensors, wrong datapoint types and bus problems."
@@ -17,16 +18,12 @@ beta:
   ios: "Join the beta: iPhone, iPad, Mac"
   android: "Join the beta: Android"
   both: "Join the beta: Apple and Android"
-soon:
-  none: "Coming soon for iPhone, iPad, Android, Mac and Windows, available for Linux today."
-  ios: "In beta for iPhone, iPad and Mac, coming soon for Android and Windows, available for Linux today."
-  android: "In beta for Android, coming soon for iPhone, iPad, Mac and Windows, available for Linux today."
-  both: "In beta for iPhone, iPad, Mac and Android, coming soon for Windows, available for Linux today."
+  live: ""
+# After the launch (live) instead of the beta button.
+stores:
+  app_store: "On the App Store"
+  play_store: "On Google Play"
 local: "Your installation data only leaves your network if you share it yourself."
-formerly: "Busclear was called KNX Monitor until November 2026."
-# Banner after the redirect from knx-monitor.de (head.html).
-renamed: "KNX Monitor is now Busclear. Same app, same features, new name."
-renamed_close: "Close notice"
 drawing: "A small distribution board with power supply, IP interface, switch, blind and dimming actuator. Telegrams run as dots of light along the green bus cable, the channel LEDs follow."
 telegrams:
   - { from: "1.1.30", to: "1/1/3", text: "Kitchen light", value: "On", device: 2, channel: 2, on: true }
@@ -51,42 +48,29 @@ live_window: "Last 60 s"
 more: "What the add-on does today"
 ipad_alt: "Busclear as an add-on in Home Assistant on the iPad: the menu on the left with health, commissioning, bus monitor, topology and more, the overview with values per group address in the middle, the details of one address with history and telegram on the right"
 addon:
-  kennung: "02 — In the add-on today"
+  kennung: "In the add-on today"
   title: "Bus monitor and diagnostics, in Home Assistant today."
-  text: "Free, in the sidebar, on every device with Home Assistant, on the go through the Home Assistant app too. The add-on stays connected and keeps recording, even with no browser open. The source code is open ([GPLv3 on GitHub](https://github.com/regetskcob/KNX-Monitor-Code)), so you can check what it does on your bus. [All about the add-on](/en/addon/)"
-  facts:
-    - { term: "Telegrams", value: "Live with source, destination and value; search, filter, read and write values. Writing is an intervention in the installation and is your responsibility" }
-    - { term: "ETS project", value: "`.knxproj` up to ETS6, password-protected too: names, datapoint types, devices and rooms" }
-    - { term: "Overview", value: "Every group address with its value and a mini history, by rooms and functions" }
-    - { term: "Health", value: "Silent devices, cycles, datapoint types and bus quality, with a PDF report" }
-    - { term: "History", value: "Continuous recording day by day, recordings with a timeline per group address" }
-    - { term: "Connection", value: "Tunneling, routing and KNX IP Secure" }
-    - { term: "Home Assistant", value: "Read-only by default; [integration](https://github.com/regetskcob/KNX-Monitor-HA) with sensors, triggers and repair hints, events, blueprints and MQTT" }
-apps:
-  label: "As an app"
-  title: "Soon without Home Assistant too, right at the gateway."
-  text: "For the building site, the distribution board and the office next to ETS: the same tools as an app on whatever device is in your hand."
-  facts:
-    - { term: "Mobile", value: "iPhone, iPad and Android" }
-    - { term: "Desktop", value: "Mac and Windows, Linux today" }
-    - { term: "Connection", value: "Directly to your IP interface or IP router" }
-    - { term: "On site", value: "ETS project and recordings live on the device, no internet needed" }
+  text: "Free in the Home Assistant sidebar, on the go through the Home Assistant app too. It stays connected and keeps recording, even with no browser open. [All about the add-on](/en/addon/)"
 roadmap:
-  kennung: "06 — Roadmap"
+  kennung: "Roadmap"
   title: "At home in Home Assistant first, then out on the building site too."
   text:
-    none: "The add-on is ready and stays free, and the Linux app is available today. The other apps are built and follow in the coming weeks."
-    ios: "The add-on is ready and stays free, the Linux app is available today, and iPhone, iPad and Mac are in beta. The other apps are built and follow in the coming weeks."
-    android: "The add-on is ready and stays free, the Linux app is available today, and Android is in beta. The other apps are built and follow in the coming weeks."
-    both: "The add-on is ready and stays free, the Linux app is available today, and iPhone, iPad, Mac and Android are in beta. The other apps are built and follow in the coming weeks."
+    none: "The add-on is done and stays free, the apps follow in the coming weeks."
+    ios: "The add-on is done and stays free, the apps are in beta and follow in the stores."
+    android: "The add-on is done and stays free, the apps are in beta and follow in the stores."
+    both: "The add-on is done and stays free, the apps are in beta and follow in the stores."
+    live: "The add-on stays free, the apps are in the stores; Windows follows."
   more: "See roadmap and changelog"
   # Public as a preview, on the roadmap page (layouts/roadmap.html).
-  prices_preview: "**Everything is still free in the beta:** you use all features at no cost, including those of Plus and Pro. As a thank-you, you get 90 days of Pro on first launch of the store version, on the device you used the beta on. [How to join](/en/beta/)"
+  prices_preview_live: "**Everything is still free in the beta:** you use all features at no cost, including those of Plus and Pro. As a thank-you, you get 90 days of Pro on first launch of the store version, on the device you used the beta on. [How to join](/en/beta/)"
   prices:
     - { name: "Free", price: "Free", sub: "For a look at your own installation" }
     - { name: "Plus", price: "€24.99", per: "a year", sub: "or €79 once · long-term history, charts, watchers, export" }
     - { name: "Pro", price: "€149", per: "a year", sub: "or €14.99 a month · bus monitor, topology, diagnostics, commissioning" }
-  prices_note: "Suggested prices as a non-binding preview, nothing can be bought yet. Final prices apply in the App Store and on Google Play; on iPhone, iPad and Mac one purchase works everywhere."
+  # After the launch (params.commerce); without commerce the *_live texts apply.
+  prices_preview: ""
+  prices_note: "The final prices in the App Store and on Google Play apply; on iPhone, iPad and Mac one purchase covers all of them. Try Pro free for 14 days."
+  prices_note_live: "Suggested prices as a non-binding preview, nothing can be bought yet. Final prices apply in the App Store and on Google Play; on iPhone, iPad and Mac one purchase works everywhere."
   # commerce: false only without prices (params.commerce).
   facts:
     - { term: "Open", value: "**Source code under GPLv3** [on GitHub](https://github.com/regetskcob/KNX-Monitor-Code): everything for beginners and advanced users in the app, add-on and Busclear Box, open to check and to change", home: false }
@@ -96,10 +80,11 @@ roadmap:
     - { term: "Soon", value: "**iPhone, iPad, Android, Mac and Windows** in the App Store, on Google Play and as a download for Windows", when: [none] }
     - { term: "Soon", value: "**Android and Windows** on Google Play and as a download", when: [ios] }
     - { term: "Soon", value: "**iPhone, iPad, Mac and Windows** in the App Store and as a download for Windows", when: [android] }
-    - { term: "Soon", value: "**Windows** as a download", when: [both] }
+    - { term: "Soon", value: "**Windows** as a download", when: [both, live] }
+    - { term: "Now", value: "**iPhone, iPad and Mac** in the App Store, **Android** on Google Play: free to use, more tools with Plus and Pro", when: [live] }
     - { term: "Building", page: "hausbau", value: "**[Building a house with KNX](/en/hausbau/)**: what to decide early, before the walls are closed, and how \"Plan a home\" helps with it" }
     - { term: "Preview", value: "**Home builder package**: from everyday wishes through room book and floor plan to documents for your electrician. [Learn more](/en/bauherren/)" }
-    - { term: "Box", value: "**[KNX box](/en/box/)**: a Raspberry Pi as an on-site telegram recorder, recording for days on the building site, without Home Assistant and without internet. Image and guide are there, you set it up with the app" }
+    - { term: "Box", value: "**[Busclear Box](/en/box/)**: a Raspberry Pi as an on-site telegram recorder, recording for days on the building site, without Home Assistant and without internet. Image and guide are there, you set it up with the app" }
     - { term: "Apps", value: "Free to use, more tools with Plus and Pro. Everything is free in the beta.", commerce: false }
 # The home page stays short: 03 features (screens and a few facts), 04
 # connection, 05 privacy, 06 roadmap, 07 FAQ. Everything in detail is on
@@ -108,12 +93,6 @@ roadmap:
 features_label: "Features"
 features:
   more: "All features in detail"
-  facts:
-    - { term: "Start", value: "**Teach in without an ETS project:** press a button, name it, done. The live list shows every telegram as a sentence" }
-    - { term: "Recordings", value: "Record, edit and replay with a timeline per group address" }
-    - { term: "Faults", value: "**Report a problem:** reproduce the fault, the diagnostics package goes to your electrician" }
-    - { term: "Experts", value: "One switch brings bus monitor, topology, diagnostics and commissioning" }
-    - { term: "Demo", value: "Demo home to try without an installation" }
 connect:
   label: "Connection"
   title: "Straight to your IP interface, readable with your ETS project."
@@ -152,3 +131,29 @@ sensors:
     keys:
       - { label: "▲", hint: "Blinds up", to: "2/1/1", text: "Living room blinds", value: "Up", status: "2/4/1", status_text: "Living room position", status_value: "0 %", device: 3, channel: 0 }
       - { label: "▼", hint: "Blinds down", to: "2/1/1", text: "Living room blinds", value: "Down", status: "2/4/1", status_text: "Living room position", status_value: "100 %", device: 3, channel: 0 }
+
+# Home page, kept short: the features as tiles (icon, a few words; the
+# detail is on /funktionen/), one strip of platforms with their state per
+# beta state (live, test or soon), more from Busclear as one line each.
+tiles:
+  - { icon: "sensors", term: "Live", value: "Every telegram with sender, target and value" }
+  - { icon: "description", term: "ETS project", value: "Names, rooms and datapoint types, up to ETS6" }
+  - { icon: "monitor_heart", term: "Health", value: "Silent devices, wrong types, bus quality" }
+  - { icon: "history", term: "History", value: "Continuous recording with a timeline per address" }
+  - { icon: "touch_app", term: "Teach-in", value: "Without an ETS project: press, name, done" }
+  - { icon: "account_tree", term: "Experts", value: "Bus monitor, topology, commissioning" }
+  - { icon: "lock", term: "KNX Secure", value: "Tunnelling, routing and IP Secure" }
+  - { icon: "home", term: "Home Assistant", value: "Sensors, triggers and repair hints" }
+platforms:
+  label: "Where it runs"
+  states: { live: "Now", test: "Beta", soon: "Soon" }
+  items:
+    - { name: "Home Assistant", state: { none: live, ios: live, android: live, both: live, live: live } }
+    - { name: "Linux", state: { none: live, ios: live, android: live, both: live, live: live } }
+    - { name: "iPhone · iPad · Mac", state: { none: soon, ios: test, android: soon, both: test, live: live } }
+    - { name: "Android", state: { none: soon, ios: soon, android: test, both: test, live: live } }
+    - { name: "Windows", state: { none: soon, ios: soon, android: soon, both: soon, live: soon } }
+more_from:
+  - { term: "House build", url: "/en/hausbau/", page: "hausbau", value: "KNX in a new build: what to decide before the shell goes up" }
+  - { term: "Builders", url: "/en/bauherren/", value: "From everyday wishes to the papers for the electrician (outlook)" }
+  - { term: "Box", url: "/en/box/", value: "A Raspberry Pi as telegram recorder on the building site" }

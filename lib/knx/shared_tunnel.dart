@@ -88,10 +88,17 @@ class SharedTunnel extends KnxTunnel {
         _socket = await _open();
         _sub = _socket!.messages.listen(_onMessage, onError: (Object e) => _closed('$e'), onDone: () => _closed(null));
       }
-      if (status.value['state'] == 'connected') return;
+      // Only a status of this socket counts: the one kept from before a
+      // disconnect says nothing about the bus now.
+      if (_statusCurrent && status.value['state'] == 'connected') {
+        state.value = TunnelState.connected;
+        return;
+      }
       state.value = TunnelState.connecting;
-      _connected = Completer();
-      await _connected!.future.timeout(timeout);
+      // A second call while waiting joins the first instead of replacing its
+      // completer (the first would run into its timeout).
+      final waiting = _connected == null || _connected!.isCompleted ? _connected = Completer() : _connected!;
+      await waiting.future.timeout(timeout);
     } on AddonException catch (e) {
       _drop();
       throw KnxException(e.message, connectProblemNamed(e.problem));
@@ -139,7 +146,11 @@ class SharedTunnel extends KnxTunnel {
     }
   }
 
+  /// Whether [status] came over the current socket.
+  bool _statusCurrent = false;
+
   void _onStatus(Map<String, Object?> j) {
+    _statusCurrent = true;
     status.value = j;
     _followTaps(j);
     if (j['state'] == 'yielded') {
@@ -242,6 +253,7 @@ class SharedTunnel extends KnxTunnel {
   }
 
   void _drop() {
+    _statusCurrent = false;
     _sub?.cancel();
     _sub = null;
     _socket?.close();

@@ -16,7 +16,6 @@ import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'common.dart';
 import 'figure_box.dart';
-import 'form_columns.dart';
 import 'telegram_row.dart' show formatDate;
 
 /// Back up and restore everything, in every tier.
@@ -28,14 +27,8 @@ class FullBackupScreen extends StatefulWidget {
 }
 
 class _FullBackupScreenState extends State<FullBackupScreen> {
-  final _first = TextEditingController();
-  final _second = TextEditingController();
-  String? _error;
-  bool _busy = false;
   late final Future<int> _estimate = FullBackup().estimateBytes();
   late final Future<StorageExtras> _extras = storageExtras();
-
-  static String _size(int bytes) => '${localizeDecimal((bytes / 1024 / 1024).toStringAsFixed(1))} MB';
   DateTime? _last;
 
   @override
@@ -49,6 +42,129 @@ class _FullBackupScreenState extends State<FullBackupScreen> {
     if (mounted) setState(() => _last = last);
   }
 
+  /// Both tasks run as wizards: creating asks for the password after showing what goes in,
+  /// restoring replaces what is on the device and says so before its last step.
+  Future<void> _create() async {
+    final done = await showHorizontWizard(context, _CreateWizard(estimate: _estimate));
+    if (!done || !mounted) return;
+    await _loadLast();
+    if (mounted) showHorizontMessage(context, s.backupSaved, status: HorizontStatus.positive);
+  }
+
+  Future<void> _restore() => showHorizontWizard(context, const _RestoreWizard());
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.hz.textMuted);
+    return Scaffold(
+      appBar: AppBar(title: Text(s.backupTitle)),
+      body: ListView(
+        padding: Gap.page,
+        children: [
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: Widths.reading),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(s.backupShort, style: muted),
+                  SectionHead(s.backupDeviceHead),
+                  _figures(),
+                  SectionHead(s.handoverContents),
+                  SectionCard(child: _BackupContents(muted: muted)),
+                  const SizedBox(height: Gap.section),
+                  Wrap(
+                    spacing: Gap.item,
+                    runSpacing: Gap.item,
+                    children: [
+                      FilledButton(onPressed: () => unawaited(_create()), child: Text(s.backupCreate)),
+                      OutlinedButton(onPressed: () => unawaited(_restore()), child: Text(s.backupRestore)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// App storage, older versions and the date of the last backup.
+  Widget _figures() => FutureBuilder(
+    future: Future.wait<Object>([_estimate, _extras]),
+    builder: (context, snapshot) {
+      final bytes = snapshot.data?[0] as int?;
+      final extras = snapshot.data?[1] as StorageExtras?;
+      final side = extras == null ? 0 : extras.previousBytes + extras.corruptBytes;
+      return RowCard(
+        children: [
+          if (bytes != null) _Figure(label: s.backupAppStorage, value: _size(bytes)),
+          // Older and damaged versions only when they take up space.
+          if (side > 0) _Figure(label: s.backupPrevious, value: _size(side)),
+          _Figure(label: s.backupLastRow, value: _last == null ? s.backupNoneYet : formatDate(_last!)),
+        ],
+      );
+    },
+  );
+}
+
+String _size(int bytes) => '${localizeDecimal((bytes / 1024 / 1024).toStringAsFixed(1))} MB';
+
+/// What went wrong, in the user's words.
+String _backupError(Object e) {
+  if (e is BackupException) {
+    return switch (e.message) {
+      'newer' => s.backupNewer,
+      'tooLarge' => s.backupTooLarge(_size(e.bytes), _size(FullBackup.maxBytes)),
+      _ => s.backupOpenFailed,
+    };
+  }
+  debugPrint('Komplettsicherung: $e');
+  return s.actionFailed;
+}
+
+/// What a backup holds and what it leaves out.
+class _BackupContents extends StatelessWidget {
+  const _BackupContents({required this.muted});
+
+  final TextStyle? muted;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(s.backupExplain),
+      const SizedBox(height: Gap.inner),
+      Text(Betrieb.enabled ? s.backupNotIncludedTeam : s.backupNotIncluded, style: muted),
+    ],
+  );
+}
+
+/// "Sicherung erstellen" (create backup): what goes in, then the password, then the file.
+class _CreateWizard extends StatefulWidget {
+  const _CreateWizard({required this.estimate});
+
+  final Future<int> estimate;
+
+  @override
+  State<_CreateWizard> createState() => _CreateWizardState();
+}
+
+class _CreateWizardState extends State<_CreateWizard> {
+  final _first = TextEditingController();
+  final _second = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _first.addListener(_changed);
+    _second.addListener(_changed);
+  }
+
+  void _changed() => setState(() {});
+
   @override
   void dispose() {
     _first.dispose();
@@ -56,78 +172,111 @@ class _FullBackupScreenState extends State<FullBackupScreen> {
     super.dispose();
   }
 
-  Future<void> _run(Future<void> Function() job) async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
+  Future<String?> _create() async {
+    if (_first.text.length < FullBackup.minPassword) return s.backupTooShort(FullBackup.minPassword);
+    if (_first.text != _second.text) return s.backupMismatch;
     try {
-      await job();
-    } on BackupException catch (e) {
-      if (mounted) {
-        setState(
-          () => _error = switch (e.message) {
-            'newer' => s.backupNewer,
-            'tooLarge' => s.backupTooLarge(_size(e.bytes), _size(FullBackup.maxBytes)),
-            _ => s.backupOpenFailed,
-          },
-        );
-      }
-    } on Object catch (e) {
-      debugPrint('Komplettsicherung: $e');
-      if (mounted) setState(() => _error = s.actionFailed);
-    }
-    if (mounted) setState(() => _busy = false);
-  }
-
-  Future<void> _create() async {
-    if (_first.text.length < FullBackup.minPassword) {
-      setState(() => _error = s.backupTooShort(FullBackup.minPassword));
-      return;
-    }
-    if (_first.text != _second.text) {
-      setState(() => _error = s.backupMismatch);
-      return;
-    }
-    await _run(() async {
       final bytes = await FullBackup().create(_first.text);
       final saved = await FilePicker.saveFile(fileName: FullBackup.fileName, bytes: bytes);
-      if (saved == null) return;
+      if (saved == null) return s.backupNotSaved;
       await BackupReminder.markDone();
-      await _loadLast();
-      if (mounted) showHorizontMessage(context, s.backupSaved, status: HorizontStatus.positive);
-    });
+      return null;
+    } on Object catch (e) {
+      return _backupError(e);
+    }
   }
 
-  Future<void> _restore() async {
-    if (_first.text.isEmpty) {
-      setState(() => _error = s.backupTooShort(FullBackup.minPassword));
-      return;
-    }
-    final file = await FilePicker.pickFile(type: FileType.any);
-    if (file == null || !mounted) return;
-    final sure =
-        await showAdaptiveDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog.adaptive(
-            title: Text(s.backupRestoreTitle),
-            content: Text(s.backupRestoreBody),
-            actions: [
-              horizontDialogAction(context, label: s.commonCancel, onPressed: () => Navigator.pop(context, false)),
-              horizontDialogAction(
-                context,
-                label: s.backupRestore,
-                destructive: true,
-                onPressed: () => Navigator.pop(context, true),
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodyMedium?.copyWith(color: context.hz.textMuted);
+    return HorizontWizard(
+      title: s.backupCreate,
+      // Short: the wizard's foot holds "Back" beside it, also on a narrow phone.
+      finishLabel: s.backupCreateShort,
+      stepOf: s.wizardStepOf,
+      steps: [
+        HorizontWizardStep(
+          title: s.handoverContents,
+          subtitle: s.backupShort,
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _BackupContents(muted: muted),
+              const SizedBox(height: Gap.section),
+              FutureBuilder(
+                future: widget.estimate,
+                builder: (context, snapshot) => switch (snapshot.data) {
+                  final bytes? => RowCard(
+                    children: [_Figure(label: s.backupAppStorage, value: _size(bytes))],
+                  ),
+                  null => const SizedBox.shrink(),
+                },
               ),
             ],
           ),
-        ) ==
-        true;
-    if (!sure) return;
-    await _run(() async {
+        ),
+        HorizontWizardStep(
+          title: s.backupPassword,
+          subtitle: s.backupPasswordHint,
+          canContinue: _first.text.isNotEmpty && _second.text.isNotEmpty,
+          onContinue: _create,
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              HorizontField(
+                label: s.backupPassword,
+                child: TextField(controller: _first, obscureText: true, autofocus: true),
+              ),
+              const SizedBox(height: Gap.inner),
+              HorizontField(
+                label: s.backupRepeat,
+                child: TextField(controller: _second, obscureText: true),
+              ),
+              const SizedBox(height: Gap.inner),
+              Text(s.backupSlow, style: theme.textTheme.bodySmall?.copyWith(color: context.hz.textFaint)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// "Sicherung einspielen" (restore backup): the file, its password, then the step that replaces
+/// what is on this device. The app ends after it.
+class _RestoreWizard extends StatefulWidget {
+  const _RestoreWizard();
+
+  @override
+  State<_RestoreWizard> createState() => _RestoreWizardState();
+}
+
+class _RestoreWizardState extends State<_RestoreWizard> {
+  final _password = TextEditingController();
+  PlatformFile? _file;
+
+  @override
+  void initState() {
+    super.initState();
+    _password.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pick() async {
+    final file = await FilePicker.pickFile(type: FileType.any);
+    if (file != null && mounted) setState(() => _file = file);
+  }
+
+  Future<String?> _restore() async {
+    try {
       try {
-        await FullBackup().restore(await file.readAsBytes(), _first.text);
+        await FullBackup().restore(await _file!.readAsBytes(), _password.text);
       } on BackupException catch (e) {
         if (e.message != 'partial') rethrow;
         // Part of the files is new already: continuing would save the old state
@@ -151,154 +300,51 @@ class _FullBackupScreenState extends State<FullBackupScreen> {
         }
       }
       exit(0);
-    });
+    } on Object catch (e) {
+      return _backupError(e);
+    }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(s.backupTitle),
-        actions: [
-          InfoAction(
-            title: s.backupTitle,
-            text: '${s.backupExplain}\n\n${Betrieb.enabled ? s.backupNotIncludedTeam : s.backupNotIncluded}',
-          ),
-        ],
-      ),
-      body: LayoutBuilder(
-        builder: (context, box) => box.maxWidth < Breakpoints.expanded ? _narrow(context) : _wide(context),
-      ),
-    );
-  }
-
-  /// App storage, older versions and the date of the last backup.
-  Widget _figures() => FutureBuilder(
-    future: Future.wait<Object>([_estimate, _extras]),
-    builder: (context, snapshot) {
-      final bytes = snapshot.data?[0] as int?;
-      final extras = snapshot.data?[1] as StorageExtras?;
-      final side = extras == null ? 0 : extras.previousBytes + extras.corruptBytes;
-      return RowCard(
-        children: [
-          if (bytes != null) _Figure(label: s.backupAppStorage, value: _size(bytes)),
-          // Older and damaged versions only when they take up space.
-          if (side > 0) _Figure(label: s.backupPrevious, value: _size(side)),
-          _Figure(label: s.backupLastRow, value: _last == null ? s.backupNoneYet : formatDate(_last!)),
-        ],
-      );
-    },
-  );
-
-  List<Widget> _progress(BuildContext context) => [
-    if (_busy) ...[
-      const LinearProgressIndicator(),
-      const SizedBox(height: Gap.item),
-      Text(s.backupSlow, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.hz.textFaint)),
-      const SizedBox(height: Gap.item),
-    ],
-  ];
-
-  /// Phone and narrow window: everything in one list.
-  Widget _narrow(BuildContext context) {
-    final muted = Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.hz.textMuted);
-    return ListView(
-      padding: Gap.page,
-      children: [
-        Text(s.backupShort, style: muted),
-        const SizedBox(height: Gap.item),
-        SectionCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              HorizontField(
-                label: s.backupPassword,
-                child: TextField(controller: _first, obscureText: true),
-              ),
+  Widget build(BuildContext context) => HorizontWizard(
+    title: s.backupRestore,
+    finishLabel: s.backupRestoreShort,
+    stepOf: s.wizardStepOf,
+    steps: [
+      HorizontWizardStep(
+        title: s.backupFileHead,
+        subtitle: s.backupRestoreFileHint,
+        canContinue: _file != null,
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            OutlinedButton(onPressed: () => unawaited(_pick()), child: Text(s.backupPickFile)),
+            if (_file case final file?) ...[
               const SizedBox(height: Gap.inner),
-              HorizontField(
-                label: s.backupRepeat,
-                child: TextField(
-                  controller: _second,
-                  obscureText: true,
-                  decoration: InputDecoration(errorText: _error),
-                ),
-              ),
-              const SizedBox(height: Gap.inner),
-              ..._progress(context),
-              FilledButton(onPressed: _busy ? null : () => unawaited(_create()), child: Text(s.backupCreate)),
+              HorizontStatusLine(HorizontStatus.positive, file.name),
             ],
-          ),
+          ],
         ),
-        const SizedBox(height: Gap.item),
-        OutlinedButton(onPressed: _busy ? null : () => unawaited(_restore()), child: Text(s.backupRestore)),
-        const SizedBox(height: Gap.item),
-        _figures(),
-      ],
-    );
-  }
-
-  /// From [Breakpoints.expanded]: the file with its password and both actions on the left, the
-  /// state of this device and what a backup holds (otherwise behind the info symbol) on the right.
-  Widget _wide(BuildContext context) {
-    final muted = Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.hz.textMuted);
-    return FormColumns(
-      intro: [Text(s.backupShort, style: muted)],
-      columns: [
-        [
-          SectionHead(s.backupFileHead),
-          SectionCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                HorizontField(
-                  label: s.backupPassword,
-                  child: TextField(controller: _first, obscureText: true),
-                ),
-                const SizedBox(height: Gap.inner),
-                HorizontField(
-                  label: s.backupRepeat,
-                  child: TextField(
-                    controller: _second,
-                    obscureText: true,
-                    decoration: InputDecoration(errorText: _error),
-                  ),
-                ),
-                const SizedBox(height: Gap.inner),
-                ..._progress(context),
-                Wrap(
-                  spacing: Gap.item,
-                  runSpacing: Gap.item,
-                  children: [
-                    FilledButton(onPressed: _busy ? null : () => unawaited(_create()), child: Text(s.backupCreate)),
-                    OutlinedButton(onPressed: _busy ? null : () => unawaited(_restore()), child: Text(s.backupRestore)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-        [
-          SectionHead(s.backupDeviceHead),
-          _figures(),
-          SectionHead(s.handoverContents),
-          SectionCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(s.backupExplain),
-                const SizedBox(height: Gap.inner),
-                Text(Betrieb.enabled ? s.backupNotIncludedTeam : s.backupNotIncluded, style: muted),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
+      ),
+      HorizontWizardStep(
+        title: s.backupPassword,
+        subtitle: s.backupRestorePasswordHint,
+        canContinue: _password.text.isNotEmpty,
+        content: HorizontField(
+          label: s.backupPassword,
+          child: TextField(controller: _password, obscureText: true, autofocus: true),
+        ),
+      ),
+      HorizontWizardStep(
+        title: s.backupRestoreTitle,
+        subtitle: _file?.name,
+        onContinue: _restore,
+        content: HorizontNotice(HorizontStatus.warning, child: Text(s.backupRestoreBody)),
+      ),
+    ],
+  );
 }
 
-/// Row with a label and a bold value.
 class _Figure extends StatelessWidget {
   const _Figure({required this.label, required this.value});
 

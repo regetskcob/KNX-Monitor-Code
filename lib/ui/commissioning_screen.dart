@@ -320,7 +320,7 @@ class _CommissioningScreenState extends State<CommissioningScreen> {
           final on = SoundAck.instance.target is AckChecklist;
           return FilledButton.icon(
             onPressed: _toggleTone,
-            icon: Icon(on ? AppIcons.stop : AppIcons.ack, size: 18),
+            icon: Icon(on ? AppIcons.stop : AppIcons.ack, size: HzIconSize.row),
             label: Text(on ? s.commToneOff : s.commToneOn),
           );
         },
@@ -673,7 +673,7 @@ class _ItemDetailState extends State<_ItemDetail> {
               const SizedBox(height: HzSpace.s8),
               Row(
                 children: [
-                  Icon(status.icon, size: 18, color: status.color(hz)),
+                  Icon(status.icon, size: HzIconSize.row, color: status.color(hz)),
                   const SizedBox(width: HzSpace.s8),
                   Expanded(child: Text(_label(item.state), style: theme.textTheme.bodyMedium)),
                   if (item.value case final value?)
@@ -735,7 +735,11 @@ class _ItemDetailState extends State<_ItemDetail> {
           children: [
             TextButton(onPressed: () => _mark(CheckState.open), child: Text(s.commReset)),
             if (widget.onNext case final next?)
-              TextButton.icon(onPressed: next, icon: const Icon(AppIcons.next, size: 18), label: Text(s.commNextOpen)),
+              TextButton.icon(
+                onPressed: next,
+                icon: const Icon(AppIcons.next, size: HzIconSize.row),
+                label: Text(s.commNextOpen),
+              ),
           ],
         ),
         const SizedBox(height: HzSpace.s8),

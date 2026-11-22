@@ -54,4 +54,11 @@ COPY --from=server /server /app/server
 COPY --from=web /src/build/web/ /app/web/
 COPY ha-addon/knx_monitor/card/ /app/card/
 ENV PORT=8765 WEB_DIR=/app/web DATA_DIR=/data/app ADDON_VERSION=$BUILD_VERSION
+# Docker marks the container "unhealthy" when the server runs but no longer
+# answers (docker ps, and the watchdog of Home Assistant's Supervisor restarts it
+# if the user enabled it). No shell and no curl in this image: the server asks
+# itself ("server healthcheck", exit code 0 or 1).
+# Start period 30 minutes: the server tidies up its history before it opens the port, which
+# takes minutes on a large day; failures before the first answer do not count.
+HEALTHCHECK --interval=60s --timeout=10s --start-period=1800s --retries=3 CMD ["/app/server", "healthcheck"]
 CMD ["/app/server"]

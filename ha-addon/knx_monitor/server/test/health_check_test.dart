@@ -391,6 +391,10 @@ void main() {
     late HttpServer server;
 
     Future<void> startBus({bool readOnly = false}) async {
+      // The tests date their history around a fixed [clock], the recorder cleans up by the real
+      // one: with the default retention the oldest days vanish at start once the real date has
+      // moved a week past the fixed one.
+      File('${data.path}/server.json').writeAsStringSync(jsonEncode({'retentionDays': 3650}));
       bus = BusService(
         data,
         link: (_) => link = _Link(),

@@ -29,7 +29,7 @@
 {{- $aside = partial "horizont/device.html" (dict "device" "ipad" "width" 440 "inner" (partial "ha-frame.html" (dict "src" $shot.RelPermalink "alt" $d.ipad_alt))) }}
 {{- end }}
 {{ partial "horizont/feld/hero.html" (dict
-    "kennung" (printf "01 — %s" $a.hero.kennung)
+    "kennung" $a.hero.kennung
     "title" $a.hero.title
     "text" $a.hero.lead
     "primary" (dict "label" $a.hero.primary "url" site.Params.haUrl)
@@ -42,7 +42,7 @@
 {{- $facts := slice }}
 {{- range $s.points }}{{ $facts = $facts | append (dict "term" .term "value" .value) }}{{ end }}
 <section class="hz-feld-section tz-section tz-section--read" id="{{ $key }}">
-  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n $s.label) }}
+  {{ partial "horizont/kennung.html" $s.label }}
   <div><h2>{{ $s.title }}</h2>{{ with $s.text }}<p>{{ . | markdownify }}</p>{{ end }}</div>
   {{ partial "horizont/facts.html" (dict "items" $facts) }}
   {{- if eq $key "automations" }}{{ partial "addon-events.html" $a.demo }}{{ end }}
@@ -50,7 +50,7 @@
 {{- end }}
 {{- $n = add $n 1 }}
 <section class="hz-feld-section tz-section tz-section--read tz-section--faq" id="faq">
-  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n $a.faq.label) }}
+  {{ partial "horizont/kennung.html" $a.faq.label }}
   <div>
     <h2>{{ $a.faq.title }}</h2>
     <div class="tz-faq">

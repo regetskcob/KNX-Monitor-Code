@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.13.0
+
+- Operate from the device drawing: a chip "Operate" above actuator and push
+  button drawings arms sending, a tap on a channel or key sends like a push
+  button. Switching counts as done only when the status feedback follows;
+  gates, doors, locks, alarms and central functions ask every time.
+- New checks: a channel check for installers (switches each channel, checks the
+  feedback, asks what reacted), a heating check per room in plain words, a
+  handover check with the nine things the electrician hands over, locks (what
+  is locked, by whom and since when), rooms with a switch per function, and
+  before/after to see what changed on the bus.
+- Teach-in: every address heard without a name is listed and can be named
+  directly, also when the project is outdated; names, rooms and devices are
+  prefilled from what is known.
+- The menu is tidier: checks, troubleshooting, papers and setup each have a
+  page of their own. The diagnostics package, backups and the handover package
+  are step-by-step wizards.
+- Acceptance protocol: records the project state the installation was checked
+  against and the channel check per device.
+- Filter with regular expressions (`re:`); the object list shows the last
+  telegram per object.
+- Recordings are safer: a running recording is saved in the background and
+  when leaving the monitor, and ends with a save at 500,000 telegrams.
+- Security and robustness: managing admin devices on `/pair` needs the box
+  password, keys never go to a box over plain HTTP, the box switches to HTTPS
+  with its pinned certificate after pairing, routing losses reported by the
+  router show as a notice, connecting can be cancelled.
+- Box and Docker: a health check restarts a hung server (a server that is still
+  tidying up its history before it listens is left alone).
+- Fixed: the demo could replace saved results of the real installation in the
+  channel, handover and lock checks; underfloor heating counted as a floor
+  sensor; gates such as "Hallentor" did not ask before switching; an empty bus
+  monitor frame raised an error.
+
 ## 1.12.0
 
 - DALI through KNX ([#6](https://github.com/regetskcob/KNX-Monitor/issues/6)):

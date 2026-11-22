@@ -62,13 +62,24 @@ class RoutingTunnel extends KnxTunnel {
       state.value = TunnelState.disconnected;
       throw KnxException(s.routingUnavailable(e.message), ConnectProblem.routing);
     }
-    _sub = _socket!.datagrams.listen(_onDatagram, onError: (Object e) => connectionLost(s.errorSocket('$e')));
+    final socket = _socket!;
+    _sub = socket.datagrams.listen(_onDatagram, onError: (Object e) => connectionLost(s.errorSocket('$e')));
     tunnelAddress = address;
     state.value = TunnelState.connected;
     _networkMisses = 0;
-    _joinedOn = await _addressesOrNull() ?? const {};
+    lostByRouter.value = 0;
+    final joined = await _addressesOrNull() ?? const <String>{};
+    // Disconnected (or connected anew) while asking: this attempt must not
+    // leave a timer behind that nobody stops.
+    if (!identical(_socket, socket)) return;
+    _joinedOn = joined;
+    _networkTimer?.cancel();
     _networkTimer = Timer.periodic(networkCheck, (_) => unawaited(_checkNetwork()));
   }
+
+  /// Telegrams a router reported as lost (ROUTING_LOST_MESSAGE) since the
+  /// connection began: its queue overflowed, so the log has gaps.
+  final lostByRouter = ValueNotifier<int>(0);
 
   Future<Set<String>?> _addressesOrNull() async {
     try {
@@ -119,6 +130,12 @@ class RoutingTunnel extends KnxTunnel {
         final cemi = Uint8List.sublistView(p, 6);
         if (cemi.length > 5 && cemi[0] == 0x29 && _sourceOf(cemi) == address) return;
         receiveCemi(cemi);
+      case 0x0531: // ROUTING_LOST_MESSAGE: structure length, device state, number of lost messages
+        if (p.length >= 10) {
+          final lost = (p[8] << 8) | p[9];
+          lostByRouter.value += lost;
+          debugPrint('Routing: Router ${dg.host} meldet $lost verlorene Telegramme');
+        }
       case 0x0532: // ROUTING_BUSY
         if (p.length >= 10) {
           final wait = (p[8] << 8) | p[9];

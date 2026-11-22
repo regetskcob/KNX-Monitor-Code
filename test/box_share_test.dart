@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:knx_monitor/model/box_share.dart';
+import 'package:knx_monitor/platform/addon.dart';
+import 'package:knx_monitor/platform/box_link.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -58,6 +60,34 @@ void main() {
     onBox = utf8.encode('v1');
     expect(await sync('v1'), BoxShareOutcome.same);
     expect(await sync('v2'), BoxShareOutcome.pushed);
+  });
+
+  group('unverschlüsselte Box', () {
+    setUp(() => Addon.box = BoxLink(url: Uri.parse('http://192.168.1.50/'), key: 'testzugang'));
+    tearDown(() => Addon.box = null);
+
+    test('geteilte Datei fehlt plötzlich: könnte ein fremdes Gerät sein, nichts geht hin', () async {
+      await BoxShare.remember('a', 'catalog.json', 'v1');
+      expect(await sync('v1'), BoxShareOutcome.boxDiffers);
+      expect(writes, 0);
+    });
+
+    test('hält sie den letzten Stand, ist es die Box: Änderung wird nachgereicht', () async {
+      onBox = utf8.encode('v1');
+      await BoxShare.remember('a', 'catalog.json', 'v1');
+      expect(await sync('v2'), BoxShareOutcome.pushed);
+    });
+
+    test('noch nie geteilt (frisch gekoppelt): bekommt die Datei', () async {
+      expect(await sync('v1'), BoxShareOutcome.pushed);
+    });
+  });
+
+  test('Box mit Zertifikat: fehlende Datei wird wie bisher ersetzt', () async {
+    Addon.box = BoxLink(url: Uri.parse('http://192.168.1.50/'), key: 'testzugang', fp: 'A' * 43);
+    addTearDown(() => Addon.box = null);
+    await BoxShare.remember('a', 'catalog.json', 'v1');
+    expect(await sync('v1'), BoxShareOutcome.pushed);
   });
 
   test('hier nichts: Box bleibt', () async {

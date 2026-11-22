@@ -43,7 +43,11 @@
 #                                      Package.resolved changed (commit them via PR)
 #   werkbank push [git push args]      git push, then mark HEAD verified on GitHub
 #                                      (status werkbank/verify) when verify passed for it
-#   werkbank push-tag <tag>            push the tag, mark the tagged commit the same way
+#   werkbank push-tag <tag>            push the tag, mark the tagged commit the same way;
+#                                      refused without a release review of the commit
+#   werkbank reviewed                  note HEAD as reviewed for the release (after a
+#                                      detailed review of `werkbank review-range`)
+#   werkbank review-range              what the release review covers: last tag..HEAD
 #   werkbank doctor                    which tools and keys are there
 #
 # Works from any directory: a copy in tool/werkbank/ always acts on its own
@@ -85,6 +89,8 @@ case "$cmd" in
   resolved) wb_resolved_guard && say "Package.resolved unchanged" ;;
   push) wb_push "$@" ;;
   push-tag) wb_push_tag "$@" ;;
+  reviewed) wb_stamp review ;;
+  review-range) wb_review_range ;;
   doctor) wb_doctor ;;
-  *) sed -n '2,50p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 2 ;;
+  *) sed -n '2,55p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac

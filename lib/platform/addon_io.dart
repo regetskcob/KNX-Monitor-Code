@@ -211,7 +211,7 @@ Future<Object?> _request(
         // the sticker).
         (r.statusCode == HttpStatus.badRequest && r.bodyBytes.isNotEmpty
             ? AddonException(utf8.decode(r.bodyBytes, allowMalformed: true))
-            : AddonException('Box: HTTP ${r.statusCode}', status: r.statusCode));
+            : AddonException(s.boxRequestFailed, status: r.statusCode));
   }
   // 204 (e.g. after DELETE) has no content.
   return r.bodyBytes.isEmpty ? null : jsonDecode(utf8.decode(r.bodyBytes));
@@ -260,7 +260,7 @@ Future<Uint8List?> addonGetFile(String path, {String base = 'api/files/'}) async
   }
   if (r.statusCode == HttpStatus.notFound) return null;
   if (_isRefusal(r.statusCode)) throw _refused(r);
-  if (r.statusCode >= 300) throw AddonException('Box: HTTP ${r.statusCode}');
+  if (r.statusCode >= 300) throw AddonException(s.boxRequestFailed, status: r.statusCode);
   return r.bodyBytes;
 }
 
@@ -278,7 +278,7 @@ Future<Uint8List?> addonDownload(String path, String fileName, {Duration timeout
   if (_isRefusal(r.statusCode)) throw _refused(r);
   if (r.statusCode >= 300) {
     final text = utf8.decode(r.bodyBytes, allowMalformed: true).trim();
-    throw AddonException(text.isEmpty || text.length > 200 ? 'Box: HTTP ${r.statusCode}' : text, status: r.statusCode);
+    throw AddonException(text.isEmpty || text.length > 200 ? s.boxRequestFailed : text, status: r.statusCode);
   }
   return r.bodyBytes;
 }
@@ -291,7 +291,7 @@ AddonException _failure(int status, List<int> body) {
   if (error != null) return error;
   if (status == HttpStatus.tooManyRequests) return AddonException(s.boxTooManyAttempts, status: status);
   return AddonException(
-    body.isNotEmpty && body.length < 300 ? utf8.decode(body, allowMalformed: true) : 'Box: HTTP $status',
+    body.isNotEmpty && body.length < 300 ? utf8.decode(body, allowMalformed: true) : s.boxRequestFailed,
     status: status,
   );
 }
@@ -421,7 +421,7 @@ Future<void> addonPutFile(String path, List<int> bytes) async {
     throw AddonException(s.boxUnreachable(box.address));
   }
   if (_isRefusal(r.statusCode)) throw _refused(r);
-  if (r.statusCode >= 300) throw AddonException('Box: HTTP ${r.statusCode}');
+  if (r.statusCode >= 300) throw AddonException(s.boxRequestFailed, status: r.statusCode);
 }
 
 /// Pairs using the box password from the sticker's QR code and returns the device access (with
@@ -450,7 +450,7 @@ Future<String> addonPairBox(BoxLink link, String password, String deviceName, {S
     throw AddonException(s.boxUnauthorized);
   }
   if (r.statusCode == HttpStatus.tooManyRequests) throw AddonException(s.boxUnauthorized);
-  if (r.statusCode >= 300) throw AddonException('Box: HTTP ${r.statusCode}');
+  if (r.statusCode >= 300) throw AddonException(s.boxRequestFailed, status: r.statusCode);
   final key = (jsonDecode(utf8.decode(r.bodyBytes)) as Map)['key'];
   if (key is! String || key.isEmpty) throw AddonException(s.boxUnauthorized);
   return key;

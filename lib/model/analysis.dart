@@ -4,6 +4,7 @@ import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
 import 'commissioning.dart' show isStatusGroup;
 import 'telegram_log.dart';
+import '../knx/secure/keyring_store.dart';
 
 /// Anomaly of a telegram, for troubleshooting.
 enum TelegramIssue {
@@ -29,7 +30,10 @@ enum TelegramIssue {
   unusualHop(false),
 
   /// A central-off address (by name) receives a 1.
-  centralOffOn(true);
+  centralOffOn(true),
+
+  /// Plain telegram on an address that has a Data Secure key: the devices discard it.
+  plainOnSecured(true);
 
   const TelegramIssue(this.warning);
 
@@ -43,6 +47,7 @@ enum TelegramIssue {
     unknownDevice => s.issueUnknownDeviceLabel,
     unusualHop => s.issueUnusualHopLabel,
     centralOffOn => s.issueCentralOffOnLabel,
+    plainOnSecured => s.issuePlainOnSecuredLabel,
   };
 
   /// Explanation for troubleshooting.
@@ -55,6 +60,7 @@ enum TelegramIssue {
     unknownDevice => s.issueUnknownDeviceHint,
     unusualHop => s.issueUnusualHopHint,
     centralOffOn => s.issueCentralOffOnHint,
+    plainOnSecured => s.issuePlainOnSecuredHint,
   };
 
   /// A real problem (warning color) rather than mere information.
@@ -75,7 +81,8 @@ int? expectedSize(Dpt dpt) => switch (dpt.main) {
 };
 
 /// Anomalies of [t] in the context of [log] and the imported project.
-List<TelegramIssue> issuesOf(Telegram t, TelegramLog log) {
+/// [securedGroups]: addresses with a Data Secure key; by default those of the loaded keyring.
+List<TelegramIssue> issuesOf(Telegram t, TelegramLog log, {Set<int>? securedGroups}) {
   final store = CatalogStore.instance;
   final catalog = store.catalog;
   final info = catalog[t.destination];
@@ -90,6 +97,14 @@ List<TelegramIssue> issuesOf(Telegram t, TelegramLog log) {
     if (catalog.devices.isNotEmpty && !t.outgoing && store.device(t.source) == null) TelegramIssue.unknownDevice,
     if (t.unusualHop) TelegramIssue.unusualHop,
     if (info != null && isCentralOffOn(t, info)) TelegramIssue.centralOffOn,
+    if (log.secureMarked &&
+        !t.outgoing &&
+        t.raw.isNotEmpty &&
+        !arrivedSecure(t) &&
+        (securedGroups?.contains(t.destination) ??
+            KeyringStore.instance.dataSecure?.groupKeys.containsKey(t.destination) ??
+            false))
+      TelegramIssue.plainOnSecured,
   ];
 }
 

@@ -22,6 +22,26 @@ void main() {
     expect(f.telegram!.data, [0x04, 0x4C]);
   });
 
+  test('Extended Frame (lange Nutzdaten): Adressen, Länge, Prüfsumme und Wert', () {
+    // Control 0x3C (extended, not repeated), CTRLE 0xE0 (group, hop count 6), 1.1.5 → 1/2/3,
+    // length 15: GroupValueWrite with 14 bytes (DPT 16).
+    final body = [0x3C, 0xE0, 0x11, 0x05, 0x0A, 0x03, 0x0F, 0x00, 0x80, ...'Hallo KNX'.codeUnits, 0, 0, 0, 0, 0];
+    final checksum = ~body.fold(0, (a, b) => a ^ b) & 0xFF;
+    final f = BusmonFrame.fromRaw(Uint8List.fromList([...body, checksum]), time: DateTime(2026));
+    expect(f.kind, BusmonKind.data);
+    expect(f.checksumOk, isTrue);
+    expect(f.groupAddressed, isTrue);
+    expect(f.repeated, isFalse);
+    expect(formatIndividual(f.source!), '1.1.5');
+    expect(formatGroup(f.destination!), '1/2/3');
+    expect(f.telegram!.type, TelegramType.write);
+    expect(f.telegram!.data, hasLength(14));
+    expect(String.fromCharCodes(f.telegram!.data.take(9)), 'Hallo KNX');
+
+    // Cut off: unknown, no crash.
+    expect(BusmonFrame.fromRaw(Uint8List.fromList(body.sublist(0, 10)), time: DateTime(2026)).kind, BusmonKind.unknown);
+  });
+
   test('Quittungen', () {
     expect(BusmonFrame.parse(bytes('2B 09 03 01 05 06 04 93 D8 AB C7 CC'))!.kind, BusmonKind.ack);
     expect(BusmonFrame.fromRaw(bytes('0C'), time: DateTime(2026)).kind, BusmonKind.nak);

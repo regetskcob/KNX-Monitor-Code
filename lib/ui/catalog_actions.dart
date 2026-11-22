@@ -17,6 +17,7 @@ import 'handover_screen.dart' show openPackageFile;
 import 'project_file_help_screen.dart';
 import 'project_states_screen.dart';
 import 'telegram_row.dart' show formatDate;
+import 'tap_strip.dart' show tapErrorText;
 
 /// Imports an ETS project (.knxproj) or a group address CSV and reports the
 /// result in a snackbar. Asks for the project password if needed.
@@ -102,7 +103,11 @@ Future<void> importFromHomeAssistant(BuildContext context) async {
       horizontMessageSnackBar(colors, s.catalogImportFailed(e.message), status: HorizontStatus.critical),
     );
   } on Object catch (e) {
-    messenger.showSnackBar(horizontMessageSnackBar(colors, s.catalogHaFailed('$e'), status: HorizontStatus.critical));
+    // The reader gets the cause in plain words, never the raw exception.
+    debugPrint('Home Assistant project: $e');
+    messenger.showSnackBar(
+      horizontMessageSnackBar(colors, s.catalogHaFailed(tapErrorText('$e')), status: HorizontStatus.critical),
+    );
   }
 }
 
@@ -524,7 +529,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(HorizontStatus.critical.icon, size: 18, color: context.hz.critical),
+                  Icon(HorizontStatus.critical.icon, size: HzIconSize.row, color: context.hz.critical),
                   const SizedBox(width: HzSpace.s8),
                   Expanded(
                     child: Text(s.passwordWrong, style: TextStyle(color: context.hz.critical)),

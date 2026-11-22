@@ -105,6 +105,7 @@ class BusmonFrame {
   static BusmonFrame fromRaw(Uint8List raw, {required DateTime time, int status = 0, int? timestamp}) {
     BusmonFrame frame(BusmonKind kind) =>
         BusmonFrame(time: time, raw: raw, kind: kind, status: status, timestamp: timestamp);
+    if (raw.isEmpty) return frame(BusmonKind.unknown);
     if (raw.length == 1) {
       return switch (raw[0]) {
         0xCC => frame(BusmonKind.ack),
@@ -115,9 +116,14 @@ class BusmonFrame {
       };
     }
     // Standard frame: control field 10xx xx00, at least 8 bytes including checksum.
-    if (raw.length < 8 || raw[0] & 0xD3 != 0x90) return frame(BusmonKind.unknown);
-    final length = raw[5] & 0x0F;
-    final end = 6 + length + 1; // TPCI/APCI + data
+    // Extended frame (long payloads, e.g. Data Secure): control field 00xx xx00, then the extended
+    // control field, addresses and a full length byte; at least 9 bytes.
+    final extended = raw[0] & 0xD3 == 0x10;
+    if (!extended && raw[0] & 0xD3 != 0x90) return frame(BusmonKind.unknown);
+    final head = extended ? 7 : 6; // bytes before the TPDU
+    if (raw.length < head + 2) return frame(BusmonKind.unknown);
+    final length = extended ? raw[6] : raw[5] & 0x0F;
+    final end = head + length + 1; // TPCI/APCI + data
     if (raw.length < end + 1) return frame(BusmonKind.unknown);
 
     var xor = 0;
@@ -125,19 +131,21 @@ class BusmonFrame {
       xor ^= raw[i];
     }
     final checksumOk = (~xor & 0xFF) == raw[end];
-    final group = raw[5] & 0x80 != 0;
-    final source = (raw[1] << 8) | raw[2];
-    final destination = (raw[3] << 8) | raw[4];
+    final addresses = extended ? 2 : 1;
+    final control2 = extended ? raw[1] : raw[5] & 0xF0;
+    final group = control2 & 0x80 != 0;
+    final source = (raw[addresses] << 8) | raw[addresses + 1];
+    final destination = (raw[addresses + 2] << 8) | raw[addresses + 3];
 
     // Convert to cEMI L_Data.ind so values appear as in the group monitor.
     final cemi = Uint8List.fromList([
       0x29,
       0x00,
       raw[0],
-      raw[5] & 0xF0,
-      ...raw.sublist(1, 5),
+      control2,
+      ...raw.sublist(addresses, addresses + 4),
       length,
-      ...raw.sublist(6, end),
+      ...raw.sublist(head, end),
     ]);
     return BusmonFrame(
       time: time,

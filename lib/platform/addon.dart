@@ -219,8 +219,10 @@ abstract final class Addon {
   /// Paired devices (admin only).
   static Future<List<Object?>> boxDevices() => impl.addonGetList('api/box/devices');
 
-  /// Blocks a device, `*` for all.
-  static Future<void> revokeDevice(String id) => impl.addonPost('api/box/devices/revoke', {'id': id});
+  /// Blocks a device, `*` for all. [current]: the box password, needed to
+  /// block another device with admin rights.
+  static Future<void> revokeDevice(String id, {String? current}) =>
+      impl.addonPost('api/box/devices/revoke', {'id': id, 'current': ?current});
 
   /// [current]: the box password as it is now; the box asks for it except
   /// while the sticker password must be replaced.

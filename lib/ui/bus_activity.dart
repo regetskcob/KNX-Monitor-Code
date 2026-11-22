@@ -69,7 +69,7 @@ class BusActivity extends StatelessWidget {
                 children: [
                   Kennung(data.activityLabel, color: hz.accentText),
                   const SizedBox(width: HzSpace.s2),
-                  Icon(AppIcons.cycle, size: 14, color: hz.accentText),
+                  Icon(AppIcons.cycle, size: HzIconSize.badge, color: hz.accentText),
                 ],
               ),
             ),

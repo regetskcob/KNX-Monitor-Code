@@ -1,5 +1,5 @@
 name: Busclear
-version: "1.12.0"
+version: "1.13.0"
 slug: knx_monitor
 description: KNX bus monitor, continuous recording, health check and commissioning in the sidebar
 url: https://busclear.de

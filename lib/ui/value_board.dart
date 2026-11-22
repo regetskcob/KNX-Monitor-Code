@@ -608,15 +608,15 @@ class _SectionHeaderState extends State<SectionHeader> with SingleTickerProvider
                   if (widget.onAdd case final onAdd?)
                     IconButton(
                       tooltip: s.chartNew,
-                      visualDensity: VisualDensity.compact,
+                      visualDensity: pointerCompact(context),
                       style: IconButton.styleFrom(shape: const RoundedRectangleBorder(borderRadius: Radii.control)),
                       onPressed: onAdd,
-                      icon: Icon(AppIcons.add, size: 18, color: hz.textMuted),
+                      icon: Icon(AppIcons.add, size: HzIconSize.row, color: hz.textMuted),
                     ),
                   if (widget.allSelected case final all?)
                     IconButton(
                       tooltip: all ? s.selectNone : s.selectAll,
-                      visualDensity: VisualDensity.compact,
+                      visualDensity: pointerCompact(context),
                       onPressed: widget.onSelectAll,
                       icon: Icon(
                         all ? AppIcons.selected : AppIcons.unselected,
@@ -629,14 +629,14 @@ class _SectionHeaderState extends State<SectionHeader> with SingleTickerProvider
                     IconButton(
                       tooltip: widget.pinned ? s.sectionUnpin : s.sectionPin,
                       isSelected: widget.pinned,
-                      visualDensity: VisualDensity.compact,
+                      visualDensity: pointerCompact(context),
                       style: IconButton.styleFrom(
                         shape: const RoundedRectangleBorder(borderRadius: Radii.control),
                         backgroundColor: widget.pinned ? hz.accentTint : Colors.transparent,
                       ),
                       onPressed: onPin,
-                      icon: Icon(AppIcons.pinOutline, size: 18, color: hz.textMuted),
-                      selectedIcon: Icon(AppIcons.pin, size: 18, color: hz.accentText),
+                      icon: Icon(AppIcons.pinOutline, size: HzIconSize.row, color: hz.textMuted),
+                      selectedIcon: Icon(AppIcons.pin, size: HzIconSize.row, color: hz.accentText),
                     ),
                   // Chevron like HorizontSectionHeader: down when collapsed, up when open.
                   AnimatedRotation(

@@ -125,9 +125,16 @@ class TelegramLog extends ChangeNotifier {
   final _answered = Expando<bool>();
   final _openReads = <int, List<Telegram>>{};
 
+  @visibleForTesting
+  int get openReadCount => _openReads.values.fold(0, (n, l) => n + l.length);
+
   /// Reference time for deadlines: live the current time, for recordings the
   /// playback position or the end of the recording.
   DateTime get clock => DateTime.now();
+
+  /// Whether telegrams here carry the Data Secure mark ([arrivedSecure]): only then can a plain
+  /// telegram on a secured address be told from a decrypted one. Live over a direct connection.
+  bool get secureMarked => false;
 
   /// Whether it is a read request that received no response within [readTimeout].
   bool isUnanswered(Telegram t) =>
@@ -190,7 +197,12 @@ class TelegramLog extends ChangeNotifier {
     counts.update(t.destination, (c) => c + 1, ifAbsent: () => 1);
     if (t.type == TelegramType.read) {
       _reads.add(t);
-      (_openReads[t.destination] ??= []).add(t);
+      // Reads past the deadline can no longer be answered: without dropping
+      // them here, a cyclic read of a dead address would keep every one of its
+      // telegrams alive.
+      (_openReads[t.destination] ??= [])
+        ..removeWhere((r) => t.time.difference(r.time) > readTimeout)
+        ..add(t);
     } else if (t.type == TelegramType.response) {
       for (final r in _openReads.remove(t.destination) ?? const <Telegram>[]) {
         if (t.time.difference(r.time) <= readTimeout) _answered[r] = true;
@@ -225,12 +237,37 @@ class TelegramLog extends ChangeNotifier {
 
   /// Rebuilds the list from [all] (e.g. with older telegrams loaded later). A
   /// pause stays in effect: the first [frozen] entries of [all] remain visible.
+  ///
+  /// The counters per address ([counts], averages) also cover what the list has
+  /// already discarded. With [added] (the telegrams of [all] that are new) they
+  /// keep running instead of falling back to what [all] holds.
   @protected
-  void rebuild(List<Telegram> all, {required int frozen}) {
+  void rebuild(List<Telegram> all, {required int frozen, Iterable<Telegram>? added}) {
     final wasPaused = paused;
+    final keptCounts = Map.of(counts);
+    final keptSums = Map.of(_sums);
+    final keptSamples = Map.of(_samples);
     clear();
     if (wasPaused) _frozenLength = frozen;
     addAll(all);
+    if (added == null) return;
+    counts
+      ..clear()
+      ..addAll(keptCounts);
+    _sums
+      ..clear()
+      ..addAll(keptSums);
+    _samples
+      ..clear()
+      ..addAll(keptSamples);
+    for (final t in added) {
+      counts.update(t.destination, (c) => c + 1, ifAbsent: () => 1);
+      if (t.type == TelegramType.read) continue;
+      final v = numericValue(CatalogStore.instance.dptFor(t), t);
+      if (v == null) continue;
+      _sums[t.destination] = (_sums[t.destination] ?? 0) + v;
+      _samples[t.destination] = (_samples[t.destination] ?? 0) + 1;
+    }
   }
 
   void clear() {

@@ -605,7 +605,7 @@ class _BoxBackupScreenState extends State<BoxBackupScreen> {
                     alignment: AlignmentDirectional.centerStart,
                     child: Builder(
                       builder: (button) => FilledButton.icon(
-                        icon: Icon(AppIcons.share, size: 18),
+                        icon: Icon(AppIcons.share, size: HzIconSize.row),
                         label: Text(s.boxBackupCreate),
                         onPressed: _busy ? null : () => unawaited(_createBackup(origin: rectOf(button))),
                       ),
@@ -667,7 +667,7 @@ class _BoxBackupScreenState extends State<BoxBackupScreen> {
                 ),
               ),
               TextButton.icon(
-                icon: const Icon(AppIcons.delete, size: 18),
+                icon: const Icon(AppIcons.delete, size: HzIconSize.row),
                 label: Text(s.commonDelete),
                 onPressed: _busy ? null : () => unawaited(_deletePrevious(name, date)),
               ),

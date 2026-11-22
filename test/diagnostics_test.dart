@@ -102,4 +102,20 @@ void main() {
     expect(info.program, (manufacturer: 8, deviceType: 0xA012, version: 5));
     expect(await Diagnostics(tunnel).readDeviceInfo(parseIndividual('1.1.200')!), isNull);
   }, timeout: const Timeout(Duration(seconds: 30)));
+
+  test('Gerät beendet die Verbindung: Anfrage endet sofort statt nach der Frist', () async {
+    final pa = parseIndividual('1.1.19')!;
+    gateway.devices[pa] = 0x07B0;
+    gateway.hangUp.add(pa);
+    final c = DeviceConnection(tunnel, pa);
+    expect(await c.open(), isTrue);
+    final watch = Stopwatch()..start();
+    expect(await c.maskVersion(), isNull);
+    expect(watch.elapsed, lessThan(const Duration(seconds: 1)));
+    // Closed by the device: no further request goes out.
+    final sent = gateway.requests.length;
+    expect(await c.maskVersion(), isNull);
+    expect(gateway.requests, hasLength(sent));
+    await c.close();
+  });
 }

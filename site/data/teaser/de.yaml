@@ -1,10 +1,11 @@
 tagline: "KNX-Busmonitor & Diagnose"
-# Je nach offenen Betas (hugo.toml betaIos/betaAndroid): none, ios, android, both.
+# Je nach offenen Betas (hugo.toml betaIos/betaAndroid): none, ios, android, both; live mit params.stores.
 description:
   none: "KNX-Busmonitor und Diagnose für Home Assistant und Linux, bald auch für iPhone, iPad, Android, Mac und Windows. Liest ETS-Projekte, Daten bleiben lokal."
   ios: "KNX-Busmonitor und Diagnose für Home Assistant und Linux, als Beta für iPhone, iPad und Mac, bald auch für Android und Windows. Liest ETS-Projekte, Daten bleiben lokal."
   android: "KNX-Busmonitor und Diagnose für Home Assistant und Linux, als Beta für Android, bald auch für iPhone, iPad, Mac und Windows. Liest ETS-Projekte, Daten bleiben lokal."
   both: "KNX-Busmonitor und Diagnose für Home Assistant und Linux, als Beta für iPhone, iPad, Mac und Android, bald auch für Windows. Liest ETS-Projekte, Daten bleiben lokal."
+  live: "KNX-Busmonitor und Diagnose für iPhone, iPad, Mac, Android, Linux und Home Assistant, bald auch für Windows. Liest ETS-Projekte, Daten bleiben lokal."
 kennung: "Busmonitor & Diagnose für KNX"
 title: "Jedes Telegramm im Blick, zu Hause und auf der Baustelle."
 lead: "Eingeordnet mit deinem ETS-Projekt: Geräte, Räume und Werte statt Hex-Kolonnen. Dazu die Prüfung der Anlage auf stille Sensoren, falsche Datentypen und Busprobleme."
@@ -18,16 +19,12 @@ beta:
   ios: "Beta testen: iPhone, iPad, Mac"
   android: "Beta testen: Android"
   both: "Beta testen: Apple und Android"
-soon:
-  none: "Bald auch für iPhone, iPad, Android, Mac und Windows, für Linux schon heute."
-  ios: "Für iPhone, iPad und Mac als Beta, bald auch für Android und Windows, für Linux schon heute."
-  android: "Für Android als Beta, bald auch für iPhone, iPad, Mac und Windows, für Linux schon heute."
-  both: "Für iPhone, iPad, Mac und Android als Beta, bald auch für Windows, für Linux schon heute."
+  live: ""
+# Nach dem Launch (live) statt des Beta-Knopfs.
+stores:
+  app_store: "Im App Store"
+  play_store: "Bei Google Play"
 local: "Deine Anlagendaten verlassen dein Netzwerk nur, wenn du sie selbst teilst."
-formerly: "Busclear hieß bis November 2026 KNX Monitor."
-# Banner after the redirect from knx-monitor.de (head.html).
-renamed: "KNX Monitor heißt jetzt Busclear. Gleiche App, gleiche Funktionen, neuer Name."
-renamed_close: "Hinweis schließen"
 drawing: "Kleinverteiler mit Spannungsversorgung, IP-Schnittstelle, Schalt-, Jalousie- und Dimmaktor. Telegramme laufen als Lichtpunkte über das grüne Buskabel, die Kanal-LEDs schalten mit."
 telegrams:
   - { from: "1.1.30", to: "1/1/3", text: "Licht Küche", value: "Ein", device: 2, channel: 2, on: true }
@@ -52,42 +49,29 @@ live_window: "Letzte 60 s"
 more: "Was das Add-on heute kann"
 ipad_alt: "Busclear als Add-on in Home Assistant auf dem iPad: links das Menü mit Gesundheit, Inbetriebnahme, Busmonitor, Topologie und mehr, in der Mitte die Übersicht mit Werten je Gruppenadresse, rechts die Details einer Adresse mit Verlauf und Telegramm"
 addon:
-  kennung: "02 — Heute im Add-on"
+  kennung: "Heute im Add-on"
   title: "Busmonitor und Diagnose, schon heute in Home Assistant."
-  text: "Kostenlos, in der Seitenleiste, auf jedem Gerät mit Home Assistant, unterwegs auch über die Home-Assistant-App. Das Add-on bleibt verbunden und zeichnet auf, auch wenn kein Browser offen ist. Der Quellcode ist offen ([GPLv3 auf GitHub](https://github.com/regetskcob/KNX-Monitor-Code)), du kannst nachsehen, was es auf deinem Bus tut. [Alles zum Add-on](/addon/)"
-  facts:
-    - { term: "Telegramme", value: "Live mit Absender, Ziel und Wert; Suche, Filter, Werte lesen und schreiben. Schreiben ist ein Eingriff in die Anlage und geschieht auf deine Verantwortung" }
-    - { term: "ETS-Projekt", value: "`.knxproj` bis ETS6, auch mit Passwort: Namen, Datentypen, Geräte und Räume" }
-    - { term: "Übersicht", value: "Jede Gruppenadresse mit Wert und Mini-Verlauf, nach Räumen und Funktionen" }
-    - { term: "Gesundheit", value: "Verstummte Geräte, Zyklen, Datentypen und Busqualität, mit PDF-Bericht" }
-    - { term: "Verlauf", value: "Daueraufzeichnung Tag für Tag, Aufnahmen mit Zeitleiste je Gruppenadresse" }
-    - { term: "Verbindung", value: "Tunneling, Routing und KNX IP Secure" }
-    - { term: "Home Assistant", value: "Von Haus aus nur lesend; [Integration](https://github.com/regetskcob/KNX-Monitor-HA) mit Sensoren, Auslösern und Reparaturhinweisen, Ereignisse, Blueprints und MQTT" }
-apps:
-  label: "Als App"
-  title: "Bald auch ohne Home Assistant, direkt am Gateway."
-  text: "Für die Baustelle, den Schaltschrank und das Büro neben der ETS: dieselben Werkzeuge als App auf dem Gerät, das du gerade in der Hand hast."
-  facts:
-    - { term: "Mobil", value: "iPhone, iPad und Android" }
-    - { term: "Desktop", value: "Mac und Windows, Linux schon heute" }
-    - { term: "Verbindung", value: "Direkt an deiner IP-Schnittstelle oder deinem IP-Router" }
-    - { term: "Vor Ort", value: "ETS-Projekt und Aufnahmen liegen auf dem Gerät, auch ohne Internet" }
+  text: "Kostenlos in der Seitenleiste von Home Assistant, unterwegs auch über die Home-Assistant-App. Es bleibt verbunden und zeichnet auf, auch ohne offenen Browser. [Alles zum Add-on](/addon/)"
 roadmap:
-  kennung: "06 — Fahrplan"
+  kennung: "Fahrplan"
   title: "Erst zu Hause in Home Assistant, dann auch unterwegs auf der Baustelle."
   text:
-    none: "Das Add-on ist fertig und bleibt kostenlos, für Linux gibt es die App schon heute. Die übrigen Apps sind gebaut und folgen in den nächsten Wochen."
-    ios: "Das Add-on ist fertig und bleibt kostenlos, für Linux gibt es die App schon heute, für iPhone, iPad und Mac als Beta. Die übrigen Apps sind gebaut und folgen in den nächsten Wochen."
-    android: "Das Add-on ist fertig und bleibt kostenlos, für Linux gibt es die App schon heute, für Android als Beta. Die übrigen Apps sind gebaut und folgen in den nächsten Wochen."
-    both: "Das Add-on ist fertig und bleibt kostenlos, für Linux gibt es die App schon heute, für iPhone, iPad, Mac und Android als Beta. Die übrigen Apps sind gebaut und folgen in den nächsten Wochen."
+    none: "Das Add-on ist fertig und bleibt kostenlos, die Apps folgen in den nächsten Wochen."
+    ios: "Das Add-on ist fertig und bleibt kostenlos, die Apps sind in der Beta und folgen in den Stores."
+    android: "Das Add-on ist fertig und bleibt kostenlos, die Apps sind in der Beta und folgen in den Stores."
+    both: "Das Add-on ist fertig und bleibt kostenlos, die Apps sind in der Beta und folgen in den Stores."
+    live: "Das Add-on bleibt kostenlos, die Apps gibt es in den Stores; Windows folgt."
   more: "Fahrplan und Änderungen ansehen"
   # Öffentlich als Vorschau, auf der Seite Fahrplan (layouts/roadmap.html).
-  prices_preview: "**In der Beta ist noch alles frei:** Du nutzt alle Funktionen kostenlos, auch die von Plus und Pro. Als Dankeschön bekommst du beim ersten Start der Store-Version 90 Tage Pro auf dem Gerät, auf dem du die Beta genutzt hast. [So machst du mit](/beta/)"
+  prices_preview_live: "**In der Beta ist noch alles frei:** Du nutzt alle Funktionen kostenlos, auch die von Plus und Pro. Als Dankeschön bekommst du beim ersten Start der Store-Version 90 Tage Pro auf dem Gerät, auf dem du die Beta genutzt hast. [So machst du mit](/beta/)"
   prices:
     - { name: "Free", price: "Kostenlos", sub: "Für den Blick auf die eigene Anlage" }
     - { name: "Plus", price: "24,99 €", per: "im Jahr", sub: "oder 79 € einmalig · Langzeitverlauf, Diagramme, Wächter, Export" }
     - { name: "Pro", price: "149 €", per: "im Jahr", sub: "oder 14,99 € im Monat · Busmonitor, Topologie, Diagnose, Inbetriebnahme" }
-  prices_note: "Preisempfehlung als unverbindliche Vorschau, kaufen kann man noch nichts. Es gelten die Endpreise im App Store und bei Google Play; auf iPhone, iPad und Mac gilt ein Kauf überall."
+  # Nach dem Launch (params.commerce); ohne commerce gelten die *_live-Texte.
+  prices_preview: ""
+  prices_note: "Es gelten die Endpreise im App Store und bei Google Play; auf iPhone, iPad und Mac gilt ein Kauf überall. Pro gibt es 14 Tage kostenlos zum Ausprobieren."
+  prices_note_live: "Preisempfehlung als unverbindliche Vorschau, kaufen kann man noch nichts. Es gelten die Endpreise im App Store und bei Google Play; auf iPhone, iPad und Mac gilt ein Kauf überall."
   # commerce: false nur ohne Preise (params.commerce).
   facts:
     - { term: "Offen", value: "**Quellcode unter GPLv3** [auf GitHub](https://github.com/regetskcob/KNX-Monitor-Code): alles für Einsteiger und Fortgeschrittene in App, Add-on und Busclear Box, nachprüfbar und frei veränderbar", home: false }
@@ -97,7 +81,8 @@ roadmap:
     - { term: "Bald", value: "**iPhone, iPad, Android, Mac und Windows** im App Store, bei Google Play und als Download für Windows", when: [none] }
     - { term: "Bald", value: "**Android und Windows** bei Google Play und als Download", when: [ios] }
     - { term: "Bald", value: "**iPhone, iPad, Mac und Windows** im App Store und als Download für Windows", when: [android] }
-    - { term: "Bald", value: "**Windows** als Download", when: [both] }
+    - { term: "Bald", value: "**Windows** als Download", when: [both, live] }
+    - { term: "Jetzt", value: "**iPhone, iPad und Mac** im App Store, **Android** bei Google Play: kostenlos nutzbar, mehr Werkzeuge mit Plus und Pro", when: [live] }
     - { term: "Hausbau", page: "hausbau", value: "**[KNX im Hausbau](/hausbau/)**: was du früh entscheiden solltest, bevor die Wände zu sind, und wie „Haus planen“ dabei hilft" }
     - { term: "Ausblick", value: "**Bauherren-Paket**: vom Alltagswunsch über Raumbuch und Grundriss bis zu den Unterlagen für den Elektriker. [Mehr dazu](/bauherren/)" }
     - { term: "Box", value: "**[Busclear Box](/box/)**: ein Raspberry Pi als Telegramm-Schreiber vor Ort, zeichnet auf der Baustelle tagelang auf, ohne Home Assistant und ohne Internet. Image und Anleitung sind da, eingerichtet wird sie mit der App" }
@@ -109,12 +94,6 @@ roadmap:
 features_label: "Funktionen"
 features:
   more: "Alle Funktionen im Detail"
-  facts:
-    - { term: "Einstieg", value: "**Ohne ETS-Projekt anlernen:** Taster drücken, benennen, fertig. Die Live-Liste zeigt jedes Telegramm als Satz" }
-    - { term: "Aufnahmen", value: "Aufnehmen, bearbeiten und mit Zeitleiste je Gruppenadresse abspielen" }
-    - { term: "Fehler", value: "**Problem melden:** Fehler nachstellen, das Diagnosepaket geht an den Elektriker" }
-    - { term: "Experten", value: "Ein Schalter bringt Busmonitor, Topologie, Diagnose und Inbetriebnahme" }
-    - { term: "Demo", value: "Demo-Haus zum Ausprobieren ohne Anlage" }
 connect:
   label: "Anschluss"
   title: "Direkt an deine IP-Schnittstelle, lesbar mit deinem ETS-Projekt."
@@ -153,3 +132,29 @@ sensors:
     keys:
       - { label: "▲", hint: "Rollladen auf", to: "2/1/1", text: "Rollladen Wohnen", value: "Auf", status: "2/4/1", status_text: "Position Wohnen", status_value: "0 %", device: 3, channel: 0 }
       - { label: "▼", hint: "Rollladen ab", to: "2/1/1", text: "Rollladen Wohnen", value: "Ab", status: "2/4/1", status_text: "Position Wohnen", status_value: "100 %", device: 3, channel: 0 }
+
+# Home page, kept short: the features as tiles (icon, a few words; the
+# detail is on /funktionen/), one strip of platforms with their state per
+# beta state (live, test or soon), more from Busclear as one line each.
+tiles:
+  - { icon: "sensors", term: "Live", value: "Jedes Telegramm mit Absender, Ziel und Wert" }
+  - { icon: "description", term: "ETS-Projekt", value: "Namen, Räume und Datentypen, bis ETS6" }
+  - { icon: "monitor_heart", term: "Gesundheit", value: "Stille Geräte, falsche Datentypen, Busqualität" }
+  - { icon: "history", term: "Verlauf", value: "Daueraufzeichnung mit Zeitleiste je Adresse" }
+  - { icon: "touch_app", term: "Anlernen", value: "Ohne ETS-Projekt: Taster drücken, benennen" }
+  - { icon: "account_tree", term: "Experten", value: "Busmonitor, Topologie, Inbetriebnahme" }
+  - { icon: "lock", term: "KNX Secure", value: "Tunneling, Routing und IP Secure" }
+  - { icon: "home", term: "Home Assistant", value: "Sensoren, Auslöser und Reparaturhinweise" }
+platforms:
+  label: "Wo es läuft"
+  states: { live: "Jetzt", test: "Beta", soon: "Bald" }
+  items:
+    - { name: "Home Assistant", state: { none: live, ios: live, android: live, both: live, live: live } }
+    - { name: "Linux", state: { none: live, ios: live, android: live, both: live, live: live } }
+    - { name: "iPhone · iPad · Mac", state: { none: soon, ios: test, android: soon, both: test, live: live } }
+    - { name: "Android", state: { none: soon, ios: soon, android: test, both: test, live: live } }
+    - { name: "Windows", state: { none: soon, ios: soon, android: soon, both: soon, live: soon } }
+more_from:
+  - { term: "Hausbau", url: "/hausbau/", page: "hausbau", value: "KNX im Hausbau: was vor dem Rohbau entschieden sein muss" }
+  - { term: "Bauherren", url: "/bauherren/", value: "Vom Alltagswunsch bis zu den Unterlagen für den Elektriker (Ausblick)" }
+  - { term: "Box", url: "/box/", value: "Raspberry Pi als Telegramm-Schreiber auf der Baustelle" }

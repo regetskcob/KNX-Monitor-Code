@@ -97,6 +97,8 @@ site/content/unterauftragnehmer.en.md
 
 # Store and social media tooling (works on the ignored store/ folder)
 tool/social
+# Handover to Streuwerk (template package, media manifest) for the social accounts
+streuwerk
 tool/store_shots.sh
 tool/store_shots_android.sh
 tool/store_graphics.py

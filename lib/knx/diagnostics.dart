@@ -193,6 +193,12 @@ class DeviceConnection {
     _sub = tunnel.frames.listen((f) {
       if (f.isConfirmation || f.groupAddressed || f.source != address) return;
       heard = true;
+      // T_Disconnect: the device ended the connection; nothing more will come.
+      if (f.tpci == 0x81) {
+        _open = false;
+        if (!_dropped.isCompleted) _dropped.complete();
+        return;
+      }
       // Acknowledge numbered data from the device (T_Data_Connected).
       if (f.tpci & 0xC0 == 0x40) {
         final seq = (f.tpci >> 2) & 0x0F;
@@ -215,14 +221,19 @@ class DeviceConnection {
     Duration timeout = _timeout,
   }) async {
     if (!_open) return null;
+    // Listen before sending so a fast answer is not missed; the deadline
+    // starts only once the request is out (sending waits for its turn and for
+    // the confirmation).
     final response = _responses.stream
         .firstWhere((f) => f.apci == responseApci && (match == null || match(f)))
-        .then<CemiFrame?>((f) => f)
-        .timeout(timeout, onTimeout: () => null);
+        .then<CemiFrame?>((f) => f, onError: (Object _) => null);
     await tunnel.sendFrame(_frame([0x40 | (_seq << 2) | (apci >> 8), apci & 0xFF, ...data]));
     _seq = (_seq + 1) & 0x0F;
-    return response;
+    return Future.any([response.timeout(timeout, onTimeout: () => null), _dropped.future.then((_) => null)]);
   }
+
+  /// Completes when the device closes the connection (T_Disconnect).
+  final _dropped = Completer<void>();
 
   /// Mask version from device descriptor type 0.
   Future<int?> maskVersion({Duration timeout = _timeout}) async {

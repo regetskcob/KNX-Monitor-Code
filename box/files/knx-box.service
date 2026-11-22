@@ -15,7 +15,8 @@ Environment=BOX=1 PORT=80 WEB_DIR=/opt/knx-box/web DATA_DIR=/var/lib/knx-box TZ=
 Environment=BOX_STICKER=1
 # HTTPS with the box's own certificate (tls-cert.sh).
 Environment=TLS_CERT=/etc/knx-box-tls/cert.pem TLS_KEY=/etc/knx-box-tls/key.pem TLS_PORT=443
-# BOX_NAME, on the very first start BOX_PASSWORD (afterwards access.json applies).
+# BOX_NAME, on the very first start BOX_PASSWORD (afterwards access.json applies);
+# TZ of the site if knx-box.txt named one (overrides Europe/Berlin above).
 EnvironmentFile=/etc/knx-box/env
 ExecStart=/opt/knx-box/server
 # Why it ended (out of memory, signal, watchdog), for the next start.

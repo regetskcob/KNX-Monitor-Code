@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:knx_monitor/platform/addon.dart';
 import 'package:knx_monitor/ui/ai_access_screen.dart';
 import 'package:knx_monitor/ui/figure_box.dart';
 
@@ -27,11 +29,23 @@ class _FakeClient extends AiAccessClient {
   }
 
   @override
-  Future<String?> endpoint(String path) async => 'http://192.168.1.20:8765$path';
+  Future<String?> endpoint(String path) async => '$scheme://192.168.1.20:8765$path';
+
+  String scheme = 'http';
+}
+
+class _FailingClient extends AiAccessClient {
+  _FailingClient(this.error);
+  final Object error;
+
+  @override
+  Future<Map<String, Object?>> settings() => Future.error(error);
 }
 
 void main() {
   const address = 'http://192.168.1.20:8765/api/mcp';
+  // Phone width, tall enough that the list builds every row.
+  const tallPhone = Size(390, 2400);
 
   testWidgets('1400 pt: Schalter links, Hinweis, Verbindung und Befehl rechts daneben', (tester) async {
     final client = _FakeClient(enabled: false);
@@ -59,6 +73,78 @@ void main() {
     await tester.pumpAndSettle();
     expect(client.renewed, 1);
     expect(find.textContaining('bc_0123456789abcdef1'), findsOneWidget);
+  });
+
+  testWidgets('Token und Befehl gehen als Geheimnis in die Zwischenablage, die Adresse normal', (tester) async {
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    final secrets = <Object?>[];
+    final plain = <Object?>[];
+    messenger.setMockMethodCallHandler(const MethodChannel('knx/native'), (call) async {
+      if (call.method == 'copySecret') secrets.add((call.arguments as Map)['text']);
+      return true;
+    });
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') plain.add((call.arguments as Map)['text']);
+      return null;
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(const MethodChannel('knx/native'), null);
+      messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+    for (final window in [tallPhone, wideWindow]) {
+      secrets.clear();
+      plain.clear();
+      await pumpWindow(tester, AiAccessScreen(client: _FakeClient(enabled: true)), window);
+      await tester.pumpAndSettle();
+      // Every copy button has a name for screen readers and on hover.
+      final buttons = find.byTooltip('Kopieren');
+      expect(buttons, findsNWidgets(2));
+      await tester.tap(buttons.first);
+      await tester.pump();
+      expect(plain, [address]);
+      expect(secrets, isEmpty);
+      await tester.ensureVisible(buttons.last);
+      await tester.tap(buttons.last);
+      await tester.pump();
+      await tester.ensureVisible(find.text('Befehl kopieren'));
+      await tester.tap(find.text('Befehl kopieren'));
+      await tester.pump();
+      expect(secrets, ['bc_0123456789abcdef0', contains('Bearer bc_0123456789abcdef0')]);
+      expect(plain, [address], reason: 'der Token landet nie in der gewöhnlichen Zwischenablage');
+      await tester.pumpAndSettle(const Duration(seconds: 5));
+    }
+  });
+
+  testWidgets('HTTP-Adresse: Hinweis auf Klartext, bei HTTPS nicht', (tester) async {
+    await pumpWindow(tester, AiAccessScreen(client: _FakeClient(enabled: true)), tallPhone);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Diese Adresse ist unverschlüsselt'), findsOneWidget);
+    await pumpWindow(tester, AiAccessScreen(client: _FakeClient(enabled: true)..scheme = 'https'), wideWindow);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Diese Adresse ist unverschlüsselt'), findsNothing);
+  });
+
+  testWidgets('Fehler: keine rohe Exception, die Meldung des Servers bleibt', (tester) async {
+    await pumpWindow(tester, AiAccessScreen(client: _FailingClient(StateError('Bad state: null check'))), phoneWindow);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Bad state'), findsNothing);
+    expect(find.text('Das hat nicht geklappt. Versuch es noch einmal.'), findsOneWidget);
+
+    await pumpWindow(
+      tester,
+      AiAccessScreen(client: _FailingClient(const AddonException('Box: HTTP 500', status: 500))),
+      wideWindow,
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('HTTP 500'), findsNothing);
+
+    await pumpWindow(
+      tester,
+      AiAccessScreen(client: _FailingClient(const AddonException('Nur mit Admin-Rechten.'))),
+      phoneWindow,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Nur mit Admin-Rechten.'), findsOneWidget);
   });
 
   testWidgets('Telefon: eine Liste wie bisher, auch bei doppelter Schrift ohne Überlauf', (tester) async {

@@ -183,6 +183,24 @@ class _PlanNoticeGateState extends State<PlanNoticeGate> {
   Widget build(BuildContext context) => widget.child;
 }
 
+/// What went wrong with a purchase, in plain words. The store reports numeric codes
+/// (purchases_flutter: 2 store problem, 3 not allowed, 10 network) and English messages.
+String _buyErrorText(PlatformException e) => switch (e.code) {
+  '10' || '35' => s.planBuyNetwork,
+  '3' => s.planBuyNotAllowed,
+  '2' => s.planBuyStore,
+  _ => s.planBuyFailedPlain,
+};
+
+/// The tier badge for an entry behind [feature], `null` once it is unlocked. Every row, button
+/// and menu item that leads to [unlock] carries it, so nobody learns of the lock only by tapping.
+Widget? lockBadge(Feature feature) => Plan.instance.allows(feature) ? null : TierBadge(feature.tier);
+
+/// [label] with the required tier appended while [feature] is locked ("ETS-XML · PLUS"): for
+/// tooltips and menu texts, where a [TierBadge] has no room.
+String lockedLabel(String label, Feature feature) =>
+    Plan.instance.allows(feature) ? label : '$label$metaSeparator${tierName(feature.tier)}';
+
 /// Small badge of the required tier ("PRO") on locked entries.
 class TierBadge extends StatelessWidget {
   const TierBadge(this.tier, {super.key});
@@ -221,7 +239,10 @@ class PlanScreen extends StatefulWidget {
 }
 
 class _PlanScreenState extends State<PlanScreen> {
-  late final Future<List<PlanOffer>> _offers = Plan.instance.offers();
+  late Future<List<PlanOffer>> _offers = Plan.instance.offers();
+
+  /// Asks the store again, e.g. once the network is back.
+  void _reloadOffers() => setState(() => _offers = Plan.instance.offers());
   bool _busy = false;
 
   static final _terms = Uri.parse('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
@@ -237,24 +258,25 @@ class _PlanScreenState extends State<PlanScreen> {
     setState(() => _busy = true);
     try {
       await action();
-      messenger.showSnackBar(SnackBar(content: Text(done())));
+      messenger.showSnackBar(horizontMessageSnackBar(colors, done(), status: HorizontStatus.positive));
     } on PlanCancelled {
       // Abgebrochen: keine Meldung.
     } on PlanPending {
       messenger.showSnackBar(
-        SnackBar(
-          content: Text(Plan.instance.source is LicensePlanSource ? s.planLicenseCheckoutOpened : s.planCheckoutOpened),
+        horizontMessageSnackBar(
+          colors,
+          Plan.instance.source is LicensePlanSource ? s.planLicenseCheckoutOpened : s.planCheckoutOpened,
+          status: HorizontStatus.info,
         ),
       );
     } on LicenseRejected {
-      messenger.showSnackBar(SnackBar(content: Text(s.planLicenseInvalid)));
+      messenger.showSnackBar(horizontMessageSnackBar(colors, s.planLicenseInvalid, status: HorizontStatus.critical));
     } on PlanAwaitingApproval {
-      messenger.showSnackBar(SnackBar(content: Text(s.planPendingApproval)));
+      messenger.showSnackBar(horizontMessageSnackBar(colors, s.planPendingApproval, status: HorizontStatus.info));
     } on PlatformException catch (e) {
-      // The store's own reason (e.g. payment declined) helps the user.
-      messenger.showSnackBar(
-        horizontMessageSnackBar(colors, s.planBuyFailed(e.message ?? e.code), status: HorizontStatus.critical),
-      );
+      // The store's own message is English and technical; say the known causes in plain words.
+      debugPrint('Kauf: ${e.code} ${e.message}');
+      messenger.showSnackBar(horizontMessageSnackBar(colors, _buyErrorText(e), status: HorizontStatus.critical));
     } on Object catch (e) {
       debugPrint('Kauf: $e');
       messenger.showSnackBar(horizontMessageSnackBar(colors, s.actionFailed, status: HorizontStatus.critical));
@@ -278,7 +300,7 @@ class _PlanScreenState extends State<PlanScreen> {
   );
 
   Future<void> _enterLicense() async {
-    final code = await showDialog<String>(context: context, builder: (_) => const _LicenseDialog());
+    final code = await showAdaptiveDialog<String>(context: context, builder: (_) => const _LicenseDialog());
     if (code == null || !mounted) return;
     await _run(
       () => Plan.instance.redeem(code),
@@ -355,7 +377,16 @@ class _PlanScreenState extends State<PlanScreen> {
                   padding: const EdgeInsets.only(top: Gap.inner),
                   child: HorizontNotice(
                     HorizontStatus.warning,
-                    child: Text(snapshot.hasError ? s.planNoOffers : s.planNotYetAvailable),
+                    child: snapshot.hasError
+                        // Not reachable: offer the next step right here instead of back and forth.
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(s.planNoOffers),
+                              TextButton(onPressed: _reloadOffers, child: Text(s.busmonRetry)),
+                            ],
+                          )
+                        : Text(s.planNotYetAvailable),
                   ),
                 ),
             ];
@@ -401,7 +432,7 @@ class _PlanScreenState extends State<PlanScreen> {
                       alignment: AlignmentDirectional.centerStart,
                       child: TextButton.icon(
                         onPressed: () => showAccountScreen(context),
-                        icon: const Icon(AppIcons.account, size: 18),
+                        icon: const Icon(AppIcons.account, size: HzIconSize.row),
                         label: Text(
                           Account.instance.signedIn
                               ? s.accountSignedInAs(Account.instance.email ?? '')
@@ -558,7 +589,7 @@ class _TierCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(AppIcons.success, size: 18, color: hz.textMuted),
+              Icon(AppIcons.success, size: HzIconSize.row, color: hz.textMuted),
               const SizedBox(width: HzSpace.s8),
               Expanded(child: Text(p, style: theme.textTheme.bodyMedium)),
             ],
@@ -632,20 +663,33 @@ class _LicenseDialogState extends State<_LicenseDialog> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    return AlertDialog(
+    return AlertDialog.adaptive(
       title: Text(s.planLicenseEnter),
-      content: TextField(
-        controller: _code,
-        autofocus: true,
-        minLines: 3,
-        maxLines: 6,
-        autocorrect: false,
-        enableSuggestions: false,
-        decoration: InputDecoration(labelText: s.planLicenseField, helperText: s.planLicenseHelp, helperMaxLines: 3),
+      // Material: the adaptive dialog on iOS gives a text field no ink of its own.
+      content: Material(
+        type: MaterialType.transparency,
+        child: HorizontField(
+          label: s.planLicenseField,
+          help: s.planLicenseHelp,
+          child: TextField(
+            controller: _code,
+            style: context.hzTheme.field,
+            autofocus: true,
+            minLines: 3,
+            maxLines: 6,
+            autocorrect: false,
+            enableSuggestions: false,
+          ),
+        ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.commonCancel)),
-        FilledButton(onPressed: () => Navigator.pop(context, _code.text), child: Text(s.planLicenseApply)),
+        horizontDialogAction(context, label: s.commonCancel, onPressed: () => Navigator.pop(context)),
+        horizontDialogAction(
+          context,
+          label: s.planLicenseApply,
+          primary: true,
+          onPressed: () => Navigator.pop(context, _code.text),
+        ),
       ],
     );
   }

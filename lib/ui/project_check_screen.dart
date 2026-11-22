@@ -72,7 +72,7 @@ class _ProjectCheckScreenState extends State<ProjectCheckScreen> {
 
   Widget _content(BuildContext context, List<FilterObservation> observations) {
     // Show the page first, then compute: on weak devices it takes noticeably long.
-    if (!_ready) return const Center(child: CircularProgressIndicator.adaptive());
+    if (!_ready) return LoadingHint(text: s.projectCheckRunning);
     final theme = Theme.of(context);
     final hz = context.hz;
     final store = CatalogStore.instance;

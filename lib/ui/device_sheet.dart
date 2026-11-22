@@ -249,14 +249,14 @@ class _DeviceTrafficState extends State<DeviceTraffic> {
                 ? null
                 : OutlinedButton.icon(
                     onPressed: widget.onMap,
-                    icon: const Icon(AppIcons.communicationMap, size: 18),
-                    label: Text(s.mapTitle),
+                    icon: const Icon(AppIcons.communicationMap, size: HzIconSize.row),
+                    label: Text(lockedLabel(s.mapTitle, Feature.communicationMap)),
                   );
             final filterButton = widget.onFilter == null
                 ? null
                 : OutlinedButton.icon(
                     onPressed: widget.onFilter,
-                    icon: const Icon(AppIcons.filter, size: 18),
+                    icon: const Icon(AppIcons.filter, size: HzIconSize.row),
                     label: Text(s.devFilterMonitor),
                   );
             final traffic = [
@@ -396,7 +396,7 @@ class _DeviceTrafficState extends State<DeviceTraffic> {
                     alignment: AlignmentDirectional.centerStart,
                     child: OutlinedButton.icon(
                       onPressed: () => openDali(context, gateway: widget.address),
-                      icon: const Icon(AppIcons.light, size: 18),
+                      icon: const Icon(AppIcons.light, size: HzIconSize.row),
                       label: Text(s.daliTitle),
                     ),
                   ),

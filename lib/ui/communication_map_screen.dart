@@ -507,18 +507,23 @@ class _WideMap extends StatelessWidget {
                 child: Stack(
                   children: [
                     Positioned.fill(
-                      child: CustomPaint(
-                        painter: _EdgePainter(
-                          left: inputs,
-                          right: outputs,
-                          colWidth: colWidth,
-                          gap: gap,
-                          leftRow: rowOf(inputs),
-                          rightRow: rowOf(outputs),
-                          top: _header,
-                          centerY: middle,
-                          colors: hz,
-                          projectKnown: projectKnown,
+                      // The lines themselves are not readable; say what they connect.
+                      child: Semantics(
+                        image: true,
+                        label: s.mapEdgesSemantics(inputs.length, outputs.length),
+                        child: CustomPaint(
+                          painter: _EdgePainter(
+                            left: inputs,
+                            right: outputs,
+                            colWidth: colWidth,
+                            gap: gap,
+                            leftRow: rowOf(inputs),
+                            rightRow: rowOf(outputs),
+                            top: _header,
+                            centerY: middle,
+                            colors: hz,
+                            projectKnown: projectKnown,
+                          ),
                         ),
                       ),
                     ),

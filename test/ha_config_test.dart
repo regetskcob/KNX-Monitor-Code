@@ -137,6 +137,25 @@ void main() {
     expect(sensorAddresses, isNot(contains(_a('1/2/1'))));
   });
 
+  test('Zeilenumbruch im Projekt- oder Adressnamen beendet keinen Kommentar', () {
+    // A prepared project file: whatever followed the break would be configuration.
+    for (final br in ['\n', '\r\n', '\u0085', '\u2028', '\u2029']) {
+      final catalog = GroupCatalog({
+        for (final g in [
+          _g('1/1/1', 'EG WZ L01 Schalten${br}expose:$br  - type: binary', const Dpt(1, 1)),
+          _g('1/1/2', 'EG WZ L01 Rückmeldung Schalten', const Dpt(1, 1)),
+        ])
+          g.address: g,
+      }, projectName: 'Haus${br}expose:$br  - address: "9/9/9"');
+      final text = HaConfig.toYaml(HaConfig.fromCatalog(catalog), catalog: catalog);
+      expect(text, contains('expose:'), reason: 'der Text bleibt, nur in seiner Zeile');
+      for (final line in text.split(RegExp('[\n\r\u0085\u2028\u2029]'))) {
+        final code = line.contains('#') ? line.substring(0, line.indexOf('#')) : line;
+        expect(code, isNot(contains('expose')), reason: 'Umbruch ${br.runes.toList()}: $line');
+      }
+    }
+  });
+
   test('Vollständiger Raumregler, Dimmer, Jalousie mit Lamelle', () {
     final catalog = GroupCatalog({
       for (final g in [

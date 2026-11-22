@@ -569,7 +569,9 @@ abstract final class HaConfig {
     };
     final b = StringBuffer();
     final when = created ?? DateTime.now();
-    b.writeln('# ${s.haYamlHeader(appVersion ?? '', catalog.projectName ?? '-', formatDate(when))}');
+    // The project name comes from the imported file: a line break in it would end the comment
+    // and put the rest into the configuration as YAML.
+    b.writeln('# ${_comment(s.haYamlHeader(appVersion ?? '', catalog.projectName ?? '-', formatDate(when)))}');
     b.writeln('# ${s.haYamlInclude}');
     b.writeln('# ${s.haYamlSchema}');
     if (entities.any((e) => deviceOf.containsKey(e.id))) b.writeln('# ${s.haYamlDevices}');
@@ -581,7 +583,7 @@ abstract final class HaConfig {
       b.writeln('${list.every((e) => e.incomplete) ? '# ' : ''}${p.key}:');
       for (final e in list) {
         if (e.uncertain) {
-          b.writeln('  # ${s.haYamlCheck(e.doubts.map((d) => d.text).join(' · '))}');
+          b.writeln('  # ${_comment(s.haYamlCheck(e.doubts.map((d) => d.text).join(' · ')))}');
         }
         // Incomplete: commented out so Home Assistant accepts the file.
         final off = e.incomplete ? '# ' : '';
@@ -607,11 +609,15 @@ abstract final class HaConfig {
     return b.toString();
   }
 
-  /// Double quotes with escapes (YAML 1.2, like JSON); control characters
-  /// (line breaks, tabs, CR from Windows ETS texts) become spaces.
-  static String _quote(String v) =>
-      '"${v.replaceAll(r'\', r'\\').replaceAll('"', r'\"').replaceAll(RegExp(r'[\x00-\x1F\x7F]'), ' ')}"';
+  /// Everything a YAML reader may take as the end of a line or that has no place in a text:
+  /// control characters (line breaks, tabs, CR from Windows ETS texts) and the Unicode line
+  /// ends NEL, LS and PS, which YAML 1.1 readers such as PyYAML treat like a line break.
+  static final _breaks = RegExp('[\\x00-\\x1F\\x7F\u0085\u2028\u2029]+');
 
-  /// Comments must not contain a line break.
-  static String _comment(String v) => v.replaceAll(RegExp(r'[\r\n]+'), ' ');
+  /// Double quotes with escapes (YAML 1.2, like JSON); [_breaks] become spaces.
+  static String _quote(String v) => '"${v.replaceAll(r'\', r'\\').replaceAll('"', r'\"').replaceAll(_breaks, ' ')}"';
+
+  /// Comments must not contain a line break: names come from imported files, and whatever
+  /// followed the break would be read as configuration.
+  static String _comment(String v) => v.replaceAll(_breaks, ' ');
 }

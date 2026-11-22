@@ -41,7 +41,9 @@ jobs:
         run: |
           version=$(grep -E '^version:' ha-addon/knx_monitor/config.yaml | cut -d'"' -f2)
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          if [ "$GITHUB_REF_TYPE" = tag ]; then
+          # Only the push of the tag publishes. A manual run builds only, also when
+          # it is started on a tag: it must not replace an image already published.
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF_TYPE" = tag ]; then
             [ "$GITHUB_REF_NAME" = "addon-v$version" ] || { echo "::error::Tag $GITHUB_REF_NAME does not match config.yaml version $version"; exit 1; }
             echo "publish=true" >> "$GITHUB_OUTPUT"
           else
@@ -182,6 +184,30 @@ jobs:
           IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-knx-monitor
           DIGEST: ${{ steps.build.outputs.digest }}
         run: cosign sign --yes "$IMAGE@$DIGEST"
+      # The smoke test starts an amd64 image built for the test (or ran locally,
+      # werkbank/smoke). This starts the image that was just pushed, on its own
+      # architecture (arm64 under QEMU): most Home Assistant installations are
+      # arm64, and nothing else runs that image before a customer does. Fails
+      # before "latest" moves and before tool/release.sh merges the version into
+      # main, so Home Assistant never offers an image that does not start.
+      - name: Start the pushed image
+        if: needs.version.outputs.publish == 'true'
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-knx-monitor
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          docker run -d --name started --platform "${{ matrix.platform }}" \
+            -e ALLOW_ALL=1 -e ALLOW_ALL_EXPOSED=1 -e BIND=0.0.0.0 -p 127.0.0.1:8765:8765 "$IMAGE@$DIGEST"
+          for _ in $(seq 1 60); do
+            if [ "$(curl -s -m 3 http://127.0.0.1:8765/healthz || true)" = ok ]; then
+              echo "${{ matrix.arch }}: started and answers"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs started 2>&1 | tail -40
+          echo "::error::The pushed ${{ matrix.arch }} image does not start"
+          exit 1
       # The digest just pushed and signed: "latest" points to exactly this
       # image, not to whatever the version tag resolves to later.
       - name: Keep digest

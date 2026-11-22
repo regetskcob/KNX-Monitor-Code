@@ -246,7 +246,7 @@ class _HealthScreenState extends State<HealthScreen> {
                 children: [
                   Text(s.healthHistory),
                   const SizedBox(width: HzSpace.s2),
-                  const Icon(AppIcons.next, size: 14),
+                  const Icon(AppIcons.next, size: HzIconSize.badge),
                 ],
               ),
             ),
@@ -330,8 +330,8 @@ class _HealthScreenState extends State<HealthScreen> {
           alignment: AlignmentDirectional.centerStart,
           child: OutlinedButton.icon(
             onPressed: () => _toCommissioning(run),
-            icon: const Icon(AppIcons.projectCheck, size: 18),
-            label: Text(s.healthToCommissioning),
+            icon: const Icon(AppIcons.projectCheck, size: HzIconSize.row),
+            label: Text(lockedLabel(s.healthToCommissioning, Feature.commissioning)),
           ),
         ),
       ],
@@ -378,7 +378,7 @@ class _HealthScreenState extends State<HealthScreen> {
                 turns: open ? 0.5 : 0,
                 duration: Motion.of(context),
                 curve: Motion.curve,
-                child: const Icon(AppIcons.expand, size: 18),
+                child: const Icon(AppIcons.expand, size: HzIconSize.row),
               ),
               label: Text(open ? s.healthHideNotes : s.healthShowNotes(rest.length)),
             ),

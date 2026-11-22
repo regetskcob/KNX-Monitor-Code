@@ -105,7 +105,7 @@ class WatchScreen extends StatelessWidget {
                         alignment: AlignmentDirectional.centerStart,
                         child: OutlinedButton.icon(
                           onPressed: () => addDaliWatch(context),
-                          icon: const Icon(AppIcons.light, size: 18),
+                          icon: const Icon(AppIcons.light, size: HzIconSize.row),
                           label: Text(s.daliWatchTemplate),
                         ),
                       ),

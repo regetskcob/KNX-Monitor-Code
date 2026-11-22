@@ -549,7 +549,7 @@ class _DefectTile extends StatelessWidget {
           else
             OutlinedButton.icon(
               onPressed: onAdd,
-              icon: const Icon(AppIcons.image, size: 18),
+              icon: const Icon(AppIcons.image, size: HzIconSize.row),
               label: Text(s.acceptDefectPhotoAdd),
             ),
         ],
@@ -591,7 +591,7 @@ class _SignatureTile extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(AppIcons.acceptance, size: 18, color: hz.textMuted),
+                      Icon(AppIcons.acceptance, size: HzIconSize.row, color: hz.textMuted),
                       const SizedBox(width: HzSpace.s8),
                       Flexible(
                         child: Text(label, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),

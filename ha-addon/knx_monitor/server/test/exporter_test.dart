@@ -99,6 +99,18 @@ void main() {
       expect((await scrape(token: token)).$1, 200);
     });
 
+    test('revokeTokens: /metrics aus, das alte Token gilt auch nach dem Einschalten nicht mehr', () async {
+      final token = (await exporter.update({'prometheus': true, 'prometheusPort': port}))!;
+      expect((await scrape(token: token)).$1, 200);
+      await exporter.revokeTokens();
+      expect(exporter.status()['prometheusRunning'], isFalse);
+      expect(await File('${data.path}/export.json').readAsString(), isNot(contains(token)));
+      final next = await exporter.update({'prometheus': true, 'prometheusPort': port});
+      expect(next, allOf(isNotNull, isNot(token)));
+      expect((await scrape(token: token)).$1, HttpStatus.unauthorized);
+      expect((await scrape(token: next)).$1, 200);
+    });
+
     test('ohne includeValues nur Zähler des Busses, keine Anlagendaten', () async {
       final token = (await exporter.update({'prometheus': true, 'prometheusPort': port}))!;
       exporter
@@ -292,6 +304,22 @@ void main() {
       expect(((jsonDecode(again) as Map)['settings'] as Map)['hasInfluxToken'], isTrue);
       final (_, cleared) = await call('PUT', 'api/export', {'clearInfluxToken': true});
       expect(((jsonDecode(cleared) as Map)['settings'] as Map)['hasInfluxToken'], isFalse);
+    });
+
+    test('die InfluxDB-Adresse sieht nur ein Admin', () async {
+      await call('PUT', 'api/export', {
+        'influx': true,
+        'influxUrl': 'http://192.168.1.2:8086',
+        'influxOrg': 'o',
+        'influxBucket': 'b',
+        'influxToken': 'tk_secret',
+      });
+      expect((await call('GET', 'api/export')).$2, contains('192.168.1.2'));
+      admin = false;
+      final (status, text) = await call('GET', 'api/export');
+      expect(status, 200);
+      expect(text, isNot(contains('192.168.1.2')));
+      expect(((jsonDecode(text) as Map)['settings'] as Map)['hasInfluxUrl'], isTrue);
     });
 
     test('MQTT-Telegrammstrom: nur Admin, ohne Broker 404, unpassende Werte 422', () async {

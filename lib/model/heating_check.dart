@@ -11,7 +11,11 @@ final _valveName = RegExp(r'stellwert|stellgr|ventil|valve|control value|heizen 
 final _setpointName = RegExp(r'soll|setpoint|set point', caseSensitive: false);
 final _actualName = RegExp(r'\bist\b|ist-|isttemp|temperatur|actual|temperature', caseSensitive: false);
 final _notRoom = RegExp(
-  r'außen|aussen|outdoor|outside|vorlauf|rücklauf|ruecklauf|flow|return|boden|floor|wasser|water|kessel|boiler|puffer',
+  r'außen|aussen|outdoor|outside|vorlauf|rücklauf|ruecklauf|\bflow\b|\breturn\b|'
+  // The floor's own temperature, not underfloor heating ("Fußbodenheizung Bad Stellwert") and
+  // not a storey ("Ground floor living temperature").
+  r'boden[\s_-]*(temp|fühler|fuehler|sensor|ist)|estrich|floor[\s_-]*(temp|sensor|probe)|screed|'
+  r'wasser|water|kessel|boiler|puffer',
   caseSensitive: false,
 );
 

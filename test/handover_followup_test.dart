@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:horizont/horizont.dart';
 import 'package:knx_monitor/catalog_store.dart';
 import 'package:knx_monitor/export/handover_package.dart';
 import 'package:knx_monitor/knx/group_catalog.dart';
@@ -62,6 +63,7 @@ HandoverPackage _package(
   String name = 'Haus Muster',
   Map<String, Object?>? keyring,
   DateTime? created,
+  GatewayRef gateway = const GatewayRef(host: '192.168.1.22'),
 }) => HandoverPackage(
   id: id,
   created: created ?? DateTime(2026, 11, 10),
@@ -70,7 +72,7 @@ HandoverPackage _package(
   origin: origin,
   key: key,
   catalog: handoverCatalog(_catalog(extended: extended)),
-  gateway: const GatewayRef(host: '192.168.1.22'),
+  gateway: gateway,
   connection: const {'mode': 'tcp', 'routingAddress': 0x00FE, 'secureUserId': 2},
   keyring: keyring,
 );
@@ -215,6 +217,24 @@ void main() {
       final inactive = await handoverChanges(_package('b', extended: true), first);
       expect(inactive.groupsAdded, 2);
       expect(inactive.installationHasKeys, isNull);
+    });
+
+    test('anderes Gateway und andere Firma fallen auf, gleiche nicht', () async {
+      final first = await applyHandover(_package('a'));
+      final same = await handoverChanges(_package('b'), first);
+      expect(same.gatewayChanged, isFalse);
+      expect(same.companyBefore, isNull);
+      final forged = await handoverChanges(
+        _package(
+          'c',
+          company: 'Fremde Firma',
+          gateway: const GatewayRef(host: '192.168.1.99', port: 3672),
+        ),
+        first,
+      );
+      expect(forged.gatewayBefore, '192.168.1.22');
+      expect(forged.gatewayAfter, '192.168.1.99:3672');
+      expect(forged.companyBefore, 'Elektro Muster');
     });
 
     test('Projekt wird ersetzt, die Daten des Kunden bleiben', () async {
@@ -402,6 +422,21 @@ void main() {
     );
 
     const changes = HandoverChanges(groupsAdded: 2, groupsRemoved: 1, groupsRenamed: 1, devicesAdded: 1);
+
+    testWidgets('anderes Gateway und andere Firma stehen als Warnung im Dialog', (tester) async {
+      const forged = HandoverChanges(
+        gatewayBefore: '192.168.1.22',
+        gatewayAfter: '192.168.1.99',
+        companyBefore: 'Elektro Alt',
+      );
+      await tester.pumpWidget(app(host(forged, (_) {})));
+      await tester.tap(find.text('öffnen'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('192.168.1.22'), findsOneWidget);
+      expect(find.textContaining('192.168.1.99'), findsOneWidget);
+      expect(find.textContaining('Elektro Alt'), findsOneWidget);
+      expect(find.byType(HorizontNotice), findsNWidgets(2));
+    });
 
     testWidgets('nennt Änderungen und was bleibt; beide Wege wählbar', (tester) async {
       HandoverChoice? choice;

@@ -32,7 +32,11 @@ git rev-parse -q --verify "refs/tags/$tag" >/dev/null || { echo "tag $tag not fo
 if [ ! -d "$DIR/.git" ]; then
   git clone -q "https://github.com/$PUBLIC_REPO.git" "$DIR"
 fi
-git -C "$DIR" pull -q --ff-only 2>/dev/null || true
+# The checkout is emptied below: only a clean one that is up to date. A swallowed
+# pull error once meant committing on top of an old state and a push that failed
+# only after everything else of the release was done.
+[ -z "$(git -C "$DIR" status --porcelain)" ] || { echo "$DIR has local changes – look at them first" >&2; exit 1; }
+git -C "$DIR" pull -q --ff-only || { echo "$DIR cannot fast-forward to origin – look at it first" >&2; exit 1; }
 
 # Replace everything except .git, so files removed here also disappear there.
 find "$DIR" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +

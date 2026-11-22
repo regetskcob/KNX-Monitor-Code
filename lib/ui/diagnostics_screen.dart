@@ -347,7 +347,7 @@ class _AddressCheckCardState extends State<_AddressCheckCard> {
               children: [
                 OutlinedButton.icon(
                   onPressed: _detailsBusy ? null : () => _readDetails(r.address),
-                  icon: _detailsBusy ? _spinner : const Icon(AppIcons.info, size: 18),
+                  icon: _detailsBusy ? _spinner : const Icon(AppIcons.info, size: HzIconSize.row),
                   label: Text(s.diagDeviceInfo),
                 ),
                 // The editor runs on the user's computer; the browser cannot reach it.
@@ -356,7 +356,7 @@ class _AddressCheckCardState extends State<_AddressCheckCard> {
                     message: s.xknxEditorPreviewHint,
                     child: OutlinedButton.icon(
                       onPressed: _previewBusy ? null : () => _comparePreview(r.address),
-                      icon: _previewBusy ? _spinner : const Icon(AppIcons.etsTasks, size: 18),
+                      icon: _previewBusy ? _spinner : const Icon(AppIcons.etsTasks, size: HzIconSize.row),
                       label: Text(s.xknxEditorPreview),
                     ),
                   ),
@@ -438,7 +438,7 @@ class _DeviceDetailsTable extends StatelessWidget {
                   child: Text(label, style: theme.textTheme.bodySmall?.copyWith(color: hz.textMuted)),
                 ),
                 if (warning) ...[
-                  Icon(HorizontStatus.warning.icon, size: 16, color: hz.warning),
+                  Icon(HorizontStatus.warning.icon, size: HzIconSize.inline, color: hz.warning),
                   const SizedBox(width: HzSpace.s4),
                 ],
                 Expanded(

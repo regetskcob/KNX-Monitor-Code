@@ -84,6 +84,42 @@ class Recorder {
   /// Telegrams written since start.
   int written = 0;
 
+  /// Lines handed to the write queue but not on disk yet: they count towards
+  /// [maxBuffered] too, otherwise a stalled disk lets the queue grow without limit.
+  int _queued = 0;
+
+  /// Since when lines wait in the write queue without a break.
+  DateTime? _queuedSince;
+
+  /// Lines wait longer than this: the write queue hangs.
+  static const stallAfter = Duration(minutes: 10);
+
+  /// The write queue has not come to an end for [stallAfter] (packing a large
+  /// day takes minutes, not this long): nothing is recorded any more although
+  /// the server still answers. A restart helps, unlike with a full disk.
+  bool get stalled {
+    final since = _queuedSince;
+    return since != null && _now().difference(since) > stallAfter;
+  }
+
+  /// Last write that reached the file (or found nothing to write); `null`
+  /// until the first one. With [lastWriteFailed] the health check tells a
+  /// recorder that only answers from one that still records.
+  DateTime? lastFlush;
+
+  /// The last write failed with an error other than "disk full".
+  bool lastWriteFailed = false;
+
+  /// While this returns `true`, nothing is deleted by age (and "retention off"
+  /// deletes nothing either): the settings or the clock that decide what is
+  /// "old" are not confirmed (lost `server.json`, a clock set far ahead by a
+  /// source that is not trusted). The size limit and "disk full" still apply.
+  bool Function()? keepExpired;
+
+  /// Daily files this start has already appended to: only the first append
+  /// checks whether the file ends with a line break.
+  final _tailChecked = <String>{};
+
   /// Whether the clock is right; `null` means always (Home Assistant sets the time).
   bool Function()? timeKnown;
 
@@ -108,9 +144,15 @@ class Recorder {
 
   bool get enabled => retentionDays > 0;
 
+  /// Never throws: a history folder that cannot be cleaned up (full disk,
+  /// broken file) must not keep the server from starting.
   Future<void> start() async {
-    await _dir.create(recursive: true);
-    await _maintain();
+    try {
+      await _dir.create(recursive: true);
+      await _maintain();
+    } on Object catch (e) {
+      stderr.writeln('Verlauf aufräumen beim Start: $e');
+    }
   }
 
   void add(Map<String, Object?> line) {
@@ -122,7 +164,7 @@ class Recorder {
       }
       line['mono'] = monoMicros?.call() ?? 0;
     }
-    if (_buffer.length >= maxBuffered) {
+    if (_buffer.length + _queued >= maxBuffered) {
       dropped++;
       return;
     }
@@ -139,19 +181,28 @@ class Recorder {
     _timer = null;
     final pending = List.of(_buffer);
     _buffer.clear();
+    _queued += pending.length;
+    if (pending.isNotEmpty) _queuedSince ??= _now();
     return _writing = _writing
         .then((_) async {
           try {
             await _write(pending);
+            lastFlush = _now();
+            lastWriteFailed = false;
           } on FileSystemException catch (e) {
             // Disk full or broken: counted and reported, not silently lost.
             droppedLowSpace += pending.length;
             lowSpace = true;
+            lastWriteFailed = true;
             stderr.writeln('Verlauf schreiben: $e');
+          } finally {
+            _queued -= pending.length;
+            if (_queued == 0) _queuedSince = null;
           }
           await _syncIfDue(force: durable);
         })
         .catchError((Object e) {
+          lastWriteFailed = true;
           stderr.writeln('Verlauf schreiben: $e');
         });
   }
@@ -247,10 +298,32 @@ class Recorder {
     await _dir.create(recursive: true);
     for (final MapEntry(key: day, value: lines) in byDay.entries) {
       final file = File('${_dir.path}/$day.ndjson');
-      await file.writeAsString(lines.toString(), mode: FileMode.append);
+      final lead = await _needsLineBreak(file) ? '\n' : '';
+      await file.writeAsString('$lead$lines', mode: FileMode.append);
       _unsynced.add(file.path);
     }
     written += pending.length;
+  }
+
+  /// A power cut can leave the last line of a file without its line break. The
+  /// next append would continue in that line, and readers would skip the first
+  /// new telegram together with the truncated one. Checked once per file and start.
+  Future<bool> _needsLineBreak(File file) async {
+    if (!_tailChecked.add(file.path)) return false;
+    try {
+      if (!await file.exists()) return false;
+      final raf = await file.open();
+      try {
+        final length = await raf.length();
+        if (length == 0) return false;
+        await raf.setPosition(length - 1);
+        return await raf.readByte() != 0x0A;
+      } finally {
+        await raf.close();
+      }
+    } on FileSystemException {
+      return false;
+    }
   }
 
   /// The clock was set: [time] applied at monotonic counter [monoMicros].
@@ -263,28 +336,127 @@ class Recorder {
     });
   }
 
+  /// Streams the file line by line (a box that ran for days without a clock
+  /// has hundreds of megabytes there) and in steps a power cut cannot turn
+  /// into duplicates:
+  ///
+  /// 1. the converted lines go into one `<day>.ndjson.retime-tmp` per day,
+  ///    flushed to disk;
+  /// 2. the source is renamed to `.retimed`: from now on the parts are the data;
+  /// 3. each part is renamed to `<day>.ndjson.retime-<length of the daily
+  ///    file>`, appended to the daily file and deleted;
+  /// 4. `.retimed` is deleted.
+  ///
+  /// [_recoverRetime] finishes an interrupted run at the next start.
   Future<void> _retime(DateTime time, int mono) async {
     final file = File('${_dir.path}/$_unsyncedName');
     if (!await file.exists()) return;
-    final byDay = <String, StringBuffer>{};
+    final parts = <String, IOSink>{};
     var count = 0;
-    await for (final raw in file.openRead().transform(utf8.decoder).transform(const LineSplitter())) {
-      try {
-        final line = jsonDecode(raw) as Map<String, Object?>;
-        final m = line.remove('mono') as int? ?? mono;
-        final t = time.subtract(Duration(microseconds: mono - m));
-        line['t'] = t.microsecondsSinceEpoch;
-        (byDay[dayName(t)] ??= StringBuffer()).writeln(jsonEncode(line));
-        count++;
-      } on Object {
-        // truncated line
+    try {
+      await for (final raw in file.openRead().transform(utf8.decoder).transform(const LineSplitter())) {
+        try {
+          final line = jsonDecode(raw) as Map<String, Object?>;
+          final m = line.remove('mono') as int? ?? mono;
+          final t = time.subtract(Duration(microseconds: mono - m));
+          line['t'] = t.microsecondsSinceEpoch;
+          final day = dayName(t);
+          (parts[day] ??= File('${_dir.path}/$day.ndjson$_retimePart').openWrite()).writeln(jsonEncode(line));
+          count++;
+        } on FormatException {
+          // truncated line
+        } on TypeError {
+          // not a telegram line
+        }
+      }
+    } finally {
+      for (final sink in parts.values) {
+        await sink.flush();
+        await sink.close();
       }
     }
-    for (final MapEntry(key: day, value: lines) in byDay.entries) {
-      await File('${_dir.path}/$day.ndjson').writeAsString(lines.toString(), mode: FileMode.append, flush: true);
+    for (final day in parts.keys) {
+      await _fsync(File('${_dir.path}/$day.ndjson$_retimePart'));
     }
-    await file.delete();
+    await file.rename('${file.path}$_retimedMark');
+    await _applyRetimeParts();
+    await File('${file.path}$_retimedMark').delete();
     stdout.writeln('Verlauf: $count Telegramme ohne Zeit nachträglich eingeordnet');
+  }
+
+  static const _retimePart = '.retime-tmp';
+  static const _retimedMark = '.retimed';
+  static final _retimeApply = RegExp(r'^(\d{4}-\d{2}-\d{2}\.ndjson)\.retime-(\d+)$');
+
+  /// Step 3 of [_retime], repeatable: a part that was being appended when the
+  /// power failed carries the length the daily file had before; the file is cut
+  /// back to it and the part appended again.
+  Future<void> _applyRetimeParts() async {
+    final entries = [
+      await for (final e in _dir.list())
+        if (e is File) e,
+    ]..sort((a, b) => a.path.compareTo(b.path));
+    for (final e in entries) {
+      final name = e.uri.pathSegments.last;
+      var part = e;
+      File target;
+      int offset;
+      final applying = _retimeApply.firstMatch(name);
+      if (applying != null) {
+        target = File('${_dir.path}/${applying[1]}');
+        offset = int.parse(applying[2]!);
+        if (await target.exists() && await target.length() > offset) {
+          final raf = await target.open(mode: FileMode.append);
+          try {
+            await raf.truncate(offset);
+          } finally {
+            await raf.close();
+          }
+        }
+      } else if (name.endsWith('.ndjson$_retimePart')) {
+        target = File('${_dir.path}/${name.substring(0, name.length - _retimePart.length)}');
+        offset = await target.exists() ? await target.length() : 0;
+        // A truncated last line would swallow the first appended one.
+        if (await _needsLineBreak(target)) {
+          await target.writeAsString('\n', mode: FileMode.append, flush: true);
+          offset++;
+        }
+        part = await e.rename('${target.path}.retime-$offset');
+      } else {
+        continue;
+      }
+      final out = target.openWrite(mode: FileMode.append);
+      try {
+        await out.addStream(part.openRead());
+        await out.flush();
+      } finally {
+        await out.close();
+      }
+      await _fsync(target);
+      await part.delete();
+    }
+  }
+
+  /// Leftovers of an interrupted [_retime]. With a `.retimed` mark the parts
+  /// are complete and are appended now. Without it they are incomplete and
+  /// discarded; the source then stays as a section "without time", as after any
+  /// restart without a clock.
+  Future<void> _recoverRetime() async {
+    final marks = [
+      await for (final e in _dir.list())
+        if (e is File && e.uri.pathSegments.last.endsWith('.ndjson$_retimedMark')) e,
+    ];
+    if (marks.isEmpty) {
+      await for (final e in _dir.list()) {
+        final name = e.uri.pathSegments.last;
+        if (e is File && (name.endsWith('.ndjson$_retimePart') || _retimeApply.hasMatch(name))) await e.delete();
+      }
+      return;
+    }
+    await _applyRetimeParts();
+    for (final mark in marks) {
+      await mark.delete();
+    }
   }
 
   /// Packs completed days and cleans up according to retention. Runs at
@@ -296,22 +468,36 @@ class Recorder {
     stderr.writeln('Verlauf aufräumen: $e');
   });
 
+  /// Every step on its own: a day that cannot be packed (disk full, broken
+  /// `.gz`) must not keep the rest from running, least of all the cleanup that
+  /// would make room again.
   Future<void> _maintain() async {
     if (!await _dir.exists()) return;
     final today = dayName(_now());
-    await _recover();
-    final known = timeKnown?.call() != false;
-    if (known) {
-      for (final f in await _dayFiles()) {
-        final name = f.uri.pathSegments.last;
-        if (name.endsWith('.ndjson') && name != '$today.ndjson') await _gzip(f);
+    Future<void> step(String what, Future<void> Function() run) async {
+      try {
+        await run();
+      } on Object catch (e) {
+        stderr.writeln('Verlauf aufräumen ($what): $e');
       }
     }
-    await _markOrphans();
-    await _prune(today, byAge: known);
+
+    await step('Umrechnen abschließen', _recoverRetime);
+    await step('Packen abschließen', _recover);
+    final known = timeKnown?.call() != false;
+    if (known) {
+      var files = const <File>[];
+      await step('Tage lesen', () async => files = await _dayFiles());
+      for (final f in files) {
+        final name = f.uri.pathSegments.last;
+        if (name.endsWith('.ndjson') && name != '$today.ndjson') await step('$name packen', () => _gzip(f));
+      }
+    }
+    await step('Abschnitte ohne Zeit', _markOrphans);
+    await step('Aufbewahrung', () => _prune(today, byAge: known && keepExpired?.call() != true));
     // Measure even without telegrams: the status should show a full disk.
     _freeChecked = null;
-    await _roomToWrite();
+    await step('freier Platz', () async => _roomToWrite());
   }
 
   /// Packs a finished day in steps that a power cut cannot leave ambiguous:
@@ -335,12 +521,22 @@ class Recorder {
             yield* f.openRead();
           }()
         : f.openRead();
-    await lines.transform(gzip.encoder).pipe(tmp.openWrite());
-    final raf = await tmp.open(mode: FileMode.append);
     try {
-      await raf.flush();
-    } finally {
-      await raf.close();
+      await lines.transform(gzip.encoder).pipe(tmp.openWrite());
+      final raf = await tmp.open(mode: FileMode.append);
+      try {
+        await raf.flush();
+      } finally {
+        await raf.close();
+      }
+    } on Object {
+      // Half a `.gz.tmp` only takes the space the next attempt needs.
+      try {
+        if (await tmp.exists()) await tmp.delete();
+      } on FileSystemException {
+        // [_recover] removes it at the next run.
+      }
+      rethrow;
     }
     await f.rename(done.path);
     await tmp.rename(target.path);
@@ -394,6 +590,8 @@ class Recorder {
     final files = await _dayFiles();
     final unsynced = await _unsyncedFiles();
     if (!enabled) {
+      // "Off" from settings nobody confirmed deletes nothing.
+      if (keepExpired?.call() == true) return;
       for (final f in [...files, ...unsynced]) {
         await f.delete();
       }

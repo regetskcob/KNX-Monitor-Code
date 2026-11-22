@@ -247,7 +247,8 @@ class _BusMonitorScreenState extends State<BusMonitorScreen> {
   void _export() {
     final store = CatalogStore.instance;
     final rows = [
-      'Zeit;Art;Quelle;Ziel;Name;Wert;Wiederholt;Prüfsumme ok;Status;Ohne ACK;Rohdaten',
+      // English column names like the telegram CSV (lib/export/telegram_files.dart): one header for every language.
+      'time;kind;source;destination;name;value;repeated;checksum_ok;status;no_ack;raw',
       for (final f in _frames.reversed)
         [
           isoWithOffset(f.time),
@@ -737,7 +738,7 @@ class _FrameRow extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(gutter + HzSpace.s16, HzSpace.s2, gutter, HzSpace.s2),
         child: Row(
           children: [
-            Icon(status.icon, size: 14, color: status.color(hz)),
+            Icon(status.icon, size: HzIconSize.badge, color: status.color(hz)),
             const SizedBox(width: HzSpace.s4),
             Text(text, style: theme.textTheme.bodySmall?.copyWith(color: status.color(hz))),
             const Spacer(),
@@ -789,7 +790,7 @@ class _FrameRow extends StatelessWidget {
     final hz = context.hz;
     return Row(
       children: [
-        Icon(HorizontStatus.warning.icon, size: 14, color: hz.warning),
+        Icon(HorizontStatus.warning.icon, size: HzIconSize.badge, color: hz.warning),
         const SizedBox(width: HzSpace.s4),
         Flexible(
           child: Text(

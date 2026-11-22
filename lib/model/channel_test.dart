@@ -64,6 +64,8 @@ class ChannelCheck {
 
   Map<String, Object?> toJson() => {
     'l': label,
+    // Channels without a label are told apart by their title.
+    if (label.isEmpty) 'c': ?title,
     'r': result.name,
     'f': ?feedback,
     'n': ?note,
@@ -105,9 +107,17 @@ class ChannelTest {
   /// Takes over the results saved for the same channel labels.
   void restore(Object? json) {
     if (json is! List) return;
+    final restored = <ChannelCheck>{};
     for (final j in json.whereType<Map<Object?, Object?>>()) {
-      final item = items.where((i) => i.label == j['l']).firstOrNull;
+      // Up to 1.12.0 an unlabeled channel was saved without its title: the first one not yet taken.
+      final legacy = j['l'] == '' && !j.containsKey('c');
+      final item = items
+          .where(
+            (i) => i.label == j['l'] && !restored.contains(i) && (i.label.isNotEmpty || legacy || i.title == j['c']),
+          )
+          .firstOrNull;
       if (item == null) continue;
+      restored.add(item);
       item
         ..result = ChannelResult.values.asNameMap()[j['r']] ?? ChannelResult.open
         ..feedback = j['f'] as bool?
@@ -153,7 +163,9 @@ class ChannelTestStore {
   String? _loadedFor;
 
   Future<void> _load() async {
-    final id = InstallationStore.instance.active.id;
+    // The demo runs under the id of the active installation but keeps its own, unsaved state:
+    // what was loaded for one must not count as loaded for the other.
+    final id = '${InstallationStore.instance.active.id}${DemoTunnel.active ? '#demo' : ''}';
     if (_loadedFor == id) return;
     _loadedFor = id;
     _all = {};

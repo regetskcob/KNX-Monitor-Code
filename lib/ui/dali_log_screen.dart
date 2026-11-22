@@ -177,14 +177,14 @@ class _DaliLogScreenState extends State<DaliLogScreen> {
                                 pdfName(s.daliLogTitle),
                                 origin: rectOf(button),
                               ),
-                        icon: const Icon(AppIcons.pdf, size: 18),
+                        icon: const Icon(AppIcons.pdf, size: HzIconSize.row),
                         label: Text(s.daliExportPdf),
                       ),
                     ),
                     Builder(
                       builder: (button) => OutlinedButton.icon(
                         onPressed: _log.entries.isEmpty ? null : () => _csv(button),
-                        icon: const Icon(AppIcons.table, size: 18),
+                        icon: const Icon(AppIcons.table, size: HzIconSize.row),
                         label: Text(s.daliExportCsv),
                       ),
                     ),

@@ -268,7 +268,7 @@ class _ShotPickerState extends State<ShotPicker> {
                         dimension: 16,
                         child: CircularProgressIndicator.adaptive(strokeWidth: Lines.selection),
                       )
-                    : const Icon(AppIcons.image, size: 18),
+                    : const Icon(AppIcons.image, size: HzIconSize.row),
                 label: Text(s.shotsAdd),
               ),
           ],

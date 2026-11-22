@@ -36,7 +36,6 @@ import 'company_screen.dart';
 import 'customer_transfer_screen.dart';
 import 'customers_screen.dart';
 import 'figure_box.dart';
-import 'form_columns.dart';
 import 'plan_screen.dart';
 import '../platform/secret_clipboard.dart';
 
@@ -45,9 +44,12 @@ Future<void> _deliver(BuildContext context, Uint8List bytes, String name, {Rect?
     ? saveBytes(context, bytes, name, mimeType: 'application/octet-stream')
     : shareFile(context, bytes, name, 'application/octet-stream', origin: origin);
 
-/// Creates a handover package (Pro): one file for the customer's app,
-/// optionally with KNX Secure keys, then password-protected with the password
-/// as a QR code.
+/// Opens "Übergabepaket" (handover package) as a wizard.
+Future<bool> showHandover(BuildContext context) => showHorizontWizard(context, const HandoverScreen());
+
+/// Creates a handover package (Pro) as a wizard ([HorizontWizard]): one file for the customer's
+/// app, optionally with KNX Secure keys; a protected file gets a second step with its password
+/// as a QR code. The last step creates and shares.
 class HandoverScreen extends StatefulWidget {
   const HandoverScreen({super.key});
 
@@ -59,29 +61,27 @@ class _HandoverScreenState extends State<HandoverScreen> {
   bool _keys = false;
   bool _protect = false;
   String _password = generatePackagePassword();
-  bool _busy = false;
 
   /// Keys never leave without a password.
   bool get _encrypted => _keys || _protect;
 
-  Future<void> _create(BuildContext buttonContext) async {
-    setState(() => _busy = true);
+  /// Returns what went wrong, for the wizard's status line; `null` when the file is out.
+  Future<String?> _create() async {
     try {
       final package = await buildHandover(includeKeys: _keys);
       final bytes = await packageToFile(package, password: _encrypted ? _password : null);
       unawaited(CustomerStore.instance.note(VisitKind.handover));
-      if (!mounted || !buttonContext.mounted) return;
+      if (!mounted) return null;
       await _deliver(
-        buttonContext,
+        context,
         bytes,
         fileName(s.handoverFilePrefix(package.installationName), handoverExtension),
-        origin: rectOf(buttonContext),
+        origin: rectOf(context),
       );
+      return null;
     } on Object catch (e) {
       debugPrint('Übergabepaket: $e');
-      if (mounted) showHorizontMessage(context, s.exportFailedGeneric, status: HorizontStatus.critical);
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      return s.exportFailedGeneric;
     }
   }
 
@@ -92,78 +92,88 @@ class _HandoverScreenState extends State<HandoverScreen> {
     final catalog = CatalogStore.instance.catalog;
     final keys = KeyringStore.instance;
     final company = CompanyStore.instance;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(s.handoverTitle),
-        actions: [InfoAction(title: s.handoverTitle, text: '${s.handoverExplain}\n\n${s.handoverPasswordHint}')],
-      ),
-      // Phone and narrow windows: one column in reading width. From the expanded width on, what
-      // goes into the package stands on the left, the password and the way out on the right.
-      body: ListenableBuilder(
+    final muted = theme.textTheme.bodySmall?.copyWith(color: hz.textMuted);
+    // A Material of its own: the wizard also stands alone as a page (tests), not only in the dialog.
+    return Material(
+      color: hz.surface,
+      child: ListenableBuilder(
         listenable: company,
-        builder: (context, _) => FormColumns(
-          intro: [
-            Text(s.handoverShort, style: theme.textTheme.bodyMedium?.copyWith(color: hz.textMuted)),
-            if (!company.company.isSet) ...[
-              const SizedBox(height: Gap.item),
-              Text(s.handoverNeedsCompany, style: TextStyle(color: hz.warning)),
-              const SizedBox(height: Gap.item),
-              OutlinedButton(
-                onPressed: () =>
-                    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const CompanyScreen())),
-                child: Text(s.companyTitle),
-              ),
-            ],
-          ],
-          columns: [
-            [
-              SectionHead(s.handoverContents),
-              RowCard(
-                children: [
-                  CardRow(
-                    title: s.handoverProject,
-                    meta: [
-                      if (catalog.devices.isNotEmpty) s.deviceCount(catalog.devices.length),
-                      s.groupAddressCount(catalog.length),
-                      InstallationStore.instance.active.gateway?.address ?? s.handoverNoGateway,
-                    ].join(metaSeparator),
-                  ),
-                  if (keys.loaded)
-                    SwitchRow(
-                      title: s.handoverIncludeKeys,
-                      meta: s.handoverIncludeKeysHint,
-                      value: _keys,
-                      onChanged: (v) => setState(() => _keys = v),
+        builder: (context, _) {
+          final ready = company.company.isSet && !catalog.isEmpty;
+          return HorizontWizard(
+            title: s.handoverTitle,
+            // Short: the wizard's foot holds "Back" beside it, also on a narrow phone.
+            finishLabel: s.handoverCreateShort,
+            stepOf: s.wizardStepOf,
+            steps: [
+              HorizontWizardStep(
+                title: s.handoverContents,
+                subtitle: s.handoverShort,
+                canContinue: ready,
+                onContinue: _encrypted ? null : _create,
+                content: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (!company.company.isSet) ...[
+                      HorizontNotice(
+                        HorizontStatus.warning,
+                        action: TextButton(
+                          onPressed: () =>
+                              Navigator.of(context)
+                                  .push(MaterialPageRoute<void>(builder: (_) => const CompanyScreen())),
+                          child: Text(s.companyTitle),
+                        ),
+                        child: Text(s.handoverNeedsCompany),
+                      ),
+                      const SizedBox(height: Gap.item),
+                    ],
+                    if (catalog.isEmpty) ...[
+                      HorizontNotice(HorizontStatus.warning, child: Text(s.handoverNoProject)),
+                      const SizedBox(height: Gap.item),
+                    ],
+                    RowCard(
+                      children: [
+                        CardRow(
+                          title: s.handoverProject,
+                          meta: [
+                            if (catalog.devices.isNotEmpty) s.deviceCount(catalog.devices.length),
+                            s.groupAddressCount(catalog.length),
+                            InstallationStore.instance.active.gateway?.address ?? s.handoverNoGateway,
+                          ].join(metaSeparator),
+                        ),
+                        if (keys.loaded)
+                          SwitchRow(
+                            title: s.handoverIncludeKeys,
+                            meta: s.handoverIncludeKeysHint,
+                            value: _keys,
+                            onChanged: (v) => setState(() => _keys = v),
+                          ),
+                        SwitchRow(
+                          title: s.handoverProtect,
+                          value: _encrypted,
+                          onChanged: _keys ? null : (v) => setState(() => _protect = v),
+                        ),
+                      ],
                     ),
-                  SwitchRow(
-                    title: s.handoverProtect,
-                    value: _encrypted,
-                    onChanged: _keys ? null : (v) => setState(() => _protect = v),
-                  ),
-                ],
-              ),
-            ],
-            [
-              if (_encrypted) ...[
-                SectionHead(s.handoverPassword),
-                PasswordCard(password: _password, onNew: () => setState(() => _password = generatePackagePassword())),
-              ],
-              const SizedBox(height: Gap.section),
-              Builder(
-                builder: (buttonContext) => FilledButton(
-                  onPressed: _busy || !company.company.isSet || catalog.isEmpty ? null : () => _create(buttonContext),
-                  child: Text(s.handoverCreate),
+                    const SizedBox(height: Gap.inner),
+                    Text(s.handoverExplain, style: muted),
+                  ],
                 ),
               ),
-              if (catalog.isEmpty) ...[
-                const SizedBox(height: Gap.item),
-                Text(s.handoverNoProject, style: theme.textTheme.bodySmall?.copyWith(color: hz.textFaint)),
-              ],
-              const SizedBox(height: Gap.item),
-              OutlinedButton(onPressed: () => unawaited(pickPackageFile(context)), child: Text(s.packageOpenMenu)),
+              if (_encrypted)
+                HorizontWizardStep(
+                  title: s.handoverPassword,
+                  subtitle: s.handoverPasswordHint,
+                  canContinue: ready,
+                  onContinue: _create,
+                  content: PasswordCard(
+                    password: _password,
+                    onNew: () => setState(() => _password = generatePackagePassword()),
+                  ),
+                ),
             ],
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -198,7 +208,7 @@ class PasswordCard extends StatelessWidget {
           children: [
             TextButton.icon(
               onPressed: () => unawaited(copySecret(password)),
-              icon: const Icon(AppIcons.copy, size: 18),
+              icon: const Icon(AppIcons.copy, size: HzIconSize.row),
               label: Text(s.handoverCopyPassword),
             ),
             TextButton(onPressed: onNew, child: Text(s.handoverNewPassword)),
@@ -361,7 +371,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
           if (_canScan)
             OutlinedButton.icon(
               onPressed: _scan,
-              icon: const Icon(AppIcons.qrScan, size: 18),
+              icon: const Icon(AppIcons.qrScan, size: HzIconSize.row),
               label: Text(s.handoverScanTitle),
             ),
         ],
@@ -574,6 +584,19 @@ class HandoverUpdateDialog extends StatelessWidget {
           spacing: Gap.inner,
           children: [
             Text(s.handoverUpdateIntro(company)),
+            // Who sends it and where the app connects afterwards: the two things a forged
+            // package would change, so they stand out.
+            if (c.companyBefore case final before?)
+              HorizontNotice(HorizontStatus.warning, child: Text(s.handoverUpdateCompany(before, company))),
+            if (c.gatewayAfter case final after?)
+              HorizontNotice(
+                HorizontStatus.warning,
+                child: Text(
+                  (c.gatewayBefore ?? '').isEmpty
+                      ? s.handoverUpdateGatewayNew(after)
+                      : s.handoverUpdateGateway(c.gatewayBefore!, after),
+                ),
+              ),
             if (c.groupsChanged) Text(s.handoverUpdateGroups(c.groupsAdded, c.groupsRemoved, c.groupsRenamed)),
             if (c.devicesChanged) Text(s.handoverUpdateDevices(c.devicesAdded, c.devicesRemoved, c.devicesRenamed)),
             if (!c.groupsChanged && !c.devicesChanged) Text(s.handoverUpdateNoChanges),
@@ -727,13 +750,13 @@ class HandoverOriginTile extends StatelessWidget {
             if (phone != null)
               TextButton.icon(
                 onPressed: () => _launch(context, phone),
-                icon: const Icon(AppIcons.phone, size: 18),
+                icon: const Icon(AppIcons.phone, size: HzIconSize.row),
                 label: Text(c.phone),
               ),
             if (mail != null)
               TextButton.icon(
                 onPressed: () => _launch(context, mail),
-                icon: const Icon(AppIcons.mail, size: 18),
+                icon: const Icon(AppIcons.mail, size: HzIconSize.row),
                 label: Text(c.email),
               ),
           ],

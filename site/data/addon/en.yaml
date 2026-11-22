@@ -90,7 +90,7 @@ faq:
     - q: "I use ioBroker or a NAS instead of Home Assistant."
       a: "The same server also runs as a Docker container, with a password instead of the Home Assistant login and optionally with MQTT, for example for the ioBroker MQTT adapter. Instructions and `compose.yaml` [on GitHub](https://github.com/regetskcob/KNX-Monitor/tree/main/docker). A native ioBroker adapter comes if enough users want it: [vote with 👍](https://github.com/regetskcob/KNX-Monitor/issues/3)."
     - q: "Is there an own integration?"
-      a: "Yes, \"Busclear\" via [HACS](https://github.com/regetskcob/KNX-Monitor-HA): discovery at start-up, sensors, device triggers and conditions, services for scripts, diagnostics and repair hints. Without Supervisor (Home Assistant Container) it connects to a KNX box or the Docker container through a pairing link with \"Manage\"."
+      a: "Yes, \"Busclear\" via [HACS](https://github.com/regetskcob/KNX-Monitor-HA): discovery at start-up, sensors, device triggers and conditions, services for scripts, diagnostics and repair hints. Without Supervisor (Home Assistant Container) it connects to a Busclear Box or the Docker container through a pairing link with \"Manage\"."
     - q: "Something does not work. How do I report it?"
       a: "Best with a diagnostic package, see [Feedback](/en/feedback/). Then you do not have to upload your ETS project anywhere."
 

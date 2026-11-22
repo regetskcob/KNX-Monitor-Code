@@ -167,7 +167,7 @@ class ChartsOverview extends StatelessWidget {
                                 if (group.first.rule case final rule?)
                                   IconButton(
                                     tooltip: s.chartTemplateRemove,
-                                    onPressed: () => CustomTemplates.instance.remove(rule),
+                                    onPressed: () => _removeTemplate(context, rule),
                                     icon: const Icon(AppIcons.delete),
                                   ),
                               ],
@@ -354,6 +354,7 @@ List<LibraryTemplate> _customTemplates() {
 /// Reads a shared template ([TemplateRule]) and adds it to the library.
 Future<void> importTemplate(BuildContext context) async {
   final messenger = ScaffoldMessenger.of(context);
+  final colors = context.hz;
   final file = await FilePicker.pickFile(type: FileType.any);
   if (file == null) return;
   try {
@@ -367,7 +368,9 @@ Future<void> importTemplate(BuildContext context) async {
       ),
     );
   } on FormatException {
-    messenger.showSnackBar(SnackBar(content: Text(s.chartTemplateImportFailed)));
+    messenger.showSnackBar(
+      horizontMessageSnackBar(colors, s.chartTemplateImportFailed, status: HorizontStatus.critical),
+    );
   }
 }
 
@@ -490,4 +493,22 @@ String _nameOf(List<int> gas) {
   if (words.isNotEmpty) return (words.entries.toList()..sort((a, b) => b.value - a.value)).first.key;
   final dpt = store.dptOf(gas.first);
   return dpt == null ? formatGroup(gas.first) : 'DPT $dpt';
+}
+
+/// Removes an imported template (by the [name] of its rule) and offers to bring it back.
+Future<void> _removeTemplate(BuildContext context, String name) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final colors = context.hz;
+  final store = CustomTemplates.instance;
+  final rule = store.rules.where((r) => r.name == name).firstOrNull;
+  await store.remove(name);
+  messenger
+    ..clearSnackBars()
+    ..showSnackBar(
+      horizontMessageSnackBar(
+        colors,
+        s.chartTemplateRemoved(name),
+        action: rule == null ? null : SnackBarAction(label: s.commonUndo, onPressed: () => unawaited(store.add(rule))),
+      ),
+    );
 }

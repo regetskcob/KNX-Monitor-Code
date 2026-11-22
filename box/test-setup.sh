@@ -144,6 +144,10 @@ fi
 [ "$(cat "$root/opt/knx-box/server.prev")" = v1 ] || fail "server.prev"
 [ "$(cat "$root/opt/knx-box/web.prev/index.html")" = 1.0 ] || fail "web.prev"
 [ "$(cat "$root/opt/knx-box/VERSION.prev")" = 1.0 ] || fail "VERSION.prev"
+[ -f "$root/opt/knx-box/files.prev/lib/secrets.sh" ] || fail "Hilfsskripte der Vorversion nicht aufbewahrt"
+[ -f "$root/opt/knx-box/files.prev/units/knx-box.service" ] || fail "Units der Vorversion nicht aufbewahrt"
+[ -f "$root/etc/systemd/system/knx-box-health.timer" ] || fail "Prüfung des Servers nicht installiert"
+grep -q 'enable .*knx-box-health.timer' "$tmp/calls" || fail "knx-box-health.timer nicht eingeschaltet"
 keep
 
 # Another update: the certificate is kept, otherwise the QR code would no longer match.
@@ -168,8 +172,13 @@ run v2 --yes || { cat "$tmp/out"; fail "Update mit Firewall"; }
 grep -q 'start knx-box-firewall' "$tmp/calls" || fail "Firewall nicht gestartet"
 
 # 4. New server does not start: rolls back on its own, error status, data is kept.
+# Its helper scripts and units go back too, not only server and web app.
 bundle dead 3.0 dead
+echo '# from 3.0' >>"$tmp/dead/files/secrets.sh"
+echo '# from 3.0' >>"$tmp/dead/files/knx-box.service"
 if run dead --yes; then fail "Update mit totem Server meldet Erfolg"; fi
+! grep -q 'from 3.0' "$root/usr/local/lib/knx-box/secrets.sh" || fail "Hilfsskript der zurückgenommenen Version bleibt"
+! grep -q 'from 3.0' "$root/etc/systemd/system/knx-box.service" || fail "Unit der zurückgenommenen Version bleibt"
 grep -q 'zurück auf die vorige Version' "$tmp/out" || fail "keine Meldung zum Rückweg"
 grep -q 'die vorige Version läuft wieder' "$tmp/out" || fail "keine Erfolgsmeldung zum Rückweg"
 expect_state 2.0 v2

@@ -405,23 +405,17 @@ class BoxAccess {
 
   // --- Checking ---------------------------------------------------------------
 
-  /// Checks [request]. On `null` the response (401, 403, 429) has already been sent.
-  Future<BoxRole?> guard(HttpRequest request) async {
-    final response = request.response;
-    // "no-referrer" would make browsers send "Origin: null" on POST/PUT; the
-    // origin check needs the real one.
-    response.headers.set('Referrer-Policy', 'same-origin');
+  /// Why [request] is not even looked at because of where it comes from, or
+  /// `null` if it may go on to the login. Applies to everything the box
+  /// answers with data, also to what brings its own token (MCP).
+  String? networkRefusal(HttpRequest request) {
     final address = request.connectionInfo?.remoteAddress;
     // Over the cable only once enabled; does not count as a failed attempt.
     if (!_lanAccess && (address == null || !_fromWlan(address))) {
-      return _deny(
-        response,
-        HttpStatus.forbidden,
-        container
-            ? 'Zugriff aus dem Netzwerk ist aus. Am Rechner mit dem Container über http://localhost öffnen, '
-                  'oder LAN_ACCESS=yes setzen und den Container neu starten.'
-            : 'Zugriff über das Kabel ist aus. Im WLAN der Box verbinden oder in den Box-Einstellungen freigeben.',
-      );
+      return container
+          ? 'Zugriff aus dem Netzwerk ist aus. Am Rechner mit dem Container über http://localhost öffnen, '
+                'oder LAN_ACCESS=yes setzen und den Container neu starten.'
+          : 'Zugriff über das Kabel ist aus. Im WLAN der Box verbinden oder in den Box-Einstellungen freigeben.';
     }
     // Docker without LAN access: only this machine, and only under a local
     // name. Otherwise a web page could rebind its own name to 127.0.0.1 and
@@ -430,13 +424,20 @@ class BoxAccess {
     // here too: it makes the container reachable from the network, so it
     // needs LAN_ACCESS=yes.
     if (container && !_lanAccess && !localHostName(request.headers.value(HttpHeaders.hostHeader))) {
-      return _deny(
-        response,
-        HttpStatus.forbidden,
-        'Nur über http://localhost erreichbar. Hinter einem Reverse-Proxy oder aus dem Netzwerk '
-        'LAN_ACCESS=yes setzen und den Container neu starten.',
-      );
+      return 'Nur über http://localhost erreichbar. Hinter einem Reverse-Proxy oder aus dem Netzwerk '
+          'LAN_ACCESS=yes setzen und den Container neu starten.';
     }
+    return null;
+  }
+
+  /// Checks [request]. On `null` the response (401, 403, 429) has already been sent.
+  Future<BoxRole?> guard(HttpRequest request) async {
+    final response = request.response;
+    // "no-referrer" would make browsers send "Origin: null" on POST/PUT; the
+    // origin check needs the real one.
+    response.headers.set('Referrer-Policy', 'same-origin');
+    final address = request.connectionInfo?.remoteAddress;
+    if (networkRefusal(request) case final refusal?) return _deny(response, HttpStatus.forbidden, refusal);
     final peer = _peerOf?.call(request) ?? address?.address ?? '';
     final now = _clock();
     if (request.uri.path == loginPath || request.uri.path == logoutPath) {
@@ -786,6 +787,21 @@ class BoxAccess {
     return confirmPassword(request, current);
   }
 
+  /// What outlives a password change or takes another admin out needs the
+  /// password itself: sent with this very request (Basic, [guard] checked it)
+  /// or as [current]. An admin token or a browser session alone is not
+  /// enough: a lost admin tablet or a borrowed browser could otherwise mint a
+  /// lasting admin device, or lock the owner's devices out one by one.
+  Future<bool> _withPassword(HttpRequest request, Object? current) async {
+    if ((request.headers.value(HttpHeaders.authorizationHeader) ?? '').startsWith('Basic ')) return true;
+    return _confirmCurrent(request, current);
+  }
+
+  /// Whether revoking [id] needs the password ([_withPassword]): a device with
+  /// admin rights other than the requester's own.
+  bool _revokeNeedsPassword(HttpRequest request, String id) =>
+      id != _selfOf(request) && _devices.any((d) => d.id == id && d.admin);
+
   /// [_confirmCurrent] for other services: restoring a box backup replaces everything on the box,
   /// so it asks for the current password like locking out all devices (box_backup.dart).
   ///
@@ -1057,6 +1073,12 @@ class BoxAccess {
   /// were established. The server closes them; whoever is still allowed reconnects.
   void Function()? onAccessChanged;
 
+  /// The password changed or everyone was locked out ([changePassword],
+  /// [revokeAll]): tokens handed out outside this class (MCP, Prometheus) must
+  /// not stay valid either. Whoever still needs them switches them on again
+  /// and gets new ones.
+  void Function()? onLockout;
+
   /// Sets a new password. The sticker password does not count as new: the box
   /// then cleans up the boot partition, and it would still be on the sticker.
   ///
@@ -1076,6 +1098,7 @@ class BoxAccess {
     _codes.clear();
     await _save();
     onAccessChanged?.call();
+    onLockout?.call();
     if (wasSticker) await _requestScrub('box');
   }
 
@@ -1289,6 +1312,7 @@ class BoxAccess {
     _codes.clear();
     await _save();
     onAccessChanged?.call();
+    onLockout?.call();
   }
 
   /// Pairing link for the app, e.g. `knxmonitor://box?url=http://10.42.0.1:8765/&code=…`, with a
@@ -1436,12 +1460,15 @@ class BoxAccess {
       try {
         switch (path) {
           case '/pair':
-            // The page itself needs the password, so it may also hand out a
-            // device with admin rights (as POST /api/box/pair does): Home
-            // Assistant and ioBroker need one for /api/ha/.
+            // A device with admin rights (Home Assistant and ioBroker need one
+            // for /api/ha/) only with the password itself, as POST
+            // /api/box/pair does: the page also opens with an admin token or a
+            // browser session.
             final admin = form['admin'] == '1';
             final viewOnly = form['viewOnly'] == '1';
-            if (form['direct'] == '1') {
+            if (admin && !await _withPassword(request, form['current'])) {
+              notice = 'Für ein Gerät mit „Verwalten“ bitte das aktuelle Passwort eingeben.';
+            } else if (form['direct'] == '1') {
               // Asked for explicitly: the device token itself, for what cannot hand in a code.
               key = await pair(form['name'] ?? '', admin: admin, viewOnly: viewOnly);
               link = pairingLink(host, key: key);
@@ -1462,6 +1489,9 @@ class BoxAccess {
               } else {
                 notice = 'Das aktuelle Passwort stimmt nicht.';
               }
+            } else if (_revokeNeedsPassword(request, form['id'] ?? '') &&
+                !await _withPassword(request, form['current'])) {
+              notice = 'Ein Gerät mit „Verwalten“ lässt sich nur mit dem aktuellen Passwort sperren.';
             } else {
               await revoke(form['id'] ?? '');
               notice = 'Gerät gesperrt.';
@@ -1521,7 +1551,8 @@ class BoxAccess {
   /// - `POST /api/box/pair` `{name}` → `{key, id, name}`: new device with
   ///   admin rights; this is how the app pairs with the sticker password.
   /// - `GET /api/box/devices` → devices (without hash), `self` on the requester.
-  /// - `POST /api/box/devices/revoke` `{id}` or `{id: "*", current}`.
+  /// - `POST /api/box/devices/revoke` `{id}` or `{id: "*", current}`; `{id, current}` for
+  ///   another device with admin rights ([_withPassword]).
   /// - `POST /api/box/password` `{password, current}` (at least 8 characters),
   ///   not the one from the sticker.
   ///
@@ -1598,6 +1629,10 @@ class BoxAccess {
           }
           await revokeAll();
         } else {
+          if (_revokeNeedsPassword(request, id) && !await _withPassword(request, body['current'])) {
+            await _deny(response, HttpStatus.forbidden, 'Nur mit dem aktuellen Passwort.');
+            return;
+          }
           await revoke(id);
         }
         result = {'ok': true};
@@ -1744,6 +1779,8 @@ class BoxAccess {
       ..write('<label class="check"><input type="checkbox" name="direct" value="1"> Schlüssel direkt anzeigen: ')
       ..write('nur für Home Assistant, ioBroker und Apps bis 1.11.2. Statt des Einmal-Codes steht dann der ')
       ..write('dauerhafte Schlüssel im Link</label>')
+      ..write('<input type="password" name="current" autocomplete="current-password" ')
+      ..write('placeholder="Aktuelles Passwort (nur für „Verwalten“)">')
       ..write('<button>QR-Code erzeugen</button></form></section>');
     if (codes.isNotEmpty) {
       out.write('<section><h2>Kopplungscodes</h2><ul>');
@@ -1776,8 +1813,14 @@ class BoxAccess {
           ..write('<br><small>gekoppelt ${_date(d.created)}')
           ..write(d.lastUsed == null ? '' : ' · zuletzt ${_date(d.lastUsed!)}')
           ..write('</small></span><form method="post" action="/pair/revoke">')
-          ..write('<input type="hidden" name="id" value="${e.convert(d.id)}"><button class="quiet">Sperren</button>')
-          ..write('</form></li>');
+          ..write('<input type="hidden" name="id" value="${e.convert(d.id)}">')
+          ..write(
+            d.admin
+                ? '<input type="password" name="current" autocomplete="current-password" '
+                      'placeholder="Aktuelles Passwort">'
+                : '',
+          )
+          ..write('<button class="quiet">Sperren</button></form></li>');
       }
       out
         ..write('</ul><form method="post" action="/pair/revoke"><input type="hidden" name="id" value="*">')

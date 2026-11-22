@@ -61,11 +61,21 @@ git -C "$DIR" push -q origin HEAD
 echo "pushed to $REPO"
 [ "$release" = 1 ] || exit 0
 tag="v$version"
-if git -C "$DIR" rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
-  echo "$tag exists – raise the version in manifest.json for a new release" >&2
+if gh release view "$tag" -R "$REPO" >/dev/null 2>&1; then
+  echo "$tag is already released – raise the version in manifest.json for a new release" >&2
   exit 1
 fi
-git -C "$DIR" tag -a "$tag" -m "Busclear integration $version"
+if git -C "$DIR" rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+  # An earlier run got as far as the tag and then failed (push or release):
+  # continue, but only for this very state.
+  if [ "$(git -C "$DIR" rev-parse "$tag^{commit}")" != "$(git -C "$DIR" rev-parse HEAD)" ]; then
+    echo "$tag exists on another commit – raise the version in manifest.json for a new release" >&2
+    exit 1
+  fi
+  echo "$tag exists without a release – continuing"
+else
+  git -C "$DIR" tag -a "$tag" -m "Busclear integration $version"
+fi
 git -C "$DIR" push -q origin "$tag"
 gh release create "$tag" -R "$REPO" --title "Busclear $version" --latest \
   --notes "Busclear integration $version. Needs the Busclear add-on 1.9.7 or newer; see README for what it adds."

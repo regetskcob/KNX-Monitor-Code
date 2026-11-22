@@ -146,7 +146,9 @@ cmd_check() {
 pr_to_main() {
   local branch=$1 title=$2
   git push -q -f origin "HEAD:refs/heads/$branch"
-  local url; url=$(gh pr create -R "$REPO" --base main --head "$branch" --title "$title" --body "Opened by tool/release.sh.")
+  # A pull request left open by a run that failed later is taken up again.
+  local url; url=$(gh pr list -R "$REPO" --head "$branch" --state open --json url --jq '.[0].url // ""')
+  [ -n "$url" ] || url=$(gh pr create -R "$REPO" --base main --head "$branch" --title "$title" --body "Opened by tool/release.sh.")
   say "Pull request: $url – waiting for checks"
   sleep 15
   # Changes only to docs start no CI run; then there is nothing to wait for.
@@ -164,19 +166,33 @@ pr_to_main() {
 cmd_addon() {
   require_clean_main ahead
   local v; v=$(addon_version)
-  tag_exists "addon-v$v" && die "addon-v$v already exists – bump version in $ADDON_CONFIG"
+  # A run that failed after the tag (merge, public repository, release) left the
+  # images published but Home Assistant without the version. Every step below can
+  # be repeated, so the same command continues there – as long as the tag is
+  # part of HEAD and the release does not exist yet.
+  local resume=no
+  if tag_exists "addon-v$v"; then
+    public_release_exists "$PUBLIC_REPO" "addon-v$v" && die "addon-v$v is already released – bump version in $ADDON_CONFIG"
+    git fetch -q origin "refs/tags/addon-v$v:refs/tags/addon-v$v" 2>/dev/null || true
+    git merge-base --is-ancestor "addon-v$v" HEAD 2>/dev/null ||
+      die "addon-v$v already exists and is not part of HEAD – bump version in $ADDON_CONFIG"
+    resume=yes
+    say "addon-v$v is tagged but not released – continuing with images, merge, public repository and release"
+  fi
   local notes; notes=$(changelog_section "$v")
   [ -n "$notes" ] || die "no CHANGELOG entry for $v in $ADDON_CHANGELOG"
-  # Smoke test locally first: a broken image stops here, before the tag, and the
-  # tag's CI skips the test (werkbank/smoke). Without podman/docker the CI runs it.
-  if ! smoke_stamped; then
-    if [ -n "$(smoke_engine)" ]; then cmd_smoke; else warn "no podman/docker – the CI runs the smoke test"; fi
+  if [ "$resume" = no ]; then
+    # Smoke test locally first: a broken image stops here, before the tag, and the
+    # tag's CI skips the test (werkbank/smoke). Without podman/docker the CI runs it.
+    if ! smoke_stamped; then
+      if [ -n "$(smoke_engine)" ]; then cmd_smoke; else warn "no podman/docker – the CI runs the smoke test"; fi
+    fi
+    say "Tagging addon-v$v (main stays unmerged until the images exist)"
+    git tag -a "addon-v$v" -m "Home Assistant add-on $v"
+    wb_push_tag "addon-v$v"
+    say "Waiting for image workflow"
+    sleep 10
   fi
-  say "Tagging addon-v$v (main stays unmerged until the images exist)"
-  git tag -a "addon-v$v" -m "Home Assistant add-on $v"
-  wb_push_tag "addon-v$v"
-  say "Waiting for image workflow"
-  sleep 10
   local run; run=$(gh run list -R "$REPO" --workflow addon.yml --branch "addon-v$v" -L 1 --json databaseId --jq '.[0].databaseId')
   [ -n "$run" ] || die "workflow run for addon-v$v not found"
   # "approve" only waits with required reviewers (private repo: only with
@@ -190,6 +206,7 @@ cmd_addon() {
   git merge-base --is-ancestor "addon-v$v" HEAD || die "addon-v$v is not in main after the merge"
   say "Updating public repository – Home Assistant now offers $v"
   tool/sync_public.sh "addon-v$v" --push
+  # Repeated after a failed run: sync_public.sh says "already up to date".
   say "Creating GitHub release"
   # SBOM of the server (CycloneDX, tool/sbom.py) as a release file: what is inside, for the CRA.
   local sbom; sbom=$(mktemp -d)
@@ -386,7 +403,7 @@ cmd_desktop() {
   tag_exists "app-v$v" || die "app-v$v not tagged – run tool/release.sh app first"
   # The tag run, not the push run of the same commit: only it has the desktop artifacts.
   local run; run=$(desktop_run "app-v$v")
-  [ -n "$run" ] || die "no CI run for tag app-v$v with a successful linux job – wait for it (gh run list -R $REPO --workflow ci.yml), artifacts are kept 7 days"
+  [ -n "$run" ] || die "no CI run for tag app-v$v with a successful linux job – wait for it (gh run list -R $REPO --workflow ci.yml), artifacts are kept 1 day (retention-days in ci.yml)"
   local tmp; tmp=$(mktemp -d)
   say "Downloading desktop builds of CI run $run"
   gh run download "$run" -R "$REPO" -n knx-monitor-linux -D "$tmp/linux"

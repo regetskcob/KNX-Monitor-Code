@@ -75,6 +75,20 @@ final class BoxLink {
   /// refuses before it sends (`addon_io.dart`).
   bool get plainOverInternet => !encrypted && !isLocal && !isHomeName(url.host);
 
+  /// Plain HTTP that leaves this device: whoever answers under the address reads what the app
+  /// sends, and nothing proves it is the paired box (no certificate to recognise it by). The
+  /// keyring and IP Secure credentials never go over such a link (`BoxKeyringConsent`), and the
+  /// project only as long as the box still holds what was last shared (`BoxShare`). Loopback
+  /// stays on the device and does not count.
+  bool get plainOverNetwork => !encrypted && !_isLoopback(url.host);
+
+  static bool _isLoopback(String rawHost) {
+    final host = rawHost.toLowerCase();
+    if (host == 'localhost' || host == '::1' || host == '[::1]') return true;
+    final parts = host.split('.');
+    return parts.length == 4 && parts.first == '127' && parts.every(RegExp(r'^[0-9]{1,3}$').hasMatch);
+  }
+
   /// Whether [rawHost] is a name only the home network can resolve: a single label (`nas`,
   /// `busclear`) or one under a domain reserved for private use (`.home.arpa`, RFC 8375;
   /// `.internal`). The network the device is in answers such a name itself, as it does for a
@@ -92,6 +106,15 @@ final class BoxLink {
   BoxLink withPassword(String password) => carriesSecret || password.isEmpty
       ? this
       : BoxLink(url: url, name: name, ssid: ssid, wifi: wifi, password: password, fp: fp);
+
+  /// Copy that speaks HTTPS and trusts only the certificate with [fingerprint] (as the box reports
+  /// it in `/api/box`), on [port] if the box serves TLS on another one. `null` if [fingerprint] is
+  /// not one or the link is encrypted already.
+  BoxLink? withTls(String fingerprint, {int? port}) {
+    if (encrypted || !RegExp(r'^[A-Za-z0-9_-]{43}$').hasMatch(fingerprint)) return null;
+    final target = port == null || port <= 0 || port > 65535 ? url : url.replace(port: port);
+    return BoxLink(url: target, key: key, name: name, ssid: ssid, wifi: wifi, fp: fingerprint);
+  }
 
   /// Copy with device access and without password or pairing code, for storing after pairing.
   BoxLink paired(String deviceKey) => BoxLink(url: url, key: deviceKey, name: name, ssid: ssid, wifi: wifi, fp: fp);

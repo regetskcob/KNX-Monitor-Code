@@ -68,6 +68,64 @@ void main() {
     tunnel.dispose();
   });
 
+  test('Entschärfen im Nachlauf: Aufnahme endet trotzdem, weitere Telegramme laufen durch', () async {
+    final tunnel = KnxTunnel('test');
+    final model = MonitorModel(tunnel);
+    final done = <Recording>[];
+    final sub = model.triggeredRecordings.listen(done.add);
+    model.armTrigger(TriggerConfig(kind: TriggerKind.address, address: rain, value: 'ein', pre: 1, post: 2));
+
+    tunnel.inject(t(rain, [1], small: true));
+    await Future<void>.delayed(Duration.zero);
+    expect(model.triggerRecording, isTrue);
+
+    model.armTrigger(null); // Expertenmodus aus
+    tunnel.inject(t(temp, [0x0C, 0x30]));
+    tunnel.inject(t(temp, [0x0C, 0x31]));
+    tunnel.inject(t(temp, [0x0C, 0x32]));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(done, hasLength(1));
+    expect(done.single.telegrams, hasLength(3));
+    expect(model.triggerRecording, isFalse);
+    expect(model.recording, isFalse);
+    expect(model.trigger, isNull);
+    expect(model.log, hasLength(4));
+
+    await sub.cancel();
+    model.dispose();
+    tunnel.dispose();
+  });
+
+  test('Monitor verlassen: laufende Aufnahme wird herausgegeben, auch im Nachlauf', () async {
+    final tunnel = KnxTunnel('test');
+    final model = MonitorModel(tunnel);
+    expect(model.finishRunningRecording(name: 'x'), isNull);
+
+    model.startRecording();
+    tunnel.inject(t(temp, [0x0C, 0x30]));
+    await Future<void>.delayed(Duration.zero);
+    final copy = model.snapshotRecording(name: 'Kopie')!;
+    expect(copy.telegrams, hasLength(1));
+    expect(model.recording, isTrue);
+    final manual = model.finishRunningRecording(name: 'Hand')!;
+    expect(manual.id, copy.id);
+    expect(model.recording, isFalse);
+
+    model.armTrigger(TriggerConfig(kind: TriggerKind.address, address: rain, value: 'ein', pre: 0, post: 5));
+    tunnel.inject(t(rain, [1], small: true));
+    await Future<void>.delayed(Duration.zero);
+    final fired = model.finishRunningRecording(name: 'Trigger')!;
+    expect(fired.telegrams, hasLength(1));
+    expect(model.triggerRecording, isFalse);
+    tunnel.inject(t(temp, [0x0C, 0x31]));
+    await Future<void>.delayed(Duration.zero);
+    expect(model.recording, isFalse);
+
+    model.dispose();
+    tunnel.dispose();
+  });
+
   test('Vergleich mit dem Wert: Zahl, Text, enthält', () {
     final log = TelegramLog();
     bool hit(ValueCompare c, String value, Telegram x) =>
@@ -83,5 +141,25 @@ void main() {
     expect(hit(ValueCompare.notEquals, 'Aus', on), isTrue);
     expect(hit(ValueCompare.greater, 'Aus', on), isFalse);
     expect(hit(ValueCompare.contains, 'in', on), isTrue);
+  });
+
+  test('Aufnahme an der Obergrenze endet und wird gemeldet, statt weiter zu wachsen', () async {
+    final limit = MonitorModel.recordingLimit;
+    MonitorModel.recordingLimit = 3;
+    addTearDown(() => MonitorModel.recordingLimit = limit);
+    final tunnel = KnxTunnel('test');
+    final model = MonitorModel(tunnel);
+    final full = <Recording>[];
+    final sub = model.fullRecordings.listen(full.add);
+    model.startRecording();
+    for (var i = 0; i < 5; i++) {
+      tunnel.inject(t(temp, [0x0C, 0x20 + i]));
+    }
+    await Future<void>.delayed(Duration.zero);
+    expect(full, hasLength(1));
+    expect(full.single.telegrams, hasLength(3));
+    expect(model.recording, isFalse);
+    await sub.cancel();
+    model.dispose();
   });
 }

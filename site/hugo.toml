@@ -33,6 +33,15 @@ disableKinds = ["taxonomy", "term", "rss", "section"]
   # They switch the button, the beta line in the roadmap and the texts that are
   # stored per state (none, ios, android, both) in data/site/<lang>.yaml.
   betaIos = true
+  # Launch: the apps are in the App Store and on Google Play. On, it replaces
+  # the beta states with "live" (store buttons, texts keyed live) and wins over
+  # betaIos/betaAndroid. Turn on together with commerce once the store versions
+  # are approved and released (internal launch list in Notion).
+  stores = false
+  # Store pages; a button shows only when its URL is set. The App Store ID
+  # (apps.apple.com/app/idNNN) is in App Store Connect under App Information.
+  appStoreUrl = ""
+  playStoreUrl = "https://play.google.com/store/apps/details?id=de.kalkar_it.knxmonitor"
   # Public source code (GPLv3), hero button and FAQ.
   codeUrl = "https://github.com/regetskcob/KNX-Monitor-Code"
   betaAndroid = true
@@ -41,7 +50,7 @@ disableKinds = ["taxonomy", "term", "rss", "section"]
   legalUrl = "https://www.regetskcob.de/legal/"
   supportMail = "support@busclear.de"
   # Busclear Box image (as on the landing page).
-  boxUrl = "https://github.com/regetskcob/KNX-Monitor/releases/tag/box-v1.9.10"
+  boxUrl = "https://github.com/regetskcob/KNX-Monitor/releases/tag/box-v1.12.0"
   # For the draft pages (store graphics, headers, buy page; layouts baseof, store,
   # header, appheader, kaufen with partials in _partials/drafts/).
   ogImage = "images/og.png"

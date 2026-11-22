@@ -493,7 +493,7 @@ class _ServiceReportScreenState extends State<ServiceReportScreen> {
             field(s.acceptSigner, _signer),
             OutlinedButton.icon(
               onPressed: _sign,
-              icon: Icon(_signature.isEmpty ? AppIcons.acceptance : AppIcons.success, size: 18),
+              icon: Icon(_signature.isEmpty ? AppIcons.acceptance : AppIcons.success, size: HzIconSize.row),
               label: Text(_signature.isEmpty ? s.acceptSignCustomer : s.srSigned),
             ),
           ],

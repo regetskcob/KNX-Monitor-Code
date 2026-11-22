@@ -371,7 +371,7 @@ class _EditRow extends StatelessWidget {
               ),
               const SizedBox(width: Gap.item),
               if (edited) ...[
-                Icon(AppIcons.edit, size: 14, color: hz.textMuted, semanticLabel: s.replayEdited),
+                Icon(AppIcons.edit, size: HzIconSize.badge, color: hz.textMuted, semanticLabel: s.replayEdited),
                 const SizedBox(width: HzSpace.s4),
               ],
               Text(store.value(t), style: data.copyWith(color: edited ? hz.accentText : null)),

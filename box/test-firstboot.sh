@@ -86,7 +86,10 @@ INTERNET_SHARING=yes
 LAN_ACCESS=yes
 READ_ONLY=yes
 HEALTH_CHECK=yes
+TIMEZONE=America/New_York
 CONF
+mkdir -p "$tmp/root/usr/share/zoneinfo/America"
+: >"$tmp/root/usr/share/zoneinfo/America/New_York"
 # shellcheck disable=SC2016 # darf gerade nicht ausgeführt werden
 printf 'NAME=$(touch /tmp/knx-box-pwned)\r\n' >>"$tmp/root/boot/firmware/knx-box.txt"
 run
@@ -100,6 +103,35 @@ grep -q '^LAN_ACCESS="yes"$' "$tmp/root/etc/knx-box/env" || fail "Kabel freigege
 grep -q '^READ_ONLY="1"$' "$tmp/root/etc/knx-box/env" || fail "Nur-Lesen"
 grep -q '^HEALTH_CHECK="true"$' "$tmp/root/etc/knx-box/env" || fail "Gesundheitsprüfung"
 grep -qF 'P:Geheim\;Wlan\:1;;' "$tmp/root/boot/firmware/knx-box-wlan.png" || fail "QR-Maskierung"
+grep -q '^TZ="America/New_York"$' "$tmp/root/etc/knx-box/env" || fail "Zeitzone nicht übernommen"
+[ "$(value TIMEZONE)" = America/New_York ] || fail "TIMEZONE zurückgeschrieben"
+# Unknown or made-up zones fall back to the default and write no TZ line.
+for zone in Mars/Olympus ../../etc/passwd; do
+  rm -rf "$tmp/root/etc/knx-box"
+  printf 'TIMEZONE=%s\n' "$zone" >"$tmp/root/boot/firmware/knx-box.txt"
+  run
+  ! grep -q '^TZ=' "$tmp/root/etc/knx-box/env" || fail "Zeitzone $zone übernommen"
+  [ "$(value TIMEZONE)" = Europe/Berlin ] || fail "TIMEZONE nicht auf den Standard gesetzt"
+done
+
+# 2b. Interrupted first boot (power cut, failed step): env is the "done" mark and
+# must only appear at the very end, so that the next boot starts over. The SSH key
+# is not appended a second time. Here writing the link fails (a directory in its place).
+rm -rf "$tmp/root/etc/knx-box" "$tmp/calls"
+cp "$here/files/knx-box.txt" "$tmp/root/boot/firmware/"
+rm -f "$tmp/root/boot/firmware/knx-box-link.txt"
+mkdir "$tmp/root/boot/firmware/knx-box-link.txt"
+if run 2>/dev/null; then fail "Abbruch nicht bemerkt"; fi
+[ ! -e "$tmp/root/etc/knx-box/env" ] || fail "env steht schon nach einem abgebrochenen Erststart"
+first_box=$(value BOX_PASSWORD)
+[ -n "$first_box" ] || fail "knx-box.txt nach dem Abbruch ohne Passwort"
+rmdir "$tmp/root/boot/firmware/knx-box-link.txt"
+run
+[ -f "$tmp/root/etc/knx-box/env" ] || fail "zweiter Erststart legt env nicht an"
+[ ! -e "$tmp/root/etc/knx-box/env.new" ] || fail "env.new bleibt liegen"
+[ "$(value BOX_PASSWORD)" = "$first_box" ] || fail "zweiter Erststart würfelt ein anderes Passwort"
+grep -q "^BOX_PASSWORD=\"$first_box\"$" "$tmp/root/etc/knx-box/env" || fail "env passt nicht zu knx-box.txt"
+[ ! -e "$tmp/root/boot/firmware/knx-box.txt.new" ] || fail "knx-box.txt.new bleibt liegen"
 
 # 2a. Clear passwords from the card when the server asks for it.
 secrets() { PATH="$tmp/bin:$PATH" KNX_BOX_ROOT="$tmp/root" bash "$here/files/secrets.sh" "$@" >"$tmp/secrets.out"; }
@@ -122,6 +154,9 @@ secrets
 [ "$(value WLAN_PASSWORD)" = "$old_wlan" ] || fail "WLAN-Passwort zu früh entfernt"
 [ "$(value NAME)" = KNX-Box-1A2B ] || fail "knx-box.txt beschädigt"
 ! grep -q BOX_PASSWORD "$tmp/root/etc/knx-box/env" || fail "Box-Passwort noch in env"
+# Replaced by rename, with the old permissions and nothing left behind.
+[ "$(stat -c %a "$tmp/root/etc/knx-box/env" 2>/dev/null || stat -f %Lp "$tmp/root/etc/knx-box/env")" = 600 ] || fail "env-Rechte nach dem Ersetzen"
+[ -z "$(find "$tmp/root/etc/knx-box" "$boot" -name '.*.new~')" ] || fail "Zwischendatei bleibt liegen"
 grep -q '^BOX_NAME=' "$tmp/root/etc/knx-box/env" || fail "env beschädigt"
 ! grep -rqF "$old_box" "$boot" || fail "Box-Passwort noch auf der Karte: $(grep -rlF "$old_box" "$boot")"
 case "$(cat "$boot/knx-box-link.txt")" in
@@ -228,7 +263,7 @@ mkdir "$tmp/sys"
 for d in /usr/bin /bin /usr/sbin /sbin; do
   for f in "$d"/*; do
     n=${f##*/}
-    [ "$n" = qrencode ] || [ -e "$tmp/sys/$n" ] || ln -s "$f" "$tmp/sys/$n"
+    [ "$n" = qrencode ] || [ -e "$tmp/sys/$n" ] || [ -L "$tmp/sys/$n" ] || ln -s "$f" "$tmp/sys/$n"
   done
 done
 rm -rf "$tmp/root/etc/knx-box" "$tmp/root/boot/firmware/"knx-box-*
@@ -337,9 +372,64 @@ grep -qx "mount -t ext4 -o noatime,commit=5,nosuid,nodev,noexec $tmp/KNXBOXDATA 
   fail "Partition nicht eingehängt"
 FSCK_RC=1 data
 grep -q '^mount ' "$tmp/data-calls" || fail "nach Reparatur nicht eingehängt"
+[ -f "$tmp/root/etc/knx-box/data-on-ssd" ] || fail "Box merkt sich die Datenpartition nicht"
+# A box that never ran on the partition stays on the SD card without an error.
+rm "$tmp/root/etc/knx-box/data-on-ssd"
 FSCK_RC=4 data
 ! grep -q '^mount ' "$tmp/data-calls" || fail "trotz Dateisystemfehler eingehängt"
 MOUNT_RC=32 data
+[ ! -e "$tmp/root/etc/knx-box/data-on-ssd" ] || fail "Merker ohne eingehängte Partition"
+data
+# Once mounted, the box remembers it: a missing or broken partition is then an
+# error (unit failed), after a much longer wait, instead of a silent SD card.
+[ -f "$tmp/root/etc/knx-box/data-on-ssd" ] || fail "Box merkt sich die Datenpartition nicht"
+data_fails() {
+  rm -f "$tmp/data-calls"
+  if PATH="$tmp/bin-data:$PATH" KNX_BOX_ROOT="$tmp/root" KNX_BOX_DATA_DEV="$tmp/KNXBOXDATA" "$@" \
+    bash "$here/files/data-mount.sh" >/dev/null 2>&1; then fail "data-mount.sh verschweigt die fehlende Datenpartition"; fi
+}
+data_fails env FSCK_RC=4
+data_fails env MOUNT_RC=32
+rm -f "$tmp/KNXBOXDATA"
+data_fails env
+[ "$(grep -c '^sleep ' "$tmp/data-calls")" -eq 120 ] || fail "wartet nicht länger auf die bekannte Datenpartition"
+rm "$tmp/root/etc/knx-box/data-on-ssd"
+data
+[ "$(grep -c '^sleep ' "$tmp/data-calls")" -eq 6 ] || fail "ohne Merker zu lange gewartet"
+
+# 6a. Health check: three silent checks in a row restart the server, an answer
+# in between starts over, and a stopped server is left alone.
+mkdir -p "$tmp/bin-health" "$tmp/root/run"
+# shellcheck disable=SC2016 # Skript für den Ersatzbefehl, bewusst unexpandiert
+printf '#!/bin/sh\necho "systemctl $*" >>"%s/health-calls"\n[ "$1" != show ] || echo "${ACTIVE_SINCE:-}"\n[ "$1" != is-active ] || [ -z "${SERVER_DOWN:-}" ]\n' "$tmp" >"$tmp/bin-health/systemctl"
+# shellcheck disable=SC2016 # Skript für den Ersatzbefehl, bewusst unexpandiert
+printf '#!/bin/sh\necho "${HEALTH_CODE:-000}"\n[ "${HEALTH_CODE:-000}" != 000 ] || exit "${HEALTH_RC:-28}"\n' >"$tmp/bin-health/curl"
+chmod +x "$tmp/bin-health/"*
+health() { PATH="$tmp/bin-health:$PATH" KNX_BOX_ROOT="$tmp/root" bash "$here/files/health.sh" >/dev/null 2>&1; }
+restarted() { grep -q '^systemctl restart knx-box.service$' "$tmp/health-calls"; }
+: >"$tmp/health-calls"
+health; health
+! restarted || fail "Neustart schon nach zwei stummen Prüfungen"
+HEALTH_CODE=401 health
+health; health
+! restarted || fail "Antwort dazwischen setzt den Zähler nicht zurück"
+health
+restarted || fail "kein Neustart nach drei stummen Prüfungen"
+: >"$tmp/health-calls"
+HEALTH_CODE=503 health; HEALTH_CODE=503 health; HEALTH_CODE=503 health
+restarted || fail "503 zählt als gesund"
+: >"$tmp/health-calls"
+SERVER_DOWN=1 health; SERVER_DOWN=1 health; SERVER_DOWN=1 health
+! restarted || fail "angehaltener Server wird neu gestartet"
+: >"$tmp/health-calls"
+HEALTH_RC=7 health; HEALTH_RC=7 health; HEALTH_RC=7 health; HEALTH_RC=7 health
+! restarted || fail "Server, der noch startet (Port zu), wird neu gestartet"
+# Port still closed 31 minutes after the start: hangs before listening, restart.
+mkdir -p "$tmp/root/proc"; echo "1900.00 100.00" >"$tmp/root/proc/uptime"
+: >"$tmp/health-calls"
+ACTIVE_SINCE=40000000 HEALTH_RC=7 health; ACTIVE_SINCE=40000000 HEALTH_RC=7 health
+ACTIVE_SINCE=40000000 HEALTH_RC=7 health
+restarted || fail "Server, der nach 30 Minuten noch nicht lauscht, wird nicht neu gestartet"
 
 # 7. Services: systemd does not run here, so check the decisive lines.
 grep -q '^Environment=BOX_STICKER=1$' "$here/files/knx-box.service" || fail "Aufkleber-Pflicht nicht gesetzt"

@@ -109,8 +109,13 @@ class MultiTunnel extends KnxTunnel {
   void _mirror() {
     deviceName.value = children.first.deviceName.value;
     gatewayInfo.value = children.first.gatewayInfo.value;
-    tunnelAddress = children.first.tunnelAddress;
+    _mirrorAddress();
   }
+
+  /// Our own address on the bus: that of the tap point that sends. Follows the
+  /// connection state, since TCP and IP Secure never deliver a description
+  /// ([_mirror] would not run) and a reconnect may assign another address.
+  void _mirrorAddress() => tunnelAddress = (_sender ?? children.first).tunnelAddress;
 
   String _labelOf(int i) => tapLabel(children[i].tunnelAddress, names.length > i ? names[i] : '${i + 1}');
 
@@ -185,6 +190,7 @@ class MultiTunnel extends KnxTunnel {
 
   void _update() {
     if (_disposed) return;
+    _mirrorAddress();
     for (var i = 1; i < children.length; i++) {
       final up = children[i].state.value == TunnelState.connected;
       if (up && _live.add(i)) _silence.connected(i);
@@ -332,7 +338,7 @@ class MultiTunnel extends KnxTunnel {
   Stream<CemiFrame> get frames => _allFrames.stream;
 
   @override
-  Future<bool?> sendFrame(Uint8List cemi, {Duration timeout = const Duration(seconds: 3)}) {
+  Future<bool?> sendFrame(Uint8List cemi, {Duration timeout = const Duration(seconds: 3)}) async {
     final sender = senderFor(cemi);
     if (sender == null) throw const KnxException('not connected');
     return sender.sendFrame(cemi, timeout: timeout);

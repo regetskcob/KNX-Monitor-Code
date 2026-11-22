@@ -1881,7 +1881,7 @@ class _LineActivity extends StatelessWidget {
                   children: [
                     Flexible(child: Kennung(label, color: hz.accentText)),
                     const SizedBox(width: HzSpace.s2),
-                    Icon(AppIcons.cycle, size: 14, color: hz.accentText),
+                    Icon(AppIcons.cycle, size: HzIconSize.badge, color: hz.accentText),
                   ],
                 ),
               ),
@@ -2740,12 +2740,12 @@ class _GroupView extends StatelessWidget {
             ),
             OutlinedButton.icon(
               onPressed: onDetails,
-              icon: const Icon(AppIcons.history, size: 18),
+              icon: const Icon(AppIcons.history, size: HzIconSize.row),
               label: Text(s.topoGroupDetails),
             ),
             OutlinedButton.icon(
               onPressed: onMap,
-              icon: const Icon(AppIcons.communicationMap, size: 18),
+              icon: const Icon(AppIcons.communicationMap, size: HzIconSize.row),
               label: Text(s.mapTitle),
             ),
           ],

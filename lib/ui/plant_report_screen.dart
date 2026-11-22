@@ -104,6 +104,12 @@ class _PlantReportScreenState extends State<PlantReportScreen> {
     _token.clear();
   }
 
+  /// Tries to load again after an error.
+  void _retry() {
+    setState(() => _error = null);
+    unawaited(_load());
+  }
+
   Future<void> _load() async {
     try {
       final o = await widget.client.overview();
@@ -134,15 +140,22 @@ class _PlantReportScreenState extends State<PlantReportScreen> {
 
   Future<void> _test() async {
     final messenger = ScaffoldMessenger.of(context);
+    final colors = context.hz;
     await _configure(_target);
     if (_error != null) return;
     try {
       final error = await widget.client.sendTest();
       messenger.showSnackBar(
-        SnackBar(content: Text(error == null ? s.plantTestSent : s.plantTestFailed(plantNotifyError(error)))),
+        horizontMessageSnackBar(
+          colors,
+          error == null ? s.plantTestSent : s.plantTestFailed(plantNotifyError(error)),
+          status: error == null ? HorizontStatus.positive : HorizontStatus.critical,
+        ),
       );
     } on AddonException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(s.plantTestFailed(e.message))));
+      messenger.showSnackBar(
+        horizontMessageSnackBar(colors, s.plantTestFailed(e.message), status: HorizontStatus.critical),
+      );
     }
   }
 
@@ -432,7 +445,14 @@ class _PlantReportScreenState extends State<PlantReportScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(s.plantTitle)),
       body: o == null
-          ? Center(child: _error == null ? const CircularProgressIndicator.adaptive() : Text(_error!))
+          ? (_error == null
+                ? const LoadingHint()
+                // Failed to load: say so with the sign and offer the next step.
+                : HorizontEmptyHint(
+                    text: _error!,
+                    status: HorizontStatus.critical,
+                    action: (label: s.busmonRetry, onPressed: _retry),
+                  ))
           : LayoutBuilder(builder: (context, box) => box.maxWidth < Breakpoints.expanded ? _narrow(o) : _wide(o)),
     );
   }
@@ -499,7 +519,7 @@ class PlantReportDetailScreen extends StatelessWidget {
         child: Builder(
           builder: (button) => FilledButton.icon(
             onPressed: () => _pdf(button),
-            icon: const Icon(AppIcons.report, size: 18),
+            icon: const Icon(AppIcons.report, size: HzIconSize.row),
             label: Text(s.plantPdf),
           ),
         ),
@@ -617,7 +637,7 @@ class PlantReportDetailScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (critical) ...[
-            Icon(HorizontStatus.critical.icon, size: 16, color: hz.critical),
+            Icon(HorizontStatus.critical.icon, size: HzIconSize.inline, color: hz.critical),
             const SizedBox(width: HzSpace.s4),
           ],
           Expanded(child: Text(text, style: theme.textTheme.bodyMedium)),

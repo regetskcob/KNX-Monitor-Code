@@ -55,9 +55,40 @@ void main() {
   });
 
   group('Keyring-Freigabe', () {
-    final box = BoxLink(url: Uri.parse('http://10.42.0.1/'));
-    final other = BoxLink(url: Uri.parse('http://10.42.0.2/'));
-    tearDown(() => BoxKeyringConsent.ask = null);
+    final fp = 'A' * 43;
+    final box = BoxLink(url: Uri.parse('http://10.42.0.1/'), fp: fp);
+    final other = BoxLink(url: Uri.parse('http://10.42.0.2/'), fp: fp);
+    tearDown(() {
+      BoxKeyringConsent.ask = null;
+      BoxKeyringConsent.tellPlain = null;
+    });
+
+    test('unverschlüsselt: nie, ohne Frage, auch nicht mit früherem Ja; einmal gesagt', () async {
+      final plain = BoxLink(url: Uri.parse('http://192.168.1.50/'), key: 'testzugang');
+      // An earlier yes for the same address (stored before this rule existed).
+      SharedPreferences.setMockInitialValues({'box_keyring_consent:http://192.168.1.50/': true});
+      var asked = 0;
+      final told = <BoxLink>[];
+      BoxKeyringConsent.ask = (_) async {
+        asked++;
+        return true;
+      };
+      BoxKeyringConsent.tellPlain = told.add;
+      expect(plain.plainOverNetwork, isTrue);
+      expect(await BoxKeyringConsent.allowed(plain), isFalse);
+      expect(await BoxKeyringConsent.allowed(plain), isFalse);
+      expect(asked, 0);
+      expect(told, [plain], reason: 'der Hinweis kommt je Box einmal');
+      await BoxKeyringConsent.forget(plain);
+    });
+
+    test('Loopback bleibt auf dem Gerät und zählt nicht als Klartext im Netz', () {
+      expect(BoxLink(url: Uri.parse('http://127.0.0.1:8765/')).plainOverNetwork, isFalse);
+      expect(BoxLink(url: Uri.parse('http://localhost:8765/')).plainOverNetwork, isFalse);
+      expect(BoxLink(url: Uri.parse('http://knx-box.local/')).plainOverNetwork, isTrue);
+      expect(BoxLink(url: Uri.parse('http://10.42.0.1/')).plainOverNetwork, isTrue);
+      expect(box.plainOverNetwork, isFalse);
+    });
 
     test('ohne Oberfläche keine Freigabe, und nichts wird gemerkt', () async {
       SharedPreferences.setMockInitialValues({});

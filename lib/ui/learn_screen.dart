@@ -52,7 +52,7 @@ Future<void> showTerm(BuildContext context, Term term, {bool more = true}) => sh
                     Navigator.pop(sheet);
                     openLearn(context);
                   },
-                  icon: const Icon(AppIcons.learn, size: 18),
+                  icon: const Icon(AppIcons.learn, size: HzIconSize.row),
                   label: Text(s.glossaryMore),
                 ),
               ),
@@ -80,7 +80,7 @@ class TermChips extends StatelessWidget {
     children: [
       for (final t in terms)
         ActionChip(
-          avatar: const Icon(AppIcons.glossary, size: 16),
+          avatar: const Icon(AppIcons.glossary, size: HzIconSize.inline),
           label: Text(t.title),
           onPressed: () => showTerm(context, t, more: more),
         ),
@@ -130,7 +130,7 @@ class LearnScreen extends StatelessWidget {
               }
               go(lesson.target);
             },
-            icon: const Icon(AppIcons.next, size: 18),
+            icon: const Icon(AppIcons.next, size: HzIconSize.row),
             label: Text(s.lessonsTry(lesson.tryIt), textAlign: TextAlign.start),
           ),
         )
@@ -348,7 +348,7 @@ class _QuizState extends State<_Quiz> {
                 onPressed: answered != null ? null : () => setState(() => _answers[_index] = i),
                 // Right/wrong with a symbol and a word, not just color.
                 icon: answered == null
-                    ? const Icon(AppIcons.unselected, size: 18)
+                    ? const Icon(AppIcons.unselected, size: HzIconSize.row)
                     : Icon(
                         i == q.correct
                             ? AppIcons.success

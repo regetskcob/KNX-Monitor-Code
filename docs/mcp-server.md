@@ -34,10 +34,15 @@ Reviewed on 9 November 2026. In place:
   A new token on every switch-on and on "issue new token". The token is
   stored in `mcp.json` in the data root, outside the file store
   (`/api/files` cannot serve it).
+- **Lockout:** on a box or in Docker, changing the password and "lock out all
+  devices" switch the access off and forget the token; an admin switches it on
+  again and gets a new one.
 - **Scope:** the token opens only `POST /api/mcp`. The settings need the
   normal admin login (Ingress, or a box admin device).
 - **Box:** with its certificate, the token is refused over plain HTTP, so it
-  only crosses the network over HTTPS. The add-on has no HTTPS of its own;
+  only crosses the network over HTTPS. Where the box does not even ask for the
+  password (over the cable without LAN access, or under a foreign host name on
+  a container without LAN access), the token is refused as well. The add-on has no HTTPS of its own;
   the app warns about that.
 - **Limits:** request body at most 64 KiB, at most 10 messages per batch, one
   tool call at a time (others get `busy`), at most 31 days per call.

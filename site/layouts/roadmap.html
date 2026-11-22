@@ -45,7 +45,7 @@
 <div class="hz-feld tz-feld">
 <main id="main" class="tz-main">
 {{ partial "horizont/feld/hero.html" (dict
-    "kennung" (printf "01 — %s" $r.kennung)
+    "kennung" $r.kennung
     "title" $r.title
     "text" $r.lead
     "primary" (dict "label" $r.vote "url" $votes)
@@ -121,18 +121,18 @@
     {{- end }}
   </ol>
 </section>
-{{- /* Prices as a preview: nothing can be bought yet. */}}
+{{- /* Prices: a preview without commerce (the *_live texts), the real ones with it. */}}
 <section class="hz-feld-section tz-section tz-section--plan" id="prices">
-  {{ partial "horizont/kennung.html" (printf "02 — %s" $h.pricing.label) }}
+  {{ partial "horizont/kennung.html" $h.pricing.label }}
   <div>
     <h2>{{ $h.pricing.title }}</h2>
-    {{- with $d.roadmap.prices_preview }}<p class="tz-prices-beta">{{ . | markdownify }}</p>{{ end }}
+    {{- with partial "live.html" (dict "ctx" $d.roadmap "key" "prices_preview") }}<p class="tz-prices-beta">{{ . | markdownify }}</p>{{ end }}
     <dl class="tz-prices">
       {{- range $d.roadmap.prices }}
       <div class="tz-price{{ if eq .name "Pro" }} tz-price--pro{{ end }}"><dt>{{ .name }}</dt><dd><b>{{ .price }}{{ with .per }} <small>{{ . }}</small>{{ end }}</b><span>{{ .sub }}</span></dd></div>
       {{- end }}
     </dl>
-    <p class="tz-prices-note">{{ $d.roadmap.prices_note }}</p>
+    <p class="tz-prices-note">{{ partial "live.html" (dict "ctx" $d.roadmap "key" "prices_note") }}</p>
   </div>
   {{- $others := slice }}
   {{- range $h.pricing.others }}{{ $others = $others | append (dict "term" .term "value" .value) }}{{ end }}
@@ -142,7 +142,7 @@
 {{- $mitreden := slice }}
 {{- range $h.mitreden.points }}{{ $mitreden = $mitreden | append (dict "term" .term "value" .value) }}{{ end }}
 <section class="hz-feld-section tz-section tz-section--read" id="mitreden">
-  {{ partial "horizont/kennung.html" (printf "03 — %s" $h.mitreden.label) }}
+  {{ partial "horizont/kennung.html" $h.mitreden.label }}
   <div>
     <h2>{{ $h.mitreden.title }}</h2>
     <p>{{ printf "%s [%s](%s)" $h.mitreden.text $h.mitreden.more $issues | markdownify }}</p>

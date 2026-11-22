@@ -45,4 +45,40 @@ void main() {
       throwsA(isA<KnxException>().having((e) => e.message, 'message', s.addonReadOnly)),
     );
   });
+
+  test('nach dem Trennen zählt der alte Status nicht: connect wartet auf den neuen', () async {
+    var server = _ReadOnlyServer();
+    final tunnel = SharedTunnel(open: () async => server);
+    addTearDown(tunnel.dispose);
+    var connecting = tunnel.connect();
+    await Future<void>.delayed(Duration.zero);
+    server.status({'state': 'connected'});
+    await connecting;
+    await tunnel.disconnect();
+
+    // Meanwhile the server lost the bus.
+    server = _ReadOnlyServer();
+    connecting = tunnel.connect(timeout: const Duration(milliseconds: 100));
+    await Future<void>.delayed(Duration.zero);
+    server.status({'state': 'connecting', 'error': 'Gateway antwortet nicht'});
+    await expectLater(
+      connecting,
+      throwsA(isA<KnxException>().having((e) => e.message, 'message', 'Gateway antwortet nicht')),
+    );
+    expect(tunnel.state.value, TunnelState.disconnected);
+    expect(tunnel.error.value, 'Gateway antwortet nicht');
+  });
+
+  test('zweites connect während des Wartens: beide enden mit dem ersten Status', () async {
+    final server = _ReadOnlyServer();
+    final tunnel = SharedTunnel(open: () async => server);
+    addTearDown(tunnel.dispose);
+    final a = tunnel.connect(timeout: const Duration(milliseconds: 300));
+    await Future<void>.delayed(Duration.zero);
+    final b = tunnel.connect(timeout: const Duration(milliseconds: 300));
+    await Future<void>.delayed(Duration.zero);
+    server.status({'state': 'connected'});
+    await Future.wait([a, b]);
+    expect(tunnel.state.value, TunnelState.connected);
+  });
 }

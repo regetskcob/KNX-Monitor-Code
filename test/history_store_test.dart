@@ -31,6 +31,22 @@ void main() {
     isSmall: true,
   );
 
+  test('verlorene Einstellung löscht beim Laden nichts, Ausschalten schon', () async {
+    await store.setRetention(7);
+    store.add(t(DateTime.now(), 1));
+    await store.flush();
+    expect(await store.days(), hasLength(1));
+
+    // Einstellungen weg (z. B. defekte Datei beiseitegelegt), Dateien noch da.
+    SharedPreferences.setMockInitialValues({});
+    await store.load();
+    expect(store.retentionDays, 0);
+    expect(await store.days(), hasLength(1));
+
+    await store.setRetention(0);
+    expect(await store.days(), isEmpty);
+  });
+
   group('Stufe ohne Langzeitverlauf', () {
     test('pausiert: nichts Neues, Vorhandenes bleibt', () async {
       await store.setRetention(7);

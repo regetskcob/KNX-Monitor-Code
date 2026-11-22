@@ -124,6 +124,38 @@ class SectionCard extends StatelessWidget {
   }
 }
 
+/// Compact density for icon buttons only with a pointer: on touch the target keeps its full size
+/// (compact shrinks it to 40, below the 44 a finger needs).
+VisualDensity? pointerCompact(BuildContext context) =>
+    context.hzTheme.density == HorizontDensity.pointer ? VisualDensity.compact : null;
+
+/// A page that is still loading: the spinner with a sentence below it, so the wait says what it
+/// is waiting for ([text], by default "Wird geladen …").
+class LoadingHint extends StatelessWidget {
+  const LoadingHint({super.key, this.text});
+
+  final String? text;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(HzSpace.s24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox.square(dimension: HzSpace.s24, child: CircularProgressIndicator.adaptive(strokeWidth: 2.5)),
+          const SizedBox(height: Gap.inner),
+          Text(
+            text ?? s.commonLoading,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.hz.textMuted),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 /// Runs [work] and meanwhile shows a non-dismissible dialog with [label] and a
 /// spinner; it also closes on errors.
 Future<T> withProgress<T>(BuildContext context, String label, Future<T> Function() work) async {
@@ -136,7 +168,7 @@ Future<T> withProgress<T>(BuildContext context, String label, Future<T> Function
       useRootNavigator: true,
       builder: (dialog) => PopScope(
         canPop: false,
-        child: AlertDialog(
+        child: AlertDialog.adaptive(
           content: Row(
             children: [
               const CircularProgressIndicator.adaptive(),
@@ -635,7 +667,7 @@ class CloseDetailButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => OutlinedButton.icon(
     onPressed: onPressed,
-    icon: const Icon(AppIcons.close, size: 18),
+    icon: const Icon(AppIcons.close, size: HzIconSize.row),
     label: Text(MaterialLocalizations.of(context).closeButtonLabel),
   );
 }

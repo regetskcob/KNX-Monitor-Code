@@ -61,7 +61,7 @@ class ProjectFileHelpScreen extends StatelessWidget {
                     const SizedBox(height: Gap.inner),
                     OutlinedButton.icon(
                       onPressed: () => _copy(context),
-                      icon: const Icon(AppIcons.copy, size: 18),
+                      icon: const Icon(AppIcons.copy, size: HzIconSize.row),
                       label: Text(s.projectHelpCopy),
                     ),
                   ],

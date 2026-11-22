@@ -4,7 +4,7 @@
 
 /* The first screen holds the hero down to the horizon (below the horizon
    line of the navigation, 62 px); the sections follow on scrolling. */
-.tz-screen { min-height: calc(100svh - 62px); display: flex; flex-direction: column; }
+.tz-screen { min-height: calc(100svh - 92px); display: flex; flex-direction: column; }
 .tz-stage { margin-block: auto; }
 /* The way down to the sections, at the foot of the first screen. */
 .tz-more { align-self: center; display: inline-flex; align-items: center; gap: var(--s-8); margin: var(--s-24) 0 var(--s-16);
@@ -719,3 +719,17 @@ body.tz { overflow-x: clip; }
   .rm-line > li.rm-now > .rm-card { margin-top: 0; }
   .rm-now .rm-node::after { top: calc(0.5rem - 3px); }
 }
+
+/* Where it runs: one line per platform with its state as a badge, under the
+   actions of the first screen. */
+.tz-platforms { list-style: none; margin: var(--s-24) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s-8) var(--s-16); font-size: 0.8125rem; }
+.tz-platforms li { display: inline-flex; align-items: center; gap: var(--s-8); }
+.tz-platform-name { color: var(--text); }
+
+/* The features as tiles: glyph, a word, one line; two to four per row. */
+.tz-tiles { list-style: none; margin: var(--s-32) 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: var(--s-16); align-content: start; }
+.tz-tiles li { display: grid; gap: var(--s-4); padding: var(--s-12) 0 0; border-top: var(--line-hairline) solid var(--line-strong); }
+.tz-tiles .hz-symbol { color: var(--accent-text); font-size: 1.25rem; }
+.tz-tiles b { font-weight: 600; }
+.tz-tiles span:not(.hz-symbol) { font-size: 0.8125rem; color: var(--text-muted); }
+.tz-platforms + .tz-note { margin-top: var(--s-12); }

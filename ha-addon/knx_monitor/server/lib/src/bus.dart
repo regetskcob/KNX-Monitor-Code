@@ -650,6 +650,15 @@ class BusService {
 
   Future<void> start() async {
     config = await _loadConfig();
+    if (retentionUnconfirmed) {
+      await _retentionMark.writeAsString('').catchError((Object e) {
+        stderr.writeln('Aufbewahrung merken: $e');
+        return _retentionMark;
+      });
+    } else {
+      retentionUnconfirmed = await _retentionMark.exists();
+    }
+    recorder.keepExpired = () => retentionUnconfirmed || (this.clock?.unconfirmed ?? false);
     final clock = this.clock;
     if (clock != null) {
       // After switching installations the clock is already set.
@@ -727,6 +736,9 @@ class BusService {
           final restored = await _readConfig(backup);
           await backup.copy(file.path);
           stdout.writeln('server.json nicht lesbar ($e) – Sicherung übernommen, kaputte Datei: $aside');
+          // The backup is the state before the latest change: its retention
+          // may be shorter than what was set last.
+          retentionUnconfirmed = true;
           return restored;
         }
       } on Object catch (e) {
@@ -736,6 +748,7 @@ class BusService {
         'server.json nicht lesbar ($e) – beiseitegelegt als $aside; ohne Busverbindung bis zum neuen Verbinden',
       );
       configLost = true;
+      retentionUnconfirmed = true;
       return BusConfig();
     }
   }
@@ -743,6 +756,14 @@ class BusService {
   /// `server.json` was corrupt and no backup helped: the app asks to connect
   /// again (status `configLost`) until someone sends settings.
   bool configLost = false;
+
+  /// The retention in effect is not the one that was set last (`server.json`
+  /// lost or taken from its backup): nothing is deleted by age until someone
+  /// sends the retention again. Survives restarts ([_retentionMark]), because
+  /// the lost file does not come back by itself.
+  bool retentionUnconfirmed = false;
+
+  File get _retentionMark => File('${data.path}/retention-unconfirmed');
 
   void _applyStorage() {
     recorder
@@ -846,6 +867,14 @@ class BusService {
     ].any((k) => jsonEncode(next.toJson()[k]) != jsonEncode(config.toJson()[k]));
     final ready = probe && reconnect && _canConnect(next) && _yieldedTo == null ? await _probe(next) : null;
     configLost = false;
+    if (retentionUnconfirmed && changes.containsKey('retentionDays')) {
+      retentionUnconfirmed = false;
+      try {
+        if (await _retentionMark.exists()) await _retentionMark.delete();
+      } on FileSystemException catch (e) {
+        stderr.writeln('Aufbewahrung merken: $e');
+      }
+    }
     if (next.host != config.host || next.port != config.port || next.mode != config.mode) _description = null;
     config = next;
     _applyStorage();
@@ -1032,8 +1061,8 @@ class BusService {
           return;
         }
         _tapLinks[i] = link;
-        failures = 0;
         reported = false;
+        final held = Stopwatch()..start();
         final sub = link.frames.listen((f) => _onFrame(f, tap: i));
         _setTapState(i, {'state': 'connected', 'address': link.address});
         stdout.writeln('Messpunkt ${t['name']} verbunden: ${linkLabel(link.label)}');
@@ -1051,6 +1080,11 @@ class BusService {
           availability.connectionEvent(reason: linkText(reason), tap: '${t['name']}').catchError((Object _) {}),
         );
         _setTapState(i, {'state': 'disconnected', 'error': linkText(reason)});
+        if (held.elapsed >= reconnectHold) {
+          failures = 0;
+        } else {
+          await Future<void>.delayed(_backoff(failures++));
+        }
       } on Object catch (e) {
         await link.close();
         if (!_current(generation)) return;
@@ -1064,9 +1098,7 @@ class BusService {
           }
         }
         _setTapState(i, {'state': 'disconnected', 'error': linkText(e)});
-        final seconds = const [1, 2, 4, 8, 15, 30, 60][failures.clamp(0, 6)];
-        failures++;
-        await Future<void>.delayed(Duration(seconds: seconds));
+        await Future<void>.delayed(_backoff(failures++));
       }
     }
   }
@@ -1097,6 +1129,12 @@ class BusService {
 
   bool _current(int generation) => generation == _generation;
 
+  /// A connection counts as established only after it held this long; before
+  /// that a loss is treated like a failed attempt (waiting times of [_backoff]).
+  Duration reconnectHold = const Duration(seconds: 30);
+
+  static Duration _backoff(int failures) => Duration(seconds: const [1, 2, 4, 8, 15, 30, 60][failures.clamp(0, 6)]);
+
   Future<void> _run(int generation, {BusLink? ready}) async {
     var failures = 0;
     var reported = false;
@@ -1113,11 +1151,11 @@ class BusService {
           return;
         }
         _link = link;
-        failures = 0;
         reported = false;
         error = null;
         problem = null;
         since = DateTime.now();
+        final held = Stopwatch()..start();
         if (!BusConfig.needsNoHost(config.mode)) _description ??= await describe(config.host, config.port);
         // The module counts its sequence number from the start again.
         busmon.resync();
@@ -1136,7 +1174,16 @@ class BusService {
         problem = null;
         stdout.writeln('Bus getrennt: $error');
         unawaited(availability.connectionEvent(reason: '${linkLabel(link.label)}: $error').catchError((Object _) {}));
-        // Reconnect immediately – short dropouts should not leave a gap.
+        // Reconnect immediately – short dropouts should not leave a gap. Unless
+        // the connection did not even hold [reconnectHold]: a gateway that
+        // accepts and drops at once would otherwise be asked in a tight loop,
+        // with a log line and an availability entry on every turn.
+        if (held.elapsed >= reconnectHold) {
+          failures = 0;
+          continue;
+        }
+        _setState('disconnected');
+        await Future<void>.delayed(_backoff(failures++));
         continue;
       } on Object catch (e) {
         await link.close();
@@ -1150,9 +1197,9 @@ class BusService {
         }
         _setState('disconnected');
         final busy = e is LinkException && e.status == KnxIpStatus.noMoreConnections;
-        final seconds = busy ? 15 : const [1, 2, 4, 8, 15, 30, 60][failures.clamp(0, 6)];
+        final wait = busy ? const Duration(seconds: 15) : _backoff(failures);
         failures++;
-        await Future<void>.delayed(Duration(seconds: seconds));
+        await Future<void>.delayed(wait);
       }
     }
   }
@@ -1385,6 +1432,7 @@ class BusService {
     'features': features,
     'problem': ?problem,
     if (configLost) 'configLost': true,
+    if (retentionUnconfirmed) 'retentionUnconfirmed': true,
     'restarts': ?restartSummary?.call(),
     'since': since?.millisecondsSinceEpoch,
     'lastLost': lastLost?.millisecondsSinceEpoch,

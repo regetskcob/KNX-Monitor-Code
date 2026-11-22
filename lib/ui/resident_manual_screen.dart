@@ -112,7 +112,7 @@ class _ResidentManualScreenState extends State<ResidentManualScreen> {
                             pdfName(s.manualPdfTitle),
                             origin: rectOf(buttonContext),
                           ),
-                    icon: const Icon(AppIcons.pdf, size: 18),
+                    icon: const Icon(AppIcons.pdf, size: HzIconSize.row),
                     label: Text(s.manualCreate),
                   ),
                 ),

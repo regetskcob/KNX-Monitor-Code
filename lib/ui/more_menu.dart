@@ -8,6 +8,7 @@ import '../theme/app_icons.dart';
 import '../theme/palette.dart';
 import '../theme/tokens.dart';
 import 'common.dart';
+import 'figure_box.dart';
 import 'plan_screen.dart';
 import 'tool_shell.dart';
 
@@ -49,6 +50,49 @@ enum ToolGroup {
   static const headed = [check, bus, analyze, record, documents];
 }
 
+/// A page that gathers entries of one kind, so the menu shows one row instead of many
+/// (the checks, everything around a fault, the customer papers, the setup).
+enum ToolHub {
+  /// Checks of single aspects of the installation: rooms, locks, heating, DALI, security …
+  checks(ToolGroup.check, 1),
+
+  /// When something is wrong: diagnostics, fault hunt, reporting, the diagnostics package.
+  troubleshooting(ToolGroup.check, 5),
+
+  /// What the customer gets on paper: file, reports, handover, manual.
+  papers(ToolGroup.documents, 0),
+
+  /// What is set up once: project, teach-in, Home Assistant, company, backup, app lock.
+  setup(ToolGroup.data, 0);
+
+  const ToolHub(this.group, this.order);
+
+  /// Where the hub's row stands in the menu.
+  final ToolGroup group;
+  final int order;
+
+  String get title => switch (this) {
+    checks => s.menuHubChecks,
+    troubleshooting => s.menuHubTroubleshooting,
+    papers => s.menuHubPapers,
+    setup => s.menuHubSetup,
+  };
+
+  String get subtitle => switch (this) {
+    checks => s.menuHubChecksHint,
+    troubleshooting => s.menuHubTroubleshootingHint,
+    papers => s.menuHubPapersHint,
+    setup => s.menuHubSetupHint,
+  };
+
+  IconData get icon => switch (this) {
+    checks => AppIcons.projectCheck,
+    troubleshooting => AppIcons.diagnostics,
+    papers => AppIcons.customers,
+    setup => AppIcons.tools,
+  };
+}
+
 /// A tool with a short explanation.
 class ToolEntry {
   const ToolEntry({
@@ -60,7 +104,11 @@ class ToolEntry {
     this.order = 0,
     this.expertOnly = false,
     this.feature,
+    this.hub,
   });
+
+  /// The page this tool is listed on instead of the menu itself ([ToolHub]); `null`: in the menu.
+  final ToolHub? hub;
 
   /// Requires a tier: locked with a badge, tapping opens the paywall.
   final Feature? feature;
@@ -89,7 +137,19 @@ class MenuAction {
     this.enabled = true,
     this.danger = false,
     this.selected = false,
+    this.feature,
+    this.hub,
+    this.subtitle,
   });
+
+  /// The page this action is listed on instead of the menu itself ([ToolHub]); `null`: in the menu.
+  final ToolHub? hub;
+
+  /// One line on what it does, on the hub page.
+  final String? subtitle;
+
+  /// Requires a tier: shown with its badge while locked ([onTap] opens the paywall itself).
+  final Feature? feature;
 
   final IconData icon;
   final String title;
@@ -134,6 +194,122 @@ class MoreMenu {
   final List<MenuAction> data;
   final List<MenuToggle> toggles;
   final List<MenuAction> footer;
+
+  /// The tools of [hub] that the current mode shows, in their order.
+  List<ToolEntry> hubTools(ToolHub hub) => [
+    for (final t in tools)
+      if (t.hub == hub && (expert || !t.expertOnly)) t,
+  ]..sort((a, b) => a.order - b.order);
+
+  /// The actions of [hub] (from [data] and [footer]).
+  List<MenuAction> hubActions(ToolHub hub) => [
+    for (final a in [...data, ...footer])
+      if (a.hub == hub) a,
+  ];
+
+  /// Hubs with at least two entries: they get a row of their own and their entries leave the
+  /// menu. A hub with a single entry would only add a tap, so that entry stays where it was.
+  Set<ToolHub> get shownHubs => {
+    for (final hub in ToolHub.values)
+      if (hubTools(hub).length + hubActions(hub).length >= 2) hub,
+  };
+
+  /// The tools as the menu lists them: one row per shown hub, the rest as they are.
+  List<ToolEntry> menuTools(BuildContext context) {
+    final hubs = shownHubs;
+    return [
+      for (final hub in hubs)
+        ToolEntry(
+          icon: hub.icon,
+          title: hub.title,
+          subtitle: hub.subtitle,
+          group: hub.group,
+          order: hub.order,
+          open: (context) => pushTool<void>(context, (_) => ToolHubScreen(hub: hub), hub: true),
+        ),
+      for (final t in tools)
+        if ((expert || !t.expertOnly) && !hubs.contains(t.hub)) t,
+    ];
+  }
+
+  /// [actions] without those a shown hub lists.
+  List<MenuAction> menuActions(List<MenuAction> actions) {
+    final hubs = shownHubs;
+    return [
+      for (final a in actions)
+        if (!hubs.contains(a.hub)) a,
+    ];
+  }
+}
+
+/// The page of a [ToolHub]: its tools and actions as rows, each with one line on what it does.
+/// Reads the monitor's menu afresh on every build, so locks and availability stay current.
+class ToolHubScreen extends StatelessWidget {
+  const ToolHubScreen({super.key, required this.hub});
+
+  final ToolHub hub;
+
+  Future<void> _open(BuildContext context, ToolEntry t) async {
+    if (t.feature case final f? when !await unlock(context, f)) return;
+    if (!context.mounted) return;
+    // On top of this page, so that "Back" returns here; the bar keeps the hub marked.
+    ToolShell.instance
+      ..opening = hub.title
+      ..fromHub = true;
+    t.open(context);
+    ToolShell.instance.fromHub = false;
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: Listenable.merge([Plan.instance, ExpertMode.instance]),
+    builder: (context, _) {
+      final menu = ToolShell.instance.menu?.call();
+      final tools = menu?.hubTools(hub) ?? const <ToolEntry>[];
+      final actions = menu?.hubActions(hub) ?? const <MenuAction>[];
+      return Scaffold(
+        appBar: AppBar(title: Text(hub.title)),
+        body: ListView(
+          padding: Gap.page,
+          children: [
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: Widths.reading),
+                child: RowCard(
+                  children: [
+                    for (final t in tools)
+                      CardRow(
+                        title: t.title,
+                        meta: t.subtitle,
+                        badge: switch (t.feature) {
+                          final f? => lockBadge(f),
+                          null => null,
+                        },
+                        chevron: true,
+                        onTap: () => _open(context, t),
+                      ),
+                    for (final a in actions)
+                      CardRow(
+                        title: a.title,
+                        meta: a.subtitle,
+                        enabled: a.enabled,
+                        badge: switch (a.feature) {
+                          final f? => lockBadge(f),
+                          null => null,
+                        },
+                        chevron: true,
+                        onTap: a.enabled ? a.onTap : null,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }
 
 /// Opens the menu: on the phone as its own page, on the tablet as a popover at
@@ -252,10 +428,9 @@ class _MoreListState extends State<_MoreList> {
   /// only shows more entries. Expert mode stays fixed at the foot.
   Widget _sidebar(MoreMenu menu) {
     final tool = ModalRoute.of(context) is ToolRoute;
-    final visible = [
-      for (final t in menu.tools)
-        if (expert || !t.expertOnly) t,
-    ]..sort((a, b) => a.order - b.order);
+    final visible = menu.menuTools(context)..sort((a, b) => a.order - b.order);
+    final data = menu.menuActions(menu.data);
+    final footer = menu.menuActions(menu.footer);
     final hidden = expert ? 0 : menu.tools.where((t) => t.expertOnly).length;
     Widget toolRow(ToolEntry t) => HorizontSidebarItem(
       icon: t.icon,
@@ -304,11 +479,11 @@ class _MoreListState extends State<_MoreList> {
             for (final t in visible)
               if (t.group == g) toolRow(t),
           ],
-        if (menu.data.isNotEmpty || visible.any((t) => t.group == ToolGroup.data)) ...[
+        if (data.isNotEmpty || visible.any((t) => t.group == ToolGroup.data)) ...[
           HorizontSidebarLabel(s.menuGroupData),
           for (final t in visible)
             if (t.group == ToolGroup.data) toolRow(t),
-          for (final a in menu.data)
+          for (final a in data)
             HorizontSidebarItem(icon: a.icon, label: a.title, onTap: a.enabled ? () => _run(a.onTap) : null),
         ],
         if (menu.toggles.isNotEmpty) ...[
@@ -320,14 +495,18 @@ class _MoreListState extends State<_MoreList> {
           for (final t in visible)
             if (t.group == ToolGroup.learn) toolRow(t),
         ],
-        if (menu.footer.isNotEmpty) ...[
+        if (footer.isNotEmpty) ...[
           const SizedBox(height: HzSpace.s24),
-          for (final a in menu.footer)
+          for (final a in footer)
             HorizontSidebarItem(
               icon: a.icon,
               label: a.title,
               tone: a.danger ? HorizontSidebarTone.critical : HorizontSidebarTone.normal,
               onTap: a.enabled ? () => _run(a.onTap) : null,
+              trailing: switch (a.feature) {
+                final f? => lockBadge(f),
+                _ => null,
+              },
             ),
         ],
         // Without expert mode: say that there is more, and lead there with a tap.
@@ -358,10 +537,10 @@ class _MoreListState extends State<_MoreList> {
   Widget build(BuildContext context) {
     final menu = widget.menu();
     if (widget.mode == _MoreMode.sidebar) return _sidebar(menu);
-    final visible = [
-      for (final t in menu.tools)
-        if (expert || !t.expertOnly) t,
-    ]..sort((a, b) => a.group.index != b.group.index ? a.group.index - b.group.index : a.order - b.order);
+    final data = menu.menuActions(menu.data);
+    final footer = menu.menuActions(menu.footer);
+    final visible = menu.menuTools(context)
+      ..sort((a, b) => a.group.index != b.group.index ? a.group.index - b.group.index : a.order - b.order);
     // Without expert mode only a few tools remain: one "Werkzeuge" (tools) group
     // instead of several groups with one entry each.
     final groups = expert
@@ -433,13 +612,13 @@ class _MoreListState extends State<_MoreList> {
                             ),
                         ],
                       ),
-                  if (menu.data.isNotEmpty || dataTools.isNotEmpty)
+                  if (data.isNotEmpty || dataTools.isNotEmpty)
                     _Section(
                       title: s.menuGroupData,
                       dense: widget.popover,
                       children: [
                         for (final t in dataTools) toolTile(t),
-                        for (final a in menu.data)
+                        for (final a in data)
                           _Tile(
                             dense: widget.popover,
                             icon: a.icon,
@@ -474,17 +653,21 @@ class _MoreListState extends State<_MoreList> {
                     ),
                   if (learnTools.isNotEmpty)
                     _Section(dense: widget.popover, children: [for (final t in learnTools) toolTile(t)]),
-                  if (menu.footer.isNotEmpty)
+                  if (footer.isNotEmpty)
                     _Section(
                       dense: widget.popover,
                       children: [
-                        for (final a in menu.footer)
+                        for (final a in footer)
                           _Tile(
                             dense: widget.popover,
                             icon: a.icon,
                             title: a.title,
                             enabled: a.enabled,
                             danger: a.danger,
+                            trailing: switch (a.feature) {
+                              final f? => lockBadge(f),
+                              _ => null,
+                            },
                             onTap: () => _run(a.onTap),
                           ),
                       ],

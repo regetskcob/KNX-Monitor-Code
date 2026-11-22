@@ -207,6 +207,26 @@ void main() {
     expect(requests, isNot(contains('POST /api/box/time')));
   });
 
+  test('meldet die Box ein Zertifikat, das nicht antwortet, bleibt die Kopplung bei HTTP', () async {
+    // A fingerprint the plain test server cannot serve: the pinned request fails,
+    // so the app keeps the working HTTP link instead of locking itself out.
+    boxInfo = {
+      'role': 'admin',
+      'tls': {'port': 1, 'fingerprint': 'A' * 43},
+    };
+    final setup = BoxSetup(
+      setupLink(),
+      deviceName: 'iPhone',
+      joinWifi: (_, _) async => 'joined',
+      reachable: (_) async => true,
+      choosePassword: () async => true,
+    );
+    await setup.run();
+    expect(setup.states[BoxSetupStep.pair], BoxStepState.done);
+    expect(BoxConnection.instance.saved!.encrypted, isFalse);
+    expect(Addon.box!.encrypted, isFalse);
+  });
+
   test('ältere Box ohne Info koppelt ohne Pflicht', () async {
     boxInfoStatus = HttpStatus.notFound;
     final setup = BoxSetup(

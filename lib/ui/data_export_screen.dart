@@ -157,6 +157,12 @@ class _DataExportScreenState extends State<DataExportScreen> {
       ) ??
       false;
 
+  /// Tries to load again after an error.
+  void _retry() {
+    setState(() => _error = null);
+    unawaited(_load());
+  }
+
   Future<void> _load() async {
     try {
       final st = await widget.client.load();
@@ -217,14 +223,21 @@ class _DataExportScreenState extends State<DataExportScreen> {
 
   Future<void> _test() async {
     final messenger = ScaffoldMessenger.of(context);
+    final colors = context.hz;
     if (!await _save()) return;
     try {
       final error = await widget.client.test();
       messenger.showSnackBar(
-        SnackBar(content: Text(error == null ? s.dataExportTestOk : s.plantTestFailed(plantNotifyError(error)))),
+        horizontMessageSnackBar(
+          colors,
+          error == null ? s.dataExportTestOk : s.plantTestFailed(plantNotifyError(error)),
+          status: error == null ? HorizontStatus.positive : HorizontStatus.critical,
+        ),
       );
     } on AddonException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(s.plantTestFailed(e.message))));
+      messenger.showSnackBar(
+        horizontMessageSnackBar(colors, s.plantTestFailed(e.message), status: HorizontStatus.critical),
+      );
     }
   }
 
@@ -513,7 +526,14 @@ class _DataExportScreenState extends State<DataExportScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(s.dataExportTitle)),
       body: st == null
-          ? Center(child: _error == null ? const CircularProgressIndicator.adaptive() : Text(_error!))
+          ? (_error == null
+                ? const LoadingHint()
+                // Failed to load: say so with the sign and offer the next step.
+                : HorizontEmptyHint(
+                    text: _error!,
+                    status: HorizontStatus.critical,
+                    action: (label: s.busmonRetry, onPressed: _retry),
+                  ))
           // Phone and narrow windows: one column in reading width. From the expanded width on
           // two card columns, and three where each still gets a column's width: what is saved
           // together stays in one column with its button.

@@ -3488,7 +3488,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Time = when the report arrived, not when the test ran. A result seen for the first time may be older.';
 
   @override
-  String get connectDemo => 'Try the demo without a KNX system';
+  String get connectDemo => 'Try the demo without an installation';
 
   @override
   String get demoGateway => 'Demo house';
@@ -6692,10 +6692,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commRollCallExplain =>
-      'Roll call: press buttons, open windows – every address on the list that is sent on the bus ticks itself off. If a different device than in the project sends, it is marked.';
+      'Ring-through test: press buttons, open windows – every address on the list that is sent on the bus ticks itself off. If a different device than in the project sends, it is marked.';
 
   @override
-  String get commToneOn => 'With sound (acknowledgement)';
+  String get commToneOn => 'With sound acknowledgement';
 
   @override
   String get commToneOff => 'Sound off';
@@ -7074,7 +7074,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get plainColumnEvent => 'What happened';
 
   @override
-  String get learnTitle => 'Teach your installation';
+  String get learnTitle => 'Teach in your installation';
 
   @override
   String get learnTool => 'No ETS project: press a button, name it, done';
@@ -7150,28 +7150,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String learnSaved(String name) {
-    return 'Learned: $name';
+    return 'Taught in: $name';
   }
 
   @override
   String learnLearned(int count) {
-    return 'Learned ($count)';
+    return 'Taught in ($count)';
   }
 
   @override
-  String get learnNothingYet => 'Nothing learned yet.';
+  String get learnNothingYet => 'Nothing taught in yet.';
 
   @override
   String get learnForget => 'Forget';
 
   @override
-  String get learnClearAll => 'Forget everything learned';
+  String get learnClearAll => 'Forget everything taught in';
 
   @override
-  String get learnClearConfirm => 'Delete all learned names? An imported project stays.';
+  String get learnClearConfirm => 'Delete all taught-in names? An imported project stays.';
 
   @override
-  String get learnDemoNote => 'Demo house: what you teach here is kept only until you leave the demo.';
+  String get learnDemoNote => 'Demo house: what you teach in here is kept only until you leave the demo.';
 
   @override
   String get learnRoomSuggestions =>
@@ -7193,18 +7193,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get learnNamesOther => 'Scene,Window contact,Motion sensor,Dimming';
 
   @override
-  String get learnNoProjectCta => 'No ETS project? Teach your installation';
+  String get learnNoProjectCta => 'No ETS project? Teach in your installation';
 
   @override
-  String get learnSource => 'Learned';
+  String get learnSource => 'Taught in';
 
   @override
   String learnCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count learned addresses',
-      one: '1 learned address',
+      other: '$count taught-in addresses',
+      one: '1 taught-in address',
     );
     return '$_temp0';
   }
@@ -7396,7 +7396,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectHelpNone =>
-      'Then teach the installation yourself: press a button, name it, done. You\'ll find it in the monitor under “Teach your installation”. A project imported later takes precedence, your names stay for the rest.';
+      'Then teach in the installation yourself: press a button, name it, done. You\'ll find it in the monitor under “Teach in your installation”. A project imported later takes precedence, your names stay for the rest.';
 
   @override
   String get projectHelpDisclaimer =>
@@ -8188,6 +8188,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String secWithoutKeyText(int count) {
     String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count telegrams', one: '1 telegram');
     return '$_temp0 could not be decrypted. Usually the keyring is older than the project – export it again from ETS.';
+  }
+
+  @override
+  String get secPlainOnSecuredTitle => 'Unsecured telegrams on secured addresses';
+
+  @override
+  String secPlainOnSecuredText(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count telegrams', one: '1 telegram');
+    return '$_temp0 arrived unencrypted on group addresses that are secured in the keyring. The devices discard such telegrams; display, history and watchers still took them over. Check the sender in the list.';
   }
 
   @override
@@ -9111,7 +9120,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get customerName => 'Customer';
 
   @override
-  String get customerAddress => 'Site address';
+  String get customerAddress => 'Installation address';
 
   @override
   String get customerContact => 'Contact person';
@@ -9388,7 +9397,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get manualTitle => 'Resident manual';
 
   @override
-  String get manualTool => 'Booklet for residents from the project and learned names';
+  String get manualTool => 'Booklet for residents from the project and taught-in names';
 
   @override
   String get manualFeature => 'Resident manual as PDF';
@@ -9412,7 +9421,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get manualCreate => 'Create and share manual';
 
   @override
-  String get manualEmpty => 'A manual needs a project or learned names.';
+  String get manualEmpty => 'A manual needs a project or taught-in names.';
 
   @override
   String get manualPdfTitle => 'Manual for your installation';
@@ -10452,7 +10461,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The box did not know the time and has restarted. Order and spacing are correct, date and time are not.';
 
   @override
-  String get installationRecovered => 'Recovered site';
+  String get installationRecovered => 'Recovered installation';
 
   @override
   String get errorNetworkGone => 'The network is gone or has changed.';
@@ -10497,7 +10506,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get backupReminder =>
-      'Your last backup is more than 30 days old or still missing. Customer records and sites are only on this device.';
+      'Your last backup is more than 30 days old or still missing. Customer records and installations are only on this device.';
 
   @override
   String get backupReminderOpen => 'Back up now';
@@ -12903,4 +12912,254 @@ class AppLocalizationsEn extends AppLocalizations {
   String snapBeforeAfter(String before, String after) {
     return 'before $before · now $after';
   }
+
+  @override
+  String get boxKeyringPlainTitle => 'Keyring stays on this device';
+
+  @override
+  String boxKeyringPlainBody(String address) {
+    return 'The connection to the box at $address is not encrypted. That is why the keyring and the IP Secure credentials do not go there: someone on the network could read them, and another device could answer under the same address. The monitor keeps working; the box records secured telegrams only with the keyring it already has. For an encrypted connection, create a new QR code on the box\'s /pair page and scan it. If the box cannot do HTTPS, the keyring can be stored in its web interface.';
+  }
+
+  @override
+  String get boxPairSharesProject =>
+      'After pairing, the box gets your project: the ETS project with all addresses and names, the installation\'s name and the gateway address.';
+
+  @override
+  String get aiAccessPlain =>
+      'This address is unencrypted (HTTP): the token crosses the network in plain text with every request of the AI tool. Only use it on your own network.';
+
+  @override
+  String get aiAccessCopiedSecret => 'Copied. It leaves the clipboard after a minute.';
+
+  @override
+  String get forumSecureValue => 'secured';
+
+  @override
+  String handoverUpdateCompany(String before, String company) {
+    return 'The earlier package came from $before, this one from $company. Only update if you know this sender.';
+  }
+
+  @override
+  String handoverUpdateGateway(String before, String after) {
+    return 'The gateway changes: $before so far, $after afterwards. The app then connects to the new address.';
+  }
+
+  @override
+  String handoverUpdateGatewayNew(String after) {
+    return 'The package sets the gateway to $after. The app then connects to this address.';
+  }
+
+  @override
+  String get boxRequestFailed =>
+      'The box could not process the request. Try again; if it keeps happening, the diagnostics package helps.';
+
+  @override
+  String get addonDisconnected => 'The connection to the add-on was lost.';
+
+  @override
+  String get addonLoginNeeded =>
+      'You need to sign in to the Busclear Box. Reload the page and sign in with the box password.';
+
+  @override
+  String get addonAccessDenied => 'The Busclear Box denied access.';
+
+  @override
+  String get addonUnreachable => 'The add-on server is not reachable.';
+
+  @override
+  String get appOnly => 'This only works in the app.';
+
+  @override
+  String get webNoRouting => 'Routing is not possible in the browser – the add-on holds the connection.';
+
+  @override
+  String get webNoTcp => 'TCP is not possible in the browser – the add-on holds the connection.';
+
+  @override
+  String get planBuyFailedPlain => 'The purchase didn’t go through. Please try again.';
+
+  @override
+  String get planBuyNetwork => 'The store can’t be reached right now. Check your internet connection and try again.';
+
+  @override
+  String get planBuyNotAllowed => 'Purchases are not allowed on this device. Check the device settings.';
+
+  @override
+  String get planBuyStore => 'The store reports a problem. Please try again later.';
+
+  @override
+  String boxForgetTitle(String box) {
+    return 'Remove the pairing with “$box”?';
+  }
+
+  @override
+  String get boxForgetBody =>
+      'The app will no longer know this box. Pairing again needs the QR code or the box password.';
+
+  @override
+  String chartTemplateRemoved(String name) {
+    return 'Template “$name” removed.';
+  }
+
+  @override
+  String exportsRemoved(String name) {
+    return '“$name” removed from the list.';
+  }
+
+  @override
+  String get filterDeleted => 'Filter deleted.';
+
+  @override
+  String monitorPendingCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count telegrams waiting',
+      one: '1 telegram waiting',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String mapEdgesSemantics(int left, int right) {
+    return 'Connecting lines: $left entries on the left and $right on the right lead to the centre.';
+  }
+
+  @override
+  String get busmonLoadChartSemantics => 'Bus load over time.';
+
+  @override
+  String chartsAreaSemantics(int count, String names, String from, String to) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Chart with $count series',
+      one: 'Chart with 1 series',
+    );
+    return '$_temp0: $names. Period $from to $to. Tap to place the crosshair.';
+  }
+
+  @override
+  String get commonLoading => 'Loading …';
+
+  @override
+  String get projectCheckRunning => 'Checking the project …';
+
+  @override
+  String get boxClockUnconfirmed =>
+      'Time set far ahead but not confirmed. Until “Set from this device” confirms it, the box deletes no old history.';
+
+  @override
+  String get boxRetentionUnconfirmed =>
+      'The box lost its settings. Until the retention is set again, the box deletes no old history.';
+
+  @override
+  String recordingFull(String count) {
+    return 'Recording ended and saved: it reached the limit of $count telegrams.';
+  }
+
+  @override
+  String get issuePlainOnSecuredLabel => 'Plain';
+
+  @override
+  String get issuePlainOnSecuredHint =>
+      'Unencrypted on an address with a Data Secure key: the devices discard it. If it does not come from a known device, check who sends it.';
+
+  @override
+  String routingLost(String count) {
+    return 'The KNX router reports $count telegrams it could not pass on. They are missing from the list; usually the line or the router is overloaded.';
+  }
+
+  @override
+  String get connectConnecting => 'Connecting to the gateway …';
+
+  @override
+  String get menuHubChecks => 'Checks';
+
+  @override
+  String get menuHubChecksHint =>
+      'Rooms, locks, heating, lighting, security: one check each for a part of the installation.';
+
+  @override
+  String get menuHubTroubleshooting => 'Troubleshooting';
+
+  @override
+  String get menuHubTroubleshootingHint => 'When something is wrong: narrow it down, capture it and report it.';
+
+  @override
+  String get menuHubPapers => 'Papers';
+
+  @override
+  String get menuHubPapersHint => 'What the customer gets: file, reports, handover and manual.';
+
+  @override
+  String get menuHubSetup => 'Setup';
+
+  @override
+  String get menuHubSetupHint => 'What is set up once: project, connections, backup.';
+
+  @override
+  String get menuProjectHint => 'Load or change the ETS project: names, data types and devices.';
+
+  @override
+  String get menuBackupHint => 'Save everything on this device to a file, or restore it from one.';
+
+  @override
+  String get menuAppLockHint => 'Lock the app with a code or biometrics.';
+
+  @override
+  String get menuDiagHint => 'What troubleshooting needs, in one file to pass on.';
+
+  @override
+  String get diagStepDescribe => 'Describe';
+
+  @override
+  String get diagStepData => 'Recording';
+
+  @override
+  String get diagStepDataHint => 'Which recording and time span go into the package, and whether names are included.';
+
+  @override
+  String get diagStepContents => 'Check contents';
+
+  @override
+  String get diagStepContentsHint => 'This is in the package before it leaves this device.';
+
+  @override
+  String get diagStepReport => 'Report';
+
+  @override
+  String get diagStepReportHint =>
+      'The package is out. You can now report the crash publicly; you attach the package yourself.';
+
+  @override
+  String wizardStepOf(int step, int total) {
+    return 'Step $step of $total';
+  }
+
+  @override
+  String get backupNotSaved => 'Not saved: no place was chosen for the file.';
+
+  @override
+  String get backupPasswordHint =>
+      'Without this password nobody gets at the contents, not even you. At least 12 characters.';
+
+  @override
+  String get backupRestoreFileHint => 'The file of a backup from this or another device.';
+
+  @override
+  String get backupPickFile => 'Choose file';
+
+  @override
+  String get backupRestorePasswordHint => 'The password the backup was created with.';
+
+  @override
+  String get backupCreateShort => 'Create';
+
+  @override
+  String get backupRestoreShort => 'Restore';
+
+  @override
+  String get handoverCreateShort => 'Create';
 }

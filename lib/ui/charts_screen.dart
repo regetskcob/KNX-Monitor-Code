@@ -457,7 +457,7 @@ class _ChartsScreenState extends State<ChartsScreen> {
     final span = math.max(1, t1.microsecondsSinceEpoch - t0.microsecondsSinceEpoch);
     final x = (width - _MultiChartPainter.right) * (c.microsecondsSinceEpoch - t0.microsecondsSinceEpoch) / span;
     final chip = InputChip(
-      avatar: const Icon(AppIcons.annotation, size: 16),
+      avatar: const Icon(AppIcons.annotation, size: HzIconSize.inline),
       label: Text(s.chartsAnnotateHere),
       onPressed: () =>
           annotateChart(context, time: c, groups: [..._selected], from: t0, to: t1, values: _valuesAt(c, series)),
@@ -604,7 +604,7 @@ class _ChartsScreenState extends State<ChartsScreen> {
 
   Widget _removeButton(int address) => IconButton(
     tooltip: s.commonDelete,
-    visualDensity: VisualDensity.compact,
+    visualDensity: pointerCompact(context),
     onPressed: () => _toggle(address),
     icon: const Icon(AppIcons.close, size: HzIconSize.row),
   );
@@ -777,7 +777,7 @@ class _ChartsScreenState extends State<ChartsScreen> {
                             children: [
                               for (final n in notes)
                                 ActionChip(
-                                  avatar: Icon(AppIcons.annotationSet, size: 16, color: hz.warning),
+                                  avatar: Icon(AppIcons.annotationSet, size: HzIconSize.inline, color: hz.warning),
                                   label: Text(
                                     [
                                       formatTime(n.time, millis: false),
@@ -881,42 +881,52 @@ class _ChartsScreenState extends State<ChartsScreen> {
                                             ? null
                                             : (d) => _pin(timeAt(d.localPosition.dx)),
                                         onTapDown: (d) => _pin(timeAt(d.localPosition.dx)),
-                                        child: MouseRegion(
-                                          onHover: (e) {
-                                            if (!_pinned) setState(() => _cursor = timeAt(e.localPosition.dx));
-                                          },
-                                          child: Column(
-                                            children: [
-                                              for (final MapEntry(key: unit, value: list) in byUnit.entries)
+                                        // The painted area says what it shows: series and period.
+                                        child: Semantics(
+                                          image: true,
+                                          label: s.chartsAreaSemantics(
+                                            series.length,
+                                            series.map((sr) => sr.name).join(', '),
+                                            '${formatDate(t0)} ${formatTime(t0, millis: false)}',
+                                            '${formatDate(t1)} ${formatTime(t1, millis: false)}',
+                                          ),
+                                          child: MouseRegion(
+                                            onHover: (e) {
+                                              if (!_pinned) setState(() => _cursor = timeAt(e.localPosition.dx));
+                                            },
+                                            child: Column(
+                                              children: [
+                                                for (final MapEntry(key: unit, value: list) in byUnit.entries)
+                                                  SizedBox(
+                                                    height: panelHeight,
+                                                    width: width,
+                                                    child: CustomPaint(painter: numbers(unit, list, axisOnly: false)),
+                                                  ),
+                                                for (final sr in lanes)
+                                                  SizedBox(
+                                                    height: _LanePainter.height,
+                                                    width: width,
+                                                    child: CustomPaint(painter: lane(sr, axisOnly: false)),
+                                                  ),
                                                 SizedBox(
-                                                  height: panelHeight,
+                                                  height: axisHeight,
                                                   width: width,
-                                                  child: CustomPaint(painter: numbers(unit, list, axisOnly: false)),
-                                                ),
-                                              for (final sr in lanes)
-                                                SizedBox(
-                                                  height: _LanePainter.height,
-                                                  width: width,
-                                                  child: CustomPaint(painter: lane(sr, axisOnly: false)),
-                                                ),
-                                              SizedBox(
-                                                height: axisHeight,
-                                                width: width,
-                                                child: CustomPaint(
-                                                  painter: _TimeAxisPainter(
-                                                    t0: t0,
-                                                    t1: t1,
-                                                    cursor: _cursor,
-                                                    style: axisStyle,
-                                                    cursorStyle: axisStyle.copyWith(
-                                                      color: hz.text,
-                                                      fontWeight: FontWeight.w600,
+                                                  child: CustomPaint(
+                                                    painter: _TimeAxisPainter(
+                                                      t0: t0,
+                                                      t1: t1,
+                                                      cursor: _cursor,
+                                                      style: axisStyle,
+                                                      cursorStyle: axisStyle.copyWith(
+                                                        color: hz.text,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                      textScaler: MediaQuery.textScalerOf(context),
                                                     ),
-                                                    textScaler: MediaQuery.textScalerOf(context),
                                                   ),
                                                 ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ),

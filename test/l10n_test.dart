@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -66,5 +68,34 @@ void main() {
     await tester.tap(find.text('Deutsch'));
     await tester.pumpAndSettle();
     expect(find.text('Verbinden'), findsOneWidget);
+  });
+
+  // Glossary (CLAUDE.md): one English word per German term, checked against the ARB files.
+  // "site" survives only as "on site" (vor Ort), in compounds (site survey, site manager) and as
+  // the name of a placeholder.
+  test('Glossar: englische Begriffe einheitlich', () {
+    Map<String, Object?> arb(String lang) =>
+        jsonDecode(File('lib/l10n/app_$lang.arb').readAsStringSync()) as Map<String, Object?>;
+    final de = arb('de'), en = arb('en');
+    final wrong = <String>[];
+    for (final MapEntry(:key, value: german) in de.entries) {
+      final english = en[key];
+      if (key.startsWith('@') || german is! String || english is! String) continue;
+      final lower = english.toLowerCase();
+      void need(RegExp term, RegExp translation, String name) {
+        if (term.hasMatch(german) && !translation.hasMatch(lower)) wrong.add('$key: $name ($english)');
+      }
+
+      need(RegExp('Durchklingel'), RegExp('ring-through'), 'ring-through test');
+      need(RegExp('Klangquittung'), RegExp('sound acknowledgement'), 'sound acknowledgement');
+      need(RegExp('[Aa]n(ge)?lern|[Aa]nzulernen'), RegExp('teach|taught'), 'teach-in');
+      if (RegExp('roll call|learned').hasMatch(lower)) wrong.add('$key: roll call/learned ($english)');
+      final site = RegExp(r'(?<!on )\bsites?\b(?! (survey|notes?|manager|visit)|\})').hasMatch(lower);
+      // The tour tells the building (Anlage) from its profile in the app (Installation); there "site" stays.
+      if (site && key != 'tourConnectText' && RegExp(r'\bAnlagen?\b').hasMatch(german)) {
+        wrong.add('$key: installation, not site ($english)');
+      }
+    }
+    expect(wrong, isEmpty);
   });
 }

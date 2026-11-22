@@ -6,6 +6,7 @@ import 'package:knx_monitor/knx/group_catalog.dart';
 import 'package:knx_monitor/knx/telegram.dart';
 import 'package:knx_monitor/model/analysis.dart';
 import 'package:knx_monitor/model/recording.dart';
+import 'package:knx_monitor/model/telegram_log.dart';
 
 void main() {
   final start = DateTime(2026, 10, 14, 12);
@@ -69,4 +70,32 @@ void main() {
       TelegramIssue.unknownDevice,
     ]);
   });
+
+  test('Klartext auf einer Adresse mit Schlüssel: Hinweis nur, wo die App selbst entschlüsselt', () {
+    Telegram live({bool secure = false}) {
+      final t = Telegram(
+        time: DateTime(2026, 11, 16),
+        source: 0x1105,
+        destination: 0x3000,
+        type: TelegramType.write,
+        data: Uint8List.fromList([1]),
+        isSmall: true,
+        raw: Uint8List.fromList([0x29, 0x00, 0x30, secure ? 1 : 0]),
+      );
+      if (secure) markDataSecure(t);
+      return t;
+    }
+
+    final secured = {0x3000};
+    final direct = _MarkedLog();
+    expect(issuesOf(live(), direct, securedGroups: secured), contains(TelegramIssue.plainOnSecured));
+    expect(issuesOf(live(secure: true), direct, securedGroups: secured), isNot(contains(TelegramIssue.plainOnSecured)));
+    // Server, file or recording: no mark, no statement.
+    expect(issuesOf(live(), TelegramLog(), securedGroups: secured), isNot(contains(TelegramIssue.plainOnSecured)));
+  });
+}
+
+class _MarkedLog extends TelegramLog {
+  @override
+  bool get secureMarked => true;
 }

@@ -11552,6 +11552,19 @@
       }
     }
   },
+  "secPlainOnSecuredTitle": "Ungesicherte Telegramme auf gesicherten Adressen",
+  "@secPlainOnSecuredTitle": {
+    "description": "Befund im Sicherheits-Check: Klartext auf Gruppenadressen mit Data-Secure-Schlüssel"
+  },
+  "secPlainOnSecuredText": "{count, plural, =1{1 Telegramm kam} other{{count} Telegramme kamen}} unverschlüsselt auf Gruppenadressen an, die im Keyring gesichert sind. Die Geräte verwerfen solche Telegramme; Anzeige, Verlauf und Wächter haben sie trotzdem übernommen. Absender in der Liste prüfen.",
+  "@secPlainOnSecuredText": {
+    "description": "Befund im Sicherheits-Check",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "secRejectedTitle": "Ungültige gesicherte Telegramme",
   "@secRejectedTitle": {
     "description": "Befund"
@@ -17809,5 +17822,359 @@
         "type": "String"
       }
     }
+  },
+  "boxKeyringPlainTitle": "Keyring bleibt auf diesem Gerät",
+  "@boxKeyringPlainTitle": {
+    "description": "Title: the keyring is not sent to a box reached over plain HTTP."
+  },
+  "boxKeyringPlainBody": "Die Verbindung zur Box unter {address} ist nicht verschlüsselt. Deshalb gehen Keyring und IP-Secure-Zugangsdaten nicht dorthin: Im Netz könnte jemand mitlesen, und unter derselben Adresse könnte ein anderes Gerät antworten. Der Monitor läuft weiter; gesicherte Telegramme zeichnet die Box nur mit dem Keyring auf, den sie schon hat. Für die verschlüsselte Verbindung auf der Seite /pair der Box einen neuen QR-Code erzeugen und scannen. Kann die Box kein HTTPS, lässt sich der Keyring in ihrer Weboberfläche hinterlegen.",
+  "@boxKeyringPlainBody": {
+    "description": "Body: why keyring and IP Secure credentials are not sent over plain HTTP and what to do.",
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "boxPairSharesProject": "Nach dem Koppeln bekommt die Box dein Projekt: das ETS-Projekt mit allen Adressen und Namen, den Namen der Anlage und die Gateway-Adresse.",
+  "@boxPairSharesProject": {
+    "description": "Pairing confirmation in the app (scanned or typed link): what the box receives."
+  },
+  "aiAccessPlain": "Diese Adresse ist unverschlüsselt (HTTP): Der Token geht bei jeder Anfrage des KI-Werkzeugs im Klartext durchs Netz. Nur im eigenen Netz verwenden.",
+  "@aiAccessPlain": {
+    "description": "AI access: warning when the MCP endpoint is plain HTTP."
+  },
+  "aiAccessCopiedSecret": "Kopiert. Verschwindet nach einer Minute aus der Zwischenablage.",
+  "@aiAccessCopiedSecret": {
+    "description": "AI access: message after copying the token or the command that contains it."
+  },
+  "forumSecureValue": "gesichert",
+  "@forumSecureValue": {
+    "description": "Forum text: stands in place of the value of a telegram to a Data Secure group address."
+  },
+  "handoverUpdateCompany": "Das frühere Paket kam von {before}, dieses von {company}. Nur aktualisieren, wenn du diesen Absender kennst.",
+  "@handoverUpdateCompany": {
+    "description": "Handover update dialog: the package comes from another company than the earlier one.",
+    "placeholders": {
+      "before": {
+        "type": "String"
+      },
+      "company": {
+        "type": "String"
+      }
+    }
+  },
+  "handoverUpdateGateway": "Das Gateway ändert sich: bisher {before}, danach {after}. Die App verbindet sich dann mit der neuen Adresse.",
+  "@handoverUpdateGateway": {
+    "description": "Handover update dialog: the package names another KNX/IP interface.",
+    "placeholders": {
+      "before": {
+        "type": "String"
+      },
+      "after": {
+        "type": "String"
+      }
+    }
+  },
+  "handoverUpdateGatewayNew": "Das Paket setzt das Gateway auf {after}. Die App verbindet sich dann mit dieser Adresse.",
+  "@handoverUpdateGatewayNew": {
+    "description": "Handover update dialog: the installation had no gateway, the package brings one.",
+    "placeholders": {
+      "after": {
+        "type": "String"
+      }
+    }
+  },
+  "boxRequestFailed": "Die Box hat die Anfrage nicht verarbeitet. Versuch es noch einmal; bleibt es dabei, hilft das Diagnosepaket.",
+  "@boxRequestFailed": {
+    "description": "Fehler: Box oder Add-on antwortet mit einem Serverfehler, ohne Code"
+  },
+  "addonDisconnected": "Die Verbindung zum Add-on ist getrennt.",
+  "@addonDisconnected": {
+    "description": "Fehler im Browser: WebSocket zum Add-on geschlossen"
+  },
+  "addonLoginNeeded": "Anmeldung an der Busclear Box nötig. Seite neu laden und mit dem Box-Passwort anmelden.",
+  "@addonLoginNeeded": {
+    "description": "Fehler im Browser: Sitzung abgelaufen"
+  },
+  "addonAccessDenied": "Die Busclear Box hat den Zugriff abgelehnt.",
+  "@addonAccessDenied": {
+    "description": "Fehler im Browser: 403 von der Box"
+  },
+  "addonUnreachable": "Der Add-on-Server ist nicht erreichbar.",
+  "@addonUnreachable": {
+    "description": "Fehler im Browser: WebSocket zum Add-on kommt nicht zustande"
+  },
+  "appOnly": "Das geht nur in der App.",
+  "@appOnly": {
+    "description": "Fehler im Browser: Funktion gibt es nur in der installierten App"
+  },
+  "webNoRouting": "Routing ist im Browser nicht möglich – das Add-on hält die Verbindung.",
+  "@webNoRouting": {
+    "description": "Fehler im Browser: KNX-Routing"
+  },
+  "webNoTcp": "TCP ist im Browser nicht möglich – das Add-on hält die Verbindung.",
+  "@webNoTcp": {
+    "description": "Fehler im Browser: TCP-Tunnel"
+  },
+  "planBuyFailedPlain": "Der Kauf hat nicht geklappt. Versuch es noch einmal.",
+  "@planBuyFailedPlain": {
+    "description": "Kauf fehlgeschlagen, Ursache unbekannt"
+  },
+  "planBuyNetwork": "Der Store ist gerade nicht erreichbar. Internetverbindung prüfen und noch einmal versuchen.",
+  "@planBuyNetwork": {
+    "description": "Kauf fehlgeschlagen: Netz"
+  },
+  "planBuyNotAllowed": "Käufe sind auf diesem Gerät nicht erlaubt. In den Einstellungen des Geräts prüfen.",
+  "@planBuyNotAllowed": {
+    "description": "Kauf fehlgeschlagen: Käufe gesperrt"
+  },
+  "planBuyStore": "Der Store meldet ein Problem. Versuch es später noch einmal.",
+  "@planBuyStore": {
+    "description": "Kauf fehlgeschlagen: Problem beim Store"
+  },
+  "boxForgetTitle": "Kopplung mit „{box}“ löschen?",
+  "@boxForgetTitle": {
+    "description": "Rückfrage vor dem Vergessen einer gekoppelten Box",
+    "placeholders": {
+      "box": {
+        "type": "String"
+      }
+    }
+  },
+  "boxForgetBody": "Die App kennt diese Box danach nicht mehr. Neu koppeln geht nur mit dem QR-Code oder dem Box-Passwort.",
+  "@boxForgetBody": {
+    "description": "Erklärung in der Rückfrage vor dem Vergessen einer Box"
+  },
+  "chartTemplateRemoved": "Vorlage „{name}“ entfernt.",
+  "@chartTemplateRemoved": {
+    "description": "Meldung nach dem Entfernen einer eigenen Diagrammvorlage, mit Rückgängig",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "exportsRemoved": "„{name}“ aus der Liste entfernt.",
+  "@exportsRemoved": {
+    "description": "Meldung nach dem Entfernen eines Exports aus der Liste, mit Rückgängig",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "filterDeleted": "Filter gelöscht.",
+  "@filterDeleted": {
+    "description": "Meldung nach dem Löschen eines gespeicherten Filters, mit Rückgängig"
+  },
+  "monitorPendingCount": "{count, plural, =1{1 Telegramm wartet} other{{count} Telegramme warten}}",
+  "@monitorPendingCount": {
+    "description": "Screenreader-Text des Zählers am Pause-Knopf: Telegramme, die während der Pause eingegangen sind",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mapEdgesSemantics": "Verbindungslinien: {left} Einträge links und {right} rechts führen zur Mitte.",
+  "@mapEdgesSemantics": {
+    "description": "Screenreader-Text des Kantenbilds der Kommunikationskarte",
+    "placeholders": {
+      "left": {
+        "type": "int"
+      },
+      "right": {
+        "type": "int"
+      }
+    }
+  },
+  "busmonLoadChartSemantics": "Verlauf der Buslast.",
+  "@busmonLoadChartSemantics": {
+    "description": "Screenreader-Text des Buslast-Verlaufs im Busmonitor"
+  },
+  "chartsAreaSemantics": "{count, plural, =1{Diagramm mit 1 Reihe} other{Diagramm mit {count} Reihen}}: {names}. Zeitraum {from} bis {to}. Tippen setzt das Fadenkreuz.",
+  "@chartsAreaSemantics": {
+    "description": "Screenreader-Text der Diagrammfläche",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "names": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "commonLoading": "Wird geladen …",
+  "@commonLoading": {
+    "description": "Satz unter einem Ladekreisel, wenn nichts Genaueres bekannt ist"
+  },
+  "projectCheckRunning": "Das Projekt wird geprüft …",
+  "@projectCheckRunning": {
+    "description": "Satz unter dem Ladekreisel der Projektprüfung"
+  },
+  "boxClockUnconfirmed": "Uhrzeit weit vorgestellt, aber nicht bestätigt. Bis „Mit diesem Gerät stellen“ sie bestätigt, löscht die Box keinen alten Verlauf.",
+  "@boxClockUnconfirmed": {
+    "description": "Box settings: clock was set far ahead by an untrusted source"
+  },
+  "boxRetentionUnconfirmed": "Einstellungen der Box gingen verloren. Bis die Aufbewahrung neu festgelegt ist, löscht die Box keinen alten Verlauf.",
+  "@boxRetentionUnconfirmed": {
+    "description": "Box settings: retention not confirmed after lost server.json"
+  },
+  "recordingFull": "Aufnahme beendet und gesichert: Sie hat die Obergrenze von {count} Telegrammen erreicht.",
+  "@recordingFull": {
+    "description": "Message when a recording is stopped at its size limit",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "issuePlainOnSecuredLabel": "Klartext",
+  "@issuePlainOnSecuredLabel": {
+    "description": "Short issue label: plain telegram on a Data Secure address"
+  },
+  "issuePlainOnSecuredHint": "Unverschlüsselt auf einer Adresse mit Data-Secure-Schlüssel: Die Geräte verwerfen es. Kommt es nicht von einem bekannten Gerät, prüfen, wer es sendet.",
+  "@issuePlainOnSecuredHint": {
+    "description": "Hint for plain telegram on a Data Secure address"
+  },
+  "routingLost": "Der KNX-Router meldet {count} Telegramme, die er nicht weitergeben konnte. Sie fehlen in der Liste; meist ist die Linie oder der Router überlastet.",
+  "@routingLost": {
+    "description": "Monitor notice: routing lost message count",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "connectConnecting": "Verbindet mit dem Gateway …",
+  "@connectConnecting": {
+    "description": "Connect screen: shown instead of the button while connecting"
+  },
+  "menuHubChecks": "Prüfungen",
+  "@menuHubChecks": {
+    "description": "Menu: page that gathers the single checks"
+  },
+  "menuHubChecksHint": "Räume, Sperren, Heizung, Beleuchtung, Sicherheit: je eine Prüfung für einen Teil der Anlage.",
+  "@menuHubChecksHint": {
+    "description": "Menu: hint of the checks page"
+  },
+  "menuHubTroubleshooting": "Fehlersuche",
+  "@menuHubTroubleshooting": {
+    "description": "Menu: page for everything around a fault"
+  },
+  "menuHubTroubleshootingHint": "Wenn etwas nicht stimmt: eingrenzen, festhalten und melden.",
+  "@menuHubTroubleshootingHint": {
+    "description": "Menu: hint of the troubleshooting page"
+  },
+  "menuHubPapers": "Unterlagen",
+  "@menuHubPapers": {
+    "description": "Menu: page with what the customer gets on paper"
+  },
+  "menuHubPapersHint": "Was der Kunde bekommt: Akte, Berichte, Übergabe und Handbuch.",
+  "@menuHubPapersHint": {
+    "description": "Menu: hint of the papers page"
+  },
+  "menuHubSetup": "Einrichtung",
+  "@menuHubSetup": {
+    "description": "Menu: page with what is set up once"
+  },
+  "menuHubSetupHint": "Was einmal eingerichtet wird: Projekt, Anbindung, Sicherung.",
+  "@menuHubSetupHint": {
+    "description": "Menu: hint of the setup page"
+  },
+  "menuProjectHint": "ETS-Projekt laden oder wechseln: Namen, Datentypen und Geräte.",
+  "@menuProjectHint": {
+    "description": "Setup page: ETS project row"
+  },
+  "menuBackupHint": "Alles von diesem Gerät in eine Datei sichern oder daraus zurückholen.",
+  "@menuBackupHint": {
+    "description": "Setup page: backup row"
+  },
+  "menuAppLockHint": "Die App mit Code oder Biometrie sperren.",
+  "@menuAppLockHint": {
+    "description": "Setup page: app lock row"
+  },
+  "menuDiagHint": "Was zur Fehlersuche gebraucht wird, in einer Datei zum Weitergeben.",
+  "@menuDiagHint": {
+    "description": "Troubleshooting page: diagnostics package row"
+  },
+  "diagStepDescribe": "Beschreiben",
+  "@diagStepDescribe": {
+    "description": "Diagnostics wizard: step 1"
+  },
+  "diagStepData": "Aufzeichnung",
+  "@diagStepData": {
+    "description": "Diagnostics wizard: step 2"
+  },
+  "diagStepDataHint": "Welche Aufzeichnung und welcher Zeitraum ins Paket kommen, und ob Namen dabei sind.",
+  "@diagStepDataHint": {
+    "description": "Diagnostics wizard: step 2 hint"
+  },
+  "diagStepContents": "Inhalt prüfen",
+  "@diagStepContents": {
+    "description": "Diagnostics wizard: step 3"
+  },
+  "diagStepContentsHint": "Das steht im Paket, bevor es dieses Gerät verlässt.",
+  "@diagStepContentsHint": {
+    "description": "Diagnostics wizard: step 3 hint"
+  },
+  "diagStepReport": "Melden",
+  "@diagStepReport": {
+    "description": "Diagnostics wizard: step after a crash"
+  },
+  "diagStepReportHint": "Das Paket ist draußen. Den Absturz kannst du jetzt öffentlich melden; das Paket hängst du selbst an.",
+  "@diagStepReportHint": {
+    "description": "Diagnostics wizard: report step hint"
+  },
+  "wizardStepOf": "Schritt {step} von {total}",
+  "@wizardStepOf": {
+    "description": "Wizard: position of the current step",
+    "placeholders": {
+      "step": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "backupNotSaved": "Nicht gespeichert: Es wurde kein Ort für die Datei gewählt.",
+  "@backupNotSaved": {
+    "description": "Backup wizard: save dialog cancelled"
+  },
+  "backupPasswordHint": "Ohne dieses Passwort kommt niemand an den Inhalt, auch du nicht. Mindestens 12 Zeichen.",
+  "@backupPasswordHint": {
+    "description": "Backup wizard: password step"
+  },
+  "backupRestoreFileHint": "Die Datei einer Sicherung von diesem oder einem anderen Gerät.",
+  "@backupRestoreFileHint": {
+    "description": "Restore wizard: file step"
+  },
+  "backupPickFile": "Datei wählen",
+  "@backupPickFile": {
+    "description": "Restore wizard: pick button"
+  },
+  "backupRestorePasswordHint": "Das Passwort, mit dem die Sicherung erstellt wurde.",
+  "@backupRestorePasswordHint": {
+    "description": "Restore wizard: password step"
+  },
+  "backupCreateShort": "Erstellen",
+  "@backupCreateShort": {
+    "description": "Backup wizard: finish button"
+  },
+  "backupRestoreShort": "Einspielen",
+  "@backupRestoreShort": {
+    "description": "Restore wizard: finish button"
+  },
+  "handoverCreateShort": "Erstellen",
+  "@handoverCreateShort": {
+    "description": "Handover wizard: finish button"
   }
 }

@@ -27,6 +27,10 @@ class ToolShell {
   /// bar); [pushTool] takes it over.
   String? opening;
 
+  /// The next [pushTool] comes from a hub page ([ToolHubScreen]): it goes on top of the hub
+  /// instead of replacing it.
+  bool fromHub = false;
+
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     open.value = prefs.getBool(_key) ?? true;
@@ -43,24 +47,36 @@ class ToolShell {
 /// bar) so that "Back" always leads to the monitor. The bar is the same on all
 /// tool pages; pages with their own left column (device tree of the topology)
 /// adapt to the room that is left for them.
-Future<T?> pushTool<T>(BuildContext context, WidgetBuilder builder, {String? title}) {
+///
+/// [hub]: the page gathers other tools. A tool opened from it ([ToolShell.fromHub]) goes on top,
+/// so "Back" returns to the hub.
+Future<T?> pushTool<T>(BuildContext context, WidgetBuilder builder, {String? title, bool hub = false}) {
   final navigator = Navigator.of(context);
   final shell = ToolShell.instance;
   final current = shell._current;
   title ??= shell.opening;
   shell.opening = null;
+  if (current != null && current.isCurrent && current.hub && shell.fromHub) {
+    return navigator.push(ToolRoute<T>(builder: builder, title: title, below: current));
+  }
   if (current != null && current.isCurrent) {
-    final route = ToolRoute<T>(builder: builder, title: title, replacing: true);
+    final route = ToolRoute<T>(builder: builder, title: title, replacing: true, hub: hub, below: current.below);
     navigator.replace(oldRoute: current, newRoute: route);
     return route.popped;
   }
-  return navigator.push(ToolRoute<T>(builder: builder, title: title));
+  return navigator.push(ToolRoute<T>(builder: builder, title: title, hub: hub));
 }
 
 /// Page of a tool with the toolbar on the left (from [Breakpoints.expanded],
 /// unless collapsed).
 class ToolRoute<T> extends MaterialPageRoute<T> {
-  ToolRoute({required super.builder, this.title, this.replacing = false});
+  ToolRoute({required super.builder, this.title, this.replacing = false, this.hub = false, this.below});
+
+  /// Whether the page is a hub ([ToolHubScreen]).
+  final bool hub;
+
+  /// The hub this tool was opened from; the topmost tool again once this one closes.
+  final ToolRoute<dynamic>? below;
 
   /// Title of the tool, for the highlight in the bar.
   final String? title;
@@ -79,7 +95,7 @@ class ToolRoute<T> extends MaterialPageRoute<T> {
 
   @override
   void dispose() {
-    if (ToolShell.instance._current == this) ToolShell.instance._current = null;
+    if (ToolShell.instance._current == this) ToolShell.instance._current = (below?.isActive ?? false) ? below : null;
     super.dispose();
   }
 

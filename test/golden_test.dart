@@ -1,6 +1,12 @@
 @Tags(['golden'])
 library;
 
+import 'dart:async';
+
+import 'package:knx_monitor/ui/more_menu.dart';
+import 'package:knx_monitor/ui/support_package_screen.dart';
+import 'package:knx_monitor/ui/tool_shell.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -584,6 +590,98 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(seconds: 1));
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/menu_free_phone_light.png'));
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  // Diagnostics package as a wizard: steps on the left on the Mac, full screen on the phone.
+  for (final device in ['mac', 'phone']) {
+    testWidgets('diag_wizard_${device}_light', (tester) async {
+      PackageInfo.setMockInitialValues(
+        appName: 'Busclear',
+        packageName: 'knx_monitor',
+        version: '1.12.0',
+        buildNumber: '1',
+        buildSignature: '',
+      );
+      CatalogStore.instance.catalog = demoCatalog();
+      final log = TelegramLog()..addAll(_demoTraffic());
+      final (size, platform) = _devices[device]!;
+      debugDefaultTargetPlatformOverride = platform;
+      tester.view.physicalSize = size * 2;
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      late BuildContext home;
+      await tester.pumpWidget(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          locale: const Locale('de'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: Builder(
+            builder: (context) {
+              home = context;
+              return const Scaffold();
+            },
+          ),
+        ),
+      );
+      unawaited(showSupportPackage(home, log: log, occurred: DateTime(2026, 11, 17, 9, 30)));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      // Mac: the second step. Phone: the last one, where "Back" and the long word of the finish
+      // share the narrow foot.
+      for (var i = 0; i < (device == 'phone' ? 2 : 1); i++) {
+        await tester.tap(find.widgetWithText(FilledButton, 'Weiter'));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/diag_wizard_${device}_light.png'));
+      debugDefaultTargetPlatformOverride = null;
+    });
+  }
+
+  // A hub page of the menu: the single checks with one line each.
+  testWidgets('hub_checks_phone_light', (tester) async {
+    await Plan.instance.load(using: _FreeStore());
+    await Plan.instance.refreshing;
+    final (size, platform) = _devices['phone']!;
+    debugDefaultTargetPlatformOverride = platform;
+    tester.view.physicalSize = size * 2;
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    ToolShell.instance.menu = () => MoreMenu(
+      tools: [
+        for (final (title, hint, feature) in [
+          ('Räume', 'Je Raum: Was meldet sich, was fehlt?', null),
+          ('Sperren', 'Welche Sperre hält gerade was fest?', null),
+          ('Heizung prüfen', 'Stellgrößen, Sollwerte und Ventile im Blick.', null),
+          ('Sicherheits-Check', 'Verbindung, Data Secure und fremde Sender.', Feature.securityCheck),
+        ])
+          ToolEntry(
+            icon: Icons.circle,
+            title: title,
+            subtitle: hint,
+            group: ToolGroup.check,
+            hub: ToolHub.checks,
+            feature: feature,
+            open: (_) {},
+          ),
+      ],
+    );
+    addTearDown(() => ToolShell.instance.menu = null);
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        locale: const Locale('de'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        home: const ToolHubScreen(hub: ToolHub.checks),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 1));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/hub_checks_phone_light.png'));
     debugDefaultTargetPlatformOverride = null;
   });
 }

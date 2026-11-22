@@ -324,7 +324,7 @@ class _DaliScreenState extends State<DaliScreen> {
         const SizedBox(height: Gap.section),
         OutlinedButton.icon(
           onPressed: _openLog,
-          icon: const Icon(AppIcons.history, size: 18),
+          icon: const Icon(AppIcons.history, size: HzIconSize.row),
           label: Text(s.daliLogTitle),
         ),
       ],
@@ -479,7 +479,11 @@ class _DaliScreenState extends State<DaliScreen> {
         else if (primary)
           FilledButton(onPressed: onPressed, child: Text(label))
         else
-          OutlinedButton.icon(onPressed: onPressed, icon: const Icon(AppIcons.read, size: 18), label: Text(label)),
+          OutlinedButton.icon(
+            onPressed: onPressed,
+            icon: const Icon(AppIcons.read, size: HzIconSize.row),
+            label: Text(label),
+          ),
         const SizedBox(height: HzSpace.s4),
         Text(
           _canRead ? s.daliReadSends(count) : s.daliReadOnlyHint,
@@ -633,7 +637,7 @@ class _DaliScreenState extends State<DaliScreen> {
           ),
           IconButton(
             tooltip: s.daliRenameGroup,
-            icon: Icon(AppIcons.edit, size: 18, color: hz.textMuted),
+            icon: Icon(AppIcons.edit, size: HzIconSize.row, color: hz.textMuted),
             onPressed: () async {
               final name = await askDaliName(
                 context,
@@ -761,7 +765,7 @@ class _DaliScreenState extends State<DaliScreen> {
                         if (hasEmergency)
                           OutlinedButton.icon(
                             onPressed: _openLog,
-                            icon: const Icon(AppIcons.history, size: 18),
+                            icon: const Icon(AppIcons.history, size: HzIconSize.row),
                             label: Text(s.daliLogTitle),
                           ),
                         ConstrainedBox(
@@ -808,7 +812,7 @@ class _DaliScreenState extends State<DaliScreen> {
           label: Text([formatIndividual(g.address), ?g.location?.split(' › ').last].join(' ')),
           tooltip: daliGatewayLabel(g),
           selected: g.address == current.address,
-          avatar: g.trusted ? null : const Icon(HorizontSymbols.help, size: 16),
+          avatar: g.trusted ? null : const Icon(HorizontSymbols.help, size: HzIconSize.inline),
           onSelected: (_) => setState(() {
             _gateway = g.address;
             _selected = null;

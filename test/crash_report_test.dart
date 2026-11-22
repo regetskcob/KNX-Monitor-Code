@@ -14,7 +14,7 @@ import 'package:knx_monitor/theme/app_theme.dart';
 import 'package:knx_monitor/ui/connect_screen.dart' show CrashNotice;
 import 'package:knx_monitor/ui/crash_banner.dart';
 import 'package:knx_monitor/ui/server_restarts.dart';
-import 'package:knx_monitor/ui/support_package_screen.dart' show CrashIssueCard, SystemCrashCard;
+import 'package:knx_monitor/ui/support_package_screen.dart' show CrashIssueCard, SupportPackageScreen, SystemCrashCard;
 
 /// Shortened from a real macOS 15 report: header line, then the body.
 String ips({String proc = 'Busclear', String capture = '2026-11-06 14:32:07.4410 +0100'}) =>
@@ -356,6 +356,12 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.textContaining('Unerwartet beendet am 06.11.2026 14:32'), findsOneWidget);
+    // Solange das Diagnosepaket offen ist, bleibt der Hinweis weg.
+    SupportPackageScreen.open.value = 1;
+    await tester.pump();
+    expect(find.byType(CrashBanner), findsNothing);
+    SupportPackageScreen.open.value = 0;
+    await tester.pump();
     await tester.tap(find.text('Ansehen'));
     expect(reported, guard.crashed);
     await tester.tap(find.byType(IconButton));

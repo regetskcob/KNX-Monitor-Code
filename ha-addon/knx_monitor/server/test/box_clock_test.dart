@@ -199,4 +199,59 @@ void main() {
       expect(Directory('${data.path}/history').listSync(), isEmpty);
     });
   });
+
+  // A time far ahead from a device without admin rights or from the bus must
+  // not let retention empty the history.
+  group('unconfirmed step', () {
+    BoxClock clock() => BoxClock(
+      requestFile: File('${data.path}/time-request.json'),
+      stateFile: File('${data.path}/clock-unconfirmed.json'),
+      probe: () async => ClockSource.none,
+      system: () => system,
+      monotonic: watch,
+    );
+
+    test('far ahead from a device: set, but unconfirmed, also after a restart', () async {
+      var c = clock();
+      await c.init();
+      expect(await c.offer(DateTime(2099), ClockSource.client), 'set');
+      expect(c.unconfirmed, isTrue);
+      expect(c.status()['unconfirmed'], isTrue);
+      // After the restart the system clock already carries the wrong time: the
+      // next small step from the same kind of source confirms nothing.
+      system = DateTime(2099, 1, 1, 0, 5);
+      c = clock();
+      await c.init();
+      expect(await c.offer(DateTime(2099, 1, 1, 0, 6), ClockSource.knx), 'set');
+      expect(c.unconfirmed, isTrue);
+    });
+
+    test('an ordinary restart (small step) is not held up', () async {
+      final c = clock();
+      await c.init();
+      expect(await c.offer(system.add(const Duration(hours: 3)), ClockSource.client), 'set');
+      expect(c.unconfirmed, isFalse);
+      expect(c.status().containsKey('unconfirmed'), isFalse);
+    });
+
+    test('an admin who agrees, or sets the time, confirms it', () async {
+      final c = clock();
+      await c.init();
+      await c.offer(DateTime(2099), ClockSource.knx);
+      expect(c.unconfirmed, isTrue);
+      // Disagreeing confirms nothing.
+      expect(await c.offer(DateTime(2026, 10, 19, 12), ClockSource.client, trusted: true), 'differs');
+      expect(c.unconfirmed, isTrue);
+      expect(await c.offer(DateTime(2026, 10, 19, 12), ClockSource.client, force: true, trusted: true), 'set');
+      expect(c.unconfirmed, isFalse);
+      expect(File('${data.path}/clock-unconfirmed.json').existsSync(), isFalse);
+    });
+
+    test('an admin setting the time far ahead is taken at their word', () async {
+      final c = clock();
+      await c.init();
+      expect(await c.offer(DateTime(2027), ClockSource.client, trusted: true), 'set');
+      expect(c.unconfirmed, isFalse);
+    });
+  });
 }

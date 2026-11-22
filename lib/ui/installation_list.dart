@@ -337,7 +337,10 @@ class _InstallationCardState extends State<InstallationCard> {
           enabled: i.id != active.id,
           child: Row(
             children: [
-              SizedBox(width: HzSpace.s24, child: i.id == active.id ? const Icon(AppIcons.check, size: 18) : null),
+              SizedBox(
+                width: HzSpace.s24,
+                child: i.id == active.id ? const Icon(AppIcons.check, size: HzIconSize.row) : null,
+              ),
               Expanded(child: Text(i.name, maxLines: 1, overflow: TextOverflow.ellipsis)),
             ],
           ),

@@ -47,6 +47,10 @@ import 'package:knx_monitor_server/files.dart';
 /// `server grafana [prometheus|influxdb]`: writes the Grafana template to
 /// standard output (the same as `/api/export/grafana`).
 ///
+/// `server healthcheck`: exit code 0 if the server running on this machine
+/// answers `/healthz` (PORT and BIND as for the server), otherwise 1. For
+/// Docker's HEALTHCHECK and the box, where no Supervisor watchdog asks.
+///
 /// `server hat [seconds]`: checks the KNX HAT (kBerry on /dev/ttyAMA0, see
 /// docs/kberry.md) and writes the report as JSON; run via SSH on the box.
 Future<void> main(List<String> args) async {
@@ -56,6 +60,9 @@ Future<void> main(List<String> args) async {
   } on ContainerEnvException catch (e) {
     stderr.writeln('Busclear: $e');
     exit(78); // EX_CONFIG
+  }
+  if (args.isNotEmpty && args.first == 'healthcheck') {
+    exit(await checkHealth(env) ? 0 : 1);
   }
   if (args.isNotEmpty && args.first == 'sheet') {
     await _writeSheets(args.length > 1 ? args[1] : '.', env);
@@ -98,12 +105,23 @@ Future<void> main(List<String> args) async {
   await crash.start();
   // As before, the process exits on an unhandled error (systemd or the
   // watchdog restarts it), except that the reason is recorded first.
+  var failing = false;
   await runZonedGuarded(() => _serve(env, port, web, data, crash), (error, stack) {
     stderr.writeln('Unbehandelter Fehler: $error\n$stack');
+    // A second error while the history is being written: out at once.
+    if (failing) exit(255);
+    failing = true;
     crash.recordError(error, stack);
-    exit(255);
+    // What the recorder still holds (up to `flushSeconds`) goes to disk first,
+    // with a short deadline: the state is unknown, so nothing else is tidied up.
+    final save = _saveHistory;
+    if (save == null) exit(255);
+    unawaited(save().timeout(const Duration(seconds: 2)).catchError((Object _) {}).whenComplete(() => exit(255)));
   });
 }
+
+/// Writes the recorder's buffer to disk; set once the installations are open.
+Future<void> Function()? _saveHistory;
 
 Future<void> _serve(Map<String, String> env, int port, Directory web, Directory data, CrashWatch crash) async {
   final allowAll = env['ALLOW_ALL'] == '1';
@@ -180,7 +198,12 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
   // In Docker the host keeps the time (NTP); there is nobody to carry out a
   // request, and a clock the app may set would let any paired device move the
   // history's time stamps and with them the retention (deleting everything).
-  final clock = box == null || docker ? null : BoxClock(requestFile: File('${data.path}/time-request.json'));
+  final clock = box == null || docker
+      ? null
+      : BoxClock(
+          requestFile: File('${data.path}/time-request.json'),
+          stateFile: File('${data.path}/clock-unconfirmed.json'),
+        );
   // Each installation has its own bus connection, catalog and history; on first
   // start, the previous data folder becomes the installation "default".
   // In the add-on with an MQTT broker: device "Busclear" (see below).
@@ -238,6 +261,8 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
     'clock': ?clock?.status(),
     'health': ?health?.status(),
     'waiting': installations.bus.recorder.waiting,
+    // Lost settings: nothing is deleted by age until someone sets the retention again.
+    if (installations.bus.retentionUnconfirmed) 'retentionUnconfirmed': true,
     'installation': installations.info,
     // Key of this box (docs/keys.md): the app tells boxes apart by it, not by their address.
     'key': installations.installations.boxKey,
@@ -246,6 +271,7 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
     'backup': true,
   };
   await installations.start();
+  _saveHistory = () => installations.bus.recorder.flush(durable: true);
   // Backup of the whole box and the way back (box_backup.dart, docs/backup-format.md).
   _backup = BoxBackupService(
     data,
@@ -388,6 +414,9 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
         // With a deadline: if the serial line to the HAT hangs, systemd otherwise kills
         // the process after 20 s, and that counted as an unexpected restart.
         await () async {
+          // The history first: it is what cannot be made up for if a later
+          // step hangs until the deadline.
+          await installations.bus.recorder.flush(durable: true);
           await mqtt?.stop();
           await events.close();
           await installations.shutdown();
@@ -437,6 +466,12 @@ Future<void> _serve(Map<String, String> env, int port, Directory web, Directory 
   // Box: HTTPS with its own certificate (see box_tls.dart); HTTP stays for the
   // browser in the box Wi-Fi. Without a certificate or if the port is taken, HTTP only.
   if (box != null) {
+    box.onLockout = () {
+      unawaited(mcp?.revoke().catchError((Object e) => stderr.writeln('MCP sperren: $e')));
+      unawaited(
+        installations.bus.exporter.revokeTokens().catchError((Object e) => stderr.writeln('Export sperren: $e')),
+      );
+    };
     box.onAccessChanged = () {
       unawaited(installations.bus.closeClients());
       // A revoked device must not keep listening; the others reconnect.
@@ -514,7 +549,9 @@ Future<void> _handle(
     // Supervisor watchdog (does not come via Ingress) and the startup check of
     // setup.sh on the box: a response below 300 without login, but without data,
     // so that it reveals nothing on the network either.
-    if (request.uri.path == healthPath) return await answerHealth(response);
+    if (request.uri.path == healthPath) {
+      return await answerHealth(response, stalled: installations.bus.recorder.stalled);
+    }
     if (_localHostOnly && !BoxAccess.localHostName(request.headers.value(HttpHeaders.hostHeader))) {
       response
         ..statusCode = HttpStatus.forbidden
@@ -530,7 +567,17 @@ Future<void> _handle(
       return await response.close();
     }
     // AI tools with the MCP token: only /api/mcp, read-only.
-    if (mcp != null && mcp!.authorized(request)) return await mcp!.serve(request);
+    if (mcp != null && mcp!.authorized(request)) {
+      // Where the box does not even ask for the password (cable without LAN
+      // access, a foreign host name on the container), the token opens nothing either.
+      if (box?.networkRefusal(request) case final refusal?) {
+        response
+          ..statusCode = HttpStatus.forbidden
+          ..write(refusal);
+        return await response.close();
+      }
+      return await mcp!.serve(request);
+    }
     // The Busclear integration with its token: only the endpoints below /api/ha/.
     if (ha != null && HaIntegration.handles(request.uri.path) && ha.authorized(request)) {
       await ha.serve(request);
@@ -846,6 +893,8 @@ Future<void> _boxTime(HttpRequest request, BoxClock clock, {required bool admin,
     DateTime.fromMillisecondsSinceEpoch(ms),
     ClockSource.client,
     force: admin && body['force'] == true,
+    // An admin's clock confirms a time that was set far ahead before.
+    trusted: admin,
   );
   return sendJson(request.response, {'result': result, 'clock': clock.status()});
 }

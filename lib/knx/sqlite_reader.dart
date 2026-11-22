@@ -11,6 +11,23 @@ import 'dart:typed_data';
 /// Throws [FormatException] for anything that is not a readable SQLite file.
 class SqliteReader {
   SqliteReader(this._data) {
+    _guarded(_open);
+  }
+
+  /// A damaged file points past its end (cell pointers, payload sizes, overflow pages, record
+  /// offsets). Those reads fail with a [RangeError] or [TypeError]; callers are promised a
+  /// [FormatException].
+  static T _guarded<T>(T Function() read) {
+    try {
+      return read();
+    } on RangeError {
+      throw const FormatException('damaged SQLite file');
+    } on TypeError {
+      throw const FormatException('damaged SQLite file');
+    }
+  }
+
+  void _open() {
     if (_data.length < 100 || ascii.decode(_data.sublist(0, 15), allowInvalid: true) != 'SQLite format 3') {
       throw const FormatException('not an SQLite database');
     }
@@ -46,7 +63,9 @@ class SqliteReader {
   ///
   /// A column declared as INTEGER PRIMARY KEY holds the rowid. Columns added later with ALTER
   /// TABLE that a row predates are `null`.
-  List<Map<String, Object?>> rows(String table) {
+  List<Map<String, Object?>> rows(String table) => _guarded(() => _readRows(table));
+
+  List<Map<String, Object?>> _readRows(String table) {
     final t = _table(table);
     if (t == null) throw FormatException('table $table not found');
     if (t.withoutRowid) throw FormatException('table $table is WITHOUT ROWID');

@@ -276,6 +276,9 @@ class HandoverChanges {
     this.devicesRenamed = 0,
     this.packageHasKeys = false,
     this.installationHasKeys,
+    this.gatewayBefore,
+    this.gatewayAfter,
+    this.companyBefore,
   });
 
   final int groupsAdded;
@@ -291,6 +294,18 @@ class HandoverChanges {
   /// Whether the installation has a keyring now; `null` if that is not known without switching
   /// to it. Without keys in the package the stored ones are removed.
   final bool? installationHasKeys;
+
+  /// The package names another KNX/IP interface than the installation uses now: [gatewayBefore]
+  /// is the address here, [gatewayAfter] the one from the package. Both `null` if it stays. After
+  /// the update the app connects to the new one, so the user must see it: anyone who holds an
+  /// older package or fault report of this installation can build a "newer" one.
+  final String? gatewayBefore;
+  final String? gatewayAfter;
+
+  /// The earlier package came from another company; its name. `null` if it is the same.
+  final String? companyBefore;
+
+  bool get gatewayChanged => gatewayAfter != null;
 
   bool get groupsChanged => groupsAdded + groupsRemoved + groupsRenamed > 0;
   bool get devicesChanged => devicesAdded + devicesRemoved + devicesRenamed > 0;
@@ -333,7 +348,14 @@ Future<HandoverChanges> handoverChanges(HandoverPackage p, Installation target) 
   }
   final groups = p.catalog.groups;
   final devices = p.catalog.devices;
+  // Only an installation next to others gets the package's gateway ([applyHandover]).
+  final gatewayAfter = InstallationStore.instance.switchable ? p.gateway : null;
+  final gatewayChanged = gatewayAfter != null && gatewayAfter.address != target.gateway?.address;
+  final before = (await HandoverStore.read(target.id))?.contact.name ?? '';
   return HandoverChanges(
+    gatewayBefore: gatewayChanged ? target.gateway?.address ?? '' : null,
+    gatewayAfter: gatewayChanged ? gatewayAfter.address : null,
+    companyBefore: before.isNotEmpty && _norm(before) != _norm(p.contact.name) ? before : null,
     groupsAdded: groups.keys.where((a) => !current.groups.containsKey(a)).length,
     groupsRemoved: current.groups.keys.where((a) => !groups.containsKey(a)).length,
     groupsRenamed: groups.values

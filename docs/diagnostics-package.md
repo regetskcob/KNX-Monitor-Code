@@ -39,6 +39,11 @@ becomes `Project`, installation names are left out. Names of group addresses
 and devices are included, but can be switched off before export (addresses
 and product names remain).
 
+The forum text (`lib/export/forum_package.dart`, copied to the clipboard for a
+forum post) follows the same rule for Data Secure: telegrams to secured group
+addresses keep time, sender, address and type, their value is replaced by
+"secured".
+
 Scrubbing: `Scrubber` in `lib/export/diagnostics_bundle.dart` replaces
 patterns and known private names (installations, gateway host, serial number
 and MAC, project and file name, keyring project) in free text

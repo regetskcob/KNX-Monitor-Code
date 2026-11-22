@@ -185,7 +185,7 @@ class AnnotationTile extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 2),
-              child: Icon(AppIcons.annotationSet, size: 18, color: hz.warning),
+              child: Icon(AppIcons.annotationSet, size: HzIconSize.row, color: hz.warning),
             ),
             const SizedBox(width: HzSpace.s12),
             Expanded(

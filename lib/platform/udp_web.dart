@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:web/web.dart' as web;
 
+import '../l10n/locale_controller.dart';
 import 'login_web.dart';
 import 'udp.dart';
 
@@ -21,7 +22,7 @@ class _RelayUdp implements UdpEndpoint {
     }).toJS;
     _socket.onclose = ((web.Event _) {
       if (!_datagrams.isClosed) {
-        _datagrams.addError(const UdpException('Verbindung zum Add-on getrennt'));
+        _datagrams.addError(UdpException(s.addonDisconnected));
         _datagrams.close();
       }
     }).toJS;
@@ -70,8 +71,7 @@ Future<UdpEndpoint> openUdp() async {
   return _RelayUdp(socket);
 }
 
-Future<UdpEndpoint> openMulticast(String group, int port) async =>
-    throw const UdpException('Routing ist im Browser nicht möglich – das Add-on hält die Verbindung.');
+Future<UdpEndpoint> openMulticast(String group, int port) async => throw UdpException(s.webNoRouting);
 
 Future<List<int>> lookupIPv4(String host) async {
   final r = await http.get(_api('api/resolve').replace(queryParameters: {'host': host}));

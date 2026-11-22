@@ -470,7 +470,7 @@ class _Controls extends StatelessWidget {
               OutlinedButton(onPressed: () => Navigator.of(context).pop(TourResult.done), child: Text(s.tourDone)),
               FilledButton.icon(
                 onPressed: () => Navigator.of(context).pop(TourResult.demo),
-                icon: const Icon(AppIcons.play, size: 18),
+                icon: const Icon(AppIcons.play, size: HzIconSize.row),
                 label: Text(s.tourOpenDemo),
               ),
             ] else
@@ -570,7 +570,7 @@ class _Words extends StatelessWidget {
           const SizedBox(height: HzSpace.s16),
           OutlinedButton.icon(
             onPressed: () => showPlanScreen(context, need: plan.value == Tier.free ? Tier.plus : Tier.pro),
-            icon: const Icon(AppIcons.plan, size: 18),
+            icon: const Icon(AppIcons.plan, size: HzIconSize.row),
             label: Text(s.tourMorePlans),
           ),
         ],
@@ -605,7 +605,7 @@ class _Chips extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 spacing: HzSpace.s8,
                 children: [
-                  Icon(c.icon, size: 18, color: hz.accentText),
+                  Icon(c.icon, size: HzIconSize.row, color: hz.accentText),
                   Text(c.label, style: style),
                 ],
               ),

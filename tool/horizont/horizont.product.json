@@ -1,0 +1,51 @@
+{
+  "id": "knx",
+  "horizont": "0.16.0",
+  "name": "Busclear",
+  "role": "Bus diagnostics, all platforms and Home Assistant",
+  "accentName": "Bus",
+  "light": {
+    "accent": "#437F18",
+    "on-accent": "#FFFFFF",
+    "accent-tint": "#E8F2DC",
+    "accent-text": "#3E7516"
+  },
+  "dark": {
+    "accent": "#9BD45E",
+    "on-accent": "#12200A",
+    "accent-tint": "#1D2913",
+    "accent-text": "#A8DC6E"
+  },
+  "soft": {
+    "light": {
+      "bg": "#F6F8F2"
+    },
+    "dark": {
+      "bg": "#171A15",
+      "surface": "#22261F",
+      "line": "#343A2F",
+      "line-strong": "#6C7266",
+      "accent-tint": "#2A3622",
+      "accent-text": "#BCDC9F"
+    }
+  },
+  "icon": {
+    "field": "#7AB929",
+    "glyph": "#12200A",
+    "sky": "#C6E59A",
+    "sky2": "#8CC63F",
+    "ground": "#437F18",
+    "ground2": "#2F6410",
+    "horizon": "#EAF6D8",
+    "outline": "#12200A",
+    "obj": {
+      "light": "#FFFFFF",
+      "mid": "#DCE7CF",
+      "red": "#D23C2E",
+      "grey": "#3A3D38",
+      "cable": "#3A7215",
+      "redDark": "#A82C21",
+      "greyDark": "#262824"
+    }
+  }
+}

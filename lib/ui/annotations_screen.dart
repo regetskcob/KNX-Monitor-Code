@@ -160,7 +160,7 @@ class _AnnotationDetail extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 spacing: Gap.inner,
                 children: [
-                  Icon(AppIcons.annotationSet, size: 18, color: hz.warning),
+                  Icon(AppIcons.annotationSet, size: HzIconSize.row, color: hz.warning),
                   Expanded(
                     child: Text(
                       describeAnnotation(a),
@@ -171,7 +171,7 @@ class _AnnotationDetail extends StatelessWidget {
               );
               final edit = OutlinedButton.icon(
                 onPressed: () => editAnnotation(context, a),
-                icon: const Icon(AppIcons.edit, size: 18),
+                icon: const Icon(AppIcons.edit, size: HzIconSize.row),
                 label: Text(s.annotationEditTitle),
               );
               // Side by side while the reference keeps a readable share; a narrow pane or large

@@ -2,7 +2,9 @@ import '../knx/demo_tunnel.dart';
 import '../knx/gateway_info.dart';
 import '../knx/group_catalog.dart';
 import '../knx/knx_tunnel.dart';
+import '../knx/multi_tunnel.dart';
 import '../knx/secure/keyring_store.dart';
+import '../knx/shared_tunnel.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
 
@@ -66,6 +68,7 @@ class SecurityInput {
     this.secureWithoutKey = 0,
     this.secureRejected = 0,
     this.ownAddresses = const {},
+    this.secureMarked = false,
   });
 
   /// From the running monitor.
@@ -81,6 +84,10 @@ class SecurityInput {
       secureWithoutKey: keys.withoutKey.value,
       secureRejected: keys.rejected.value,
       ownAddresses: {?tunnel.tunnelAddress},
+      // Only a direct connection decrypts here and marks what arrived secured. The server of
+      // add-on and box decrypts itself and passes plain frames on; with several tap points the
+      // further sightings carry no mark of their own.
+      secureMarked: tunnel is! SharedTunnel && tunnel is! DemoTunnel && tunnel is! MultiTunnel,
     );
   }
 
@@ -99,6 +106,10 @@ class SecurityInput {
 
   /// Own tunnel address(es) – not a foreign sender.
   final Set<int> ownAddresses;
+
+  /// Whether [telegrams] carry the Data Secure mark ([arrivedSecure]): then plain telegrams on a
+  /// secured address can be told from secured ones.
+  final bool secureMarked;
 }
 
 /// Security check: connection, Data Secure in the project and in the traffic,
@@ -111,6 +122,7 @@ class SecurityCheck {
     required this.projectSecured,
     required this.seenGroups,
     required this.seenSecured,
+    required this.plainOnSecured,
     required this.foreign,
     required this.keyringLoaded,
   });
@@ -123,6 +135,9 @@ class SecurityCheck {
   final int projectSecured;
   final int seenGroups;
   final int seenSecured;
+
+  /// Telegrams that arrived in plain on an address with a Data Secure key.
+  final int plainOnSecured;
   final List<ForeignSender> foreign;
 
   /// Without a keyring the Secure shares are unknown, not zero.
@@ -175,7 +190,22 @@ class SecurityCheck {
       for (final t in input.telegrams)
         if (t.type != TelegramType.read) t.destination,
     };
-    final seenSecured = seen.where(secured.contains).length;
+    // Plain telegrams on an address with a key: the devices discard them, this app showed them.
+    // They neither count as "secured" nor go unnoticed. Without the mark (server, files) the origin
+    // is unknown and the address counts as before.
+    var plainOnSecured = 0;
+    final arrivedSecured = <int>{};
+    if (input.secureMarked) {
+      for (final t in input.telegrams) {
+        if (!secured.contains(t.destination) || t.outgoing || t.raw.isEmpty) continue;
+        if (arrivedSecure(t)) {
+          if (t.type != TelegramType.read) arrivedSecured.add(t.destination);
+        } else {
+          plainOnSecured++;
+        }
+      }
+    }
+    final seenSecured = input.secureMarked ? arrivedSecured.length : seen.where(secured.contains).length;
     if (!input.keyringLoaded) {
       findings.add(
         SecurityFinding(
@@ -198,6 +228,11 @@ class SecurityCheck {
     if (input.secureWithoutKey > 0 && input.keyringLoaded) {
       findings.add(
         SecurityFinding(SecurityLevel.advice, s.secWithoutKeyTitle, s.secWithoutKeyText(input.secureWithoutKey)),
+      );
+    }
+    if (plainOnSecured > 0) {
+      findings.add(
+        SecurityFinding(SecurityLevel.advice, s.secPlainOnSecuredTitle, s.secPlainOnSecuredText(plainOnSecured)),
       );
     }
     if (input.secureRejected > 0) {
@@ -234,6 +269,7 @@ class SecurityCheck {
       projectSecured: projectSecured,
       seenGroups: seen.length,
       seenSecured: seenSecured,
+      plainOnSecured: plainOnSecured,
       foreign: foreignList,
       keyringLoaded: input.keyringLoaded,
     );

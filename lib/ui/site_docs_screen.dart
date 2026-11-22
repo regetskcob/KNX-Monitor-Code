@@ -227,7 +227,7 @@ class _SiteDocsScreenState extends State<SiteDocsScreen> {
                             if (_hasCamera)
                               FilledButton.icon(
                                 onPressed: _busy ? null : _takePhoto,
-                                icon: const Icon(AppIcons.image, size: 18),
+                                icon: const Icon(AppIcons.image, size: HzIconSize.row),
                                 label: Text(s.siteDocsTakePhoto),
                               ),
                             OutlinedButton(onPressed: _busy ? null : _pickPhoto, child: Text(s.siteDocsPickPhoto)),
@@ -268,14 +268,14 @@ class _SiteDocsScreenState extends State<SiteDocsScreen> {
                             Builder(
                               builder: (button) => FilledButton.icon(
                                 onPressed: hasDevices ? () => _labels(button) : null,
-                                icon: const Icon(AppIcons.qrCode, size: 18),
+                                icon: const Icon(AppIcons.qrCode, size: HzIconSize.row),
                                 label: Text(s.siteDocsLabelsCreate),
                               ),
                             ),
                             if (_hasCamera)
                               OutlinedButton.icon(
                                 onPressed: _scan,
-                                icon: const Icon(AppIcons.qrScan, size: 18),
+                                icon: const Icon(AppIcons.qrScan, size: HzIconSize.row),
                                 label: Text(s.siteDocsScan),
                               ),
                           ],

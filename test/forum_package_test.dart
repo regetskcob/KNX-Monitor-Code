@@ -57,6 +57,23 @@ void main() {
     expect(text, isNot(contains('Haus Müller')));
   });
 
+  test('Data Secure: Werte gesicherter Adressen stehen nicht im Text', () {
+    for (final format in ForumFormat.values) {
+      final text = ForumPackage.build(
+        telegrams: _telegrams,
+        catalog: _catalog,
+        format: format,
+        value: (t) => t.destination == _ga('1/1/1') ? 'GEHEIMWERT' : 'Ein',
+        secureAddresses: {_ga('1/1/1')},
+      );
+      expect(text, isNot(contains('GEHEIMWERT')), reason: '$format');
+      expect(text, contains('gesichert'));
+      // The row stays, and so does the value of the unsecured address.
+      expect(text, contains('1/1/1'));
+      expect(text, contains('Ein'));
+    }
+  });
+
   test('BBCode mit Ersatznamen: Adressen und DPT bleiben, Namen nicht', () {
     final text = ForumPackage.build(
       telegrams: _telegrams,

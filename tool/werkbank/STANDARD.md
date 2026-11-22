@@ -125,6 +125,17 @@ Watch-App, Seiten-Deploy), steht als eigener Befehl daneben.
             fi
             echo "verified=$verified" >> "$GITHUB_OUTPUT"
   ```
+- **Review in zwei Stufen:** Ein bezahltes Review (Copilot, rund 26 AI Credits) bei jedem PR
+  hat im November 2026 das Kontingent nach zwei Wochen aufgebraucht. Deshalb:
+  - Je PR grob und lokal: Vor `tool/release.sh push` prüft die Claude-Sitzung den Diff mit
+    `/code-review low` (nur wenige, sichere Befunde, also die groben Schnitzer). Kein
+    Copilot-Review per Ruleset.
+  - Vor dem Release einmal ausführlich: `/code-review high` über `werkbank review-range`
+    (alles seit dem letzten Tag), Befunde beheben, dann `werkbank reviewed`. Der Vermerk gilt
+    für genau diesen Commit. `push-tag` (und damit `release`) verweigert einen Tag ohne ihn,
+    außer seit dem Review änderten sich nur Release-Dateien (Version, Changelogs,
+    `config.yaml`, `store/`; Regex `WB_REVIEW_RELEASE_FILES`). Für einen Hotfix:
+    `WB_NO_REVIEW=1`.
 - **Ausgaben:** Erzeugtes nach `build/`, Release-Dateien nach `build/release/`, Symbole von
   `--split-debug-info` nach `~/keys/symbols/<app>/<version>/<plattform>/`.
 
@@ -139,7 +150,7 @@ tool/release.sh release [--upload]    # dann wirklich
 
 | Phase | Was |
 |---|---|
-| Vorprüfung | sauberer `main` gleich `origin/main`, Abschnitt `## <version>` im `CHANGELOG.md`, Release-Texte vollständig (bei iOS/Android), dann `verify` (oder Hook `verify_release`) |
+| Vorprüfung | sauberer `main` gleich `origin/main`, Release-Review vermerkt (`werkbank reviewed`), Abschnitt `## <version>` im `CHANGELOG.md`, Release-Texte vollständig (bei iOS/Android), dann `verify` (oder Hook `verify_release`) |
 | Bauen | je Produkt und Plattform: `android` und `ios` aus der werkbank, andere über `build_<plattform>`; ein Hook `build_<plattform>` ersetzt auch den werkbank-Weg für `android`/`ios` (z. B. Watch-App im IPA, Phone- und Wear-Bundle); ein Produkt mit Hook `release_<produkt>` baut ganz selbst (z. B. per CI) |
 | Hochladen | mit `--upload`: Apple über das Xcode-Konto, Play über das Dienstkonto |
 | Tag | `<präfix><version>` je Produkt, erst nach Bauen und Hochladen, gepusht |

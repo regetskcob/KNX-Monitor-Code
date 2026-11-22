@@ -4,6 +4,7 @@ import 'package:horizont/horizont.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../catalog_store.dart';
+import '../export/diagnostics_bundle.dart' show secureGroupAddresses;
 import '../export/forum_package.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
@@ -64,6 +65,7 @@ class _ForumPanelState extends State<ForumPanel> {
       appVersion: _version,
       value: store.value,
       dptOf: store.dptOf,
+      secureAddresses: secureGroupAddresses(),
     );
   }
 
@@ -104,7 +106,11 @@ class _ForumPanelState extends State<ForumPanel> {
           onChanged: (v) => setState(() => _pseudonymize = v),
         ),
         const SizedBox(height: Gap.item),
-        FilledButton.icon(onPressed: _copy, icon: const Icon(AppIcons.copy, size: 18), label: Text(s.forumCopy)),
+        FilledButton.icon(
+          onPressed: _copy,
+          icon: const Icon(AppIcons.copy, size: HzIconSize.row),
+          label: Text(s.forumCopy),
+        ),
         const SizedBox(height: Gap.inner),
         Kennung(s.forumPreview),
         const SizedBox(height: Gap.item),

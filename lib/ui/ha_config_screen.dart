@@ -155,7 +155,7 @@ class _HaConfigScreenState extends State<HaConfigScreen> {
                       onSelected: (on) => setState(() => on ? _platforms.add(p) : _platforms.remove(p)),
                     ),
                 FilterChip(
-                  avatar: Icon(HorizontStatus.warning.icon, size: 16, color: hz.warning),
+                  avatar: Icon(HorizontStatus.warning.icon, size: HzIconSize.inline, color: hz.warning),
                   label: Text(s.haOnlyUncertain),
                   selected: _onlyUncertain,
                   onSelected: (on) => setState(() => _onlyUncertain = on),
@@ -301,7 +301,7 @@ class _HaConfigScreenState extends State<HaConfigScreen> {
                           alignment: AlignmentDirectional.centerStart,
                           child: TextButton.icon(
                             onPressed: () => setState(() => _preview = !_preview),
-                            icon: Icon(_preview ? AppIcons.collapse : AppIcons.expand, size: 18),
+                            icon: Icon(_preview ? AppIcons.collapse : AppIcons.expand, size: HzIconSize.row),
                             label: Text(s.haPreview),
                           ),
                         ),
@@ -425,7 +425,7 @@ class _EntityRow extends StatelessWidget {
                           padding: const EdgeInsets.only(top: HzSpace.s4),
                           child: Row(
                             children: [
-                              Icon(AppIcons.objects, size: 16, color: hz.textMuted),
+                              Icon(AppIcons.objects, size: HzIconSize.inline, color: hz.textMuted),
                               const SizedBox(width: HzSpace.s4),
                               Expanded(
                                 child: Text(
@@ -442,7 +442,7 @@ class _EntityRow extends StatelessWidget {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(HorizontStatus.warning.icon, size: 16, color: hz.warning),
+                              Icon(HorizontStatus.warning.icon, size: HzIconSize.inline, color: hz.warning),
                               const SizedBox(width: HzSpace.s4),
                               Expanded(
                                 child: Text(

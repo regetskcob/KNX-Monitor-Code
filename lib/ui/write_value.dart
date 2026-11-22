@@ -197,7 +197,7 @@ class _WriteValueControlState extends State<WriteValueControl> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(status.icon, size: 18, color: status.color(hz)),
+                      Icon(status.icon, size: HzIconSize.row, color: status.color(hz)),
                       const SizedBox(width: HzSpace.s8),
                       Expanded(
                         child: Text(_status!, style: TextStyle(color: _statusIsError ? hz.critical : hz.text)),
@@ -282,13 +282,13 @@ class _WriteValueControlState extends State<WriteValueControl> {
         ? FilledButton.icon(
             style: shrink,
             onPressed: _busy ? null : _writeInput,
-            icon: const Icon(AppIcons.send, size: 18),
+            icon: const Icon(AppIcons.send, size: HzIconSize.row),
             label: Text(s.writeButton),
           )
         : OutlinedButton.icon(
             style: shrink,
             onPressed: _busy ? null : _writeInput,
-            icon: const Icon(AppIcons.send, size: 18),
+            icon: const Icon(AppIcons.send, size: HzIconSize.row),
             label: Text(s.writeButton),
           );
     return LayoutBuilder(

@@ -25,7 +25,7 @@
 <div class="hz-feld tz-feld">
 <main id="main" class="tz-main">
 {{ partial "horizont/feld/hero.html" (dict
-    "kennung" (printf "01 — %s" $h.header.kennung)
+    "kennung" $h.header.kennung
     "title" $h.features.title
     "text" $h.header.text
     "primary" (dict "label" $d.primary "url" site.Params.haUrl)
@@ -42,7 +42,7 @@
     (dict "id" "expert" "label" $h.expert.label "title" $h.expert.title "text" (partial "live.html" (dict "ctx" $h.expert "key" "text")) "facts" $expert "group" "expert") }}
 {{- $n = add $n 1 }}
 <section class="hz-feld-section tz-section tz-section--shots" id="{{ .id }}">
-  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n .label) }}
+  {{ partial "horizont/kennung.html" .label }}
   <div>
     <h2>{{ .title }}</h2>
     <p>{{ .text | markdownify }}</p>
@@ -71,7 +71,7 @@
     (dict "id" "privacy" "label" $h.privacy.label "title" $h.privacy.title "text" (printf "%s [%s](%s)" (partial "live.html" (dict "ctx" $h.privacy "key" "text")) $h.privacy.more site.Params.privacyUrl) "facts" $privacy) }}
 {{- $n = add $n 1 }}
 <section class="hz-feld-section tz-section tz-section--read" id="{{ .id }}">
-  {{ partial "horizont/kennung.html" (printf "%02d — %s" $n .label) }}
+  {{ partial "horizont/kennung.html" .label }}
   <div>
     <h2>{{ .title }}</h2>
     <p>{{ .text | markdownify }}</p>

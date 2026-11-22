@@ -2,8 +2,11 @@
 # add-on) and the add-on server – unless tool/release.sh verify passed for
 # the commit locally and tool/release.sh push (or app, for the tag) marked it on GitHub
 # (status werkbank/verify, job gate; tool/werkbank/STANDARD.md, "Stempel"). main changes only through pull requests, so
-# there is no second run after the merge. Changes only to the website or docs
-# run only the cheap gate and the ci-ok check (required by the main ruleset). Desktop (Linux, Windows) builds run only on an app-v* tag
+# there is no second run after the merge. Changes only to the website, docs or streuwerk/
+# run only the cheap gate and the ci-ok check (required by the main ruleset); docs
+# that a test reads (TESTED_DOCS in the gate) count as code. Box scripts, the Home
+# Assistant integration and the Supabase rules have short jobs of their own that
+# run only when a pull request touches them and no stamp covers it. Desktop (Linux, Windows) builds run only on an app-v* tag
 # (tool/release.sh app pushes it) or by hand; the Android test APK only by hand
 # (store builds come from tool/release.sh android). The repository is private,
 # so Actions minutes and artifact storage count against the quota;
@@ -15,7 +18,7 @@ on:
     tags: ['app-v*']
     paths-ignore: ['site/**', 'docs/**', '**.md']
   # No paths filter here: the required check "ci-ok" must report on every pull request.
-  # The gate skips the heavy jobs for pull requests that only touch site, docs or Markdown.
+  # The gate skips the heavy jobs for pull requests that only touch site, docs, streuwerk/ or Markdown.
   pull_request:
   workflow_dispatch:
 
@@ -35,23 +38,52 @@ jobs:
     timeout-minutes: 3
     outputs:
       verified: ${{ steps.stamp.outputs.verified }}
+      box: ${{ steps.stamp.outputs.box }}
+      integration: ${{ steps.stamp.outputs.integration }}
+      supabase: ${{ steps.stamp.outputs.supabase }}
     steps:
       - id: stamp
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR: ${{ github.event.pull_request.number }}
+          # Files under site/, docs/ or *.md that tests read (test/ and the add-on
+          # server's test/): a change there needs the tests like any code.
+          TESTED_DOCS: >-
+            ^(ha-addon/knx_monitor/CHANGELOG\.md|tool/public-repo/docker/README\.md|docs/README\.md|docs/handover-format\.md|site/content/konto-loeschen\.|site/assets/css/teaser\.css|site/static/\.well-known/)
         run: |
           verified=false
-          # Only site, docs or Markdown changed: nothing to build or test.
+          box=false integration=false supabase=false
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
-            other=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/${{ github.event.pull_request.number }}/files" \
-              --jq '.[] | .filename, (.previous_filename // empty)' \
-              | grep -v -E '^(site/|docs/)|\.md$' || true)
-            if [ -z "$other" ]; then
+            # A request that failed must never look like "only docs changed" (an
+            # empty list): the job stops, and ci-ok fails with it.
+            if ! files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" \
+              --jq '.[] | .filename, (.previous_filename // empty)'); then
+              echo "::error::Could not read the files of pull request $PR"
+              exit 1
+            fi
+            touches() { if grep -q -E "$1" <<<"$files"; then echo true; else echo false; fi; }
+            box=$(touches '^box/')
+            integration=$(touches '^ha-integration/')
+            supabase=$(touches '^supabase/')
+            # Only site, docs or Markdown changed, and nothing a test reads:
+            # nothing to build or test. Only for a list that is known and not empty.
+            # streuwerk/ holds the Streuwerk handover (template package, media manifest), no app code;
+            # tool/release.sh verify checks it locally (tool/social/check_streuwerk.py).
+            other=$(grep -v -E '^(site/|docs/|streuwerk/)|\.md$' <<<"$files" || true)
+            tested=$(grep -E "$TESTED_DOCS" <<<"$files" || true)
+            if [ -n "$files" ] && [ -z "$other" ] && [ -z "$tested" ]; then
               echo "verified=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
+          elif [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            box=true integration=true supabase=true
           fi
+          {
+            echo "box=$box"
+            echo "integration=$integration"
+            echo "supabase=$supabase"
+          } >> "$GITHUB_OUTPUT"
           # Pull requests and app-v* tags (tool/release.sh app marks the tagged commit).
           if [ "$GITHUB_EVENT_NAME" = pull_request ] || [[ "$GITHUB_REF" == refs/tags/* ]]; then
             for _ in 1 2 3; do
@@ -171,7 +203,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
         with:
-          sdk: 3.13.6
+          # Same Dart as the images (Dockerfile, ha-addon/knx_monitor/Dockerfile);
+          # tool/release.sh verify compares them.
+          sdk: 3.13.7
       - run: dart pub get --enforce-lockfile
       - name: Formatting
         run: dart format --output=none --set-exit-if-changed bin lib test
@@ -179,10 +213,69 @@ jobs:
       - run: dart test
       - run: dart compile exe bin/server.dart -o /tmp/server
 
+  # The three below run only for pull requests that touch their folder (or by
+  # hand), and like app and addon-server not at all once tool/release.sh verify,
+  # which runs the same checks, stamped the commit. Never after the merge.
+
+  # Box scripts: lint and the dry runs of first boot and setup.
+  box:
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.outputs.verified != 'true' && needs.gate.outputs.box == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: |
+          shellcheck box/*.sh box/files/*.sh box/pi-gen/stage-knx-box/prerun.sh \
+            box/pi-gen/stage-knx-box/00-knx-box/01-run.sh
+          box/test-firstboot.sh
+          box/test-setup.sh
+
+  # Home Assistant integration: lint and tests with Home Assistant's test harness
+  # (the published copy in KNX-Monitor-HA runs them again on every push there).
+  integration:
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.outputs.verified != 'true' && needs.gate.outputs.integration == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ha-integration
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          # pytest-homeassistant-custom-component 0.13.375 needs 3.14.2 or newer.
+          python-version: "3.14"
+      - run: pip install -r requirements_test.txt
+      - run: ruff check . && ruff format --check .
+      - run: pytest -q
+
+  # Supabase: rules of the edge functions and the migrations against PGlite
+  # (Postgres as WASM, nothing touches the live project).
+  supabase:
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.outputs.verified != 'true' && needs.gate.outputs.supabase == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # Runs TypeScript directly (22.18 or newer).
+          node-version: 24
+      - run: node --test supabase/functions/_shared/*_test.ts
+      - name: Migrations against PGlite
+        run: |
+          npm install --no-save --ignore-scripts --prefix "$RUNNER_TEMP/pglite" @electric-sql/pglite@0.3.16
+          NODE_PATH="$RUNNER_TEMP/pglite/node_modules" \
+            PGLITE="$RUNNER_TEMP/pglite/node_modules/@electric-sql/pglite/dist/index.js" \
+            node supabase/tests/sql_check.mjs
+
   # The one check the main ruleset requires. Skipped jobs (stamp or docs-only) count as
   # passed; a failed or cancelled job does not.
   ci-ok:
-    needs: [gate, app, addon-server]
+    needs: [gate, app, addon-server, box, integration, supabase]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 2

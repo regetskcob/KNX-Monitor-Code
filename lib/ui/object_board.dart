@@ -466,7 +466,7 @@ class _MemberRow extends StatelessWidget {
         builder: (context, constraints) => Row(
           children: [
             if (expert) ...[
-              Icon(member.feedback ? AppIcons.receives : AppIcons.sends, size: 14, color: hz.textFaint),
+              Icon(member.feedback ? AppIcons.receives : AppIcons.sends, size: HzIconSize.badge, color: hz.textFaint),
               const SizedBox(width: HzSpace.s4),
             ],
             Expanded(

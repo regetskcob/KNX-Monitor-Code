@@ -132,6 +132,25 @@ void main() {
     expect(raw('p.json.prev'), 'a');
   });
 
+  test('gleichzeitiges Anhängen an eine neue Datei: ein Kopf, kein Satz verloren', () async {
+    final s = store();
+    await Future.wait([for (var i = 0; i < 20; i++) s.append('neu.ndjson', '$i\n')]);
+    final lines = (await s.read('neu.ndjson'))!.trim().split('\n');
+    expect(lines.toSet(), {for (var i = 0; i < 20; i++) '$i'});
+    expect(lines, hasLength(20));
+  });
+
+  test('Anhängen während der Verschlüsselung alter Klartextdateien geht nicht verloren', () async {
+    File('${dir.path}/alt.ndjson').writeAsStringSync('a\n' * 2000);
+    final s = store();
+    final migrating = s.encryptExisting(pause: (_) async {});
+    final appending = s.append('alt.ndjson', 'neu\n');
+    await Future.wait([migrating, appending]);
+    final text = (await s.read('alt.ndjson'))!;
+    expect(text, endsWith('neu\n'));
+    expect('a\n'.allMatches(text), hasLength(2000));
+  });
+
   test('überlappendes Schreiben auf dieselbe Datei wirft nicht', () async {
     final s = store();
     await s.write('r.json', 'start');

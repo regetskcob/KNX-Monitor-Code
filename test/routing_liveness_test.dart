@@ -9,14 +9,18 @@ import 'package:knx_monitor/platform/udp.dart';
 
 class _Udp implements UdpEndpoint {
   bool closed = false;
+  final incoming = StreamController<({String host, Uint8List data})>();
   @override
-  Stream<({String host, Uint8List data})> get datagrams => const Stream.empty();
+  Stream<({String host, Uint8List data})> get datagrams => incoming.stream;
   @override
   int get port => 0;
   @override
   void send(List<int> data, String host, int port) {}
   @override
-  void close() => closed = true;
+  void close() {
+    closed = true;
+    unawaited(incoming.close());
+  }
 }
 
 void main() {
@@ -90,6 +94,31 @@ void main() {
       net(StateError('nicht lesbar'));
       async.elapse(tick * 5);
       expect(tunnel.state.value, TunnelState.connected);
+    });
+  });
+
+  test('trennen während der Netzabfrage hinterlässt keinen Timer', () {
+    fakeAsync((async) {
+      final net = Completer<List<String>>();
+      final tunnel = RoutingTunnel(address: 0x11FF, open: (_, _) async => _Udp(), networkAddresses: () => net.future);
+      unawaited(tunnel.connect());
+      async.flushMicrotasks();
+      expect(tunnel.state.value, TunnelState.connected);
+      tunnel.disconnect();
+      net.complete(['192.168.1.5']);
+      async.flushMicrotasks();
+      expect(async.periodicTimerCount, 0);
+    });
+  });
+
+  test('ROUTING_LOST_MESSAGE wird gezählt', () {
+    run((async, tunnel, udp, _) {
+      udp.incoming.add((
+        host: '192.168.1.9',
+        data: Uint8List.fromList([0x06, 0x10, 0x05, 0x31, 0x00, 0x0A, 0x04, 0x00, 0x00, 0x07]),
+      ));
+      async.flushMicrotasks();
+      expect(tunnel.lostByRouter.value, 7);
     });
   });
 }

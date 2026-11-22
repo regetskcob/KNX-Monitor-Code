@@ -21,24 +21,19 @@ AddDefaultCharset utf-8
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
-  # HTTPS only once do.de has issued the certificate for knx-monitor.de (some
-  # hours after the DNS entry of type "Webspace"); X-Forwarded-Proto as on
-  # busclear.de.
-  #RewriteCond %{HTTPS} !=on
-  #RewriteCond %{HTTP:X-Forwarded-Proto} !https
-  #RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
-  #RewriteRule ^ https://knx-monitor.de%{REQUEST_URI} [R=301,L]
+  # HTTPS only (the certificate comes from do.de); TLS ends at the proxy of
+  # do.de, hence X-Forwarded-Proto as on busclear.de.
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
+  RewriteRule ^ https://knx-monitor.de%{REQUEST_URI} [R=301,L]
 
   RewriteRule ^\.deploy-manifest$ - [R=404,L]
   RewriteRule ^\.well-known/ - [L]
   RewriteRule ^play/klangquittung\.mp4$ - [L]
 
-  # Everything else, www included: the same path on busclear.de, with
-  # #knx-monitor so the site shows a note about the new name (head.html). The
-  # query string goes before the fragment, so it is written out by hand.
-  RewriteCond %{QUERY_STRING} .
-  RewriteRule ^(.*)$ https://busclear.de/$1?%{QUERY_STRING}#knx-monitor [R=301,L,NE]
-  RewriteRule ^(.*)$ https://busclear.de/$1#knx-monitor [R=301,L,NE]
+  # Everything else, www included: the same path on busclear.de (query string kept).
+  RewriteRule ^(.*)$ https://busclear.de/$1 [R=301,L]
 </IfModule>
 
 <IfModule mod_headers.c>

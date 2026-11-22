@@ -351,7 +351,7 @@ class _TelegramDetailsState extends State<TelegramDetails> {
               builder: (context, _, _) {
                 final rule = WatchRules.instance.forAddress(t.destination);
                 return IconButton(
-                  tooltip: rule == null ? s.watchAdd : s.watchRemove,
+                  tooltip: rule == null ? lockedLabel(s.watchAdd, Feature.watcher) : s.watchRemove,
                   onPressed: () => toggleWatch(context, t.destination),
                   icon: Icon(AppIcons.watch, color: rule == null ? hz.textMuted : hz.accentText),
                 );
@@ -364,7 +364,10 @@ class _TelegramDetailsState extends State<TelegramDetails> {
               onSelected: (run) => run(),
               itemBuilder: (context) => [
                 if (widget.onOpenMap case final onOpenMap?)
-                  PopupMenuItem(value: () => onOpenMap(t.destination), child: Text(s.mapTitle)),
+                  PopupMenuItem(
+                    value: () => onOpenMap(t.destination),
+                    child: Text(lockedLabel(s.mapTitle, Feature.communicationMap)),
+                  ),
                 if (tunnel != null) PopupMenuItem(value: readNow, child: Text(s.typeRead)),
                 PopupMenuItem(value: copyNow, child: Text(s.detailsCopy)),
               ],
@@ -460,7 +463,7 @@ class _TelegramDetailsState extends State<TelegramDetails> {
                   await pickDpt(context, t.destination);
                   if (mounted) setState(() {});
                 },
-                icon: const Icon(AppIcons.edit, size: 18),
+                icon: const Icon(AppIcons.edit, size: HzIconSize.row),
                 // Known from the ETS: "ändern" (change); changed: the ETS value
                 // alongside, for the ETS.
                 label: Text(switch ((store.overrides.containsKey(t.destination), store.catalog[t.destination]?.dpt)) {
@@ -477,7 +480,7 @@ class _TelegramDetailsState extends State<TelegramDetails> {
                     await renameGroup(context, t.destination);
                     if (mounted) setState(() {});
                   },
-                  icon: const Icon(AppIcons.edit, size: 18),
+                  icon: const Icon(AppIcons.edit, size: HzIconSize.row),
                   label: Text(store.names.containsKey(t.destination) ? s.groupRenamed : s.groupRename),
                 ),
             ],
@@ -782,13 +785,13 @@ class _TelegramDetailsState extends State<TelegramDetails> {
               children: [
                 if (widget.onOpenChart case final open? when chart.kind != ChartKind.none)
                   IconButton(
-                    tooltip: s.chartsTitle,
+                    tooltip: lockedLabel(s.chartsTitle, Feature.charts),
                     onPressed: () => open(t.destination),
                     icon: const Icon(AppIcons.fullscreen, size: HzIconSize.row),
                   ),
                 Builder(
                   builder: (buttonContext) => IconButton(
-                    tooltip: s.detailsHistoryPdf,
+                    tooltip: lockedLabel(s.detailsHistoryPdf, Feature.export),
                     onPressed: () => _exportChart(buttonContext, chart),
                     icon: Icon(AppIcons.share, size: HzIconSize.row),
                   ),
@@ -1015,7 +1018,10 @@ Future<void> pickDpt(BuildContext context, int address) async {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(width: HzSpace.s24, child: selected ? const Icon(AppIcons.check, size: 18) : null),
+        SizedBox(
+          width: HzSpace.s24,
+          child: selected ? const Icon(AppIcons.check, size: HzIconSize.row) : null,
+        ),
         Flexible(child: Text(text)),
         const SizedBox(width: HzSpace.s24),
       ],

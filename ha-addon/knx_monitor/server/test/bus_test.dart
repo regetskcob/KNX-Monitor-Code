@@ -408,6 +408,52 @@ void main() {
       expect(bus.status().containsKey('configLost'), isFalse);
     });
 
+    test('kaputte server.json: nichts wird nach Alter gelöscht, bis die Aufbewahrung neu gesetzt ist', () async {
+      await bus.update({'retentionDays': 365});
+      await bus.shutdown();
+      final old = Recorder.dayName(DateTime.now().subtract(const Duration(days: 100)));
+      final history = Directory('${data.path}/history')..createSync();
+      File('${history.path}/$old.ndjson').writeAsStringSync('{"t":1}\n');
+      await File('${data.path}/server.json').writeAsString('{kaputt');
+
+      // Ohne Einstellungen gälten 7 Tage: der alte Tag bliebe nicht.
+      bus = BusService(data, describe: (_, _) async => null);
+      await bus.start();
+      expect(bus.config.retentionDays, 7);
+      expect(bus.status()['retentionUnconfirmed'], isTrue);
+      expect(File('${history.path}/$old.ndjson.gz').existsSync(), isTrue);
+
+      // Neu verbinden bestätigt die Aufbewahrung nicht, auch nicht über einen Neustart.
+      await bus.update({'enabled': false, 'host': '127.0.0.1'});
+      await bus.shutdown();
+      bus = BusService(data, describe: (_, _) async => null);
+      await bus.start();
+      expect(bus.status()['retentionUnconfirmed'], isTrue);
+      expect(File('${history.path}/$old.ndjson.gz').existsSync(), isTrue);
+
+      await bus.update({'retentionDays': 7});
+      expect(bus.status().containsKey('retentionUnconfirmed'), isFalse);
+      expect(File('${history.path}/$old.ndjson.gz').existsSync(), isFalse);
+    });
+
+    test('Verbindung, die sofort wieder abreißt: nicht im Kreis neu verbinden', () async {
+      await bus.shutdown();
+      var connects = 0;
+      bus = BusService(
+        data,
+        describe: (_, _) async => null,
+        link: (_) {
+          connects++;
+          return _DroppingLink();
+        },
+      );
+      await bus.start();
+      await bus.update({'enabled': true, 'host': '127.0.0.1', 'port': 1});
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      // Erste Wartezeit ist 1 s; ohne sie wären es hunderte Versuche.
+      expect(connects, lessThanOrEqualTo(2));
+    });
+
     test('ohne Gateway: nicht verbunden, versucht weiter', () async {
       await bus.update({'enabled': true, 'host': '127.0.0.1', 'port': 1});
       await until(() => bus.error != null, timeout: const Duration(seconds: 8));
@@ -659,4 +705,22 @@ class _WsClient {
     await ws.close();
     await server.close(force: true);
   }
+}
+
+/// Gateway, das die Verbindung annimmt und sofort wieder trennt.
+class _DroppingLink implements BusLink {
+  @override
+  Stream<Uint8List> get frames => const Stream.empty();
+  @override
+  int? get address => 0x1101;
+  @override
+  String get label => 'Test';
+  @override
+  Future<void> connect() async {}
+  @override
+  Future<void> send(Uint8List cemi) async {}
+  @override
+  Future<String> get lost async => 'Getrennt';
+  @override
+  Future<void> close() async {}
 }

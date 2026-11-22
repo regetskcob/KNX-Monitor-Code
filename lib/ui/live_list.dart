@@ -183,7 +183,7 @@ class _LiveListState extends State<LiveList> {
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(backgroundColor: context.hz.surface),
                         onPressed: () => _scroll.animateTo(0, duration: Motion.slowOf(context), curve: Motion.curve),
-                        icon: const Icon(AppIcons.toTop, size: 18),
+                        icon: const Icon(AppIcons.toTop, size: HzIconSize.row),
                         label: Text(s.liveNewest),
                       ),
                     ),

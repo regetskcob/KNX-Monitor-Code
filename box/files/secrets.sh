@@ -32,9 +32,19 @@ value() {
   sed -n "s/^$1=//p" "$2" | tail -n 1 | tr -d '\r'
 }
 
-# Replaces the content, keeps file and permissions (FAT has none anyway).
+# Replaces the content, keeps permissions and owner (FAT has none anyway).
+# Written next to the file and renamed: a power cut in between leaves the old
+# content, never an empty env (the box would lose READ_ONLY and LAN_ACCESS) or an
+# empty hotspot profile. The name starts with a dot and ends in "~", so
+# NetworkManager does not read a leftover as a profile of its own.
 replace() { # replace <file> <content>
-  printf '%s' "$2" >"$1"
+  local new
+  new=$(dirname "$1")/.$(basename "$1").new~
+  rm -f -- "$new"
+  (umask 077 && { cp -p -- "$1" "$new" 2>/dev/null || : >"$new"; })
+  printf '%s' "$2" >"$new"
+  sync
+  mv -f -- "$new" "$1"
 }
 
 set_psk() {

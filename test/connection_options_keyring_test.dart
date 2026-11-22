@@ -54,7 +54,7 @@ void main() {
       asked.add(box);
       return false;
     };
-    Addon.box = BoxLink(url: Uri.parse('http://10.42.0.9/'));
+    Addon.box = BoxLink(url: Uri.parse('http://10.42.0.9/'), fp: 'A' * 43);
     addTearDown(() {
       Addon.box = null;
       BoxKeyringConsent.ask = null;
@@ -62,6 +62,23 @@ void main() {
     final sent = (await options.toAddonAsked(host: 'gw', port: 3671))['secure']! as Map<String, Object?>;
     expect(asked, hasLength(1));
     expect(sent['userPassword'], '');
+  });
+
+  test('unverschlüsselte Box: IP-Secure-Zugangsdaten gehen nie mit, auch nicht mit Ja', () async {
+    SharedPreferences.setMockInitialValues({});
+    options
+      ..secureUserPassword = 'testpasswort'
+      ..secureDeviceAuthentication = 'testcode';
+    BoxKeyringConsent.ask = (_) async => true;
+    Addon.box = BoxLink(url: Uri.parse('http://192.168.1.50/'), key: 'testzugang');
+    addTearDown(() {
+      Addon.box = null;
+      BoxKeyringConsent.ask = null;
+    });
+    final sent = (await options.toAddonAsked(host: 'gw', port: 3671))['secure']! as Map<String, Object?>;
+    expect(sent.containsKey('userId'), isFalse);
+    expect(sent['userPassword'], '');
+    expect(sent['deviceAuthentication'], '');
   });
 
   test('mit Freigabe wie bisher', () {

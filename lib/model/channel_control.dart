@@ -43,9 +43,25 @@ class ChannelControl {
 }
 
 final _caution = RegExp(
-  r'tor\b|garage|gate|tür|door|schloss|lock|riegel|alarm|panik|panic|zentral|central|alles aus|all off|sirene|siren',
+  r'garage|gate|tür|door|schloss|(?<![bc])lock|riegel|alarm|panik|panic|zentral|central|alles aus|all off|sirene|siren',
   caseSensitive: false,
 );
+
+/// Words ending in "tor" (Hallentor, Kipptor, Tor 2 …); [_notGate] are the ones that are not a gate
+/// (also as the end of a compound: Schaltaktor, Pumpenmotor).
+final _torWord = RegExp(r'[a-zäöüß]*tor(?![a-zäöüß])', caseSensitive: false);
+final _notGate = RegExp(
+  r'(motor|aktor|aktuator|actuator|ventilator|monitor|indikator|indicator|regulator|generator|'
+  r'detektor|detector|reaktor|reactor|sektor|sector|vektor|vector|faktor|factor|selektor|selector|'
+  r'rotor|operator|kollektor|collector|konnektor|connector|separator|simulator|projektor|projector|'
+  r'transformator|traktor|tractor|kondensator|elevator|editor|doktor|doctor|direktor|director|'
+  r'navigator|akkumulator|accumulator|integrator|kompensator|stator|inverter)$',
+  caseSensitive: false,
+);
+
+/// Whether [name] says it moves or secures something.
+bool isCaution(String name) =>
+    _caution.hasMatch(name) || _torWord.allMatches(name).any((m) => !_notGate.hasMatch(m[0]!));
 
 final _move = RegExp(r'auf/ab|auf/zu|up/down|fahren|move|langzeit', caseSensitive: false);
 final _stop = RegExp(r'stop|stopp|lamelle|slat|schritt|step|kurzzeit', caseSensitive: false);
@@ -90,7 +106,7 @@ ChannelControl? controlOf(DeviceChannel channel, {CatalogStore? store}) {
     ControlKind.toggle,
     command.address,
     status: status,
-    caution: _caution.hasMatch('${channel.title ?? ''} ${text(command)}'),
+    caution: isCaution('${channel.title ?? ''} ${text(command)}'),
   );
 }
 

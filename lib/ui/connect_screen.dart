@@ -58,6 +58,7 @@ import '../model/connect_help.dart';
 import 'catalog_actions.dart' show importKeyring;
 import 'learn_screen.dart';
 import 'project_file_help_screen.dart';
+import 'tap_strip.dart' show tapErrorText;
 
 class ConnectScreen extends StatefulWidget {
   const ConnectScreen({super.key});
@@ -75,6 +76,13 @@ class _ConnectScreenState extends State<ConnectScreen> {
   final _host = TextEditingController();
   final _port = TextEditingController(text: '3671');
   bool _busy = false;
+
+  /// Connection being set up by [_connect], for [_cancelConnect].
+  KnxTunnel? _pending;
+
+  /// Counts connection attempts; cancelling starts a new count, so an attempt that is still
+  /// waiting sees it is no longer the current one and drops whatever it gets afterwards.
+  int _attempt = 0;
   String? _error;
 
   /// Known cause of the last error, for the help with a next step.
@@ -111,6 +119,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
     ExpertMode.instance.addListener(_onExpert);
     BoxConnection.instance.incoming.addListener(_onIncoming);
     BoxKeyringConsent.ask = _askKeyring;
+    BoxKeyringConsent.tellPlain = _tellKeyringPlain;
     unawaited(_loadQuarantine());
     // Another installation: its gateway and history.
     InstallationStore.instance.addListener(_restore);
@@ -254,8 +263,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
 
   /// Plain confirmation (the platform's system dialog). The address comes first:
   /// the name is whatever the link says. Without a certificate fingerprint a
-  /// clear warning that the connection is unencrypted.
-  Future<bool> _confirmBoxLink(BoxLink link) async =>
+  /// clear warning that the connection is unencrypted. [sharesProject]: the yes
+  /// also hands the project to the box, so the dialog says so.
+  Future<bool> _confirmBoxLink(BoxLink link, {bool sharesProject = false}) async =>
       await showAdaptiveDialog<bool>(
         context: context,
         builder: (context) => AlertDialog.adaptive(
@@ -273,6 +283,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
                 ),
                 if (link.name.isNotEmpty) Text(s.boxPairNamed(link.name)),
                 Text(s.boxPairBody),
+                if (sharesProject) Text(s.boxPairSharesProject),
                 if (!link.encrypted) HorizontNotice(HorizontStatus.warning, child: Text(s.boxPairUnencrypted)),
               ],
             ),
@@ -423,6 +434,24 @@ class _ConnectScreenState extends State<ConnectScreen> {
     );
   }
 
+  /// The keyring stays here because the box is reached over plain HTTP
+  /// ([BoxKeyringConsent.tellPlain]): say so once instead of failing silently.
+  void _tellKeyringPlain(BoxLink box) {
+    if (!mounted) return;
+    unawaited(
+      showAdaptiveDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog.adaptive(
+          title: Text(s.boxKeyringPlainTitle),
+          content: Text(s.boxKeyringPlainBody(box.address)),
+          actions: [
+            horizontDialogAction(context, label: s.commonClose, primary: true, onPressed: () => Navigator.pop(context)),
+          ],
+        ),
+      ),
+    );
+  }
+
   StorageExtras _extras = noStorageExtras;
 
   Future<void> _loadQuarantine() async {
@@ -497,16 +526,18 @@ class _ConnectScreenState extends State<ConnectScreen> {
       if (Addon.refusal(link) case final reason?) return _refuseBoxLink(reason);
     }
     if (!link.isLocal && !await _confirmForeignBox(link)) return;
-    // Scanned or pasted without a certificate fingerprint: the same confirmation
-    // with the warning (a link from outside has shown it already).
-    if (!external && link.isLocal && !link.encrypted && (!mounted || !await _confirmBoxLink(link))) return;
+    // Scanned, pasted or typed in the app: one confirmation with the address and
+    // what the box gets (a link from outside has shown the address already and
+    // asks for the project separately). A QR code is not proof of whose box it
+    // leads to: a pasted-over sticker scans just as well.
+    if (!external && link.isLocal && (!mounted || !await _confirmBoxLink(link, sharesProject: true))) return;
     if (!mounted || !await _confirmReplaceBox(link)) return;
     if (!mounted || !await unlock(context, Feature.box) || !mounted) return;
     // Newly paired: ask again before sending the keyring.
     await BoxKeyringConsent.forget(link);
     // A link from outside may lead to a box someone else set up: the project
-    // waits for an explicit yes. The app's own scanner and the pairing dialog
-    // count as that yes.
+    // waits for an explicit yes. Scanned or entered in the app, the
+    // confirmation above (or the foreign-address warning) was that yes.
     if (external) {
       await BoxProjectConsent.markPending(link);
     } else {
@@ -586,7 +617,33 @@ class _ConnectScreenState extends State<ConnectScreen> {
     await _restore();
   }
 
+  /// Asks first: the bin sits right beside the box's button, and pairing again needs the QR
+  /// sticker or the password.
   Future<void> _forgetBox() async {
+    final saved = BoxConnection.instance.saved;
+    if (saved == null) return;
+    final sure = await showAdaptiveDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog.adaptive(
+        title: Text(s.boxForgetTitle(_boxLabel(saved))),
+        content: Text(s.boxForgetBody),
+        actions: [
+          horizontDialogAction(
+            context,
+            label: s.commonCancel,
+            primary: true,
+            onPressed: () => Navigator.pop(context, false),
+          ),
+          horizontDialogAction(
+            context,
+            label: s.boxForget,
+            destructive: true,
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+    if (sure != true || !mounted) return;
     await BoxConnection.instance.forget();
     await _modeChanged();
   }
@@ -705,10 +762,18 @@ class _ConnectScreenState extends State<ConnectScreen> {
     ExpertMode.instance.removeListener(_onExpert);
     BoxConnection.instance.incoming.removeListener(_onIncoming);
     BoxKeyringConsent.ask = null;
+    BoxKeyringConsent.tellPlain = null;
     InstallationStore.instance.removeListener(_restore);
     _host.dispose();
     _port.dispose();
     super.dispose();
+  }
+
+  /// Stops a connection attempt that takes long (gateway does not answer, wrong address).
+  void _cancelConnect() {
+    _attempt++;
+    _pending?.dispose();
+    setState(() => _busy = false);
   }
 
   Future<void> _connect() async {
@@ -718,12 +783,15 @@ class _ConnectScreenState extends State<ConnectScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
     final host = _host.text.trim();
     final port = int.parse(_port.text.trim());
+    final attempt = ++_attempt;
+    bool cancelled() => attempt != _attempt;
     setState(() {
       _busy = true;
       _error = null;
       _problem = null;
     });
     await _followInstallation(host, port);
+    if (cancelled()) return;
 
     final options = ConnectionOptions.instance;
     final KnxTunnel tunnel;
@@ -740,6 +808,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
           if (taps.isNotEmpty) 'taps': [for (final t in taps) t.toAddon()],
         }, probe: true);
       } on AddonException catch (e) {
+        if (cancelled()) return;
         if (mounted) {
           setState(() {
             _error = e.message;
@@ -749,11 +818,13 @@ class _ConnectScreenState extends State<ConnectScreen> {
         }
         return;
       }
+      if (cancelled()) return;
       tunnel = SharedTunnel(host: host, port: port);
     } else {
       try {
         tunnel = withTapPoints(options.create(host, port), InstallationStore.instance.active, host);
       } on KnxException catch (e) {
+        if (cancelled()) return;
         if (mounted) {
           setState(() {
             _error = e.message;
@@ -764,10 +835,16 @@ class _ConnectScreenState extends State<ConnectScreen> {
         return;
       }
     }
+    _pending = tunnel;
     try {
       await tunnel.connect();
+      if (cancelled()) {
+        tunnel.dispose();
+        return;
+      }
       CrashGuard.instance.connected();
     } on KnxException catch (e) {
+      if (cancelled()) return;
       if (mounted) {
         setState(() {
           _error = e.message;
@@ -777,7 +854,10 @@ class _ConnectScreenState extends State<ConnectScreen> {
       tunnel.dispose();
       return;
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (!cancelled()) {
+        _pending = null;
+        if (mounted) setState(() => _busy = false);
+      }
     }
 
     final prefs = await SharedPreferences.getInstance();
@@ -1212,15 +1292,21 @@ class _ConnectScreenState extends State<ConnectScreen> {
       ],
       const SizedBox(height: Gap.section),
       // The single primary action.
-      FilledButton(
-        onPressed: _busy ? null : _connect,
-        child: _busy
-            ? const SizedBox.square(
-                dimension: HzSpace.s16,
-                child: CircularProgressIndicator.adaptive(strokeWidth: Lines.selection),
-              )
-            : Text(s.connectButton),
-      ),
+      if (_busy)
+        // While connecting: what happens, in words, and a way out.
+        Row(
+          children: [
+            const SizedBox.square(
+              dimension: HzSpace.s16,
+              child: CircularProgressIndicator.adaptive(strokeWidth: Lines.selection),
+            ),
+            const SizedBox(width: Gap.item),
+            Expanded(child: Text(s.connectConnecting)),
+            TextButton(onPressed: _cancelConnect, child: Text(s.commonCancel)),
+          ],
+        )
+      else
+        FilledButton(onPressed: _connect, child: Text(s.connectButton)),
       AnimatedSize(
         duration: Motion.of(context),
         curve: Motion.curve,
@@ -1232,11 +1318,11 @@ class _ConnectScreenState extends State<ConnectScreen> {
                   HorizontStatus.critical,
                   action: IconButton(
                     tooltip: s.diagTitle,
-                    visualDensity: VisualDensity.compact,
+                    visualDensity: pointerCompact(context),
                     onPressed: () => showSupportPackage(context, error: _error, occurred: DateTime.now()),
                     icon: const Icon(AppIcons.supportPackage, size: HzIconSize.row),
                   ),
-                  child: Text(_error!),
+                  child: Text(tapErrorText(_error)),
                 ),
               ),
       ),
@@ -1283,7 +1369,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(alignment: AlignmentDirectional.centerStart),
-                    icon: const Icon(AppIcons.box, size: 18),
+                    icon: const Icon(AppIcons.box, size: HzIconSize.row),
                     label: Text(saved.label, maxLines: 1, overflow: TextOverflow.ellipsis),
                     onPressed: _busy ? null : () => _useBox(saved),
                   ),
@@ -1296,7 +1382,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
               ],
             ),
           ),
-        _SideButton(label: s.boxAdd, onPressed: _busy ? null : _addBox),
+        _SideButton(label: s.boxAdd, badge: lockBadge(Feature.box), onPressed: _busy ? null : _addBox),
       ],
       if (history) ...[
         const SizedBox(height: HzSpace.s32),
@@ -1308,7 +1394,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
           children: [
             for (final h in _history)
               OutlinedButton.icon(
-                icon: const Icon(AppIcons.history, size: 18),
+                icon: const Icon(AppIcons.history, size: HzIconSize.row),
                 label: Text(h.endsWith(':3671') ? h.substring(0, h.length - 5) : h, style: data),
                 onPressed: _busy ? null : () => _useHistory(h),
               ),
@@ -1376,6 +1462,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
                 if (CloudSync.instance.supported)
                   _LinkRow(
                     label: s.cloudSyncTitle,
+                    badge: lockBadge(Feature.cloudSync),
                     onTap: () async {
                       if (!await unlock(context, Feature.cloudSync) || !context.mounted) return;
                       await Navigator.of(context)
@@ -1477,10 +1564,13 @@ class _FieldRow extends StatelessWidget {
 
 /// Settings row: text, an optional value, chevron.
 class _LinkRow extends StatelessWidget {
-  const _LinkRow({required this.label, required this.onTap, this.value});
+  const _LinkRow({required this.label, required this.onTap, this.value, this.badge});
 
   final String label;
   final String? value;
+
+  /// Tier badge of a locked entry.
+  final Widget? badge;
   final VoidCallback onTap;
 
   @override
@@ -1498,6 +1588,7 @@ class _LinkRow extends StatelessWidget {
             children: [
               Expanded(child: Text(label, style: theme.bodyLarge)),
               if (value case final value?) Text(value, style: theme.bodyMedium?.copyWith(color: hz.textMuted)),
+              ?badge,
               Icon(AppIcons.next, size: HzIconSize.row, color: hz.textFaint),
             ],
           ),
@@ -1862,7 +1953,7 @@ class _AddonCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(state.icon, size: 16, color: state.color(hz)),
+              Icon(state.icon, size: HzIconSize.inline, color: state.color(hz)),
               const SizedBox(width: HzSpace.s8),
               Expanded(
                 child: Text(
@@ -1948,7 +2039,7 @@ class _LanguageSwitch extends StatelessWidget {
       builder: (context, _) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(AppIcons.language, size: 18, color: context.hz.textMuted),
+          Icon(AppIcons.language, size: HzIconSize.row, color: context.hz.textMuted),
           const SizedBox(width: HzSpace.s8),
           // Language names deliberately untranslated, so everyone finds their
           // language.
@@ -2059,16 +2150,31 @@ class _TourButton extends StatelessWidget {
 }
 
 class _SideButton extends StatelessWidget {
-  const _SideButton({required this.label, required this.onPressed});
+  const _SideButton({required this.label, required this.onPressed, this.badge});
 
   final String label;
   final VoidCallback? onPressed;
 
+  /// Tier badge of a locked action.
+  final Widget? badge;
+
   @override
-  Widget build(BuildContext context) => OutlinedButton(
-    onPressed: onPressed,
-    child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-  );
+  Widget build(BuildContext context) {
+    final text = Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center);
+    return OutlinedButton(
+      onPressed: onPressed,
+      child: badge == null
+          ? text
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: HzSpace.s8,
+              children: [
+                Flexible(child: text),
+                badge!,
+              ],
+            ),
+    );
+  }
 }
 
 /// Help for a connection error: title, next steps, buttons.

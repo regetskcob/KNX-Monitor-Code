@@ -80,6 +80,8 @@ class HistoryStore extends ChangeNotifier {
     if (serverManaged) return _loadServer();
     final prefs = await SharedPreferences.getInstance();
     retentionDays = prefs.getInt(_daysKey) ?? 0;
+    // Never clear on load: a missing setting (preferences lost or set aside as
+    // unreadable) reads as "off" and would wipe the whole history.
     await _prune();
     notifyListeners();
   }
@@ -116,7 +118,7 @@ class HistoryStore extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_daysKey, days);
     if (!enabled) _buffer.clear();
-    await _prune();
+    await _prune(clearWhenOff: true);
     notifyListeners();
   }
 
@@ -153,6 +155,8 @@ class HistoryStore extends ChangeNotifier {
       if (_buffer.length > _maxPending) _buffer.removeRange(0, _buffer.length - _maxPending);
       _timer ??= Timer(_flushInterval * 6, flush);
     }
+    // An app that runs for days never restarts: tidy up once per day here.
+    if (_prunedOn != _name(DateTime.now())) await _prune();
     notifyListeners();
   }
 
@@ -274,11 +278,17 @@ class HistoryStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Removes days outside the retention period (when "off": all).
-  Future<void> _prune() async {
+  /// Day of the last [_prune], as a file name.
+  String? _prunedOn;
+
+  /// Removes days outside the retention period. Switched off, everything goes,
+  /// but only with [clearWhenOff], i.e. when the user turned it off just now.
+  Future<void> _prune({bool clearWhenOff = false}) async {
     // Paused: the days remain until the tier fits again.
     if (serverManaged || paused) return;
     final today = DateTime.now();
+    _prunedOn = _name(today);
+    if (!enabled && !clearWhenOff) return;
     final cutoff = DateTime(today.year, today.month, today.day).subtract(Duration(days: retentionDays - 1));
     for (final d in await days()) {
       if (!enabled || d.date.isBefore(cutoff)) await _storage.delete(d.path);

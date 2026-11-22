@@ -172,12 +172,17 @@ class _TapStripState extends State<TapStrip> {
   }
 }
 
-/// Why a tap point is not connected, in plain words: what the system reports ("SocketException …
-/// errno = 51") says nothing to the reader. Texts that are already readable pass.
+/// Why a connection (tap point, tunnel, box) failed, in plain words: what the system reports
+/// ("SocketException … errno = 51") says nothing to the reader. Texts that are already readable
+/// pass. The raw text still goes into the diagnostics package.
 String tapErrorText(String? raw) {
   if (raw == null || raw.isEmpty) return '';
   final lower = raw.toLowerCase();
-  if (lower.contains('unreachable') || lower.contains('no route') || lower.contains('failed host lookup')) {
+  if (lower.contains('unreachable') ||
+      lower.contains('no route') ||
+      lower.contains('failed host lookup') ||
+      lower.contains('network is down') ||
+      lower.contains('host is down')) {
     return s.tapErrorNetwork;
   }
   if (lower.contains('refused')) return s.tapErrorRefused;
@@ -228,7 +233,7 @@ class _TapLine extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.only(top: 1),
-                child: Icon(status.icon, size: 14, color: status.color(hz)),
+                child: Icon(status.icon, size: HzIconSize.badge, color: status.color(hz)),
               ),
               const SizedBox(width: HzSpace.s8),
               Expanded(
@@ -331,7 +336,7 @@ class _TapCard extends StatelessWidget {
                 // State in words with a symbol, colour only in addition.
                 Row(
                   children: [
-                    Icon(status.icon, size: 14, color: status.color(hz)),
+                    Icon(status.icon, size: HzIconSize.badge, color: status.color(hz)),
                     const SizedBox(width: HzSpace.s4),
                     Expanded(child: Text(_stateLine(point), style: muted)),
                   ],

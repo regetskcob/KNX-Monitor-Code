@@ -130,7 +130,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
                     children: [
                       OutlinedButton.icon(
                         onPressed: _busy ? null : _pickLogo,
-                        icon: const Icon(AppIcons.image, size: 18),
+                        icon: const Icon(AppIcons.image, size: HzIconSize.row),
                         label: Text(_store.logo == null ? s.companyLogoPick : s.companyLogoReplace),
                       ),
                       if (_store.logo != null)

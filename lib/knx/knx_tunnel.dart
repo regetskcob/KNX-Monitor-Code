@@ -171,29 +171,48 @@ class KnxTunnel {
   static const _tunnelRequest = 0x0420;
   static const _tunnelAck = 0x0421;
 
+  /// Counts connection attempts; [_cleanup] ends the running one. A [connect]
+  /// that comes back from an `await` and finds another number was disconnected
+  /// or disposed in the meantime and must neither go on nor tear down what a
+  /// later attempt has built.
+  int _attempt = 0;
+  bool _disposed = false;
+
   Future<void> connect({Duration timeout = const Duration(seconds: 5)}) async {
-    if (state.value != TunnelState.disconnected) return;
+    if (_disposed || state.value != TunnelState.disconnected) return;
     state.value = TunnelState.connecting;
     error.value = null;
+    final attempt = ++_attempt;
+    bool stale() => attempt != _attempt;
     try {
       final gateway = await resolveIPv4(host);
+      if (stale()) return;
       _gateway = formatIPv4(gateway);
       if (tcp) {
-        _tcp = await TcpStream.open(_gateway!, port);
-        _tcpSub = _tcp!.packets.listen((p) {
+        final stream = await TcpStream.open(_gateway!, port);
+        if (stale()) return stream.close();
+        _tcp = stream;
+        _tcpSub = stream.packets.listen((p) {
           final plain = decodeIncoming(p);
           if (plain != null) _onPacket(plain);
         }, onError: (Object e) => _lost(s.errorSocket('$e')));
         await openSession();
+        if (stale()) return;
       } else {
-        _localIp = await localAddressFor(gateway);
-        _socket = await UdpEndpoint.open();
-        _socketSub = _socket!.datagrams.listen(_onDatagram, onError: (Object e) => _lost(s.errorSocket('$e')));
+        final local = await localAddressFor(gateway);
+        if (stale()) return;
+        final socket = await UdpEndpoint.open();
+        if (stale()) return socket.close();
+        _localIp = local;
+        _socket = socket;
+        _socketSub = socket.datagrams.listen(_onDatagram, onError: (Object e) => _lost(s.errorSocket('$e')));
       }
 
       var res = await _requestConnection(requestedAddress, timeout);
+      if (stale()) return;
       if (res[7] != 0 && requestedAddress != null && fallback && _addressProblem(res[7])) {
         res = await _requestConnection(null, timeout);
+        if (stale()) return;
       }
       final status = res[7];
       if (status != 0) throw KnxException(_statusText(status), _statusProblem(status));
@@ -205,9 +224,12 @@ class KnxTunnel {
       _heartbeat = Timer.periodic(const Duration(seconds: 60), (_) => _sendHeartbeat());
       if (gatewayInfo.value == null && !tcp) _send(_descriptionRequest, _hpai());
     } on UdpException catch (e) {
+      if (stale()) return;
       _cleanup();
       throw KnxException(s.errorNetwork(e.message), ConnectProblem.network);
     } catch (_) {
+      // An attempt that was given up fails late (timeout): not its business.
+      if (stale()) return;
       _cleanup();
       rethrow;
     }
@@ -252,6 +274,7 @@ class KnxTunnel {
   }
 
   void dispose() {
+    _disposed = true;
     // disconnect() waits briefly; datagrams from that time must no longer flow into the streams
     // that are about to close.
     _socketSub?.cancel();
@@ -448,33 +471,40 @@ class KnxTunnel {
   ///
   /// `true` = acknowledged by the bus, `false` = not acknowledged (e.g. no receiver), `null` = no
   /// confirmation within [timeout]. Throws [KnxException] if the gateway does not accept the frame.
-  Future<bool?> sendFrame(Uint8List cemi, {Duration timeout = const Duration(seconds: 3)}) async {
+  Future<bool?> sendFrame(Uint8List cemi, {Duration timeout = const Duration(seconds: 3)}) {
     final i = 2 + cemi[1]; // after message code and additional info
     final group = cemi[i + 1] & 0x80 != 0;
     final destination = (cemi[i + 4] << 8) | cemi[i + 5];
-    final confirmation = Completer<bool?>();
-    final sub = frames.listen((f) {
-      if (f.isConfirmation && f.destination == destination && f.groupAddressed == group && !confirmation.isCompleted) {
-        confirmation.complete(!f.confirmError);
+    // One frame at a time until its confirmation (or the timeout): the
+    // confirmation carries no reference to the request, so two frames to the
+    // same destination in flight could not be told apart.
+    final f = _sendQueue.then((_) async {
+      final confirmation = Completer<bool?>();
+      final sub = frames.listen((f) {
+        if (f.isConfirmation &&
+            f.destination == destination &&
+            f.groupAddressed == group &&
+            !confirmation.isCompleted) {
+          confirmation.complete(!f.confirmError);
+        }
+      });
+      try {
+        await transmit(_secured(cemi));
+        return await confirmation.future.timeout(timeout, onTimeout: () => null);
+      } finally {
+        await sub.cancel();
       }
     });
-    try {
-      await _enqueue(cemi);
-      return await confirmation.future.timeout(timeout, onTimeout: () => null);
-    } finally {
-      await sub.cancel();
-    }
+    _sendQueue = f.then((_) {}, onError: (_) {});
+    return f;
   }
 
   // ---------------------------------------------------------------------------
 
-  Future<void> _enqueue(Uint8List plain) {
-    // Secured group address: encrypt (the source goes into the MAC).
+  /// Secured group address: encrypt (the source goes into the MAC).
+  Uint8List _secured(Uint8List plain) {
     final ds = KeyringStore.instance.dataSecure;
-    final cemi = ds == null || tunnelAddress == null ? plain : ds.send(plain, source: tunnelAddress!);
-    final f = _sendQueue.then((_) => transmit(cemi));
-    _sendQueue = f.catchError((_) {});
-    return f;
+    return ds == null || tunnelAddress == null ? plain : ds.send(plain, source: tunnelAddress!);
   }
 
   Future<void> _sendTunnel(Uint8List cemi) async {
@@ -505,6 +535,10 @@ class KnxTunnel {
         _ack = null;
       }
     }
+    // No acknowledgement twice: the connection counts as lost (KNXnet/IP
+    // tunnelling). Staying on it with the same sequence number would make the
+    // gateway drop the next, different frame as a repetition.
+    _lost(s.errorNoAck);
     throw KnxException(s.errorNoAck);
   }
 
@@ -581,6 +615,7 @@ class KnxTunnel {
   }
 
   void _cleanup() {
+    _attempt++;
     closeSession();
     _heartbeat?.cancel();
     _heartbeatTimeout?.cancel();
