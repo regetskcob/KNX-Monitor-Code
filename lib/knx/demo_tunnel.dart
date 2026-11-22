@@ -558,6 +558,7 @@ class DemoTunnel extends KnxTunnel {
         priority: t.priority,
         repeated: t.repeated,
         hopCount: hop,
+        raw: t.raw.isEmpty ? null : Uint8List.fromList(t.raw),
         tap: tap,
         sightings: sightings,
       );
@@ -565,9 +566,11 @@ class DemoTunnel extends KnxTunnel {
   Telegram _telegram(int ga, TelegramType type, {bool outgoing = false}) {
     final dpt = _dpts[ga];
     final (small, data) = type == TelegramType.read ? (true, Uint8List.fromList([0])) : _encode(ga, dpt, type: type);
+    final source = outgoing ? tunnelAddress! : (_sender[ga] ?? _pa('1.1.255'));
     return Telegram(
       time: clock(),
-      source: outgoing ? tunnelAddress! : (_sender[ga] ?? _pa('1.1.255')),
+      source: source,
+      raw: source == rfDevice ? _rfFrame(source, ga, type, small, data) : null,
       destination: ga,
       type: type,
       data: data,
@@ -578,6 +581,31 @@ class DemoTunnel extends KnxTunnel {
       // Finding: the heating actuator occasionally repeats (missing acknowledgement).
       repeated: !outgoing && _sender[ga] == _pa('1.1.13') && _rng.nextDouble() < 0.2,
     );
+  }
+
+  /// The smoke detector in the hallway is a KNX RF device; the demo shows it as an RF interface
+  /// would deliver it. Finding: its battery is low and now and then a frame gets lost.
+  static final rfDevice = _pa('1.1.50');
+  int _rfFrameNumber = 0;
+
+  /// Own random source, so the RF frames leave the rest of the demo as it was.
+  final _rfRng = Random(50);
+
+  /// cEMI L_Data.ind with RF medium information (additional information type 0x02).
+  Uint8List _rfFrame(int source, int ga, TelegramType type, bool small, Uint8List data) {
+    // Skips a number now and then: a lost frame.
+    _rfFrameNumber = (_rfFrameNumber + (_rfRng.nextDouble() < 0.15 ? 2 : 1)) & 0x07;
+    final apci = switch (type) {
+      TelegramType.read => 0x00,
+      TelegramType.response => 0x40,
+      TelegramType.write => 0x80,
+    };
+    final tpdu = small ? [0x00, apci | (data.isEmpty ? 0 : data[0] & 0x3F)] : [0x00, apci, ...data];
+    return Uint8List.fromList([
+      0x29, 10, //
+      0x02, 0x08, 0x20 /* medium signal, battery low */, ...DemoTunnel.demoSerial(source), _rfFrameNumber,
+      0xBC, 0xE0, source >> 8, source & 0xFF, ga >> 8, ga & 0xFF, tpdu.length - 1, ...tpdu,
+    ]);
   }
 
   (bool, Uint8List) _encode(int ga, Dpt? dpt, {TelegramType type = TelegramType.write}) {
@@ -913,6 +941,7 @@ GroupCatalog demoCatalog() {
     name: name,
     product: product,
     manufacturer: 'Demo',
+    rf: pa == '1.1.50',
     serial: pa == '1.1.11'
         ? '00FA0001FFFF'
         : DemoTunnel.demoSerial(_pa(pa)).map((b) => b.toRadixString(16).padLeft(2, '0')).join().toUpperCase(),

@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../catalog_store.dart';
 import '../knx/dpt_codec.dart';
 import '../knx/group_catalog.dart';
+import '../knx/rf_info.dart';
 import '../knx/knx_tunnel.dart';
 import '../knx/demo_tunnel.dart';
 import '../knx/read_sweep.dart';
@@ -63,6 +64,12 @@ enum FindingKind {
   /// Read requests from other devices go unanswered.
   unansweredReads(HealthArea.bus, Severity.info),
 
+  /// KNX RF: the transmitter reports a low battery.
+  rfBattery(HealthArea.bus, Severity.warning),
+
+  /// KNX RF: frames are missing, counted from gaps in the frame number ([HealthFinding.count]).
+  rfLost(HealthArea.bus, Severity.warning),
+
   /// DALI: luminaires behind a gateway report a lamp failure ([HealthFinding.count]).
   lampFault(HealthArea.lighting, Severity.error),
 
@@ -84,7 +91,7 @@ enum FindingKind {
 
   /// Whether it concerns a device (otherwise a group address); the lighting findings name the
   /// DALI gateway.
-  bool get device => this == repeats || area == HealthArea.lighting;
+  bool get device => this == repeats || this == rfBattery || this == rfLost || area == HealthArea.lighting;
 }
 
 /// A finding – data only; texts are created in the UI/PDF.
@@ -366,8 +373,19 @@ List<HealthFinding> busFindings(TelegramLog log) {
         HealthFinding(FindingKind.repeats, x.address, rate: x.repeatRate, count: x.count),
     for (final MapEntry(key: ga, value: n) in unanswered.entries)
       if (n >= 2) HealthFinding(FindingKind.unansweredReads, ga, count: n),
+    ...rfFindings(log.log),
   ];
 }
+
+/// KNX RF findings from the RF medium information of the frames (only interfaces on the RF
+/// medium deliver it): low battery, and lost frames once at least 5 % of them are missing.
+List<HealthFinding> rfFindings(Iterable<Telegram> log) => [
+  for (final MapEntry(key: a, value: rf) in RfDeviceStats.all(log).entries) ...[
+    if (!rf.batteryOk) HealthFinding(FindingKind.rfBattery, a, count: rf.frames),
+    if (rf.lost > 0 && rf.lost / (rf.frames + rf.lost) >= 0.05)
+      HealthFinding(FindingKind.rfLost, a, count: rf.lost, rate: rf.lost / (rf.frames + rf.lost)),
+  ],
+];
 
 /// Automatic run on connect (default: off – briefly loads the bus).
 class HealthAutoRun extends ValueNotifier<bool> {
@@ -670,6 +688,8 @@ String findingDetail(HealthFinding f) {
     FindingKind.mixedSizes => s.healthMixedSizes(f.count ?? 2),
     FindingKind.repeats => s.healthRepeats(localizeDecimal(((f.rate ?? 0) * 100).toStringAsFixed(1)), f.count ?? 0),
     FindingKind.unansweredReads => s.healthUnansweredReads(f.count ?? 0),
+    FindingKind.rfBattery => s.healthRfBattery,
+    FindingKind.rfLost => s.healthRfLost(f.count ?? 0, localizeDecimal(((f.rate ?? 0) * 100).toStringAsFixed(1))),
     FindingKind.lampFault ||
     FindingKind.gearFault ||
     FindingKind.gatewaySilent ||

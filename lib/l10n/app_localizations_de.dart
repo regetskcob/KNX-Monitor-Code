@@ -13194,4 +13194,52 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get handoverCreateShort => 'Erstellen';
+
+  @override
+  String get devRfSignal => 'Funksignal';
+
+  @override
+  String get devRfSignalNone => 'kein';
+
+  @override
+  String get devRfSignalWeak => 'schwach';
+
+  @override
+  String get devRfSignalMedium => 'mittel';
+
+  @override
+  String get devRfSignalStrong => 'stark';
+
+  @override
+  String get devRfBattery => 'Batterie';
+
+  @override
+  String get devRfBatteryOk => 'in Ordnung';
+
+  @override
+  String get devRfBatteryLow => 'schwach';
+
+  @override
+  String get devRfLost => 'Verloren';
+
+  @override
+  String get devRfRepeated => 'Wiederholt';
+
+  @override
+  String get healthRfBattery => 'Funk: Der Sender meldet eine schwache Batterie';
+
+  @override
+  String healthRfLost(int count, String rate) {
+    return 'Funk: $count Rahmen verloren ($rate %) – Abstand oder Repeater prüfen';
+  }
+
+  @override
+  String plainFindingRfBattery(String name) {
+    return '„$name“ braucht bald eine neue Batterie';
+  }
+
+  @override
+  String plainFindingRfLost(String name) {
+    return '„$name“ ist per Funk schlecht zu empfangen';
+  }
 }

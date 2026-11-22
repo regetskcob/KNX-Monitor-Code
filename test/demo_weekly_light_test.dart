@@ -40,10 +40,11 @@ void main() {
     expect(run.passive, isTrue);
     expect(find.text('Diese Woche wurde noch nicht geprüft.'), findsNothing);
     // Only what the demo house stages on purpose: humidity with the wrong length, the heating
-    // actuator's repeats and the faults of the DALI gateway.
+    // actuator's repeats, the RF smoke detector's battery and the faults of the DALI gateway.
     const staged = {
       FindingKind.dptSize,
       FindingKind.repeats,
+      FindingKind.rfBattery,
       FindingKind.lampFault,
       FindingKind.gearFault,
       FindingKind.testFailed,

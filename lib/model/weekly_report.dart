@@ -165,6 +165,8 @@ String plainFinding(HealthFinding f) {
     FindingKind.dptSize || FindingKind.dptValue || FindingKind.mixedSizes => s.plainFindingFormat(name),
     FindingKind.repeats => s.plainFindingRepeats(name),
     FindingKind.unansweredReads => s.plainFindingNoAnswer(name),
+    FindingKind.rfBattery => s.plainFindingRfBattery(name),
+    FindingKind.rfLost => s.plainFindingRfLost(name),
     FindingKind.lampFault ||
     FindingKind.gearFault ||
     FindingKind.gatewaySilent ||

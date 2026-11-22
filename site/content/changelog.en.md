@@ -7,6 +7,11 @@ slug: "changelog"
 ---
 What the latest versions of Busclear brought, newest first. App, Home Assistant add-on and Busclear Box share one version number. Every version is on [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant the add-on shows the same notes before an update.
 
+## 1.13.1 – 22 Nov 2026 (app beta)
+
+- KNX RF for testing ([#13](https://github.com/regetskcob/KNX-Monitor/issues/13)): with the app on an interface on the radio medium (IP-RF coupler, RF USB stick), the device sheet shows radio signal, battery and lost and repeated telegrams for RF devices. Health check and weekly overview report a low battery and a weak radio link. In the demo house the hallway smoke detector is an RF device. Through a media coupler onto TP this information does not arrive. Feedback with real RF devices please in the issue.
+- Topology: the hint about RF lines no longer overflows on the iPhone.
+
 ## 1.13.0 – 22 Nov 2026
 
 - Operate from the device drawing: an "Operate" switch above actuator and push button drawings arms sending, a tap on a channel or key sends like a push button. Switching counts as done only when the feedback follows; gates, doors, locks, alarms and central functions ask every time.

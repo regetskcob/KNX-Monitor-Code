@@ -18176,5 +18176,79 @@
   "handoverCreateShort": "Erstellen",
   "@handoverCreateShort": {
     "description": "Handover wizard: finish button"
+  },
+  "devRfSignal": "Funksignal",
+  "@devRfSignal": {
+    "description": "Device sheet: signal strength of the latest KNX RF frame"
+  },
+  "devRfSignalNone": "kein",
+  "@devRfSignalNone": {
+    "description": "Device sheet: KNX RF value"
+  },
+  "devRfSignalWeak": "schwach",
+  "@devRfSignalWeak": {
+    "description": "Device sheet: KNX RF value"
+  },
+  "devRfSignalMedium": "mittel",
+  "@devRfSignalMedium": {
+    "description": "Device sheet: KNX RF value"
+  },
+  "devRfSignalStrong": "stark",
+  "@devRfSignalStrong": {
+    "description": "Device sheet: KNX RF value"
+  },
+  "devRfBattery": "Batterie",
+  "@devRfBattery": {
+    "description": "Device sheet: battery state the RF transmitter reports"
+  },
+  "devRfBatteryOk": "in Ordnung",
+  "@devRfBatteryOk": {
+    "description": "Device sheet: KNX RF value"
+  },
+  "devRfBatteryLow": "schwach",
+  "@devRfBatteryLow": {
+    "description": "Device sheet: KNX RF value"
+  },
+  "devRfLost": "Verloren",
+  "@devRfLost": {
+    "description": "Device sheet: RF frames missing by frame number"
+  },
+  "devRfRepeated": "Wiederholt",
+  "@devRfRepeated": {
+    "description": "Device sheet: RF frames the transmitter repeated"
+  },
+  "healthRfBattery": "Funk: Der Sender meldet eine schwache Batterie",
+  "@healthRfBattery": {
+    "description": "Finding: KNX RF battery low"
+  },
+  "healthRfLost": "Funk: {count} Rahmen verloren ({rate} %) – Abstand oder Repeater prüfen",
+  "@healthRfLost": {
+    "description": "Finding: KNX RF frames lost",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "plainFindingRfBattery": "„{name}“ braucht bald eine neue Batterie",
+  "@plainFindingRfBattery": {
+    "description": "Plain finding: RF battery low.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "plainFindingRfLost": "„{name}“ ist per Funk schlecht zu empfangen",
+  "@plainFindingRfLost": {
+    "description": "Plain finding: RF frames lost.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   }
 }

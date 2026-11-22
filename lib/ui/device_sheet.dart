@@ -5,6 +5,7 @@ import '../model/sound_ack.dart';
 import 'sound_ack_screen.dart';
 
 import '../catalog_store.dart';
+import '../knx/rf_info.dart';
 import '../knx/telegram.dart';
 import '../l10n/locale_controller.dart';
 import '../model/communication_map.dart';
@@ -238,11 +239,20 @@ class _DeviceTrafficState extends State<DeviceTraffic> {
                 if (t.source != widget.address && linked.contains(t.destination)) t,
             ];
             final list = _received ? received : sent;
+            // Radio link from the RF medium information, only where an RF interface delivered it.
+            // From the device's own telegrams only (newest first in [sent]).
+            final rf = RfDeviceStats.of(widget.address, sent.reversed);
             final metrics = FigureBox(
               figures: [
                 (s.devSent, formatInt(sent.length)),
                 (s.devReceived, device == null ? '—' : formatInt(received.length)),
                 (s.devGroups, formatInt(linked.length)),
+                if (rf != null) ...[
+                  (s.devRfSignal, rfSignalText(rf.signal)),
+                  (s.devRfBattery, rf.batteryOk ? s.devRfBatteryOk : s.devRfBatteryLow),
+                  (s.devRfLost, formatInt(rf.lost)),
+                  (s.devRfRepeated, formatInt(rf.repeated)),
+                ],
               ],
             );
             final mapButton = widget.onMap == null
@@ -625,3 +635,11 @@ int? channelAt(int device, int address) {
 /// kind (push button, detector …).
 bool hasDeviceDrawing(int device, int address) =>
     channelAt(device, address) != null || shapeOf(device, CatalogStore.instance.catalog) != DeviceShape.din;
+
+/// Signal strength of an RF frame as a word.
+String rfSignalText(RfSignal v) => switch (v) {
+  RfSignal.none => s.devRfSignalNone,
+  RfSignal.weak => s.devRfSignalWeak,
+  RfSignal.medium => s.devRfSignalMedium,
+  RfSignal.strong => s.devRfSignalStrong,
+};

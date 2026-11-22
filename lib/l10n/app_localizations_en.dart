@@ -13162,4 +13162,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get handoverCreateShort => 'Create';
+
+  @override
+  String get devRfSignal => 'Radio signal';
+
+  @override
+  String get devRfSignalNone => 'none';
+
+  @override
+  String get devRfSignalWeak => 'weak';
+
+  @override
+  String get devRfSignalMedium => 'medium';
+
+  @override
+  String get devRfSignalStrong => 'strong';
+
+  @override
+  String get devRfBattery => 'Battery';
+
+  @override
+  String get devRfBatteryOk => 'fine';
+
+  @override
+  String get devRfBatteryLow => 'low';
+
+  @override
+  String get devRfLost => 'Lost';
+
+  @override
+  String get devRfRepeated => 'Repeated';
+
+  @override
+  String get healthRfBattery => 'Radio: the transmitter reports a low battery';
+
+  @override
+  String healthRfLost(int count, String rate) {
+    return 'Radio: $count frames lost ($rate %) – check distance or add a repeater';
+  }
+
+  @override
+  String plainFindingRfBattery(String name) {
+    return '„$name“ needs a new battery soon';
+  }
+
+  @override
+  String plainFindingRfLost(String name) {
+    return '„$name“ has a weak radio link';
+  }
 }

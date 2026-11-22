@@ -3652,5 +3652,19 @@
   "backupRestorePasswordHint": "The password the backup was created with.",
   "backupCreateShort": "Create",
   "backupRestoreShort": "Restore",
-  "handoverCreateShort": "Create"
+  "handoverCreateShort": "Create",
+  "devRfSignal": "Radio signal",
+  "devRfSignalNone": "none",
+  "devRfSignalWeak": "weak",
+  "devRfSignalMedium": "medium",
+  "devRfSignalStrong": "strong",
+  "devRfBattery": "Battery",
+  "devRfBatteryOk": "fine",
+  "devRfBatteryLow": "low",
+  "devRfLost": "Lost",
+  "devRfRepeated": "Repeated",
+  "healthRfBattery": "Radio: the transmitter reports a low battery",
+  "healthRfLost": "Radio: {count} frames lost ({rate} %) – check distance or add a repeater",
+  "plainFindingRfBattery": "„{name}“ needs a new battery soon",
+  "plainFindingRfLost": "„{name}“ has a weak radio link"
 }

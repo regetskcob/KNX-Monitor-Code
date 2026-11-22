@@ -2990,17 +2990,19 @@ class _WithRfHintState extends State<_WithRfHint> {
             child: HorizontNotice(
               HorizontStatus.info,
               icon: AppIcons.sensors,
-              action: Row(
-                mainAxisSize: MainAxisSize.min,
+              // Only the close button at the end; the vote link goes below the text, so a phone
+              // keeps the width for the text.
+              action: IconButton(tooltip: s.commonClose, icon: const Icon(AppIcons.close), onPressed: _dismiss),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(s.topoRfHint(lines.map(formatLine).join(', '), lines.length)),
                   TextButton(
                     onPressed: () => launchUrl(rfIssueUrl, mode: LaunchMode.externalApplication),
                     child: Text(s.topoRfVote),
                   ),
-                  IconButton(tooltip: s.commonClose, icon: const Icon(AppIcons.close), onPressed: _dismiss),
                 ],
               ),
-              child: Text(s.topoRfHint(lines.map(formatLine).join(', '), lines.length)),
             ),
           ),
           Expanded(child: widget.child),

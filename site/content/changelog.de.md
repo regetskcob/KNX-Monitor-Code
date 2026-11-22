@@ -7,6 +7,11 @@ slug: "changelog"
 ---
 Was die letzten Versionen von Busclear gebracht haben, neueste zuerst. App, Home-Assistant-Add-on und Busclear Box haben eine gemeinsame Versionsnummer. Jede Version liegt auf [GitHub](https://github.com/regetskcob/KNX-Monitor/releases); in Home Assistant zeigt das Add-on dieselben Hinweise vor einem Update (auf Englisch).
 
+## 1.13.1 – 22.11.2026 (App-Beta)
+
+- KNX RF zum Testen ([#13](https://github.com/regetskcob/KNX-Monitor/issues/13)): Hängt die App an einer Schnittstelle direkt am Funk (IP-RF-Koppler, RF-USB-Stick), zeigt das Geräteblatt für Funkgeräte Funksignal, Batterie sowie verlorene und wiederholte Telegramme. Gesundheitsprüfung und Wochenüberblick melden eine schwache Batterie und eine schlechte Funkstrecke. Im Demo-Haus funkt der Rauchmelder im Flur. Über einen Medienkoppler auf TP kommen diese Angaben nicht an. Rückmeldungen mit echten Funkgeräten bitte ins Issue.
+- Topologie: Der Hinweis zu Funklinien läuft auf dem iPhone nicht mehr über.
+
 ## 1.13.0 – 22.11.2026
 
 - Bedienen aus der Gerätezeichnung: Ein Schalter „Bedienen“ über Aktor- und Tasterzeichnungen schaltet das Senden scharf, ein Tipp auf einen Kanal oder eine Taste sendet wie ein Taster. Geschaltet gilt erst, wenn die Rückmeldung folgt; Tore, Türen, Schlösser, Alarme und Zentralfunktionen fragen jedes Mal nach.

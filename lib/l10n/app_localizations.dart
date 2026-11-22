@@ -21781,6 +21781,90 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Erstellen'**
   String get handoverCreateShort;
+
+  /// Device sheet: signal strength of the latest KNX RF frame
+  ///
+  /// In de, this message translates to:
+  /// **'Funksignal'**
+  String get devRfSignal;
+
+  /// Device sheet: KNX RF value
+  ///
+  /// In de, this message translates to:
+  /// **'kein'**
+  String get devRfSignalNone;
+
+  /// Device sheet: KNX RF value
+  ///
+  /// In de, this message translates to:
+  /// **'schwach'**
+  String get devRfSignalWeak;
+
+  /// Device sheet: KNX RF value
+  ///
+  /// In de, this message translates to:
+  /// **'mittel'**
+  String get devRfSignalMedium;
+
+  /// Device sheet: KNX RF value
+  ///
+  /// In de, this message translates to:
+  /// **'stark'**
+  String get devRfSignalStrong;
+
+  /// Device sheet: battery state the RF transmitter reports
+  ///
+  /// In de, this message translates to:
+  /// **'Batterie'**
+  String get devRfBattery;
+
+  /// Device sheet: KNX RF value
+  ///
+  /// In de, this message translates to:
+  /// **'in Ordnung'**
+  String get devRfBatteryOk;
+
+  /// Device sheet: KNX RF value
+  ///
+  /// In de, this message translates to:
+  /// **'schwach'**
+  String get devRfBatteryLow;
+
+  /// Device sheet: RF frames missing by frame number
+  ///
+  /// In de, this message translates to:
+  /// **'Verloren'**
+  String get devRfLost;
+
+  /// Device sheet: RF frames the transmitter repeated
+  ///
+  /// In de, this message translates to:
+  /// **'Wiederholt'**
+  String get devRfRepeated;
+
+  /// Finding: KNX RF battery low
+  ///
+  /// In de, this message translates to:
+  /// **'Funk: Der Sender meldet eine schwache Batterie'**
+  String get healthRfBattery;
+
+  /// Finding: KNX RF frames lost
+  ///
+  /// In de, this message translates to:
+  /// **'Funk: {count} Rahmen verloren ({rate} %) – Abstand oder Repeater prüfen'**
+  String healthRfLost(int count, String rate);
+
+  /// Plain finding: RF battery low.
+  ///
+  /// In de, this message translates to:
+  /// **'„{name}“ braucht bald eine neue Batterie'**
+  String plainFindingRfBattery(String name);
+
+  /// Plain finding: RF frames lost.
+  ///
+  /// In de, this message translates to:
+  /// **'„{name}“ ist per Funk schlecht zu empfangen'**
+  String plainFindingRfLost(String name);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -1,5 +1,7 @@
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:knx_monitor/knx/rf_info.dart';
+import 'package:knx_monitor/model/health.dart';
 import 'package:knx_monitor/catalog_store.dart';
 import 'package:knx_monitor/knx/demo_tunnel.dart';
 import 'package:knx_monitor/knx/knx_tunnel.dart';
@@ -116,5 +118,13 @@ void main() {
         tunnel.dispose();
       });
     });
+  });
+
+  test('Demo: der Rauchmelder Flur funkt, mit schwacher Batterie', () {
+    final log = DemoTunnel().simulate(steps: 4000);
+    final rf = RfDeviceStats.of(DemoTunnel.rfDevice, log);
+    expect(rf, isNotNull);
+    expect(rf!.batteryOk, isFalse);
+    expect(rfFindings(log).map((f) => f.kind), contains(FindingKind.rfBattery));
   });
 }
